@@ -64,9 +64,15 @@
         <copy todir="${build.dest.mac.app}">
             <fileset dir="${build.resources.macbundle}"></fileset>
         </copy>
-        <chmod file="${build.dest.mac.app}/Contents/MacOS/JavaApplicationStub" perm="a+x"></chmod>
         <copy file="${build.jar.assembled}"
             tofile="${build.dest.mac.app}/Contents/Resources/Java/genomemuseum.jar" />
+        <tar destfile="${build.dest.mac.app}.tar">
+            <tarfileset dir="${build.dest}" includes="${build.mac.app.name}/**" />
+            <tarfileset mode="0755" dir="${build.dest}">
+                <include name="${build.mac.app.name}/Contents/MacOS/JavaApplicationStub"/>
+            </tarfileset>
+        </tar>
+        <delete dir="${build.dest.mac.app}" />
     </target>
 
     <!-- ================================= 
