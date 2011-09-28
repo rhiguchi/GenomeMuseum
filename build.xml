@@ -56,11 +56,19 @@
             tofile="${build.dest.mac.app}/Contents/Resources/Java/genomemuseum.jar" />
     </target>
 
+    <!-- ================================= 
+          target: build-win-exe              
+         ================================= -->
+    <target name="build-win-exe" depends="depends, sbt-proguard" description="description">
+        <!-- $ANT_HOME/lib に launch4j.jar と xstream.jar を入れる必要がある。 -->
+        <taskdef name="launch4j" classname="net.sf.launch4j.ant.Launch4jTask" />
+        <launch4j configFile="${build.resources}/launch4j.xml" />
+    </target>
+    
     <!-- - - - - - - - - - - - - - - - - - 
           target: depends                      
          - - - - - - - - - - - - - - - - - -->
     <target name="depends">
         <mkdir dir="${build.dest}"/>
     </target>
-
 </project>
