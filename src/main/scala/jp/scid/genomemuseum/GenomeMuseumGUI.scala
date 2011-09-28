@@ -1,15 +1,20 @@
 package jp.scid.genomemuseum
 
-import scala.swing.{Label, MainFrame}
+import java.awt.{BorderLayout}
+import view.MainView
+import scala.swing.{MainFrame}
 
 class GenomeMuseumGUI {
-  val mainFrame = new MainFrame {
+  lazy val mainFrame = new MainFrame {
+    val mainView = new MainView
     title = "GenomeMuseum"
-    contents = new Label("Frame Test")
+    peer.getContentPane.setLayout(new BorderLayout)
+    peer.getContentPane.add(mainView.contentPane, "Center")
   }
   
   def start() {
     mainFrame.pack()
+    mainFrame.peer setLocationRelativeTo null
     mainFrame.visible = true
   }
 }
