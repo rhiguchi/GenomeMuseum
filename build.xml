@@ -82,6 +82,13 @@
             outfile="${build.dest.win.exe}" />
     </target>
     
+    <!-- ================================= 
+          target: build-all              
+         ================================= -->
+    <target name="build-all" depends="build-mac-app, build-win-exe"
+    	    description="Mac OS 用 と Windows 用アプリケーションを作成する。">
+    </target>
+    
     <!-- - - - - - - - - - - - - - - - - - 
           target: depends                      
          - - - - - - - - - - - - - - - - - -->
