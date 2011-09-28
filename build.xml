@@ -60,8 +60,9 @@
           target: build-win-exe              
          ================================= -->
     <target name="build-win-exe" depends="depends, sbt-proguard" description="description">
-        <!-- $ANT_HOME/lib に launch4j.jar と xstream.jar を入れる必要がある。 -->
-        <taskdef name="launch4j" classname="net.sf.launch4j.ant.Launch4jTask" />
+        <!-- ${launch4j.home} launch4j.jar と lib/xstream.jar があるディレクトリを指定しておく。 -->
+        <taskdef name="launch4j" classname="net.sf.launch4j.ant.Launch4jTask"
+            classpath="${launch4j.home}/launch4j.jar:${launch4j.home}/xstream.jar" />
         <launch4j configFile="${build.resources}/launch4j.xml" />
     </target>
     
