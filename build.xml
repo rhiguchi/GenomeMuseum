@@ -8,19 +8,21 @@
      higuchi                                                                
      ====================================================================== -->
 <project name="GenomeMuseum" default="run-jar">
+    <property name="genomemuseum.assembled"
+        value="${basedir}/target/scala-2.9.1/genomemuseum_2.9.1-0.8a1.min.jar"/>
+    
     <property name="build.dest" location="build"/>
+    <property name="build.jar.assembled" location="${build.dest}/genomemuseum.jar"/>
     <property name="build.resources" location="build-resources"/>
 
     <property name="build.mac.app.name" value="GenomeMuseum.app"/>
     <property name="build.resources.macbundle" location="${build.resources}/Mac OS Bundle"/>
     <property name="build.win.exe.name" value="GenomeMuseum.exe"/>
     
-    <property name="target-jar" value="${basedir}/target/scala-2.9.1/genomemuseum_2.9.1-0.8a1.min.jar"/>
     <!-- jar ファイルが存在するかどうか -->
-    <condition property="target-jar.exists">
-        <available file="${target-jar}"></available>
+    <condition property="genomemuseum.assembled.exists">
+        <available file="${genomemuseum.assembled}"></available>
     </condition>
-    
 
     <description>
             GenomeMuseum 0.8
@@ -29,23 +31,33 @@
     <!-- ================================= 
           target: default              
          ================================= -->
-    <target name="sbt-proguard" depends="depends" description="GenomeMuseum 0.8" unless="target-jar.exists">
+    <target name="sbt-proguard" depends="depends" description="GenomeMuseum 0.8"
+            unless="genomemuseum.assembled.exists">
         <exec executable="sbt">
             <arg line="compile test package proguard"/>
   	</exec>
     </target>
 
     <!-- ================================= 
-          target: run-jar              
+          target: assemble-jar              
          ================================= -->
-    <target name="run-jar" depends="depends, sbt-proguard" description="target ディレクトリの jar を実行する">
-        <java jar="${target-jar}" fork="true"></java>
+    <target name="assemble-jar" depends="depends, sbt-proguard" description="description">
+        <delete file="build.jar.assembled" />
+        <copy file="${genomemuseum.assembled}" tofile="${build.jar.assembled}" />
     </target>
 
     <!-- ================================= 
+          target: run-jar              
+         ================================= -->
+    <target name="run-jar" depends="depends, assemble-jar" description="target ディレクトリの jar を実行する">
+        <java jar="${build.jar.assembled}" fork="true"></java>
+    </target>
+
+    
+    <!-- ================================= 
           target: build-mac-app              
          ================================= -->
-    <target name="build-mac-app" depends="depends, sbt-proguard" description="description">
+    <target name="build-mac-app" depends="depends, assemble-jar" description="description">
         <property name="build.dest.mac.app" location="${build.dest}/${build.mac.app.name}"/>
         
         <delete dir="${build.dest.mac.app}" />
@@ -53,20 +65,20 @@
             <fileset dir="${build.resources.macbundle}"></fileset>
         </copy>
         <chmod file="${build.dest.mac.app}/Contents/MacOS/JavaApplicationStub" perm="a+x"></chmod>
-        <copy file="${target-jar}"
+        <copy file="${build.jar.assembled}"
             tofile="${build.dest.mac.app}/Contents/Resources/Java/genomemuseum.jar" />
     </target>
 
     <!-- ================================= 
           target: build-win-exe              
          ================================= -->
-    <target name="build-win-exe" depends="depends, sbt-proguard" description="description">
+    <target name="build-win-exe" depends="depends, assemble-jar" description="description">
         <property name="build.dest.win.exe" location="${build.dest}/${build.win.exe.name}"/>
         <!-- ${launch4j.home} launch4j.jar と lib/xstream.jar があるディレクトリを指定しておく。 -->
         <taskdef name="launch4j" classname="net.sf.launch4j.ant.Launch4jTask"
             classpath="${launch4j.home}/launch4j.jar:${launch4j.home}/xstream.jar" />
         <launch4j configFile="${build.resources}/launch4j.xml"
-            jar="${target-jar}"
+            jar="${build.jar.assembled}"
             outfile="${build.dest.win.exe}" />
     </target>
     
