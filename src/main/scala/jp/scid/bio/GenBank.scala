@@ -174,12 +174,45 @@ object GenBank {
     value: String = ""
   ) extends Element
   
+  /** Features 要素 */
+  object Features extends ElementObject("FEATURES") {
+  }
+  
   /** Feature 要素 */
   case class Feature (
     key: String = "",
     location: String = "",
     qualifiers: List[(String, String)] = Nil
   ) extends Element
+  
+  object Feature {
+    val keySize: Int = 21
+    
+    /** Feature キーの抽出子 */
+    object Head {
+      /**
+       * Feature のキーを抽出する
+       * @param source Feature 項目の最初の行
+       * @return {@code source} の長さが {@code keySize} 以上でかつ、
+       *         {@code keySize} 文字以内に文字列が含まれていたらその文字列の
+       *         {@code Option} 値。当てはまらない場合は {@code None}
+       */
+      def unapply(source: String) = source match {
+        case source if source.length >= keySize =>
+          val key = source.substring(0, keySize).trim
+          if (key.isEmpty) None
+          else Some(key)
+        case _ => None
+      }
+    }
+    
+    @throws(classOf[ParseException])
+    def parseFrom(source: Seq[String]): Feature = source match {
+      case Seq(head @ Head(key), tail @ _*) =>
+        Feature(key)
+      case _ => throw new ParseException("invalid format", 0)
+    }
+  }
   
   /** Origin 要素 */
   case class Origin (

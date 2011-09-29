@@ -76,6 +76,65 @@ class GenBankSpec extends Specification {
         d.value must_==("Staphylococcus aureus subsp. aureus USA300 plasmid pUSA01, complete sequence.")
       }
     }
+    
+    "Features 構文解析" in {
+      import GenBank.Features
+      
+      "Head オブジェクトの行認知" in {
+        Features.Head.unapply("FEATURES             Location/Qualifiers") must beTrue
+      }
+    }
+    
+    "Feature 構文解析" in {
+      import GenBank.Feature
+      val sourceFeature =
+        """     source          1..3444
+          |                     /organism="Pyrococcus abyssi GE5"
+          |                     /mol_type="genomic DNA"
+          |                     /strain="GE5"
+          |                     /db_xref="taxon:272844"
+          |                     /plasmid="pGT5"""".stripMargin.split("\n").toList
+      val geneFeature =
+        """     gene            703..1668
+          |                     /gene="rep"
+          |                     /locus_tag="SSON_PC01"
+          |                     /db_xref="GeneID:4991518"""".stripMargin.split("\n").toList
+      val cdsFeature =
+        """     CDS             703..1668
+          |                     /gene="rep"
+          |                     /locus_tag="SSON_PC01"
+          |                     /note="replication protein"
+          |                     /codon_start=1
+          |                     /transl_table=11
+          |                     /product="Rep"
+          |                     /protein_id="YP_001139965.1"
+          |                     /db_xref="GI:145294041"
+          |                     /db_xref="GeneID:4991518"
+          |                     /translation="MSEDKFLSDYSPRDAVWDTQRTLTDSVGGIYQTAAEFERYALRM
+          |                     ASCSGLLRFGWSTIMETGETRLRLRSAQFCRVRHCPVCQWRRTLMWQARFYQALPKIV
+          |                     VDYPSSRWLFLTLTVRNCEIGELGTVLTAMNAAFKRMEKRKELSPVQGWIRATEVTRG
+          |                     KDGSAHPHFHCLLMVQPSWFKGKNYVKHERWVELWRDCLRVNYEPNIDIRAVKTKTGE
+          |                     VVANVAEQLQSAVAETLKYSVKPEDMANDPEWFLELTRQLHKRRFISTGGALKNVLQL
+          |                     DRETNEDLVIADDVGDGTDDGKRTAFVWDSGKRRYKRAPEKDKSD"""".stripMargin.split("\n").toList
+      val repeatRegionFeature =
+        """     repeat_region   2051..2123
+          |                     /note="repeat region RIII"
+          |                     /rpt_type=inverted""".stripMargin.split("\n").toList
+      
+      "Head オブジェクトの行認知" in {
+        Feature.Head.unapply(sourceFeature.head) must beSome.which("source".equals)
+        Feature.Head.unapply(geneFeature.head) must beSome.which("gene".equals)
+        Feature.Head.unapply(cdsFeature.head) must beSome.which("CDS".equals)
+        Feature.Head.unapply(repeatRegionFeature.head) must beSome.which("repeat_region".equals)
+        Feature.Head.unapply(sourceFeature.tail.head) must beNone
+        Feature.Head.unapply("     source         ") must beNone
+      }
+      
+      "source 情報" in {
+        val f = Feature.parseFrom(sourceFeature)
+        f.key must_== "source"
+      }
+    }
   }
   
   private def using[A <% java.io.Closeable, B](s: A)(f: A => B) = {
