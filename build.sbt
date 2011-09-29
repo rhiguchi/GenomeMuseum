@@ -12,7 +12,9 @@ libraryDependencies ++= Seq(
   "org.scala-lang" % "scala-swing" % "2.9.1",
   "net.java.dev.glazedlists" % "glazedlists_java15" % "1.8.0",
   "com.h2database" % "h2" % "1.3.160",
-  "org.specs2" %% "specs2" % "1.6.1"% "test"
+  "org.specs2" %% "specs2" % "1.6.1" % "test",
+  "junit" % "junit" % "4.9" % "test",
+  "org.pegdown" % "pegdown" % "1.0.2" % "test"
 )
 
 resolvers += "releases" at "http://scala-tools.org/repo-releases"
@@ -22,3 +24,5 @@ proguardOptions += keepMain("jp.scid.genomemuseum.GenomeMuseum")
 maxErrors := 20
 
 parallelExecution := true
+
+testOptions in Test += Tests.Argument("console", "junitxml")
