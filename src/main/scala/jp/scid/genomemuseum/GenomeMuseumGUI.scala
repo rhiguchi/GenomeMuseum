@@ -2,6 +2,7 @@ package jp.scid.genomemuseum
 
 import java.awt.{BorderLayout}
 import view.MainView
+import controller.ExhibitTableController
 import scala.swing.{MainFrame}
 
 class GenomeMuseumGUI {
@@ -13,6 +14,8 @@ class GenomeMuseumGUI {
   }
   
   def start() {
+    val tableCtrl = new ExhibitTableController(
+      mainFrame.mainView.dataTable)
     mainFrame.pack()
     mainFrame.peer setLocationRelativeTo null
     mainFrame.visible = true
