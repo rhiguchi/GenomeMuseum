@@ -1,0 +1,115 @@
+LOCUS       NC_007504               1852 bp    DNA     circular BCT 30-MAR-2006
+DEFINITION  Xanthomonas campestris pv. vesicatoria str. 85-10 plasmid pXCV2,
+            complete sequence.
+ACCESSION   NC_007504
+VERSION     NC_007504.1  GI:78045239
+KEYWORDS    ORF; replication initiation protein.
+SOURCE      Xanthomonas campestris pv. vesicatoria str. 85-10
+  ORGANISM  Xanthomonas campestris pv. vesicatoria str. 85-10
+            Bacteria; Proteobacteria; Gammaproteobacteria; Xanthomonadales;
+            Xanthomonadaceae; Xanthomonas.
+REFERENCE   1
+  AUTHORS   Thieme,F., Koebnik,R., Bekel,T., Berger,C., Boch,J., Buttner,D.,
+            Caldana,C., Gaigalat,L., Goesmann,A., Kay,S., Kirchner,O., Lanz,C.,
+            Linke,B., McHardy,A.C., Meyer,F., Mittenhuber,G., Nies,D.H.,
+            Niesbach-Klosgen,U., Patschkowski,T., Ruckert,C., Rupp,O.,
+            Schneiker,S., Schuster,S.C., Vorholter,F.J., Weber,E., Puhler,A.,
+            Bonas,U., Bartels,D. and Kaiser,O.
+  TITLE     Insights into Genome Plasticity and Pathogenicity of the Plant
+            Pathogenic Bacterium Xanthomonas campestris pv. vesicatoria
+            Revealed by the Complete Genome Sequence
+  JOURNAL   J. Bacteriol. 187 (21), 7254-7266 (2005)
+   PUBMED   16237009
+REFERENCE   2  (bases 1 to 1852)
+  CONSRTM   NCBI Genome Project
+  TITLE     Direct Submission
+  JOURNAL   Submitted (23-OCT-2005) National Center for Biotechnology
+            Information, NIH, Bethesda, MD 20894, USA
+REFERENCE   3  (bases 1 to 1852)
+  AUTHORS   Thieme,F.
+  TITLE     Direct Submission
+  JOURNAL   Submitted (16-JUN-2005) Thieme F., Institut fuer genetik,
+            Martin-Luther-Universitaet, Weinbergweg 10, 06120 Halle/Saale,
+            GERMANY
+COMMENT     PROVISIONAL REFSEQ: This record has not yet been subject to final
+            NCBI review. The reference sequence was derived from AM039948.
+            COMPLETENESS: full length.
+FEATURES             Location/Qualifiers
+     source          1..1852
+                     /organism="Xanthomonas campestris pv. vesicatoria str.
+                     85-10"
+                     /mol_type="genomic DNA"
+                     /strain="85-10"
+                     /db_xref="taxon:316273"
+                     /plasmid="pXCV2"
+                     /pathovar="vesicatoria str. 85-10"
+     gene            114..1172
+                     /locus_tag="XCVa0001"
+                     /db_xref="GeneID:3728915"
+     CDS             114..1172
+                     /locus_tag="XCVa0001"
+                     /codon_start=1
+                     /inference="non-experimental evidence, no additional
+                     details recorded"
+                     /transl_table=11
+                     /product="putative replication initiation protein"
+                     /protein_id="YP_361493.1"
+                     /db_xref="GI:78045240"
+                     /db_xref="GeneID:3728915"
+                     /translation="MIDWLSMIVPCSHPTPITGGHVLSLTPDGEVSWRSSKRSTVEGS
+                     FGTGLQIRTCTHTADPCTHLEISGNPVKFFQGHNLWGTDDLPSLAIATFNHLIGVLSL
+                     NPTDTDRALVRAGMIQLTRVDVTESFHLESRAQVLAWLRAAEQTAHLSHRGRGQLVKG
+                     TTLYFGKNSRRWGLKLYSKGQEIHAKGHGQDAILSLPHAVAWADRTLRAELTIRSMEL
+                     KRMGRSMVSDWFSDDGLPCDVTRELLRERLQGMTMTTTAHLSAEILSTFRPSLRLAYQ
+                     SWEAGTDLRSILPHRTFYKYRSELLSHGVDIATLVPREVSNVVPLFRTLEAVPAPVPD
+                     WAVGTLLYFEPPSVRLLA"
+     gene            complement(1136..1609)
+                     /locus_tag="XCVa0002"
+                     /db_xref="GeneID:3728916"
+     CDS             complement(1136..1609)
+                     /locus_tag="XCVa0002"
+                     /note="ORF"
+                     /codon_start=1
+                     /inference="non-experimental evidence, no additional
+                     details recorded"
+                     /transl_table=11
+                     /product="hypothetical protein"
+                     /protein_id="YP_361494.1"
+                     /db_xref="GI:78045241"
+                     /db_xref="GeneID:3728916"
+                     /translation="MCGITSPAHRVGRAKPGKGFRDGRRVCPLLRHMYQAKRGLTGSW
+                     EASEATQDGILPSPSHGTAAVRTGFQAPQALTAGAASSAAPGSPDKRLAGARGGGRPG
+                     NDLARARHPWVGMSSCRSGSRGARPAPHFVTRHEIENPAGAGLGQARSRTDGGSK"
+ORIGIN      
+        1 gtcgacgcac tcaaggtcat gggcgatgtt cttcgtcaga cagctattgc agctaatcag
+       61 cttgagctgg ctatcaacac taaacgacgc gctgccatga ggaagcgcaa cagatgatcg
+      121 attggctttc gatgattgtt ccttgctctc atccaacgcc aattactggt ggacatgttc
+      181 tttcgctcac gcctgatggt gaggtttctt ggcgttcgtc taagcgttct actgttgaag
+      241 gatcgttcgg cacaggcctt caaattcgaa catgcacaca taccgctgac ccttgcacgc
+      301 atctggaaat aagcggaaat cctgtcaaat tctttcaggg tcacaaccta tggggcactg
+      361 atgatttgcc ctctcttgcc atcgcaacgt ttaatcatct gatcggtgtt ttatcgttga
+      421 atccgactga cacggaccgt gccttggtgc gggccggaat gatccaactc acacgcgttg
+      481 acgttacgga atctttccat ctcgagagcc gcgcgcaagt actcgcatgg cttcgtgctg
+      541 ctgagcagac ggcacatctt tctcatcgtg gtcgaggtca gttggttaaa ggcacaacgc
+      601 tttatttcgg caagaacagt cgccgatggg gtcttaagct gtatagcaaa ggtcaggaaa
+      661 ttcacgccaa gggccatggt caagatgcca tcttgtccct gcctcatgct gttgcctggg
+      721 ctgatagaac ccttcgagct gagctgacaa ttcgaagcat ggagcttaag cgcatgggac
+      781 gctccatggt ttcagattgg ttctctgacg atgggctacc atgtgacgta actcgggagt
+      841 tactccgcga gcgtttgcag gggatgacca tgactactac cgcacacttg tctgctgaga
+      901 tcctctccac ttttcgtccg tctttgcgtc ttgcttatca gtcctgggaa gccggcacag
+      961 accttcgttc tatcctccct caccgcacct tttacaagta ccgttctgag cttctgtccc
+     1021 acggcgttga tattgcaacg ttggttcctc gcgaagtctc caacgtagta cctctcttta
+     1081 gaactcttga agctgttccc gcgcctgttc ctgattgggc tgtcgggaca ctgctttact
+     1141 tcgagcctcc atctgtccga cttctcgctt gacccaaccc cgctccggcg gggttttcta
+     1201 tttcatgacg cgtcacgaaa tggggtgcgg ggcgtgcccc gcggctaccg ctcctgcagg
+     1261 agctcatccc aacccatgga tgcctggcgc gtgccaggtc gtttcccggc ctacccccac
+     1321 cccgcgcgcc tgcaagccgc ttgtcagggc ttccaggcgc cgcagagctt gcagcgccag
+     1381 cggtgagcgc ctgcggcgcc tggaagcccg tgcgtaccgc cgcagtaccg tgggaagggg
+     1441 agggcaggat accgtcctgt gtagcctctg atgcctccca ggagccggtc agcccccgct
+     1501 ttgcttgata catgtgccta agtagcgggc aaaccctcct tccatccctg aaacccttgc
+     1561 ctggctttgc tcggccaact cgatgtgcgg ggctagtgat accgcacatt tgtgcacgcg
+     1621 gtgcactgcc aatccccttg caggcactcc gcgttactcc tagacttgat ccatgccatc
+     1681 tgaccagacc cgcgtcaatc tcacccttcc cgctgatgta gtccaggttt tggaccgcct
+     1741 cggcaaggtc acaggcgccg gccgcgcgac catcattcgc gagtggttga tcgagggtcg
+     1801 ccccatgttt gccgagatgg ccaccgccgc tgaaatggct catgagcgcc ag
+//

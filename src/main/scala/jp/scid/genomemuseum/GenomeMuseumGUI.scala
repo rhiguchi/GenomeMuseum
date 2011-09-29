@@ -16,7 +16,7 @@ class GenomeMuseumGUI {
   def start() {
     val tableCtrl = new ExhibitTableController(
       mainFrame.mainView.dataTable)
-    loadSampleExhibitsTo(tableCtrl)
+    loadSampleFilesTo(tableCtrl)
     mainFrame.pack()
     mainFrame.peer setLocationRelativeTo null
     mainFrame.visible = true
@@ -47,6 +47,45 @@ class GenomeMuseumGUI {
     target.getReadWriteLock().writeLock().lock();
     try {
       GlazedLists.replaceAll(target, samples.asJava, true)
+    }
+    finally {
+      target.getReadWriteLock().writeLock().unlock();
+    }
+  }
+  
+  /**
+   * サンプルファイルを 10 件設定する
+   * @param controller 流し込み先コントローラ
+   */
+  private def loadSampleFilesTo(controller: ExhibitTableController) {
+    import model.MuseumExhibit
+    import ca.odell.glazedlists.GlazedLists
+    import scala.collection.JavaConverters._
+    
+    val samples = List("NC_004554.gbk", "NC_004555.gbk", "NC_006375.gbk",
+      "NC_006376.gbk", "NC_006676.gbk", "NC_007504.gbk", "NC_009347.gbk",
+      "NC_009517.gbk", "NC_009934.gbk", "NC_010550.gbk")
+    val resourceBase = "sample_bio_files/"
+    val cls = this.getClass
+    
+    val resources = samples.map(resourceBase.+).map(cls.getResource)
+    
+    def using[A <% java.io.Closeable, B](s: A)(f: A => B) = {
+      try f(s) finally s.close()
+    }
+    
+    val parser = new jp.scid.bio.GenBankParser
+    
+    val list = resources.map { r => using(r.openStream) { inst =>
+      val source = io.Source.fromInputStream(inst)
+      parser.parseFrom(source.getLines)
+    }}
+    .map( e => MuseumExhibit(e.locus.name, e.locus.sequenceLength) )
+    
+    val target = controller.tableSource
+    target.getReadWriteLock().writeLock().lock();
+    try {
+      GlazedLists.replaceAll(target, list.asJava, true)
     }
     finally {
       target.getReadWriteLock().writeLock().unlock();

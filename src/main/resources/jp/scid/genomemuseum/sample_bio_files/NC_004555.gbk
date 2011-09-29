@@ -1,0 +1,140 @@
+LOCUS       NC_004555               2399 bp    DNA     circular BCT 27-NOV-2006
+DEFINITION  Buchnera aphidicola str. Bp (Baizongia pistaciae) plasmid pBBp1,
+            complete sequence.
+ACCESSION   NC_004555
+VERSION     NC_004555.1  GI:28191365
+KEYWORDS    .
+SOURCE      Buchnera aphidicola str. Bp (Baizongia pistaciae)
+  ORGANISM  Buchnera aphidicola str. Bp (Baizongia pistaciae)
+            Bacteria; Proteobacteria; Gammaproteobacteria; Enterobacteriales;
+            Enterobacteriaceae; Buchnera.
+REFERENCE   1  (bases 1 to 2399)
+  AUTHORS   van Ham,R.C.H.J., Kamerbeek,J., Palacios,C., Rausell,C.,
+            Abascal,F., Bastolla,U., Fernandez,J.M., Jimenez,L., Postigo,M.,
+            Silva,F.J., Tamames,J., Viguera,E., Latorre,A., Valencia,A.,
+            Moran,F. and Moya,A.
+  TITLE     Reductive genome evolution in Buchnera aphidicola
+  JOURNAL   Proc. Natl. Acad. Sci. U.S.A. 100 (2), 581-586 (2003)
+   PUBMED   12522265
+REFERENCE   2  (bases 1 to 2399)
+  CONSRTM   NCBI Genome Project
+  TITLE     Direct Submission
+  JOURNAL   Submitted (01-FEB-2003) National Center for Biotechnology
+            Information, NIH, Bethesda, MD 20894, USA
+REFERENCE   3  (bases 1 to 2399)
+  AUTHORS   van Ham,R.C.H.J., Kamerbeek,J., Palacios,C., Rausell,C.,
+            Abascal,F., Bastolla,U., Fernandez,J.M., Jimenez,L., Postigo,M.,
+            Silva,F.J., Tamames,J., Viguera,E., Latorre,A., Valencia,A.,
+            Moran,F. and Moya,A.
+  TITLE     Direct Submission
+  JOURNAL   Submitted (13-MAR-2002) Instituto Cavanilles de Biodiversitat y
+            Biologia Evolutiva, Universitat de Valencia, Apartado de Correos
+            2085, Comunidad Valenciana, Valencia 46071, Spain
+COMMENT     PROVISIONAL REFSEQ: This record has not yet been subject to final
+            NCBI review. The reference sequence was derived from AF492591.
+            COMPLETENESS: full length.
+FEATURES             Location/Qualifiers
+     source          1..2399
+                     /organism="Buchnera aphidicola str. Bp (Baizongia
+                     pistaciae)"
+                     /mol_type="genomic DNA"
+                     /strain="Bp (Baizongia pistaciae)"
+                     /specific_host="Baizongia pistaciae"
+                     /db_xref="taxon:224915"
+                     /plasmid="pBBp1"
+     gene            1..498
+                     /gene="yqhA"
+                     /locus_tag="bbp_pp1"
+                     /db_xref="GeneID:2648312"
+     CDS             1..498
+                     /gene="yqhA"
+                     /locus_tag="bbp_pp1"
+                     /codon_start=1
+                     /transl_table=11
+                     /product="hypothetical protein"
+                     /protein_id="NP_778246.1"
+                     /db_xref="GI:28191367"
+                     /db_xref="GeneID:2648312"
+                     /translation="MEKLIERIIYASRWLMFPVYIGLSLGFILLTLKFFQQIIFVIPK
+                     ILMMSESGLVLVVLSLIDISLVGGLLVMVMFSGYENFISKMEIKTDKKKLGWMGTMDV
+                     NSIKNKVASSIVAISSVHSLRLFMDAEKISNDQIMWCVLIHLTFVISAFGMACIDKMS
+                     KRGYS"
+     gene            564..1283
+                     /gene="repA2"
+                     /locus_tag="bbp_pp2"
+                     /db_xref="GeneID:2648313"
+     CDS             564..1283
+                     /gene="repA2"
+                     /locus_tag="bbp_pp2"
+                     /codon_start=1
+                     /transl_table=11
+                     /product="RepA2 protein"
+                     /protein_id="NP_778247.1"
+                     /db_xref="GI:28191368"
+                     /db_xref="GeneID:2648313"
+                     /translation="MLNIKTKKKNKKRIYVFNKNPEFKFKHLVFQKNKFILKIINEID
+                     KIDLMRSEIFNSTLPIDPQTGNILVRFRKLNRNRLLAIKAIIQAMLYHFNIKTKKVTA
+                     SVEQLADECGLSTVSKSGNKSITRASRLISQFMEPMGFIKCKKIKTTNNKFSKEIILT
+                     PLFFMILVKNSSLSEGDTHLKQEFKILKNKNVHINSSETFAKQEILKKIINKYSLNKL
+                     KKLGPKKIKEKINTEYKNIKK"
+     gene            1373..2230
+                     /gene="repA1"
+                     /locus_tag="bbp_pp3"
+                     /db_xref="GeneID:2648311"
+     CDS             1373..2230
+                     /gene="repA1"
+                     /locus_tag="bbp_pp3"
+                     /codon_start=1
+                     /transl_table=11
+                     /product="RepA1 protein"
+                     /protein_id="NP_778248.1"
+                     /db_xref="GI:28191366"
+                     /db_xref="GeneID:2648311"
+                     /translation="MLKRKNYVNNISPLFTPPKGDKRRPAFINYALEQAKKIDVARSE
+                     LNYILKLRDPKTGSIIPRHRQLNEHRAAAMRVIVPAMIYHFNITSDLVQASIEQLADE
+                     CGLSTVSKSGNKSITRASRLISQFMEPMGFIKCKKKWDKILGCYMPKIIMLTPLFFEL
+                     IGISKEKLNNAKKQQLGWLNTKLIERGLKPLSFSDAKLVSREKQINKILELRNNFHLL
+                     QRKKRYAKKLFKLDEKDIRQKIIKYLVSKYSSSELAQISLQEFKKQVNIEYFYLRNLA
+                     NEPYLISRR"
+ORIGIN      
+        1 gtggaaaaat taatcgaaag gataatttat gcttcccgtt ggctaatgtt cccagtatat
+       61 attggattat ccttaggatt tatactatta acattaaagt ttttccaaca aataattttt
+      121 gtaattccaa agattttaat gatgtcggaa tcaggattag tcttagtagt attatcactg
+      181 atagacattt cattagtagg aggtttattg gtcatggtaa tgttttctgg atacgaaaat
+      241 tttatatcta aaatggaaat taaaacagac aagaaaaaac taggatggat gggtacaatg
+      301 gacgttaact caataaaaaa taaggtagct tcatcaatag ttgcaatctc ttctgttcat
+      361 tcgctaagat tgtttatgga tgcagaaaaa atttctaacg atcaaattat gtggtgtgtt
+      421 ttaatacatc ttacctttgt catttctgct tttggtatgg cttgtataga taaaatgagc
+      481 aaaagaggtt actcatagaa cgtgcgttct taaattaaaa aaatctaaat ataaaattaa
+      541 gatttcataa aaaagttatt attatgttaa atattaaaac caaaaagaaa aataaaaaaa
+      601 ggatatatgt ttttaataaa aatcctgaat ttaaatttaa acatttagtt tttcaaaaaa
+      661 ataaatttat attaaaaata attaatgaaa ttgacaaaat agatttaatg agaagtgaaa
+      721 tttttaactc aactttacct atagaccctc aaacagggaa tatattagtt agatttagaa
+      781 aattaaatag aaatagattg cttgctataa aagcaataat tcaagcaatg ttatatcatt
+      841 ttaatattaa aacgaagaag gtaacagcat ctgttgaaca attagcagat gaatgtggtt
+      901 tatctactgt gtctaaaagt ggaaataaat ctatcactcg ggcatctcga ttgatatctc
+      961 aatttatgga acctatggga ttcataaaat gtaagaaaat taaaactacc aacaataaat
+     1021 tctcaaaaga aataatatta accccattat tttttatgat ccttgttaaa aacagttctc
+     1081 tttccgaggg agatactcat ctaaaacaag agttcaaaat actaaagaat aaaaatgtac
+     1141 atattaattc ttctgaaact tttgctaaac aagaaatctt aaaaaaaata ataaataaat
+     1201 attctttaaa caaattaaaa aaactaggtc caaaaaaaat aaaggaaaaa ataaatacag
+     1261 aatataaaaa tattaagaaa taaatatgta gtagaggtaa aaatttgaaa ttctctattt
+     1321 ttaatgatat aaatatgtat attacataaa gtataaaaat tgaaggtaaa aaatgttaaa
+     1381 gagaaaaaac tacgtaaata atatttcccc cctttttact cctcctaagg gagataaaag
+     1441 aagacctgct tttattaatt atgctttaga acaagctaaa aaaatagatg ttgcaagaag
+     1501 tgaattaaat tatattctaa aactcagaga ccctaaaaca ggatctatta tcccaagaca
+     1561 taggcaatta aatgaacata gagcggctgc aatgagagtt attgtccctg ctatgatata
+     1621 tcactttaat atcacttcag atttagtaca agcatctatt gaacaattag cagatgaatg
+     1681 tggtttatct actgtgtcta aaagtggaaa caaatctatc actcgggcat ctcgattgat
+     1741 atctcaattt atggaaccta tgggattcat aaaatgtaag aaaaaatggg ataaaattct
+     1801 aggttgttat atgcctaaaa taattatgtt aacccccttg ttttttgagt taattggaat
+     1861 ttcaaaagaa aaattaaata atgctaaaaa acagcaatta gggtggttaa atacaaagtt
+     1921 aatagaaagg ggattaaaac ccttatcttt ttcagatgcg aagttagtaa gtcgggagaa
+     1981 acaaattaat aaaattttag aactacgaaa taattttcat ttattacaga gaaaaaaaag
+     2041 atacgcaaaa aagcttttta agttagatga aaaagatatt agacaaaaga ttatcaaata
+     2101 tctagtgtct aaatattcaa gttcagaatt agctcaaatt agtttacaag aatttaaaaa
+     2161 acaagtaaat atagaatatt tttatcttcg aaatttagct aatgaacctt atttaatttc
+     2221 tagaagataa tttttttttt taataaatgc atgttcattt tgaaatagat gctccatagg
+     2281 taatagatgc aaaataacgg tttatattct tttaaaaaag aaaaaaacat aactattact
+     2341 aaaactaaaa aataatcttt atattatgga attccaatct aaaaaaggat taaaaataa
+//

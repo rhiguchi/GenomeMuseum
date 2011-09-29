@@ -1,0 +1,140 @@
+LOCUS       NC_006676               2687 bp    DNA     circular BCT 15-FEB-2005
+DEFINITION  Gluconobacter oxydans 621H plasmid pGOX5, complete sequence.
+ACCESSION   NC_006676
+VERSION     NC_006676.1  GI:58038486
+KEYWORDS    .
+SOURCE      Gluconobacter oxydans 621H
+  ORGANISM  Gluconobacter oxydans 621H
+            Bacteria; Proteobacteria; Alphaproteobacteria; Rhodospirillales;
+            Acetobacteraceae; Gluconobacter.
+REFERENCE   1  (bases 1 to 2687)
+  AUTHORS   Prust,C., Hoffmeister,M., Liesegang,H., Wiezer,A., Fricke,W.F.,
+            Ehrenreich,A., Gottschalk,G. and Deppenmeier,U.
+  TITLE     Complete genome sequence of the acetic acid bacterium Gluconobacter
+            oxydans
+  JOURNAL   Nat. Biotechnol. 23 (2), 195-200 (2005)
+   PUBMED   15665824
+REFERENCE   2  (bases 1 to 2687)
+  CONSRTM   NCBI Genome Project
+  TITLE     Direct Submission
+  JOURNAL   Submitted (24-JAN-2005) National Center for Biotechnology
+            Information, NIH, Bethesda, MD 20894, USA
+REFERENCE   3  (bases 1 to 2687)
+  AUTHORS   Prust,C., Hoffmeister,M., Liesegang,H., Wiezer,A., Fricke,W.F.,
+            Gottschalk,G. and Deppenmeier,U.
+  TITLE     Direct Submission
+  JOURNAL   Submitted (15-JUL-2004) Goettingen Genomics Laboratory,
+            Georg-August-University Goettingen, Grisebachstr. 8, Goettingen
+            D-37077, Germany
+COMMENT     PROVISIONAL REFSEQ: This record has not yet been subject to final
+            NCBI review. The reference sequence was derived from CP000008.
+            COMPLETENESS: full length.
+FEATURES             Location/Qualifiers
+     source          1..2687
+                     /organism="Gluconobacter oxydans 621H"
+                     /mol_type="genomic DNA"
+                     /strain="621H"
+                     /db_xref="taxon:290633"
+                     /plasmid="pGOX5"
+     gene            320..865
+                     /locus_tag="GOX2732"
+                     /db_xref="GeneID:3248831"
+     CDS             320..865
+                     /locus_tag="GOX2732"
+                     /codon_start=1
+                     /transl_table=11
+                     /product="replication protein"
+                     /protein_id="YP_190452.1"
+                     /db_xref="GI:58038487"
+                     /db_xref="GeneID:3248831"
+                     /translation="MKSKQVGLTTAPNGTWVQVERAAMERWSKLAVSNPRAAAVMMLM
+                     TSQMGRNNALVASQATLAKMAGCGLNTLKRALSVLREGNWIEVRQIGPTGTACAYVVN
+                     DRVAWSGNRDGIRYSLFSASVLLADNEQPDKDEIGLQPSLHPVPDLYPGEKQLPTGPG
+                     LPPPSQPSFDGMEPDLPATEK"
+     gene            complement(919..1164)
+                     /locus_tag="GOX2733"
+                     /db_xref="GeneID:3248832"
+     CDS             complement(919..1164)
+                     /locus_tag="GOX2733"
+                     /codon_start=1
+                     /transl_table=11
+                     /product="hypothetical protein"
+                     /protein_id="YP_190453.1"
+                     /db_xref="GI:58038488"
+                     /db_xref="GeneID:3248832"
+                     /translation="MNNPPMTEHEINEQIWKELSTLESYDGGKRHRFSLGLPIYYSDD
+                     DTPDGLTIREYPDGRRELVRRHSEGEEIVRVLSASLR"
+     gene            complement(1198..1395)
+                     /locus_tag="GOX2734"
+                     /db_xref="GeneID:3248833"
+     CDS             complement(1198..1395)
+                     /locus_tag="GOX2734"
+                     /codon_start=1
+                     /transl_table=11
+                     /product="hypothetical protein"
+                     /protein_id="YP_190454.1"
+                     /db_xref="GI:58038489"
+                     /db_xref="GeneID:3248833"
+                     /translation="MTALLQCLPTARHTGCHRTGASAARERRRPPKASGRAASGSLRE
+                     TLGRTPEEGTNESLCKCALRE"
+     gene            1539..1964
+                     /locus_tag="GOX2735"
+                     /db_xref="GeneID:3248834"
+     CDS             1539..1964
+                     /locus_tag="GOX2735"
+                     /codon_start=1
+                     /transl_table=11
+                     /product="PemK-like protein"
+                     /protein_id="YP_190455.1"
+                     /db_xref="GI:58038490"
+                     /db_xref="GeneID:3248834"
+                     /translation="MPASGPAGRLGRRARPGSRFLPRGRGRRSGRLGGVRRGDFVTVA
+                     LQGDLGKPRPALVVQADRFDTTAAVTLLPLSSALVDAPLLRLTIEPDERNGLRRSSQV
+                     MVDKPTTIAREKVGPTFGTASDTLMLAVSRALALFLGLA"
+ORIGIN      
+        1 tctgatccgc ccccgagggt ccaccggcac ggcttcgcta ccgctcacgc agggcgttcg
+       61 ctgcgccgct cccgtgggct tcggggacgg cccaaagatc atagagaggg actgcgaaaa
+      121 aaaatattgt ttatcaaaac cttatggggg gggggtagcc caccagctat gggctacccc
+      181 tagcccacca gctatgggct aggtttggat gaatttcgtc caaatttgga ttgaattaat
+      241 ctacattttt tgccattaaa tggatgaaat ttatccaatt ttggacagat aattgtctga
+      301 tttgacctag gggtaggcca tgaagtcgaa gcaagttgga ttaacaaccg cacccaacgg
+      361 aacttgggtg caagtcgaac gagccgctat ggaacgctgg tcaaaattag ctgtatccaa
+      421 ccctagggcc gccgccgtga tgatgcttat gacctcccaa atgggccgca ataatgctct
+      481 cgtcgcatcc caagccacgt tagctaaaat ggcaggttgc ggcttgaata ctctcaaaag
+      541 agctttgtct gttttacgag aaggcaactg gattgaagtt cgacagatag gccccactgg
+      601 cacagcctgt gcttacgtcg ttaatgatcg cgtagcgtgg tctggaaacc gcgacggcat
+      661 ccgttacagc ctgttttctg cttctgtgct gctcgcagac aatgaacaac ccgataagga
+      721 tgaaattggc ttacagccgt ctctacaccc cgttccagac ctatatccgg gagagaagca
+      781 gctaccaacc ggtcccggcc taccaccacc gtctcaacct tccttcgacg gcatggaacc
+      841 ggacttacct gccaccgaaa aatagctcgg ccaatgtcca agcgcacgtc gtccgaaggg
+      901 cgacgtataa gcgcgcactc accgaagtga cgcgctcaac acacggacga tctcctcgcc
+      961 ttccgagtga cgccggacca gttcccgacg gccgtccgga tactccctga tcgtcaatcc
+     1021 gtcaggcgtg tcgtcatcgc tgtagtagat cggcagaccg agcgagaagc gatgacgctt
+     1081 gccgccatca tagctttcga gcgtgcttag ctctttccag atttgctcgt tgatttcgtg
+     1141 ttccgtcatg ggcgggttgt tcatagcctg cgccttccct gaatcgatca atcggcctca
+     1201 ttcccgaagg gcgcacttac acaaactttc gtttgtcccc tcttcggggg tgcggccaag
+     1261 ggtttccctt agcgatccgg acgcggcccg accggacgcc ttcggcggcc tacggcgctc
+     1321 ccgcgctgcg ctcgctccgg tcctgtgaca gccggtgtga cgggcagtcg gaaggcattg
+     1381 aagcaaagct gtcaagatgt tacatgtaac aggggaggat agaccatgac ccctgttgcc
+     1441 gttcgcgtgc agaagcgccg cgacacactc cgcaaggccg ggctgcggcc cgtgcaaatc
+     1501 tgggtgccag acacccgcgc aaaaggcttc gacgaggagt gccggcgtca ggcccggctg
+     1561 gtcgcctcgg ccgacgcgca cgacccggat ctcgcttcct tcctcgaggc cgcggccgcc
+     1621 gatctggacg gctgggaggc gtgagaaggg gagacttcgt aaccgtcgcc ttgcaaggcg
+     1681 atctcggcaa gcctcggccc gctctggtgg tgcaggccga ccggttcgac accacggccg
+     1741 ccgtgaccct cctgcccctc tccagcgccc ttgtggacgc tcccctgctc cgcctgacga
+     1801 tcgagccgga cgaacggaac gggctgcgtc gatcgtccca ggtgatggtc gacaagccca
+     1861 cgacgatcgc ccgcgaaaag gttggcccga ccttcgggac cgccagtgac accctcatgc
+     1921 tggccgtcag ccgggcactc gccctcttcc tcggactggc ctgacccccg ggtggggcct
+     1981 gaatccggat caggtgatct ccgttcgaga tcacctcccg gccgacagaa gagggaaaaa
+     2041 tcgacggcaa gattaaagaa cccggcactc tgtgaccttg gttttccaga ttccgatgtc
+     2101 tgcacatggg gttaggacgc ggcatggcgg cactgcgaaa attgccgcca gagtgccgcc
+     2161 ctttccggcc gggccgcgag aagcccccac atgggacggc accacgcccc acctgatcgc
+     2221 gtcaggagaa caggtgatcg tctcttgcga tcatccacca gaaagccacc agaaggccgt
+     2281 atggtggcct ccgtcctttg tccggtaatc tgtagcggaa actcgtctga gtgccctgta
+     2341 cggccatcct gcggcctctg atggggtgat cccggctaca gacgcagaaa gggccgggct
+     2401 taccacaacc cgccccttcc cggcccagcg caaaccttcg ttgccacctg tccagcctgc
+     2461 tcctgtcctc gcaccaggtg caaccggaat tgccccgttc gtcgcttcct gagccatttt
+     2521 gtccgtcccc ggttccgctg gccttgcagg ctccgggcga gcgcggagcg ggagcggcgt
+     2581 agcccgccga aggcgccgga gcggtgtgac ggtcaatcga cccactgcat cgctgaagcg
+     2641 cctcaccaat agttcgaaaa cgaaattata tgccgatttg atgagcc
+//

@@ -1,0 +1,148 @@
+LOCUS       NC_010550               1765 bp    DNA     circular BCT 05-APR-2008
+DEFINITION  Exiguobacterium sibiricum 255-15 plasmid pEXIG02, complete
+            sequence.
+ACCESSION   NC_010550
+VERSION     NC_010550.1  GI:172059059
+KEYWORDS    .
+SOURCE      Exiguobacterium sibiricum 255-15
+  ORGANISM  Exiguobacterium sibiricum 255-15
+            Bacteria; Firmicutes; Bacillales; Bacillaceae; Exiguobacterium.
+REFERENCE   1  (bases 1 to 1765)
+  AUTHORS   Rodrigues,D.F., Goris,J., Vishnivetskaya,T., Gilichinsky,D.,
+            Thomashow,M.F. and Tiedje,J.M.
+  TITLE     Characterization of Exiguobacterium isolates from the Siberian
+            permafrost. Description of Exiguobacterium sibiricum sp. nov.
+  JOURNAL   Extremophiles 10 (4), 285-294 (2006)
+   PUBMED   16489412
+REFERENCE   2  (bases 1 to 1765)
+  AUTHORS   Copeland,A., Lucas,S., Lapidus,A., Glavina del Rio,T., Dalin,E.,
+            Tice,H., Bruce,D., Goodwin,L., Pitluck,S., Kiss,H., Chertkov,O.,
+            Monk,C., Brettin,T., Detter,J.C., Han,C., Kuske,C.R., Schmutz,J.,
+            Larimer,F., Land,M., Hauser,L., Kyrpides,N., Mikhailova,N.,
+            Vishnivetskaya,T., Rodrigues,D.F., Gilichinsky,D., Tiedje,J. and
+            Richardson,P.
+  CONSRTM   US DOE Joint Genome Institute
+  TITLE     Complete sequence of plasmid2 of Exiguobacterium sibiricum 255-15
+  JOURNAL   Unpublished
+REFERENCE   3  (bases 1 to 1765)
+  CONSRTM   NCBI Genome Project
+  TITLE     Direct Submission
+  JOURNAL   Submitted (04-APR-2008) National Center for Biotechnology
+            Information, NIH, Bethesda, MD 20894, USA
+REFERENCE   4  (bases 1 to 1765)
+  AUTHORS   Copeland,A., Lucas,S., Lapidus,A., Glavina del Rio,T., Dalin,E.,
+            Tice,H., Bruce,D., Goodwin,L., Pitluck,S., Kiss,H., Chertkov,O.,
+            Monk,C., Brettin,T., Detter,J.C., Han,C., Kuske,C.R., Schmutz,J.,
+            Larimer,F., Land,M., Hauser,L., Kyrpides,N., Mikhailova,N.,
+            Vishnivetskaya,T., Rodrigues,D.F., Gilichinsky,D., Tiedje,J. and
+            Richardson,P.
+  CONSRTM   US DOE Joint Genome Institute
+  TITLE     Direct Submission
+  JOURNAL   Submitted (02-APR-2008) US DOE Joint Genome Institute, 2800
+            Mitchell Drive B100, Walnut Creek, CA 94598-1698, USA
+COMMENT     PROVISIONAL REFSEQ: This record has not yet been subject to final
+            NCBI review. The reference sequence was derived from CP001024.
+            URL -- http://www.jgi.doe.gov
+            JGI Project ID: 2662203
+            Source DNA and bacteria available from James Tiedje
+            (tiedjej@msu.edu)
+            Contacts: James Tiedje (tiedjej@msu.edu)
+                      Paul Richardson (microbes@cuba.jgi-psf.org)
+            Quality assurance done by JGI-Stanford
+            Annotation done by JGI-ORNL and JGI-PGF
+            Finishing done by JGI-LANL
+            Finished microbial genomes have been curated to close all gaps with
+            greater than 98% coverage of at least two independent clones. Each
+            base pair has a minimum q (quality) value of 30 and the total error
+            rate is less than one per 50000.
+            The JGI and collaborators endorse the principles for the
+            distribution and use of large scale sequencing data adopted by the
+            larger genome sequencing community and urge users of this data to
+            follow them. it is our intention to publish the work of this
+            project in a timely fashion and we welcome collaborative
+            interaction on the project and analysis.
+            (http://www.genome.gov/page.cfm?pageID=10506376).
+            COMPLETENESS: full length.
+FEATURES             Location/Qualifiers
+     source          1..1765
+                     /organism="Exiguobacterium sibiricum 255-15"
+                     /mol_type="genomic DNA"
+                     /strain="255-15"
+                     /db_xref="taxon:262543"
+                     /plasmid="pEXIG02"
+     gene            49..942
+                     /locus_tag="Exig_3056"
+                     /db_xref="GeneID:6172514"
+     CDS             49..942
+                     /locus_tag="Exig_3056"
+                     /note="KEGG: lhe:lhv_0265 putative replicative protein"
+                     /codon_start=1
+                     /transl_table=11
+                     /product="hypothetical protein"
+                     /protein_id="YP_001806717.1"
+                     /db_xref="GI:172059060"
+                     /db_xref="GeneID:6172514"
+                     /translation="MEHEKSSNISPSSTVRVTKMNHLVEVQHMERMNRTNHIQKLDKE
+                     RYLNLKTGEIGEFKQGEVRSDSLNSLRQTFKKLRYLINTNYVGAGNELFITLTYKENM
+                     TDVKRLYSDFKKFMLKFRYKYEKQYGSIDYMTVVEPQERGAWHHHLLVRFNDMTGSKM
+                     YIPNNDVAALWGHGFTNMHSLNGVDNIGAYLSAYLADVELTTDNVFLAFDDNVEVVSK
+                     VVDGQEKKFIKGGRLHLYPSGMNLYRKSKGIKMPVREEMRYGDIKKVVGSEKPHYVKT
+                     LVVEQDDFKNTITYEQYNTKR"
+     gene            1388..1615
+                     /locus_tag="Exig_3057"
+                     /db_xref="GeneID:6172516"
+     CDS             1388..1615
+                     /locus_tag="Exig_3057"
+                     /codon_start=1
+                     /transl_table=11
+                     /product="hypothetical protein"
+                     /protein_id="YP_001806718.1"
+                     /db_xref="GI:172059061"
+                     /db_xref="GeneID:6172516"
+                     /translation="MANENEMKRFNIRMPQDMFDRIEKTAHAKGVPVSAFINLKMDEI
+                     LKQDEMAQSMNLLTDPVAFAKILEQYNGGKK"
+     gene            1612..1758
+                     /locus_tag="Exig_3058"
+                     /db_xref="GeneID:6172515"
+     CDS             1612..1758
+                     /locus_tag="Exig_3058"
+                     /codon_start=1
+                     /transl_table=11
+                     /product="hypothetical protein"
+                     /protein_id="YP_001806719.1"
+                     /db_xref="GI:172059062"
+                     /db_xref="GeneID:6172515"
+                     /translation="MSTPVERLKETLDEFSDEHMMITVSRKDLEALIRSYENLKKELE
+                     KRSE"
+ORIGIN      
+        1 tttattaact tgattttaat taaacattag cagaaaagcg gtgaggttat ggaacacgaa
+       61 aaaagctcta atatttctcc ttcctctacg gtgcgagtaa ccaaaatgaa ccaccttgtg
+      121 gaagtgcaac atatggagcg aatgaatcgt actaaccata ttcaaaagtt agacaaggaa
+      181 cggtatctta atctcaagac tggtgagatt ggtgagttta aacaaggcga ggttagaagt
+      241 gacagtctta actctttaag acagacgttt aagaagctcc gttatttgat taatactaac
+      301 tatgtgggtg ctggtaatga gcttttcatt acccttacat acaaagagaa tatgaccgac
+      361 gttaagcgtt tatatagtga ttttaagaag ttcatgctta agttccgtta taagtacgaa
+      421 aaacagtatg gatcaattga ctacatgact gttgttgaac ctcaagagcg tggggcatgg
+      481 catcaccatt tactcgttag attcaacgat atgaccggta gcaagatgta tattcctaat
+      541 aatgatgttg cagcactgtg ggggcatggt ttcacgaata tgcattcttt aaacggtgtc
+      601 gataatattg gtgcgtatct gtcggcttac cttgctgatg tggaattgac tactgataat
+      661 gtgtttttag cttttgatga caatgtagag gttgtttcga aggttgttga tggtcaagag
+      721 aagaagttta tcaagggtgg tcgcttgcat ctatatccga gtggcatgaa tctttaccgt
+      781 aagtctaaag ggattaaaat gcctgttcgt gaagaaatga gatatgggga cataaaaaaa
+      841 gtagtagggt ctgagaaacc ccactacgtc aagactttag tcgtcgagca ggacgacttc
+      901 aaaaacacta tcacctacga acagtataac acaaagcgtt aacaactgaa tagcggaagg
+      961 gagggctgcg aaccctcctt tttgcgtacc cggaaagcgt agcgaagacg gagcgcaaac
+     1021 tgagacgcat gtccagttga gcaacggctc gcacgctact ggatacacaa ctggaaggta
+     1081 cggcccccac ctactaacag gggggtagga aatacatgtg taagtgccgt agggcattgg
+     1141 tgcttatgga ttcaggtcac ttttaaaact gtacacgtta gcgtttatgt cgcgaaagct
+     1201 tattgatatt gagcagaccc ccataaacac tgaaaccagt ggctcccaga ggggcgaaga
+     1261 ccctcggagg cgatgggttt gggggtttgg gggtcagagg ctcgatgtca ataagtcgtg
+     1321 aaataaaaag cgttgacata gtaagtccta aaggtgtata ttatacacag aagggagttg
+     1381 gataataatg gctaacgaaa atgagatgaa acgttttaat atcagaatgc cacaagatat
+     1441 gtttgaccgt atcgagaaaa cggctcatgc aaagggtgtt ccagtttcgg catttatcaa
+     1501 cttgaaaatg gatgaaattc tgaaacaaga cgaaatggcg caaagtatga atttgctgac
+     1561 tgatccagtt gcctttgcaa aaattctaga acagtataac gggggaaaaa aatgagtaca
+     1621 ccagttgaac ggctcaaaga aactctagac gagtttagtg atgaacatat gatgattact
+     1681 gtaagccgaa aagatttaga agctctaatt cgttcgtatg agaatctgaa aaaagagttg
+     1741 gaaaagcgtt cagaatgagt ttgtc
+//

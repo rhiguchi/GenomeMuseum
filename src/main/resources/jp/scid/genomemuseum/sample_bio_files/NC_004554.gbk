@@ -1,0 +1,112 @@
+LOCUS       NC_004554               1346 bp    DNA     circular BCT 30-MAR-2006
+DEFINITION  Xylella fastidiosa Temecula1 plasmid pXFPD1.3, complete sequence.
+ACCESSION   NC_004554
+VERSION     NC_004554.1  GI:28191370
+KEYWORDS    .
+SOURCE      Xylella fastidiosa Temecula1
+  ORGANISM  Xylella fastidiosa Temecula1
+            Bacteria; Proteobacteria; Gammaproteobacteria; Xanthomonadales;
+            Xanthomonadaceae; Xylella.
+REFERENCE   1  (bases 1 to 1346)
+  AUTHORS   Van Sluys,M.A., de Oliveira,M.C., Monteiro-Vitorello,C.B.,
+            Miyaki,C.Y., Furlan,L.R., Camargo,L.E.A., da Silva,A.C.R.,
+            Moon,D.H., Takita,M.A., Lemos,E.G.M., Machado,M.A., Ferro,M.I.T.,
+            da Silva,F.R., Goldman,M.H.S., Goldman,G.H., Lemos,M.V.F.,
+            El-Dorry,H., Tsai,S.M., Carrer,H., Carraro,D.M., de Oliveira,R.C.,
+            Nunes,L.R., Siqueira,W.J., Coutinho,L.L., Kimura,E.T., Ferro,E.S.,
+            Harakava,R., Kuramae,E.E., Marino,C.L., Giglioti,E., Abreu,I.L.,
+            Alves,L.M.C., do Amaral,A.M., Baia,G.S., Blanco,S.R., Brito,M.S.,
+            Cannavan,F.S., Celestino,A.V., da Cunha,A.F., Fenille,R.C.,
+            Ferro,J.A., Formighieri,E.F., Kishi,L.T., Leoni,S.G.,
+            Oliveira,A.R., Rosa,V.E.Jr., Sassaki,F.T., Sena,J.A.D., de
+            Souza,A.A., Truffi,D., Tsukumo,F., Yanai,G.M., Zaros,L.G.,
+            Civerolo,E.L., Simpson,A.J.G., Almeida,N.F.Jr., Setubal,J.C. and
+            Kitajima,J.P.
+  TITLE     Comparative Analyses of the Complete Genome Sequences of Pierce's
+            Disease and Citrus Variegated Chlorosis Strains of Xylella
+            fastidiosa
+  JOURNAL   J. Bacteriol. 185 (3), 1018-1026 (2003)
+   PUBMED   12533478
+REFERENCE   2  (bases 1 to 1346)
+  AUTHORS   Van Sluys,M.A., de Oliveira,M.C., Monteiro-Vitorello,C.B.,
+            Miyaki,C.Y., Furlan,L.R., Camargo,L.E.A., da Silva,A.C.R.,
+            Moon,D.H., Takita,M.A., Lemos,E.G.M., Machado,M.A., Ferro,M.I.T.,
+            da Silva,F.R., Goldman,M.H.S., Goldman,G.H., Lemos,M.V.F.,
+            El-Dorry,H., Tsai,S.M., Carrer,H., Carraro,D.M., de Oliveira,R.C.,
+            Nunes,L.R., Siqueira,W.J., Coutinho,L.L., Kimura,E.T., Ferro,E.S.,
+            Harakava,R., Kuramae,E.E., Marino,C.L., Giglioti,E., Abreu,I.L.,
+            Alves,L.M.C., do Amaral,A.M., Baia,G.S., Blanco,S.R., Brito,M.S.,
+            Cannavan,F.S., Celestino,A.V., da Cunha,A.F., Fenille,R.C.,
+            Ferro,J.A., Formighieri,E.F., Kishi,L.T., Leoni,S.G.,
+            Oliveira,A.R., Rosa,V.E.Jr., Sassaki,F.T., Sena,J.A.D., de
+            Souza,A.A., Truffi,D., Tsukumo,F., Yanai,G.M., Zaros,L.G.,
+            Civerolo,E.L., Simpson,A.J.G., Almeida,N.F.Jr., Setubal,J.C. and
+            Kitajima,J.P.
+  TITLE     Direct Submission
+  JOURNAL   Submitted (17-DEC-2001) Instituto de Biociencias, Universidade de
+            Sao Paulo, Rua do Matao, 277, Sao Paulo, SP 05508-900, Brazil
+COMMENT     PROVISIONAL REFSEQ: This record has not yet been subject to final
+            NCBI review. The reference sequence was derived from AE009443.
+            COMPLETENESS: full length.
+FEATURES             Location/Qualifiers
+     source          1..1346
+                     /organism="Xylella fastidiosa Temecula1"
+                     /mol_type="genomic DNA"
+                     /strain="Temecula1"
+                     /db_xref="taxon:183190"
+                     /plasmid="pXFPD1.3"
+                     /note="Pierce's disease strain"
+     gene            68..205
+                     /locus_tag="PDa0001"
+                     /db_xref="GeneID:1144211"
+     CDS             68..205
+                     /locus_tag="PDa0001"
+                     /codon_start=1
+                     /transl_table=11
+                     /product="hypothetical protein"
+                     /protein_id="NP_778244.1"
+                     /db_xref="GI:28191371"
+                     /db_xref="GeneID:1144211"
+                     /translation="MFCHLLGDNYEAVIYSTENRFTPSVYSCGNSGCLVLQFADIQSS
+                     P"
+     gene            444..1235
+                     /locus_tag="PDa0002"
+                     /db_xref="GeneID:1144212"
+     CDS             444..1235
+                     /locus_tag="PDa0002"
+                     /codon_start=1
+                     /transl_table=11
+                     /product="replication protein"
+                     /protein_id="NP_778245.1"
+                     /db_xref="GI:28191372"
+                     /db_xref="GeneID:1144212"
+                     /translation="MPVVTVYRHGGKGGVAPMNSSHIRTPRGDVQGWSPGAVRRNTQF
+                     LMCVREDKLTGAGFALTLTVRDCPATAQEWHKMRRAWEKRMLRAGMIRLHWVTEWQRR
+                     GVPHLHCAIWFSGTVYDFSLCIDAWLAVASSCGAALRGQHGRIIDGVVGWFQYVSKHA
+                     ARGVRHYQRCSDNLPEAWKALTGRVWGKVGDWPLFSELRIDLQDHRQDGDGGFFAYRR
+                     LVRSWRVSDARRAGDRYRLRSARRMLTCSDTSRSRAIGFMEWGSL"
+ORIGIN      
+        1 cttattcgga ctcggtaccc ggggtacccc cctgcggaga acgcttttac gccctctcgt
+       61 tgcgttcatg ttctgtcacc tgttaggtga caactacgaa gccgtgatct attccacgga
+      121 gaaccgtttt acgccctctg tttattcttg tggcaactca ggttgccttg ttctccaatt
+      181 tgcggacatt cagtcctcac cctgaggatt tagtgtcaac tgattggttg acaatcatca
+      241 tttgggaatt gaaatccccc ccccgttttg tgggccgcag gagccagcaa aacggggggg
+      301 gttttcatcc tctcttgatt agtggttaca tattgggacg ttttgttaaa tcaggggggt
+      361 ttttcgtttc tcctgcatgc gttaaaaaat aaccccgcgg tgttaccagc acccggggtc
+      421 gtgaccagct atcggagagg ccgatgccag ttgttacagt ttaccgtcat gggggaaaag
+      481 gtggcgttgc tcccatgaac tcgtcacata tcaggacgcc acggggtgat gttcaggggt
+      541 ggtctcctgg tgctgtccgt cgcaatactc agttcctcat gtgtgttcgt gaggacaagt
+      601 taacgggtgc aggtttcgct ttgaccctta ccgttcgtga ctgtcctgct actgctcagg
+      661 aatggcacaa gatgaggcgt gcttgggaaa agcgcatgct acgggctggt atgatccggc
+      721 ttcattgggt gactgagtgg cagcgtagag gtgtcccgca tctacattgt gctatctggt
+      781 tttctggcac tgtttacgat ttttccctat gcattgatgc atggttggcc gttgcgtctt
+      841 cctgtggcgc tgctttgcgt gggcagcatg gtcggatcat tgatggtgtt gtcggatggt
+      901 ttcagtacgt gagcaagcac gccgcccgag gcgtgcgcca ttaccagcgt tgttctgaca
+      961 accttcctga ggcctggaaa gcgcttactg gccgtgtctg gggtaaggtc ggtgattggc
+     1021 ctctcttttc tgagcttcgt attgacctcc aggaccatcg tcaggatggt gatggggggt
+     1081 tcttcgctta tcgccgtctg gtgcgctcct ggcgcgtctc agacgctcgt agggctggtg
+     1141 atcgttatcg cctccgtagt gctcgtagga tgctcacctg tagcgatacg tcgcgttctc
+     1201 gtgccattgg gtttatggag tggggttccc tatgaggtcc agatggcctt ttgcgcgcat
+     1261 ctagcagctc gtgggttctt ctctaccctg gtaagggggg ggggtggctt ccaattccgc
+     1321 ttacaacttc ttttctgttt ctatca
+//

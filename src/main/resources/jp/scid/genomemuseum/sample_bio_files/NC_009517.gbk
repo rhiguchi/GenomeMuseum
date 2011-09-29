@@ -1,0 +1,119 @@
+LOCUS       NC_009517               2117 bp    DNA     circular BCT 06-JUN-2007
+DEFINITION  Psychrobacter sp. PRwf-1 plasmid pRWF102, complete sequence.
+ACCESSION   NC_009517
+VERSION     NC_009517.1  GI:148641539
+KEYWORDS    .
+SOURCE      Psychrobacter sp. PRwf-1
+  ORGANISM  Psychrobacter sp. PRwf-1
+            Bacteria; Proteobacteria; Gammaproteobacteria; Pseudomonadales;
+            Moraxellaceae; Psychrobacter.
+REFERENCE   1  (bases 1 to 2117)
+  AUTHORS   Copeland,A., Lucas,S., Lapidus,A., Barry,K., Detter,J.C., Glavina
+            del Rio,T., Hammon,N., Israni,S., Dalin,E., Tice,H., Pitluck,S.,
+            Chain,P., Malfatti,S., Shin,M., Vergez,L., Schmutz,J., Larimer,F.,
+            Land,M., Hauser,L., Kyrpides,N., Kim,E., Tiedje,J. and
+            Richardson,P.
+  CONSRTM   US DOE Joint Genome Institute
+  TITLE     Complete sequence of plasmid pRWF102 of Psychrobacter sp. PEwf-1
+  JOURNAL   Unpublished
+REFERENCE   2  (bases 1 to 2117)
+  CONSRTM   NCBI Genome Project
+  TITLE     Direct Submission
+  JOURNAL   Submitted (06-JUN-2007) National Center for Biotechnology
+            Information, NIH, Bethesda, MD 20894, USA
+REFERENCE   3  (bases 1 to 2117)
+  AUTHORS   Copeland,A., Lucas,S., Lapidus,A., Barry,K., Detter,J.C., Glavina
+            del Rio,T., Hammon,N., Israni,S., Dalin,E., Tice,H., Pitluck,S.,
+            Chain,P., Malfatti,S., Shin,M., Vergez,L., Schmutz,J., Larimer,F.,
+            Land,M., Hauser,L., Kyrpides,N., Kim,E., Tiedjej,J. and
+            Richardson,P.
+  CONSRTM   US DOE Joint Genome Institute
+  TITLE     Direct Submission
+  JOURNAL   Submitted (24-MAY-2007) US DOE Joint Genome Institute, 2800
+            Mitchell Drive B100, Walnut Creek, CA 94598-1698, USA
+COMMENT     PROVISIONAL REFSEQ: This record has not yet been subject to final
+            NCBI review. The reference sequence was derived from CP000715.
+            URL -- http://www.jgi.doe.gov
+            JGI Project ID: 4001101
+            Source DNA and bacteria available from James Tiedje
+            (tiedjej@pilot.msu.edu)
+            Contacts: James Tiedje (tiedjej@pilot.msu.edu)
+                      Paul Richardson (microbes@cuba.jgi-psf.org)
+            Quality assurance done by JGI-Stanford
+            Annotation done by JGI-ORNL and JGI-PGF
+            Finishing done by JGI-LLNL
+            Finished microbial genomes have been curated to close all gaps with
+            greater than 98% coverage of at least two independent clones. Each
+            base pair has a minimum q (quality) value of 30 and the total error
+            rate is less than one per 50000.
+            The JGI and collaborators endorse the principles for the
+            distribution and use of large scale sequencing data adopted by the
+            larger genome sequencing community and urge users of this data to
+            follow them. It is our intention to publish the work of this
+            project in a timely fashion and we welcome collaborative
+            interaction on the project and analysis.
+            (http://www.genome.gov/page.cfm?pageID=10506376).
+            COMPLETENESS: full length.
+FEATURES             Location/Qualifiers
+     source          1..2117
+                     /organism="Psychrobacter sp. PRwf-1"
+                     /mol_type="genomic DNA"
+                     /strain="PRwf-1"
+                     /db_xref="taxon:349106"
+                     /plasmid="pRWF102"
+     gene            complement(529..1662)
+                     /locus_tag="PsycPRwf_2406"
+                     /db_xref="GeneID:5204472"
+     CDS             complement(529..1662)
+                     /locus_tag="PsycPRwf_2406"
+                     /codon_start=1
+                     /transl_table=11
+                     /product="hypothetical protein"
+                     /protein_id="YP_001274383.1"
+                     /db_xref="GI:148641540"
+                     /db_xref="GeneID:5204472"
+                     /translation="MFPNHATTVNENIKKHNKNVDKNIPSAELIDFLYDNDLPESVDV
+                     SLASVSARDSVWDKHRLDTLIIQEMYAIECEFERYSERMTDCSGWLKFGFNEVNGLVL
+                     KQAFFCRVRYCGMCQWRRSLLWKALMYKTYDEIMQTHPTHRFVFLTLTLKNPPIGDLR
+                     ETLQHMNKSWQRLKDRKEFIAGVEGWVRTTEVTRPKQKRKTKKDPIVYCPKTKNTHAH
+                     PHFHVILMVKPSYFSGKNYIKRQRWQELWADCLRVDYMPQVDIRTVKPRKKGAGDDDG
+                     MRGAIAETLKYAVKPDDIMHDNEDPKAREWFYELTRQTHKLRFVATGGLLKNALKPDD
+                     DITNEDMIDTGNDDEITETDDRRLNFSFYKSKGGYLYNPIHNE"
+ORIGIN      
+        1 aaaaaagccg tgccaaatct ccaccttgac acggcgatct aatctcattt tttgttagct
+       61 gtggggtgaa tgggtgggaa tgtttttaaa ccccgtaggg cgaggttttg atttgaaatt
+      121 ataagtaacg tagtggatta taacttcaag tcgaaaactc gcacttagtc agtgggacga
+      181 aaagattgca cttagtcagt gggacgaaaa gattgcacgc tgtttcatcc tgcaaggtga
+      241 aactactaag cgtgccttat cttttcagtc aaggataaaa aatcagcgct tacacccctc
+      301 agctacaaca tctttccaat acttaaagct aaaatcgaca ccaccatcat ctcttaactt
+      361 tacaacctcc catactccta caggcgtcat aggttttttg gtgtcaatct caaagaatga
+      421 tgtattttct agtttgagac aagcggcaca cgcttcgttc atatcctcgg tttcaacctc
+      481 tggcataccg ttatctctaa caaccaaata tttaatcatt ttattcacct actcgttatg
+      541 gattgggtta tacagatacc cgccctttga tttataaaac gaaaaattta atctacggtc
+      601 atcagtttcg gttatttcgt catcgttgcc agtgtcgatc atatcctcgt tagtaatatc
+      661 atcatcaggt ttcaaagcat ttttgagcag tccaccagta gcaacaaacc gtaatttatg
+      721 ggtctgtctg gtcaactcat aaaaccattc acgggcttta gggtcttcgt tatcatgcat
+      781 gatgtcatca ggtttaacag catatttcaa ggtttcagca atcgccccac gcataccgtc
+      841 atcatcacca gcgccttttt ttcttggctt aacggttcta atatcgactt gtggcatgta
+      901 atcaacacgc agacaatcag cccaaagctc ttgccatcgt tgacgtttga tatagttttt
+      961 accagaaaag taagatggtt taaccatcaa aataacgtga aaatgtgggt gtgcgtgggt
+     1021 gtttttggtc ttggggcaat agacaatcgg gtctttttta gtcttacgtt tctgcttggg
+     1081 acgtgtgact tccgttgtgc gtacccaacc ttcaacgcct gctataaatt ctttacgatc
+     1141 ttttaagcgt tgccatgatt tattcatgtg ctgcaaggtt tcgcgcaagt caccgatagg
+     1201 cggattttta agcgtcaggg ttaaaaacac aaagcgatgt gtcgggtgtg tctgcataat
+     1261 ttcatcgtat gttttataca tcaaggcttt ccagagtaat gacctacgcc attggcacat
+     1321 accgcagtaa cgaacacggc aaaaaaaggc ttgtttcaaa actaaaccgt taacttcgtt
+     1381 aaatccaaac ttgagccaac cactacaatc cgtcatacgt tcgctataac gctcaaattc
+     1441 gcactctatg gcgtacattt cctgaataat gagtgtatct agcctatgct tatcccaaac
+     1501 gctatcacgg gcggatacgg acgctaaaga aacgtctacg ctttcgggta agtcgttatc
+     1561 gtagagaaaa tcaattaatt ctgctgaagg gatattttta tcaacgtttt tgttatgctt
+     1621 tttaatattt tcgttgacag tggttgcgtg atttgggaac ataaataaag accttgtatt
+     1681 cgttgtttgc ttagacactt tcgacgatac gaggtttttt attgcctgtc aattcgtttt
+     1741 tgatccgttt tcacctaaca attatattac caaacccttt aagtacatag cctaagccaa
+     1801 aatatatctc ctatttttaa tcccagactt atccctaatg tatcaagtaa aggaaaaacg
+     1861 ccccaaaatc acccccattt ttgacccaaa aaactcaaat cacgcaacca tcacgcagaa
+     1921 taattcagct caaaaacaca gcaaatcgag cttttctgta tgcgtcacta ctcggaagta
+     1981 gtgacgcata cagaaaagct ttaggaagaa acaagggaaa agcggtaaat ccattttgat
+     2041 attttctatc tcacccactc accccaagca atctttttaa tgagaattag ccaccgtatc
+     2101 aaggtagtat ttggcac
+//

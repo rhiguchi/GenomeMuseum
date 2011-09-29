@@ -1,0 +1,150 @@
+LOCUS       NC_006376               2365 bp    DNA     circular BCT 26-JAN-2007
+DEFINITION  Lactobacillus plantarum WCFS1 plasmid pWCFS102, complete sequence.
+ACCESSION   NC_006376
+VERSION     NC_006376.1  GI:54307232
+KEYWORDS    .
+SOURCE      Lactobacillus plantarum WCFS1
+  ORGANISM  Lactobacillus plantarum WCFS1
+            Bacteria; Firmicutes; Lactobacillales; Lactobacillaceae;
+            Lactobacillus.
+REFERENCE   1  (bases 1 to 2365)
+  AUTHORS   van Kranenburg,R., Golic,N., Bongers,R., Leer,R.J., de Vos,W.M.,
+            Siezen,R.J. and Kleerebezem,M.
+  TITLE     Functional analysis of three plasmids from Lactobacillus plantarum
+  JOURNAL   Appl. Environ. Microbiol. 71 (3), 1223-1230 (2005)
+   PUBMED   15746322
+REFERENCE   2
+  AUTHORS   Kleerebezem,M., Boekhorst,J., van Kranenburg,R., Molenaar,D.,
+            Kuipers,O.P., Leer,R., Tarchini,R., Peters,S.A., Sandbrink,H.M.,
+            Fiers,M.W., Stiekema,W., Lankhorst,R.M., Bron,P.A., Hoffer,S.M.,
+            Groot,M.N., Kerkhoven,R., de Vries,M., Ursing,B., de Vos,W.M. and
+            Siezen,R.J.
+  TITLE     Complete genome sequence of Lactobacillus plantarum WCFS1
+  JOURNAL   Proc. Natl. Acad. Sci. U.S.A. 100 (4), 1990-1995 (2003)
+   PUBMED   12566566
+REFERENCE   3  (bases 1 to 2365)
+  CONSRTM   NCBI Genome Project
+  TITLE     Direct Submission
+  JOURNAL   Submitted (20-OCT-2004) National Center for Biotechnology
+            Information, NIH, Bethesda, MD 20894, USA
+REFERENCE   4  (bases 1 to 2365)
+  AUTHORS   Kleerebezem,M. and van Enckevort,F.H.J.
+  TITLE     Direct Submission
+  JOURNAL   Submitted (22-MAR-2004) Wageningen Centre for Food Sciences, P.O.
+            Box 557, 6700 AN Wageningen, The Netherlands
+COMMENT     PROVISIONAL REFSEQ: This record has not yet been subject to final
+            NCBI review. The reference sequence was derived from CR377165.
+            COMPLETENESS: full length.
+FEATURES             Location/Qualifiers
+     source          1..2365
+                     /organism="Lactobacillus plantarum WCFS1"
+                     /mol_type="genomic DNA"
+                     /strain="WCFS1"
+                     /db_xref="taxon:220668"
+                     /plasmid="pWCFS102"
+     gene            join(2242..2365,1..35)
+                     /gene="repA"
+                     /locus_tag="pWCFS102_01"
+                     /db_xref="GeneID:3125627"
+     CDS             join(2242..2365,1..35)
+                     /gene="repA"
+                     /locus_tag="pWCFS102_01"
+                     /codon_start=1
+                     /transl_table=11
+                     /product="copy-number control protein"
+                     /protein_id="YP_133711.1"
+                     /db_xref="GI:54307236"
+                     /db_xref="GeneID:3125627"
+                     /translation="MAENKKRVSIGLTDKQYELVQKLAKEKGFSKSAIFVLALEEYSR
+                     KESEQKNK"
+     gene            102..761
+                     /gene="repB"
+                     /locus_tag="pWCFS102_02"
+                     /db_xref="GeneID:3125625"
+     CDS             102..761
+                     /gene="repB"
+                     /locus_tag="pWCFS102_02"
+                     /codon_start=1
+                     /transl_table=11
+                     /product="replication protein"
+                     /protein_id="YP_133712.1"
+                     /db_xref="GI:54307233"
+                     /db_xref="GeneID:3125625"
+                     /translation="MAKEKARYFTFLLYPESIPQDWQTKLETLGVPIAISPLHDKDLS
+                     SVEGQKYKKAHYHVIYISKNPVTAESVRLKIKRALGDKSVAKVQIVVQSMENMYLYLT
+                     HESKDAIAKNKHKYSKHDIAVLNNFDIDRYITLDVEDKDDMLNDVCDLIDDHNLANMR
+                     ELRRFLKAHGSEYGMPGIKVVNSVLRAHTGLIRLYFDAVYQERKYGRGDINKETGEIQ
+                     D"
+     gene            complement(953..1393)
+                     /gene="orf2"
+                     /locus_tag="pWCFS102_03"
+                     /db_xref="GeneID:3125628"
+     CDS             complement(953..1393)
+                     /gene="orf2"
+                     /locus_tag="pWCFS102_03"
+                     /codon_start=1
+                     /transl_table=11
+                     /product="hypothetical protein"
+                     /protein_id="YP_133713.1"
+                     /db_xref="GI:54307234"
+                     /db_xref="GeneID:3125628"
+                     /translation="MVGGILGLVGVTITLFYSFFNDKRSKKFQLQLESDNENFQNTLA
+                     IQEHERRIWMKKYEVLVQLIGSRYDFSSTEFKRAFNSVPAVFFDSPDVIKSYKNFYSY
+                     KSNSSVDDGLANEKLVNIFVEMYRDLEIEENVDETDLEKIFDTN"
+     gene            complement(1686..1889)
+                     /gene="orf3"
+                     /locus_tag="pWCFS102_04"
+                     /db_xref="GeneID:3125626"
+     CDS             complement(1686..1889)
+                     /gene="orf3"
+                     /locus_tag="pWCFS102_04"
+                     /codon_start=1
+                     /transl_table=11
+                     /product="hypothetical protein"
+                     /protein_id="YP_133714.1"
+                     /db_xref="GI:54307235"
+                     /db_xref="GeneID:3125626"
+                     /translation="MTAIVRRHWARGNKGLFPAHQALGFVQSINSLKPPRGANIACKA
+                     LQAPLSRFTVDRQLNSSLLAKIA"
+ORIGIN      
+        1 attcaagaaa ggaatcagag caaaaaaata agtgagaact cattcccttc aagaaatacg
+       61 agttctcact aatgtttgtt ctgtcaaggc gattataaca aatggcaaaa gaaaaggcga
+      121 gatacttcac ttttttactt tatccagaat cgataccaca agattggcaa acaaaacttg
+      181 aaactttagg cgttccaatt gcaattagcc cgcttcatga taaagatttg agcagtgttg
+      241 aggggcaaaa gtataaaaaa gcccattatc acgttattta tatctctaaa aatcctgtca
+      301 cagcagaaag cgttcgcttg aaaatcaagc gtgctttagg cgataagagt gttgctaaag
+      361 tacaaattgt tgtccagagc atggaaaata tgtatttgta tctgacacat gaatctaaag
+      421 acgctattgc taaaaataag cacaagtaca gcaagcatga cattgctgta ctgaacaatt
+      481 ttgatattga tcgctatatt acgcttgatg ttgaagataa agacgacatg ctgaatgatg
+      541 tttgcgattt gattgatgac cataatttgg cgaatatgcg tgaactgaga cgctttttaa
+      601 aagctcatgg ttcagaatat ggcatgcccg gtattaaagt cgttaattcg gttttacgtg
+      661 ctcatactgg actgataagg ctgtatttcg atgctgttta tcaggaacgc aagtatggca
+      721 gaggcgatat aaacaaagag actggcgaga tacaagatta attagcgaat ggaaagtagg
+      781 tgttcgattt gagcaccttt tttgttgtcg gctagccgac ttctgataca agtctttagc
+      841 acaataacac aatcaacttt agttgttgtg tgtaagtgcg cccttaggaa tataatttga
+      901 atatatttca gattttcaat ctgactgcta ctatcatcaa gataagaaat aactaatttg
+      961 tgtcaaaaat tttctctaaa tctgtttcat caacattttc ttcaatttcc aaatctctat
+     1021 acatctcaac aaaaatattc actaattttt cattagcaag cccgtcatca accgatgaat
+     1081 ttgacttata gctataaaaa tttttataac ttttaataac atctggcgaa tcaaaaaaaa
+     1141 cagcaggaac actattaaac gctctcttaa attcagtgct agaaaaatca tatcttgaac
+     1201 caatcaattg aactaaaact tcatatttct tcatccaaat tcttcgttca tgttcctgaa
+     1261 ttgctaaggt attttggaaa ttttcattat ccgattctaa ttgtaattga aattttttac
+     1321 tccttttgtc attaaaaaat gagtaaaaca aagtaatagt cacacctacc aaacctaaaa
+     1381 taccacctac caaattaatt cctcctaaat ttttatttat attttatttt acgttatttt
+     1441 aagacgattt tagtattttt taataaaaat tatttataaa tcaaaaagta ctcttaaaac
+     1501 acagatataa gcaattaaga aaataaaaat ctcaaaaaac aaaatctcta ttttttaaaa
+     1561 atcgctatag ttcttgtggt gactgaaaaa acgagaatta atttgaaatt ggtgtttttt
+     1621 gatatgaaaa taaagtttag tcctcttttt gttttgaata gttctagaac atcatatttt
+     1681 gcgttctaag cgattttagc taacagtgag ctatttaact gtctgtcaac ggtaaatcga
+     1741 cttagagggg cttggagagc cttacaggcg atattagccc ctcttggagg ctttaaggag
+     1801 ttgatagact gtacgaaacc taaagcctga tgagcaggaa acaagccctt gtttccccga
+     1861 gcccagtggc ggcgaacgat agcggtcaag ctggctcagc ttggtctggg tttggggcga
+     1921 cagcgcccaa gggttttaaa aagacgtttc agcgattttt gctgatccgt cttttttggt
+     1981 ttgtgttgta aataaatttt tagcgctgag gggggcaagg aagcaaattt tgcgaccgta
+     2041 ctacgacccc ccttttaagt gccgagtgcc aaaattgaat ttttcgggac cttatcccta
+     2101 ctctcccaag gactacagcg attaaaaaaa aatcaacaaa tcgccaacaa aattggcaaa
+     2161 aaaacgtgtt gatgtaaaat aacttgacaa aaaaagcgaa taaaagtaaa atttgtttac
+     2221 aatatttaag aggagaatat tatggctgaa aataaaaaaa gagtttcgat tgggttgacg
+     2281 gataaacagt atgaattagt tcaaaaattg gctaaagaaa aaggcttttc gaagtctgca
+     2341 atatttgttt tagctttaga agaat
+//

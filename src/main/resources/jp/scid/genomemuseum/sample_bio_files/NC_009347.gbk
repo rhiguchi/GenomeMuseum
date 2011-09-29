@@ -1,0 +1,98 @@
+LOCUS       NC_009347               2101 bp    DNA     circular BCT 19-APR-2007
+DEFINITION  Shigella sonnei Ss046 plasmid pSS046_spC, complete sequence.
+ACCESSION   NC_009347
+VERSION     NC_009347.1  GI:145294040
+KEYWORDS    .
+SOURCE      Shigella sonnei Ss046
+  ORGANISM  Shigella sonnei Ss046
+            Bacteria; Proteobacteria; Gammaproteobacteria; Enterobacteriales;
+            Enterobacteriaceae; Shigella.
+REFERENCE   1  (bases 1 to 2101)
+  AUTHORS   Yang,F., Yang,J., Zhang,X., Chen,L., Jiang,Y., Yan,Y., Tang,X.,
+            Wang,J., Xiong,Z., Dong,J., Xue,Y., Zhu,Y., Xu,X., Sun,L., Chen,S.,
+            Nie,H., Peng,J., Xu,J., Wang,Y., Yuan,Z., Wen,Y., Yao,Z., Shen,Y.,
+            Qiang,B., Hou,Y., Yu,J. and Jin,Q.
+  TITLE     Genome dynamics and diversity of Shigella species, the etiologic
+            agents of bacillary dysentery
+  JOURNAL   (er) Nucleic Acids Res. 33 (19), 6445-6458 (2005)
+   PUBMED   16275786
+REFERENCE   2  (bases 1 to 2101)
+  CONSRTM   NCBI Genome Project
+  TITLE     Direct Submission
+  JOURNAL   Submitted (17-APR-2007) National Center for Biotechnology
+            Information, NIH, Bethesda, MD 20894, USA
+REFERENCE   3  (bases 1 to 2101)
+  AUTHORS   Yang,J., Yang,F., Chen,L. and Jin,Q.
+  TITLE     Direct Submission
+  JOURNAL   Submitted (27-MAR-2007) State Key Laboratory for Moleclular
+            Virology and Genetic Engineering, Microbial Genome Center of
+            Chinese Ministry of Public Health, 100 YingXin Street, XuanWu,
+            Beijing 100052, P.R.China
+COMMENT     PROVISIONAL REFSEQ: This record has not yet been subject to final
+            NCBI review. The reference sequence was derived from CP000643.
+            COMPLETENESS: full length.
+FEATURES             Location/Qualifiers
+     source          1..2101
+                     /organism="Shigella sonnei Ss046"
+                     /mol_type="genomic DNA"
+                     /strain="Ss046"
+                     /db_xref="taxon:300269"
+                     /plasmid="pSS046_spC"
+     gene            703..1668
+                     /gene="rep"
+                     /locus_tag="SSON_PC01"
+                     /db_xref="GeneID:4991518"
+     CDS             703..1668
+                     /gene="rep"
+                     /locus_tag="SSON_PC01"
+                     /note="replication protein"
+                     /codon_start=1
+                     /transl_table=11
+                     /product="Rep"
+                     /protein_id="YP_001139965.1"
+                     /db_xref="GI:145294041"
+                     /db_xref="GeneID:4991518"
+                     /translation="MSEDKFLSDYSPRDAVWDTQRTLTDSVGGIYQTAAEFERYALRM
+                     ASCSGLLRFGWSTIMETGETRLRLRSAQFCRVRHCPVCQWRRTLMWQARFYQALPKIV
+                     VDYPSSRWLFLTLTVRNCEIGELGTVLTAMNAAFKRMEKRKELSPVQGWIRATEVTRG
+                     KDGSAHPHFHCLLMVQPSWFKGKNYVKHERWVELWRDCLRVNYEPNIDIRAVKTKTGE
+                     VVANVAEQLQSAVAETLKYSVKPEDMANDPEWFLELTRQLHKRRFISTGGALKNVLQL
+                     DRETNEDLVIADDVGDGTDDGKRTAFVWDSGKRRYKRAPEKDKSD"
+ORIGIN      
+        1 aacactctgc gagtggtata ttttccccgg attatcgtcc tgagcctgcc gctggctctc
+       61 tttctaccgc ctcgctttgc tcgttgctca acgcctcaca gacacggatt aaaatccgca
+      121 tccgttcacc gttttttaaa gtccgttaaa agcatgatgc catctccgag agttaatctc
+      181 gtcaaatgct aaatcgtggg ggtccccttt ggggttccga tttagtgatt gacgacacca
+      241 ccgattaaaa aacttatgcg gggtggatgg tttcacgaag tgaggccatc cacctgtaag
+      301 acagggtttt gtttttattc cctgttttgg tgatcgggtg tgtggaaaag gttggggtaa
+      361 gccgttcggg ggtgcttgtt ttggggggtt aaaattgtgg ttattttttg cgcaattctc
+      421 gcgcgtgatc cttgtattta tacttaaggg ataaatggcg gatatgaaat agtggtttag
+      481 cccagtaatg acgaggcttt gagtgggttt tgacaggtca aagaaaatgg agcagaattg
+      541 aggcgttttt aatcggcgtt ggggagtgcg tcaacactcc ccaacatttc gaatgtgtca
+      601 cctcagcggc aaactctggt gacatgtact ggctcgcaat gcacaggtac gtgatgaata
+      661 taccacatca aatcacagcc tgcccagatc ggagcaggct taatgtcaga agataaattc
+      721 ctttcggact acagcccccg tgatgcagtt tgggataccc agcgcacgct taccgattct
+      781 gtcgggggta tctaccagac tgctgctgaa ttcgagcgct atgcactccg tatggcctcc
+      841 tgtagcggtt tgttacgttt tggttggtct accatcatgg aaaccggaga aacgcgccta
+      901 cggcttcgta gtgcgcaatt ttgccgtgtc cgtcattgcc ctgtctgcca gtggagaaga
+      961 accctcatgt ggcaagcccg tttttatcag gctctaccga aaatcgttgt ggattacccg
+     1021 tcttcccgat ggttgtttct gacgttaact gtcaggaact gcgagatagg tgaacttgga
+     1081 acagtcctta cagcaatgaa tgcggcgttt aagcgaatgg aaaagcgaaa ggagctatca
+     1141 cctgttcagg ggtggatcag ggctacggag gtgacgcgag gtaaggatgg cagcgcacat
+     1201 ccgcattttc actgtctgct gatggtgcaa ccttcttggt ttaaagggaa gaactacgtt
+     1261 aagcacgaac gttgggtaga actctggcgc gattgcttgc gggtgaacta tgagccgaat
+     1321 atcgatattc gggcagtaaa aactaagaca ggtgaggttg tggccaacgt tgccgagcaa
+     1381 ctgcaaagcg cggttgctga aacgctgaaa tactccgtta aaccggaaga tatggcaaac
+     1441 gatcctgagt ggtttcttga gctgacgcgg cagcttcaca agcgccgttt tatctcgacc
+     1501 ggtggggcgc taaaaaacgt cctccagttg gatcgagaaa ccaatgagga tcttgtcatt
+     1561 gccgacgatg taggggatgg cactgatgac gggaagcgga cggcgtttgt ctgggattca
+     1621 ggtaaacggc gttacaaacg cgcccctgag aaggataaat cggattaacg tatgaatatt
+     1681 aatattgaat acctgaatgg aaataagact attggtttat tttttttaag aagtgaagcg
+     1741 gtgattcctg acaggtttaa aaaccttatt ttgcttattg atggattaag ttttggcaca
+     1801 tttggttttc atccgcacga aggttttgag gatgaattaa ttttatatat tcagaaaaca
+     1861 aacgagaggg taaaaactct ttttgtgaaa atagatttaa acggtatcaa gtttggattt
+     1921 ttaagaacgc attcttagtt ctggaaaaga gccagcggca ggctgaggtg ataggtacga
+     1981 gattgcatgc aatctctagt gctctgtcta tcctgcatta tcctcagcat tatcctcagc
+     2041 attatcctca gccttgccaa ctcgacacca atgcaggata gacaatccga tgtcaaatgt
+     2101 t
+//
