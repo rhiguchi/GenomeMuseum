@@ -222,10 +222,6 @@ object GenBank {
   object Origin extends ElementObject("ORIGIN") {
   }
   
-  def fromInputStream(stream: InputStream) = {
-    GenBank(Locus("NC_001773"))
-  }
-  
   /**
    * 先頭行の開始文字の抽出子オブジェクト Head をもたせるトレイト
    * {@code headKey} をオーバーライドして、実装する

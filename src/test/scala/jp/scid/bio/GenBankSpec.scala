@@ -4,17 +4,7 @@ import scala.io.Source
 import org.specs2.mutable._
 
 class GenBankSpec extends Specification {
-  val testResource1 = classOf[GenBankSpec].getResource("NC_001773.gbk")
-  val testResource2 = classOf[GenBankSpec].getResource("NC_009347.gbk")
-  
   "GenBank オブジェクト" should {
-    "テキストファイルからの読み込み" in {
-      val genbank = using(testResource1.openStream) { source =>
-        GenBank.fromInputStream(source)
-      }
-      todo // genbank.locus must beEqualTo("NC_001773")
-    }
-    
     "Locus 構文解析" in {
       import GenBank.Locus
       import java.util.{Date, Calendar}
