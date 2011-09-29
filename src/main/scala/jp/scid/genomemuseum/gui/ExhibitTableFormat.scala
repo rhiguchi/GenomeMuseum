@@ -11,11 +11,16 @@ import model.{MuseumExhibit}
 class ExhibitTableFormat extends TableFormat[MuseumExhibit] {
   import ExhibitTableFormat._
   
-  def getColumnCount = columnNames.size
+  def getColumnCount = 4
   def getColumnName(column: Int) = columnNames(column)
-  def getColumnValue(e: MuseumExhibit, column: Int) = ""
+  def getColumnValue(e: MuseumExhibit, column: Int) = column match {
+    case 0 => e.name
+    case 1 => e.sequenceLength.asInstanceOf[AnyRef]
+    case 2 => e.source
+    case 3 => e.date.map(_.toString).getOrElse("")
+  }
 }
 
 object ExhibitTableFormat {
-  val columnNames = Array("col1", "col2", "col3")
+  val columnNames = Array("name", "sequenceLength", "source", "date")
 }

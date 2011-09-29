@@ -13,7 +13,7 @@ class ExhibitTableController(
   table: JTable
 ) {
   protected val tableFormat = new ExhibitTableFormat
-  protected val tableSource = new BasicEventList[MuseumExhibit]
+  val tableSource = new BasicEventList[MuseumExhibit]
   protected val tableModel = new EventTableModel(tableSource, tableFormat)
   
   // データバインディング
