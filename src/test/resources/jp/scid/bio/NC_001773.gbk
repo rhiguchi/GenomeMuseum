@@ -1,0 +1,157 @@
+LOCUS       NC_001773               3444 bp    DNA     circular BCT 30-MAR-2006
+DEFINITION  Pyrococcus abyssi GE5 plasmid pGT5, complete sequence.
+ACCESSION   NC_001773
+VERSION     NC_001773.1  GI:10954552
+KEYWORDS    .
+SOURCE      Pyrococcus abyssi GE5
+  ORGANISM  Pyrococcus abyssi GE5
+            Archaea; Euryarchaeota; Thermococci; Thermococcales;
+            Thermococcaceae; Pyrococcus.
+REFERENCE   1  (bases 1 to 3444)
+  AUTHORS   Erauso,G., Marsin,S., Benbouzid-Rollet,N., Baucher,M.F.,
+            Barbeyron,T., Zivanovic,Y., Prieur,D. and Forterre,P.
+  TITLE     Sequence of plasmid pGT5 from the archaeon Pyrococcus abyssi:
+            evidence for rolling-circle replication in a hyperthermophile
+  JOURNAL   J. Bacteriol. 178 (11), 3232-3237 (1996)
+   PUBMED   8655503
+REFERENCE   2  (bases 1 to 3444)
+  CONSRTM   NCBI Genome Project
+  TITLE     Direct Submission
+  JOURNAL   Submitted (24-OCT-2000) National Center for Biotechnology
+            Information, NIH, Bethesda, MD 20894, USA
+REFERENCE   3  (bases 1 to 3444)
+  AUTHORS   Forterre,P.
+  TITLE     Direct Submission
+  JOURNAL   Submitted (20-FEB-1996) Patrick Forterre, Institut de Genetique et
+            Microbiologie, Universite Paris-Sud, Orsay 91405, France
+COMMENT     PROVISIONAL REFSEQ: This record has not yet been subject to final
+            NCBI review. The reference sequence was derived from U49503.
+            COMPLETENESS: full length.
+FEATURES             Location/Qualifiers
+     source          1..3444
+                     /organism="Pyrococcus abyssi GE5"
+                     /mol_type="genomic DNA"
+                     /strain="GE5"
+                     /db_xref="taxon:272844"
+                     /plasmid="pGT5"
+     rep_origin      1..114
+                     /note="putative single-stranded origin; sso"
+     repeat_region   22..68
+                     /note="repeat region RI"
+                     /rpt_type=inverted
+     gene            103..2067
+                     /locus_tag="pGT5_01"
+                     /db_xref="GeneID:3648457"
+     CDS             103..2067
+                     /locus_tag="pGT5_01"
+                     /note="ORF1; contains possible alternative initiation
+                     site"
+                     /codon_start=1
+                     /transl_table=11
+                     /product="replication initiator protein"
+                     /protein_id="YP_308887.1"
+                     /db_xref="GI:74076684"
+                     /db_xref="GeneID:3648457"
+                     /translation="MVIYTSKFKNSLLDGLGVGHLSYDDQPILCNEVHPTLTLDTFIS
+                     GGSSGSRPRPRWVYLDISTTNEGISEEFSSNTESKSPLLKVCGVSSKSSEGDGSSFIW
+                     FDKYRSVISRLEHSGFVEVERTVLKLRKISKELRSINKQLSRLFLDDRERAKLLSRKR
+                     KYLDFARALIGSISKSLTLYADRFFVEVPQDYAKLIQKLGFSSDTLLLHLFVNSGVLE
+                     VFLDDNSSHKFRIAYISKVHAGKYHPVKGISKGSQEAKRVLRDLLVLSELLEGSLVSY
+                     RSGGVETIHHLIPVRHFVLTAPKDVSFSIWASLKKGDSSLFRAFKDAGAKAIKEFLSY
+                     LASKEHISGNLLFGFTINVHVTGDKNPFEPHFHIDAIVTFICYDKSSTKWFRLNPLLS
+                     ESDLKKLRDIWKNVLLSYFGELLSEDTKSKDFDVWAGDNYYSLPLDVPQVFFELKYAS
+                     RKLFVNFVNYFEQSNFDESSVSDWDFVRFVFEYSNRTERYGFLTNIKRYLSMSCSHLV
+                     EKRVQELEEFISRIEFDLSVNGNKMSDSLKRALLERLEYLKDELSELKERGFEYLFER
+                     ALEKAEELLSNDNLTLERVIHILETLFTALGKSIVNYNFYVELEDVSFREFVDYLYDN
+                     HLSDVLVFSDRHRSITIIRLIPPPDGGVPV"
+     rep_origin      266..280
+                     /locus_tag="pGT5_01"
+                     /note="putative double-stranded origin; dso; similar to
+                     dso seequences from pC194 plasmids"
+     repeat_region   550..607
+                     /note="repeat region RII"
+     repeat_region   2051..2123
+                     /note="repeat region RIII"
+                     /rpt_type=inverted
+     gene            2230..3423
+                     /locus_tag="pGT5_02"
+                     /db_xref="GeneID:3648458"
+     CDS             2230..3423
+                     /locus_tag="pGT5_02"
+                     /note="ORF2"
+                     /codon_start=1
+                     /transl_table=11
+                     /product="hypothetical protein"
+                     /protein_id="YP_308888.1"
+                     /db_xref="GI:74076685"
+                     /db_xref="GeneID:3648458"
+                     /translation="MRLHVHINDKLGELFKKRVHLVYGDRRGALSHAIEEAIILWLLH
+                     TDYIVKLQKVNAMSLQTQRIDSDSSHYLPISRLPQTIDEFRAFYNRFGAKATLLVYLL
+                     VRGKPLRLYDLFRFHQAIAGVSSDNSTRKVLKRLLRDGLIYRKGKLYYPSPDALLLMW
+                     DSIDWSRVRTKRYTGNGVVSKPSKRRVRGVGSQVRRVVRIARSLARRGDTLRAVSLLT
+                     HTLLGVRQTGVLLYRKGGLFIVYEHKDRSVRVLFSERIGKLFDDLGLPEGSLYMHMYY
+                     RAGRIIHNVFGGYRVARRMFYFLREHGFFYVPASEVDRVGEYRYDPHSGKLIVRIGNW
+                     TYEVDADLDAIDSYVENLNSRRTRKSKKKSSSLVSYPRERFGIVRVSKHTKVENDVYY
+                     LNYTP"
+     repeat_region   2925..3207
+                     /note="repeat region RIV"
+ORIGIN      
+        1 attatccttt agaaacgcgt tgggtattgg gggagccccc cttagtgggg agctccccct
+       61 aaacaccccc aagacaatag gaaaccatag gaggcccctg caatggtgat atacacttca
+      121 aagtttaaaa actctttgct tgatgggttg ggggttgggc accttagcta tgatgaccag
+      181 cctattctat gtaatgaggt tcatccaacc cttaccctcg acactttcat ctcgggtggg
+      241 tcatctggtt ctcgaccccg cccccgttgg gtttatcttg atatatccac aaccaatgaa
+      301 ggaatttcag aagagttctc ttcaaatact gagagtaaaa gccctctatt gaaggtgtgt
+      361 ggtgtcagtt ctaagtcatc tgagggtgat ggcagtagtt ttatctggtt tgataagtat
+      421 cgttcagtca tttcaaggct tgagcactct ggttttgtag aagttgaaag aactgtcctt
+      481 aagctcagga aaatctccaa agaactccgc tctataaaca agcagttatc gaggcttttc
+      541 cttgatgata gggagagagc aaagcttctc tctcgcaagc gtaagtatct tgattttgct
+      601 cgtgctctca taggttctat ttccaagtct cttactcttt atgcggatag gttctttgtt
+      661 gaggttcccc aagattacgc aaagttaatc caaaagctcg ggttctcaag tgatacgctt
+      721 cttcttcacc tattcgtgaa tagtggtgtt cttgaggtgt ttcttgatga taatagttct
+      781 cataagttcc gtattgctta tatttcaaag gttcacgctg gtaagtatca tcctgtgaag
+      841 ggtatctcca agggttctca ggaggctaag agggttctta gggatttgct tgtgcttagt
+      901 gaacttcttg agggttctct tgttagctac aggagtgggg gggttgaaac tattcatcac
+      961 cttattcctg tccgtcattt tgtccttacc gctcctaagg acgttagttt cagtatttgg
+     1021 gcttctctca agaaggggga tagttcattg tttagggctt tcaaggatgc tggtgctaaa
+     1081 gccatcaagg agtttttatc ataccttgct tccaaggaac atatctctgg taatctccta
+     1141 tttggtttta ctatcaatgt tcatgttact ggtgataaga acccctttga gcctcacttc
+     1201 catattgatg ctatcgttac tttcatttgc tatgataagt cttcaaccaa atggtttagg
+     1261 cttaatcctc ttctcagcga gagtgatcta aagaaattgc gtgatatttg gaagaacgtg
+     1321 ttgctgtcct atttcggtga gcttctctct gaggatacta agtcaaagga ttttgatgtt
+     1381 tgggctggtg ataattatta ctctttgcct cttgatgttc ctcaggtctt cttcgagctc
+     1441 aagtatgcgt cgaggaagct tttcgtcaat tttgttaatt actttgagca gtctaatttt
+     1501 gatgagagct ccgtgtccga ttgggatttt gtccgtttcg tcttcgagta tagtaatagg
+     1561 actgaacgtt atggtttcct cactaacatt aaacgttatc tttctatgtc ttgctctcac
+     1621 ctcgtagaga agcgtgttca ggagcttgaa gagttcatta gccgtattga gtttgatttg
+     1681 tctgtgaatg gtaataagat gagtgattca cttaagaggg ctctccttga gcgtcttgag
+     1741 tatttgaagg atgagctttc agaacttaag gagcgtggtt tcgagtatct ctttgagcgt
+     1801 gcccttgaga aggcggagga gttgttatct aacgataatc tcactcttga gcgtgttatt
+     1861 catattttgg aaactttgtt caccgctctt ggtaagtcta ttgtcaatta caatttctat
+     1921 gttgagcttg aggatgtctc cttcagggag tttgtcgatt atctttatga taatcatctc
+     1981 tctgatgtcc ttgtctttag tgataggcac cgttctatta ccattattcg gcttattcct
+     2041 cctcctgatg ggggtgtgcc tgtatgacac cttccaactt tattgtaagt ttgggtgtca
+     2101 ttttggcacc gcaccccaca ctctctcctc tcccccctcg cctcgccccc cgctggtgcc
+     2161 tccttggtgc cactacccta cgtttccatc tttttataac tctcgtgcac ttagtaggtg
+     2221 ggatggtcca tgaggttgca cgtccatatt aatgacaagt tgggtgaact gttcaagaag
+     2281 cgtgtccacc ttgtgtatgg ggataggcgt ggtgctttgt ctcacgccat tgaggaagct
+     2341 attatcctgt ggttgctcca tactgactat attgtaaagc ttcagaaggt gaacgctatg
+     2401 agccttcaaa ctcaaaggat tgacagcgac tcctctcatt atttgcctat ctctcggttg
+     2461 cctcagacta ttgatgagtt tagggctttc tataatagat ttggtgctaa ggctactttg
+     2521 cttgtttacc ttcttgttag gggtaagcct ctccgtttgt atgacctttt taggtttcat
+     2581 caggctattg ctggtgtgtc ttctgataat tctactcgta aggttctcaa gaggttgttg
+     2641 cgggatggtt taatctatag aaaaggtaag ctctattatc cttcccctga tgctcttttg
+     2701 cttatgtggg attctattga ttggtcgagg gtgaggacta agcgttatac tggtaatggt
+     2761 gtggtgtcta agccttctaa acgtagggtt cgtggtgttg gttctcaggt taggcgggtt
+     2821 gttcgtattg cgaggagttt ggctcggcgt ggggatactt tgagggctgt tagtttgctt
+     2881 acgcatactc ttttgggtgt taggcagact ggtgtgctcc tttatagaaa aggtggcttg
+     2941 tttattgtgt atgagcataa ggacaggtct gttagggttc ttttctctga gcggattggt
+     3001 aagttgtttg atgatttggg gcttcctgag gggtctcttt atatgcatat gtattatcgt
+     3061 gctggtagga ttattcacaa tgtgtttggg gggtatcggg ttgctcggcg catgttctat
+     3121 tttctccgtg agcatggttt cttctatgtt cccgcttctg aggttgatag ggttggtgaa
+     3181 tatcgctatg accctcatag cgggaagctc attgttcgta ttggtaattg gacgtatgag
+     3241 gttgatgctg atcttgatgc cattgatagt tacgttgaaa atcttaattc gaggaggact
+     3301 cgtaagtcta agaagaagtc ttcgtctctc gttagttatc ctcgtgagag gtttggtatt
+     3361 gtgcgtgttt caaagcatac gaaggtggag aacgatgttt actacctcaa ttatactccg
+     3421 taggagttat aaatccttga gaat
+//
