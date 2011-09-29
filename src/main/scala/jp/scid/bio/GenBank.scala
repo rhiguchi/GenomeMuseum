@@ -1,7 +1,8 @@
 package jp.scid.bio
 
 import java.io.InputStream
-import java.text.ParseException
+import java.text.{ParseException, SimpleDateFormat}
+import java.util.Date
 import GenBank._
 
 case class GenBank (
@@ -26,7 +27,16 @@ object GenBank {
   }
   type Features = List[Feature]
     
-  /** Locus 要素 */
+  /**
+   * Locus 要素
+   * @param name Locus 名
+   * @param sequenceLength 配列長
+   * @param sequenceUnit {@code bp} もしくは {@code aa} である単位
+   * @param molculeType {@code DNA} や {@code RNA} などの分子型
+   * @param topology {@code circular} もしくは {@code linear} の構造形態
+   * @param division {@code BCT} のような区分
+   * @param date この Locus を持つ情報が作成された日付
+   */
   case class Locus (
     name: String = "",
     sequenceLength: Int = 0,
@@ -34,8 +44,50 @@ object GenBank {
     molculeType: String = "",
     topology: String = "",
     division: String = "",
-    date: String = ""
+    date: Date = new Date(0)
   ) extends Element
+  
+  /**
+   * Locus 生成など
+   */
+  object Locus extends ElementObject("LOCUS") {
+    /** LOCUS 行マッチパターン（8 要素） */
+    lazy private val LocusPattern = "LOCUS       (?x)" + // Header
+      """(\S+)\s+""" + // Locus Name
+      """(?:(\d+)\s+(bp|aa)\s{1,4})?""" + // Sequence Length & Unit
+      """(\S+)?\s+""" + // Molecule Type
+      """(circular|linear)?\s*""" + // Topology
+      """(\S+)?\s*""" + // Division 
+      """(\S+)?""" r // Date
+    
+    /**
+     * LOCUS 行の文字列から Locus インスタンスを作成する
+     * @param source 作成元文字列
+     * @return Locus インスタンス
+     * @throws ParseException {@code source} が {@code LOCUS}
+     *         から始まっていなく、また {@code keySize } で定義される
+     *         文字列長より短い場合。もしくは文字列形式に誤りがある場合。
+     */
+    @throws(classOf[ParseException])
+    def parseFrom(source: String): Locus = source match {
+      case source @ Head() if source.length >= keySize => source match {
+        case LocusPattern(name, seqLength, seqUnit, molType, topology,
+            division, date) =>
+          Locus(name, parseInt(seqLength), seqUnit, molType, topology,
+            division, parseDate(date))
+        case _ => throw new ParseException(
+          "sourse '%s' is invalid Locus format".format(source), 0)
+      }
+      case _ => throw new ParseException(
+        "sourse '%s' must start with '%s' and which length must >= %d"
+          .format(source, Head, keySize), 0)
+    }
+    
+    /** 日付値を Date オブジェクトへ変換 */
+    @throws(classOf[ParseException])
+    private def parseDate(text: String): Date =
+      new SimpleDateFormat("dd-MMM-yyyy", java.util.Locale.US).parse(text)
+  }
   
   /**
    * Definition 要素
@@ -158,4 +210,19 @@ object GenBank {
   private def toSingleValue(source: Seq[String], dropSize: Int) =
     source withFilter (_.length >= dropSize) map
           (_ substring dropSize) mkString " "
+  
+  /**
+   * 数字文字列を {@code Int} に変換する。
+   * @param text 変換元
+   * @return 変換後の値
+   * @throws ParseException {@code Int} に変換できなかった時。
+   */
+  @throws(classOf[ParseException])
+  private def parseInt(text: String): Int = try {
+    Integer.parseInt(text)
+  }
+  catch {
+    case e: NumberFormatException =>
+      throw new ParseException(e.getLocalizedMessage, 0)
+  }
 }
