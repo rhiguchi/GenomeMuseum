@@ -219,6 +219,9 @@ object GenBank {
     value: String = ""
   ) extends Element
   
+  object Origin extends ElementObject("ORIGIN") {
+  }
+  
   def fromInputStream(stream: InputStream) = {
     GenBank(Locus("NC_001773"))
   }

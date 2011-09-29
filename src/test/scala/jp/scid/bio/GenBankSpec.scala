@@ -135,6 +135,15 @@ class GenBankSpec extends Specification {
         f.key must_== "source"
       }
     }
+    
+    "Origin 構文解析" in {
+      import GenBank.Origin
+      
+      "Head オブジェクトの行認知" in {
+        Origin.Head.unapply("ORIGIN      ") must beTrue
+      }
+    }
+    
   }
   
   private def using[A <% java.io.Closeable, B](s: A)(f: A => B) = {
