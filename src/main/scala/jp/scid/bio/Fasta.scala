@@ -64,6 +64,13 @@ object Fasta {
       case null => nullValue
       case _ => value
     }
+    
+    /**
+     * 行の開始文字抽出子
+     */
+    object Head {
+      def unapply(line: String): Boolean = line.startsWith(">")
+    }
   }
   
   /**
