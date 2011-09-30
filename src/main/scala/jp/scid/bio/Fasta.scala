@@ -41,7 +41,7 @@ object Fasta {
     /** ヘッダーの名前領域内の要素を分ける正規表現 */
     lazy private val DescriptionPattern = """(?x)^(?:gi \| (\d+) \| )?""" + // e.g. "gi|532319|"
         """(\w+) \| (\w+?) (?:\. (\d+) )? \|""" + // e.g. "pir|TVFV2E|" or "pir|TVFV2E.1|"
-        """(\w+)? $""" r // e.g. "TVFV2E"
+        """(\S+)? $""" r // e.g. "TVFV2E"
         
     /**
      * FASTA ヘッダ文字列から {@code Header} オブジェクトを作成。
@@ -55,7 +55,7 @@ object Fasta {
           Header(nonNull(identifier), namespace, accession,
             Integer.parseInt(nonNull(version, "0")),
             nonNull(name), nonNull(description))
-        case _ => Header(name, nonNull(description))
+        case _ => Header(name = name, description = nonNull(description))
       }
       case _ => throw new ParseException("invalid format", 0)
     }
