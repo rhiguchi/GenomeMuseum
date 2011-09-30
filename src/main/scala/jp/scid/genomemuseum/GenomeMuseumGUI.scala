@@ -12,7 +12,7 @@ class GenomeMuseumGUI {
     
     title = "GenomeMuseum"
     
-    peer.getRootPane setMenuBar mainMenu.menuBar
+    menuBar = mainMenu.container
     
     peer.getContentPane.setLayout(new BorderLayout)
     peer.getContentPane.add(mainView.contentPane, "Center")
