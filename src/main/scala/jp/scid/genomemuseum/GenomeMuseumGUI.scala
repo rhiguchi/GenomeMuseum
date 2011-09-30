@@ -1,25 +1,29 @@
 package jp.scid.genomemuseum
 
 import java.awt.{BorderLayout}
-import view.MainView
-import controller.ExhibitTableController
+import view.{MainView, MainViewMenuBar}
+import controller.{ExhibitTableController, MainViewController}
 import scala.swing.{MainFrame}
 
 class GenomeMuseumGUI {
   lazy val mainFrame = new MainFrame {
     val mainView = new MainView
+    val mainMenu = new MainViewMenuBar
+    
     title = "GenomeMuseum"
+    
+    peer.getRootPane setMenuBar mainMenu.menuBar
+    
     peer.getContentPane.setLayout(new BorderLayout)
     peer.getContentPane.add(mainView.contentPane, "Center")
   }
   
   def start() {
-    val tableCtrl = new ExhibitTableController(
-      mainFrame.mainView.dataTable)
-    loadSampleFilesTo(tableCtrl)
-    mainFrame.pack()
-    mainFrame.peer setLocationRelativeTo null
-    mainFrame.visible = true
+    val mainCtrl = new MainViewController(
+      mainFrame.mainView, mainFrame.peer, mainFrame.mainMenu)
+    loadSampleFilesTo(mainCtrl.tableCtrl)
+    
+    mainCtrl.showFrame
   }
   
   /**
