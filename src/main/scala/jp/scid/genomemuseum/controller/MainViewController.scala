@@ -1,6 +1,8 @@
 package jp.scid.genomemuseum.controller
 
 import java.util.ResourceBundle
+import java.awt.FileDialog
+import java.io.{File, FileInputStream}
 import jp.scid.genomemuseum.view
 import view.{MainView, MainViewMenuBar}
 import javax.swing.JFrame
@@ -14,6 +16,7 @@ class MainViewController(
   val tableCtrl = new ExhibitTableController(mainView.dataTable)
   val openAction = Action("Open") { openFile }
   val quitAction = Action("Quit") { quitApplication }
+  lazy val openDialog = new FileDialog(frameOfMainView, "", FileDialog.LOAD)
   
   bindActions(menu)
   reloadResources()
@@ -26,10 +29,33 @@ class MainViewController(
   
   def openFile() {
     println("openFile")
+    openDialog setVisible true
+    val fileName = Option(openDialog.getFile)
+    
+    fileName.map(new File(openDialog.getDirectory, _)).foreach(loadBioFile)
   }
   
   def quitApplication() {
     System.exit(0)
+  }
+  
+  protected def loadBioFile(file: File) {
+    import jp.scid.genomemuseum.model.MuseumExhibit
+    println("loadBioFile: " + file)
+    
+    val parser = new jp.scid.bio.GenBankParser
+    def using[A <% java.io.Closeable, B](s: A)(f: A => B) = {
+      try f(s) finally s.close()
+    }
+    
+    val data = using(new FileInputStream(file)) { inst =>
+      val source = io.Source.fromInputStream(inst)
+      parser.parseFrom(source.getLines)
+    }
+    
+    val e = MuseumExhibit(data.locus.name, data.locus.sequenceLength) 
+    tableCtrl.tableSource add e
+    
   }
   
   def bindActions(menu: MainViewMenuBar) {
