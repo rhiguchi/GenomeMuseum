@@ -13,7 +13,8 @@ class MainViewController(
   frameOfMainView: JFrame,
   menu: MainViewMenuBar
 ) {
-  val tableCtrl = new ExhibitTableController(mainView.dataTable)
+  val tableCtrl = new ExhibitTableController(mainView.dataTable,
+    mainView.quickSearchField)
   val openAction = Action("Open") { openFile }
   val quitAction = Action("Quit") { quitApplication }
   lazy val openDialog = new FileDialog(frameOfMainView, "", FileDialog.LOAD)
