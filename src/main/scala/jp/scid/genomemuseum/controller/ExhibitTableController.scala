@@ -13,13 +13,13 @@ import model.{MuseumExhibit}
 class ExhibitTableController(
   table: JTable, quickSearchField: JTextField
 ) {
-  protected val tableFormat = new ExhibitTableFormat
   val tableSource = new BasicEventList[MuseumExhibit]
-  protected val tableModel = new EventTableModel(tableSource, tableFormat)
   protected val filterator = new ExhibitTableTextFilterator
   protected val matcherEditor = new SearchEngineTextFieldMatcherEditor(
     quickSearchField, filterator)
   protected val filteredSource = new FilterList(tableSource, matcherEditor)
+  protected val tableFormat = new ExhibitTableFormat
+  protected val tableModel = new EventTableModel(filteredSource, tableFormat)
   
   // データバインディング
   table.setModel(tableModel)
