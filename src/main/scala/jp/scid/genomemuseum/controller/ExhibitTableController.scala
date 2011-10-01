@@ -1,6 +1,7 @@
 package jp.scid.genomemuseum.controller
 
 import javax.swing.{JTable, JTextField}
+import java.awt.event.{KeyAdapter, KeyEvent}
 
 import ca.odell.glazedlists.{swing => glswing, BasicEventList,
   TextFilterator, FilterList}
@@ -20,6 +21,13 @@ class ExhibitTableController(
   protected val filteredSource = new FilterList(tableSource, matcherEditor)
   protected val tableFormat = new ExhibitTableFormat
   protected val tableModel = new EventTableModel(filteredSource, tableFormat)
+  
+  // インクリメンタルサーチ
+  quickSearchField addKeyListener new KeyAdapter {
+    override def keyReleased(e: KeyEvent) {
+      matcherEditor refilter quickSearchField.getText
+    }
+  }
   
   // データバインディング
   table.setModel(tableModel)
