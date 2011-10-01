@@ -2,7 +2,8 @@ package jp.scid.genomemuseum.controller
 
 import javax.swing.JTable
 
-import ca.odell.glazedlists.{swing => glswing, BasicEventList}
+import ca.odell.glazedlists.{swing => glswing, BasicEventList,
+  TextFilterator}
 import glswing.EventTableModel
 
 import jp.scid.genomemuseum.{gui, model}
@@ -18,4 +19,14 @@ class ExhibitTableController(
   
   // データバインディング
   table.setModel(tableModel)
+}
+
+protected class ExhibitTableTextFilterator
+    extends TextFilterator[MuseumExhibit] {
+  import java.{util => ju}
+  override def getFilterStrings(baseList: ju.List[String],
+      element: MuseumExhibit) {
+    baseList add element.name
+    baseList add element.source
+  }
 }
