@@ -107,7 +107,7 @@ class SourceTreeModel[A <: AnyRef: ClassManifest](source: TreeSource[A]) extends
     val seqPath = convertTreePath(path)
     val lastNode = treeNodes(seqPath.last)
     source match {
-      case source: EditableTreeSource[A] =>
+      case source: EditableTreeSource[_] =>
         source.update(seqPath, newValue)
         treeDelegate nodeChanged lastNode
       case _ =>
@@ -156,8 +156,8 @@ class SourceTreeModel[A <: AnyRef: ClassManifest](source: TreeSource[A]) extends
    * @throws IllegalStateException {@code node} が {@code SourceTreeNode[A]} 型 でない時
    */
   private def convertItem(node: AnyRef) = node match {
-    case node: SourceTreeNode[A] => node.nodeObject
-    case _ =>  throw new IllegalStateException("%s must be a SourceTreeNode".format(node))
+    case node: SourceTreeNode[_] => node.nodeObject.asInstanceOf[A]
+    case _ => throw new IllegalStateException("%s must be a SourceTreeNode".format(node))
   }
   
   /**
