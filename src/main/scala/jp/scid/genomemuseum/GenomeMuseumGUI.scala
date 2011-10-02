@@ -2,10 +2,10 @@ package jp.scid.genomemuseum
 
 import java.awt.{BorderLayout, FileDialog}
 import java.io.{File, FileInputStream}
-import org.jdesktop.application.Application
+import org.jdesktop.application.{Application, Action}
 import view.{MainView, MainViewMenuBar}
 import controller.{ExhibitTableController, MainViewController}
-import scala.swing.{Frame, Action}
+import scala.swing.Frame
 
 class GenomeMuseumGUI extends Application {
   import jp.scid.genomemuseum.model.MuseumExhibit
@@ -27,8 +27,9 @@ class GenomeMuseumGUI extends Application {
   var mainCtrl: MainViewController = _
   
   // Actions
-  lazy val openAction = Action("Open") { openFile() }
-  lazy val quitAction = Action("Quit") { exit() }
+  private lazy val actionFor = GenomeMuseumGUI.actionFor(getContext.getActionMap(this))_
+  lazy val openAction = actionFor("openFile")
+  lazy val quitAction = actionFor("quit")
   
   override def startup() {
     val frame = mainFrame.peer
@@ -49,6 +50,7 @@ class GenomeMuseumGUI extends Application {
     menu.quit.action = quitAction
   }
   
+  @Action
   def openFile() {
     println("openFile")
     openDialog setVisible true
@@ -167,5 +169,24 @@ class GenomeMuseumGUI extends Application {
     finally {
       target.getReadWriteLock().writeLock().unlock();
     }
+  }
+}
+
+object GenomeMuseumGUI {
+  import org.jdesktop.application.ApplicationActionMap
+  import java.awt.event.ActionEvent
+  import scala.swing.Action
+  
+  def actionFor(actionMap: ApplicationActionMap)(key: String) = new Action(key) {
+    override lazy val peer = actionMap.get(key) match {
+      case null => throw new IllegalStateException(
+        "Action '%s' is not defined on '%s'.".format(key, actionMap.getActionsClass))
+      case action => action
+    }
+    override def apply() {
+      val e = new ActionEvent(this, ActionEvent.ACTION_PERFORMED, "apply")
+      apply(e)
+    }
+    def apply(event: ActionEvent) = peer.actionPerformed(event)
   }
 }
