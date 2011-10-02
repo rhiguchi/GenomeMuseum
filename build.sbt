@@ -28,3 +28,5 @@ maxErrors := 20
 parallelExecution := true
 
 testOptions in Test += Tests.Argument("console", "junitxml")
+
+scalacOptions += "-unchecked"
