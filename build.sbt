@@ -13,6 +13,7 @@ libraryDependencies ++= Seq(
   "net.java.dev.glazedlists" % "glazedlists_java15" % "1.8.0",
   "com.h2database" % "h2" % "1.3.160",
   "org.specs2" %% "specs2" % "1.6.1" % "test",
+  "org.mockito" % "mockito-all" % "1.8.5" % "test",
   "junit" % "junit" % "4.9" % "test",
   "org.pegdown" % "pegdown" % "1.0.2" % "test"
 )

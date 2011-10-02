@@ -26,6 +26,7 @@ class SourceTreeModel[A <: AnyRef: ClassManifest](source: TreeSource[A]) extends
   /** 
    * 項目の TreeNode を取得。
    * 親が設定されないので、設定の必要の無い root か 設定処理のある reloadChildren 以外で呼出してはならない
+   * @throws NoSuchElementException {@code nodeObj} がこのモデルでは不明である時
    */
   private def treeNodeFor(nodeObj: A) = treeNodes getOrElseUpdate
       (nodeObj, new SourceTreeNode(nodeObj, source.isLeaf(nodeObj)))
@@ -40,17 +41,37 @@ class SourceTreeModel[A <: AnyRef: ClassManifest](source: TreeSource[A]) extends
   /** ルート項目を取得 */
   def getRoot: A = rootSource.nodeObject
   
-  /** 項目が子項目を持つことができない要素か */
+  /** 
+   * 項目が子項目を持つことができない要素か
+   * @param node {@code A} 型で親ノードから既に読み出されたことがあるオブジェクト
+   * @retrun 子項目を持つことができる場合 {@code true}
+   * @throws IllegalArgumentException {@code node} が {@code A} 型でない時
+   * @throws NoSuchElementException {@code node} の親が不明でパスが定まっていない時
+   */
   def isLeaf(node: Any): Boolean = withSource(node){ treeDelegate isLeaf }
     
   
-  /** 子項目数 */
+  /** 
+   * 子項目数の取得
+   * @param parent {@code A} 型で親ノードから既に読み出されたことがあるオブジェクト
+   * @retrun 子項目数
+   * @throws IllegalArgumentException {@code parent} が {@code A} 型でない時
+   * @throws NoSuchElementException {@code parent} の親が不明でパスが定まっていない時
+   */
   def getChildCount(parent: Any) = withSource(parent){ parent =>
     ensureChildrenLoad(parent)
     treeDelegate getChildCount parent
   }
   
-  /** 子項目 */
+  /** 
+   * 子項目の取得
+   * @param parent {@code A} 型で親ノードから既に読み出されたことがあるオブジェクト
+   * @param index 位置
+   * @retrun 子項目
+   * @throws IllegalArgumentException {@code parent} が {@code A} 型でない時
+   * @throws IndexOutOfBoundsException {@code index} が 0 未満か {@link #getChildCount(Any)}
+   *         の値以上の時
+   */
   def getChild(parent: Any, index: Int): A = withSource(parent){ parent =>
     ensureChildrenLoad(parent)
     val child = treeDelegate.getChild(parent, index).asInstanceOf[DefaultMutableTreeNode]
@@ -60,7 +81,15 @@ class SourceTreeModel[A <: AnyRef: ClassManifest](source: TreeSource[A]) extends
       throw new IllegalStateException("Not a source item")
   }
   
-  /** 子項目の順序番号 */
+  /** 
+   * 子項目の順序番号を取得
+   * @param parent {@code A} 型で親ノードから既に読み出されたことがあるオブジェクト
+   * @param child {@code A} 型で親ノードから既に読み出されたことがあるオブジェクト
+   * @retrun 順序番号
+   * @throws IllegalArgumentException {@code parent} もしくは {@code child} が
+   *         {@code A} 型でない時
+   * @throws NoSuchElementException {@code parent} の親が不明でパスが定まっていない時
+   */
   def getIndexOfChild(parent: Any, child: Any) = withSource(parent) { parent =>
     withSource(child) { child =>
       treeDelegate.getIndexOfChild(parent, child)
@@ -85,11 +114,22 @@ class SourceTreeModel[A <: AnyRef: ClassManifest](source: TreeSource[A]) extends
   }
   
   /** 子要素の再読み込み */
-  private def reloadChildren(node: SourceTreeNode[A]) =
-    node.updateChildren(
-      source childrenFor node.nodeObject map treeNodeFor)
+  private def reloadChildren(node: SourceTreeNode[A]) {
+    val children =
+      if (treeDelegate isLeaf node)
+        IndexedSeq.empty[SourceTreeNode[A]]
+      else
+        source childrenFor node.nodeObject map treeNodeFor
+    node.updateChildren(children)
+  }
   
-  /** 項目を持つ TreeNode に対する処理 */
+  /** 
+   * {@code A} 型項目を持つ TreeNode に対する処理 
+   * @param item {@code A} 型のオブジェクト
+   * @param taskWith {@code SourceTreeNode[A]} を受け、 {@code B} の値を返す関数。
+   * @throws IllegalArgumentException {@code item} が {@code A} 型 でない時
+   * @throws NoSuchElementException {@code item} がこのモデルでは不明である時
+   */
   private def withSource[B](item: Any)(taskWith: SourceTreeNode[A] => B) = 
     if (itemClass.erasure isInstance item)
       taskWith(treeNodes(item.asInstanceOf[A]))
