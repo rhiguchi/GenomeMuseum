@@ -35,6 +35,9 @@ public class MainView {
         
         final Constraints container = layout.getConstraints(contentPane);
         
+        sourceListDataTableSplit.setDividerLocation(160);
+        dataTable.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
+        
         contentPane.add(sourceListDataTableSplit);
         contentPane.add(quickSearchField);
         
