@@ -9,6 +9,10 @@ import scala.swing.Frame
 
 class GenomeMuseumGUI extends Application {
   import jp.scid.genomemuseum.model.MuseumExhibit
+  
+  // リソースのネームスペースを無しに設定
+  getContext.getResourceManager.setResourceFolder("")
+  
   // Views
   lazy val mainFrame = new Frame {
     val mainView = new MainView
@@ -30,6 +34,9 @@ class GenomeMuseumGUI extends Application {
   private lazy val actionFor = GenomeMuseumGUI.actionFor(getContext.getActionMap(this))_
   lazy val openAction = actionFor("openFile")
   lazy val quitAction = actionFor("quit")
+  
+  override protected def initialize(args: Array[String]) {
+  }
   
   override def startup() {
     val frame = mainFrame.peer

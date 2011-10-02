@@ -33,8 +33,6 @@ class MainViewController(
   
   /** リソースを設定する */
   private def reloadResources() {
-    reloadResources(ResourceBundle.getBundle(
-      classOf[MainViewController].getName))
   }
   
   private def reloadResources(res: ResourceBundle) {
