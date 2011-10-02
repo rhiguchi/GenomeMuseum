@@ -21,7 +21,10 @@ libraryDependencies ++= Seq(
 
 resolvers += "releases" at "http://scala-tools.org/repo-releases"
 
-proguardOptions += keepMain("jp.scid.genomemuseum.GenomeMuseum")
+proguardOptions ++= Seq(
+  keepMain("jp.scid.genomemuseum.GenomeMuseum"),
+  "-dontobfuscate", "-dontoptimize", "-dontnote", "-keep class jp.scid.** { *; }"
+)
 
 maxErrors := 20
 
