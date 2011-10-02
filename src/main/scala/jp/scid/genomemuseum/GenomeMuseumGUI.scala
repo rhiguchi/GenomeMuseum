@@ -1,11 +1,12 @@
 package jp.scid.genomemuseum
 
 import java.awt.{BorderLayout}
+import org.jdesktop.application.Application
 import view.{MainView, MainViewMenuBar}
 import controller.{ExhibitTableController, MainViewController}
 import scala.swing.{MainFrame}
 
-class GenomeMuseumGUI {
+class GenomeMuseumGUI extends Application {
   lazy val mainFrame = new MainFrame {
     val mainView = new MainView
     val mainMenu = new MainViewMenuBar
@@ -18,7 +19,7 @@ class GenomeMuseumGUI {
     peer.getContentPane.add(mainView.contentPane, "Center")
   }
   
-  def start() {
+  override def startup() {
     val mainCtrl = new MainViewController(
       mainFrame.mainView, mainFrame.peer, mainFrame.mainMenu)
     loadSampleFilesTo(mainCtrl.tableCtrl)

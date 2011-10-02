@@ -10,6 +10,7 @@ seq(ProguardPlugin.proguardSettings :_*)
 
 libraryDependencies ++= Seq(
   "org.scala-lang" % "scala-swing" % "2.9.1",
+  "org.jdesktop.bsaf" % "bsaf" % "1.9.2",
   "net.java.dev.glazedlists" % "glazedlists_java15" % "1.8.0",
   "com.h2database" % "h2" % "1.3.160",
   "org.specs2" %% "specs2" % "1.6.1" % "test",
