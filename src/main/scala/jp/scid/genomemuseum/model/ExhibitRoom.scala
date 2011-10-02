@@ -5,14 +5,17 @@ package jp.scid.genomemuseum.model
  */
 trait ExhibitRoom {
   def name: String
-  def contents: List[MuseumExhibit]
+  def children: List[ExhibitRoom]
 }
 
 object ExhibitRoom {
-  def apply(name: String): ExhibitRoom = apply(name, Nil)
+  def apply(name: String, children: ExhibitRoom*): ExhibitRoom =
+    ExhibitRoom(name, children.toList)
   
-  def apply(name: String, contents: List[MuseumExhibit]) = new ExhibitRoom {
-    def name = name
-    def contents = contents
+  def apply(name0: String, children0: List[ExhibitRoom]) = new ExhibitRoom {
+    val name: String = name0
+    val children: List[ExhibitRoom] = children0
+    
+    override def toString() = name
   }
 }
