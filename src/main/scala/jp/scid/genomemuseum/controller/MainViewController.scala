@@ -3,8 +3,9 @@ package jp.scid.genomemuseum.controller
 import java.util.ResourceBundle
 import java.awt.FileDialog
 import java.io.{File, FileInputStream}
-import jp.scid.genomemuseum.view
+import jp.scid.genomemuseum.{view, model}
 import view.{MainView, MainViewMenuBar}
+import model.MuseumSourceModel
 import javax.swing.JFrame
 import scala.swing.Action
 
@@ -15,12 +16,15 @@ class MainViewController(
 ) {
   val tableCtrl = new ExhibitTableController(mainView.dataTable,
     mainView.quickSearchField)
+  val sourceModel = new MuseumSourceModel
   val openAction = Action("Open") { openFile }
   val quitAction = Action("Quit") { quitApplication }
   lazy val openDialog = new FileDialog(frameOfMainView, "", FileDialog.LOAD)
   protected val transferHandler = new BioFileTransferHandler(this)
   
   mainView.dataTableScroll.setTransferHandler(transferHandler)
+  mainView.sourceList.setModel(sourceModel.treeModel)
+  mainView.sourceList.setSelectionModel(sourceModel.treeSelectionModel)
   
   bindActions(menu)
   reloadResources()
