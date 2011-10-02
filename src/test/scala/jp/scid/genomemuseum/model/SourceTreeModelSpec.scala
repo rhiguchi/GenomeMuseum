@@ -2,10 +2,12 @@ package jp.scid.genomemuseum.model
 
 import org.specs2.mutable._
 import org.specs2.mock._
+import javax.swing.tree.TreePath
+import javax.swing.event.{TreeModelListener}
 
 class SourceTreeModelSpec extends Specification with Mockito {
-  "SourceTreeModel" should {
-    val treeSource = mock[TreeSource[String]]
+  def createTreeSourceMock[T <: TreeSource[String]: ClassManifest]() = {
+    val treeSource = mock[T]
     treeSource.root returns "root"
     treeSource.isLeaf("root") returns false
     treeSource.childrenFor("root") returns List("A", "B", "C")
@@ -15,7 +17,11 @@ class SourceTreeModelSpec extends Specification with Mockito {
     treeSource.childrenFor("B") returns List("B-A", "B-B", "B-C")
     treeSource.isLeaf("C") returns false
     treeSource.childrenFor("C") returns List()
-    
+    treeSource
+  }
+  
+  "SourceTreeModel" should {
+    val treeSource = createTreeSourceMock[TreeSource[String]]()
     
     "ルートオブジェクト 取得" in {
       val model = new SourceTreeModel(treeSource)
@@ -154,6 +160,50 @@ class SourceTreeModelSpec extends Specification with Mockito {
         val model = new SourceTreeModel(treeSource)
         val rootItem = model.getRoot
         model.getIndexOfChild(123, "A") must throwA[IllegalArgumentException]
+      }
+    }
+    
+    "値の変更" in {
+      "source の update 呼び出し" in {
+        val treeSource = createTreeSourceMock[EditableTreeSource[String]]()
+        val model = new SourceTreeModel(treeSource)
+        val rootItem = model.getRoot
+        val itemC = model.getChild(rootItem, 2)
+        
+        val listener = mock[TreeModelListener]
+        model addTreeModelListener listener
+        
+        val path = new TreePath(Array[Object](rootItem, itemC))
+        model.valueForPathChanged(path, "newVal")
+        there was one(treeSource).update(
+          IndexedSeq("root", "C"), "newVal")
+      }
+      
+      "リスナーの反応" in {
+        val treeSource = createTreeSourceMock[EditableTreeSource[String]]()
+        val model = new SourceTreeModel(treeSource)
+        val rootItem = model.getRoot
+        val itemC = model.getChild(rootItem, 2)
+        
+        val listener = mock[TreeModelListener]
+        model addTreeModelListener listener
+        
+        val path = new TreePath(Array[Object](rootItem, itemC))
+        model.valueForPathChanged(path, "newVal")
+        there was one(listener).treeNodesChanged(any)
+      }
+      
+      "source が TreeSource ではリスナーを呼ばない" in {
+        val model = new SourceTreeModel(treeSource)
+        val rootItem = model.getRoot
+        val itemC = model.getChild(rootItem, 2)
+        
+        val listener = mock[TreeModelListener]
+        model addTreeModelListener listener
+        val path = new TreePath(Array[Object](rootItem, itemC))
+        model.valueForPathChanged(path, "newVal")
+        
+        there was no(listener).treeNodesChanged(any)
       }
     }
   }

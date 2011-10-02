@@ -96,10 +96,23 @@ class SourceTreeModel[A <: AnyRef: ClassManifest](source: TreeSource[A]) extends
     }
   }
   
-  /** 値の変更 */
+  /** 
+   * 項目の値の変更。
+   * {@code source} が {@code EditableTreeSource} を継承している場合にのみ有効。
+   * @param path {@code A} 型のオブジェクトからなる変更項目までのパス
+   * @param newValue 変更情報を持つ値
+   * @throws IllegalArgumentException {@code path} に {@code A} 型でないオブジェクトが含まれている。
+   * @throws NoSuchElementException {@code path} にパスが定まっていない項目が含まれる時。
+   */
   def valueForPathChanged(path: TreePath, newValue: AnyRef) {
-    // val pathSeq: IndexedSeq[A]
-    // TODO
+    val seqPath = convertTreePath(path)
+    val lastNode = treeNodes(seqPath.last)
+    source match {
+      case source: EditableTreeSource[A] =>
+        source.update(seqPath, newValue)
+        treeDelegate nodeChanged lastNode
+      case _ =>
+    }
   }
   
   // リスナー
@@ -150,6 +163,18 @@ object SourceTreeModel {
       myChildren = Some(newChildren.toIndexedSeq)
       removeAllChildren()
       newChildren foreach add
+    }
+  }
+  
+  /** TreePath から [A] 型の配列を作成 */
+  private def convertTreePath[A: ClassManifest](path: TreePath): IndexedSeq[A] = {
+    val itemClass = implicitly[ClassManifest[A]]
+    path.getPath map { obj => 
+      if (itemClass.erasure isInstance obj)
+        obj.asInstanceOf[A]
+      else
+        throw new IllegalArgumentException("The path item '%s' must be a %s"
+        .format(obj, itemClass.erasure.getName))
     }
   }
 }

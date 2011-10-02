@@ -28,3 +28,11 @@ trait TreeSource[A] {
   /** 末端要素であるか */
   def isLeaf(node: A): Boolean
 }
+
+/**
+ * 変更可能ツリー階層の定義
+ */
+trait EditableTreeSource[A] extends TreeSource[A] {
+  /** 値の更新 */
+  def update(path: IndexedSeq[A], newValue: AnyRef): A
+}
