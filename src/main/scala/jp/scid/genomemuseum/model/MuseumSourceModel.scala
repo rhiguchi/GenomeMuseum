@@ -2,7 +2,7 @@ package jp.scid.genomemuseum.model
 
 import javax.swing.tree.{TreeModel, TreeSelectionModel, DefaultTreeSelectionModel,
   DefaultMutableTreeNode, DefaultTreeModel, TreePath}
-import javax.swing.event.{TreeModelListener}
+import javax.swing.event.TreeModelListener
   
 class MuseumSourceModel {
   /** ソースリストのツリー構造 */
@@ -35,8 +35,7 @@ class SourceTreeModel[A <: AnyRef: ClassManifest](source: TreeSource[A]) extends
   private lazy val rootSource = treeNodeFor(source.root)
   
   /** ツリー構造管理の委譲先 */
-  // TODO イベントのディスパッチを書き直し
-  private lazy val treeDelegate = new DefaultTreeModel(rootSource, true)
+  private lazy val treeDelegate = new SourceTreeModelDelegate(rootSource)
   
   /** ルート項目を取得 */
   def getRoot: A = rootSource.nodeObject
@@ -149,6 +148,57 @@ class SourceTreeModel[A <: AnyRef: ClassManifest](source: TreeSource[A]) extends
     else
       throw new IllegalArgumentException("%s must be a %s"
         .format(item.getClass, itemClass.erasure.getName))
+  
+  /** 
+   * {@code SourceTreeNode[A]} 型ノードから項目を取得
+   * @param node {@code SourceTreeNode[A]} 型のオブジェクト
+   * @return {@code A} 型であるノードオブジェクト
+   * @throws IllegalStateException {@code node} が {@code SourceTreeNode[A]} 型 でない時
+   */
+  private def convertItem(node: AnyRef) = node match {
+    case node: SourceTreeNode[A] => node.nodeObject
+    case _ =>  throw new IllegalStateException("%s must be a SourceTreeNode".format(node))
+  }
+  
+  /**
+   * イベントを実装するための DefaultTreeModel 委譲クラス
+   */
+  private class SourceTreeModelDelegate[A](rootNode: SourceTreeNode[A])
+      extends DefaultTreeModel(rootNode, true) {
+    import javax.swing.event.TreeModelEvent
+    
+    override protected def fireTreeNodesChanged(source: AnyRef, path: Array[AnyRef],
+        childIndices: Array[Int], children: Array[AnyRef]) {
+      fireEvent(source, path, childIndices, children){_ treeNodesChanged _}
+    }
+    
+    override protected def fireTreeNodesInserted(source: AnyRef, path: Array[AnyRef],
+        childIndices: Array[Int], children: Array[AnyRef]) {
+      fireEvent(source, path, childIndices, children){_ treeNodesInserted _}
+    }
+    
+    override protected def fireTreeNodesRemoved(source: AnyRef, path: Array[AnyRef],
+        childIndices: Array[Int], children: Array[AnyRef]) {
+      fireEvent(source, path, childIndices, children){_ treeNodesRemoved _}
+    }
+    
+    override protected def fireTreeStructureChanged(source: AnyRef, path: Array[AnyRef],
+        childIndices: Array[Int], children: Array[AnyRef]) {
+      fireEvent(source, path, childIndices, children){_ treeStructureChanged _}
+    }
+    
+    private def fireEvent(source: AnyRef, path: Array[AnyRef],
+        childIndices: Array[Int], children: Array[AnyRef])
+        (fire: (TreeModelListener, TreeModelEvent) => Unit) {
+      lazy val itemPath: Array[Object] =
+        if (path == null) null else path map convertItem
+      lazy val itemChildren: Array[Object] = 
+        if (children == null) null else children map convertItem
+      lazy val e = new TreeModelEvent(source, itemPath, childIndices, itemChildren)
+      
+      getTreeModelListeners.foreach(fire(_, e))
+    }
+  }
 }
 
 object SourceTreeModel {
