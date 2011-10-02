@@ -1,95 +1,34 @@
 package jp.scid.genomemuseum.controller
 
 import java.util.ResourceBundle
-import java.awt.FileDialog
 import java.io.{File, FileInputStream}
-import jp.scid.genomemuseum.{view, model}
+import jp.scid.genomemuseum.{view, model, GenomeMuseumGUI}
 import view.{MainView, MainViewMenuBar}
 import model.MuseumSourceModel
 import javax.swing.JFrame
 import scala.swing.Action
 
+
 class MainViewController(
+  parent: GenomeMuseumGUI,
   mainView: MainView,
-  frameOfMainView: JFrame,
-  menu: MainViewMenuBar
+  frameOfMainView: JFrame
 ) {
   val tableCtrl = new ExhibitTableController(mainView.dataTable,
     mainView.quickSearchField)
   val sourceModel = new MuseumSourceModel
-  val openAction = Action("Open") { openFile }
-  val quitAction = Action("Quit") { quitApplication }
-  lazy val openDialog = new FileDialog(frameOfMainView, "", FileDialog.LOAD)
-  protected val transferHandler = new BioFileTransferHandler(this)
+  protected val transferHandler = new BioFileTransferHandler(parent)
   
   mainView.dataTableScroll.setTransferHandler(transferHandler)
   mainView.sourceList.setModel(sourceModel.treeModel)
   mainView.sourceList.setSelectionModel(sourceModel.treeSelectionModel)
   
-  bindActions(menu)
   reloadResources()
   
   def showFrame() {
     frameOfMainView.pack
     frameOfMainView setLocationRelativeTo null
     frameOfMainView setVisible true
-  }
-  
-  def openFile() {
-    println("openFile")
-    openDialog setVisible true
-    val fileName = Option(openDialog.getFile)
-    
-    fileName.map(new File(openDialog.getDirectory, _)).foreach(loadBioFile)
-  }
-  
-  def quitApplication() {
-    System.exit(0)
-  }
-  
-  def loadBioFile(files: Seq[File]) {
-    files foreach loadBioFile
-  }
-  
-  protected def loadBioFile(file: File) {
-    import jp.scid.genomemuseum.model.MuseumExhibit
-    println("loadBioFile: " + file)
-    
-    def using[A <% java.io.Closeable, B](s: A)(f: A => B) = {
-      try f(s) finally s.close()
-    }
-    
-    // 拡張子で判別
-    // TODO ファイルの中身を読んで判別
-    val e = if (file.getName.endsWith(".gbk")) {
-      val parser = new jp.scid.bio.GenBankParser
-      val data = using(new FileInputStream(file)) { inst =>
-        val source = io.Source.fromInputStream(inst)
-        parser.parseFrom(source.getLines)
-      }
-      Some(MuseumExhibit(data.locus.name, data.locus.sequenceLength))
-    }
-    else if (file.getName.endsWith(".faa") ||
-        file.getName.endsWith(".fna") || file.getName.endsWith(".ffn") ||
-        file.getName.endsWith(".fasta")) {
-      val parser = new jp.scid.bio.FastaParser
-      val data = using(new FileInputStream(file)) { inst =>
-        val source = io.Source.fromInputStream(inst)
-        parser.parseFrom(source.getLines)
-      }
-      Some(MuseumExhibit(data.header.accession, data.sequence.value.length))
-    }
-    else {
-      None
-    }
-    
-    e.map(tableCtrl.tableSource.add)
-    
-  }
-  
-  def bindActions(menu: MainViewMenuBar) {
-    menu.open.action = openAction
-    menu.quit.action = quitAction
   }
   
   /** リソースを設定する */
@@ -100,9 +39,6 @@ class MainViewController(
   
   private def reloadResources(res: ResourceBundle) {
     val rm = new ResourceManager(res)
-    rm.injectTo(openAction, "openAction")
-    rm.injectTo(quitAction, "quitAction")
-    menu.reloadResources
   }
 }
 
@@ -138,7 +74,7 @@ import scala.swing.Swing
 /**
  * ファイル転送ハンドラ
  */
-class BioFileTransferHandler(controller: MainViewController) extends TransferHandler {
+class BioFileTransferHandler(controller: GenomeMuseumGUI) extends TransferHandler {
   import java.awt.datatransfer.DataFlavor
   
   override def canImport(comp: JComponent, flavors: Array[DataFlavor]): Boolean = {

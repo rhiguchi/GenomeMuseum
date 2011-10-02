@@ -1,13 +1,16 @@
 package jp.scid.genomemuseum
 
-import java.awt.{BorderLayout}
+import java.awt.{BorderLayout, FileDialog}
+import java.io.{File, FileInputStream}
 import org.jdesktop.application.Application
 import view.{MainView, MainViewMenuBar}
 import controller.{ExhibitTableController, MainViewController}
-import scala.swing.{MainFrame}
+import scala.swing.{Frame, Action}
 
 class GenomeMuseumGUI extends Application {
-  lazy val mainFrame = new MainFrame {
+  import jp.scid.genomemuseum.model.MuseumExhibit
+  // Views
+  lazy val mainFrame = new Frame {
     val mainView = new MainView
     val mainMenu = new MainViewMenuBar
     
@@ -18,13 +21,82 @@ class GenomeMuseumGUI extends Application {
     peer.getContentPane.setLayout(new BorderLayout)
     peer.getContentPane.add(mainView.contentPane, "Center")
   }
+  lazy val openDialog = new FileDialog(mainFrame.peer, "", FileDialog.LOAD)
+  
+  // Controllers
+  var mainCtrl: MainViewController = _
+  
+  // Actions
+  lazy val openAction = Action("Open") { openFile() }
+  lazy val quitAction = Action("Quit") { exit() }
   
   override def startup() {
-    val mainCtrl = new MainViewController(
-      mainFrame.mainView, mainFrame.peer, mainFrame.mainMenu)
-    loadSampleFilesTo(mainCtrl.tableCtrl)
+    val frame = mainFrame.peer
+    frame.setDefaultCloseOperation(javax.swing.WindowConstants.DO_NOTHING_ON_CLOSE)
     
+    mainCtrl = new MainViewController(this,
+      mainFrame.mainView, mainFrame.peer)
+    bindMenuBarActions(mainFrame.mainMenu, mainCtrl)
+    loadSampleFilesTo(mainCtrl.tableCtrl)
+  }
+  
+  override protected def ready() {
     mainCtrl.showFrame
+  }
+  
+  private def bindMenuBarActions(menu: MainViewMenuBar, controller: MainViewController) {
+    menu.open.action = openAction
+    menu.quit.action = quitAction
+  }
+  
+  def openFile() {
+    println("openFile")
+    openDialog setVisible true
+    val fileName = Option(openDialog.getFile)
+    
+    fileName.map(new File(openDialog.getDirectory, _)).foreach(loadBioFile)
+  }
+  
+  def loadBioFile(files: Seq[File]) {
+    files foreach loadBioFile
+  }
+  
+  protected def loadBioFile(file: File) {
+    println("loadBioFile: " + file)
+    
+    def using[A <% java.io.Closeable, B](s: A)(f: A => B) = {
+      try f(s) finally s.close()
+    }
+    
+    // 拡張子で判別
+    // TODO ファイルの中身を読んで判別
+    val e = if (file.getName.endsWith(".gbk")) {
+      val parser = new jp.scid.bio.GenBankParser
+      val data = using(new FileInputStream(file)) { inst =>
+        val source = io.Source.fromInputStream(inst)
+        parser.parseFrom(source.getLines)
+      }
+      Some(MuseumExhibit(data.locus.name, data.locus.sequenceLength))
+    }
+    else if (file.getName.endsWith(".faa") ||
+        file.getName.endsWith(".fna") || file.getName.endsWith(".ffn") ||
+        file.getName.endsWith(".fasta")) {
+      val parser = new jp.scid.bio.FastaParser
+      val data = using(new FileInputStream(file)) { inst =>
+        val source = io.Source.fromInputStream(inst)
+        parser.parseFrom(source.getLines)
+      }
+      Some(MuseumExhibit(data.header.accession, data.sequence.value.length))
+    }
+    else {
+      None
+    }
+    
+    e.map(insertElement)
+  }
+  
+  private def insertElement(e: MuseumExhibit) {
+    mainCtrl.tableCtrl.tableSource add e
   }
   
   /**
