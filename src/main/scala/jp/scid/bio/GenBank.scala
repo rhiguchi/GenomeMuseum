@@ -168,8 +168,8 @@ object GenBank {
       /**
        * DEFINITION 行の文字列から Definition インスタンスを作成する
        * @param source 作成元文字列の配列
-       * @throws ParseException {@code source} の一つ目の要素が
-       *         {@code DEFINITION} から始まっていない場合。
+       * @return 作成に成功した時は {@code Some[Definition]} 。
+       *         形式に誤りがあるなどで作成できない時は {@code None}
        */
       def unapply(source: Seq[String]): Option[Definition] = source match {
         case Seq(Head(), _*) =>
@@ -186,7 +186,51 @@ object GenBank {
     secondary: IndexedSeq[String] = IndexedSeq.empty
   ) extends Element
   
-  
+  /**
+   * Accession 生成など
+   */
+  object Accession {
+    class Format extends ElementFormat("ACCESSION") {
+      /**
+       * ACCESSION 行の文字列から Accession インスタンスを作成する
+       * @param source 作成元文字列
+       * @return Accession インスタンス
+       * @throws ParseException {@code source} が {@code ACCESSION}
+       *         から始まっていない場合。
+       */
+      @throws(classOf[ParseException])
+      def parse(source: Seq[String]): Accession = unapply(source) match {
+        case Some(accession) => accession
+        case None => throw new ParseException("Invalid format", 0)
+      }
+      
+      /**
+       * ACCESSION 行の文字列から Accession インスタンスを作成する
+       * @param source 作成元文字列
+       * @return 作成に成功した時は {@code Some[Accession]} 。
+       *         形式に誤りがあるなどで作成できない時は {@code None}
+       */
+      def unapply(source: String): Option[Accession] = unapply(Seq(source))
+      
+      /**
+       * ACCESSION 行の文字列から Accession インスタンスを作成する
+       * @param source 作成元文字列の配列
+       * @return 作成に成功した時は {@code Some[Accession]} 。
+       *         形式に誤りがあるなどで作成できない時は {@code None}
+       */
+      def unapply(source: Seq[String]): Option[Accession] = source match {
+        case Seq(Head(), _*) =>
+          val seqVal = source withFilter (_.length >= keySize) flatMap
+            (_ substring keySize trim() split "\\s+")
+          val acc = seqVal match {
+            case Seq(head, tail @ _*) => Accession(head, tail.toIndexedSeq)
+            case _ => Accession()
+          }
+          Some(acc)
+        case _ => None
+      }
+    }
+  }
   
   /** Version 要素 */
   case class Version (

@@ -69,6 +69,42 @@ class GenBankSpec extends Specification {
       }
     }
     
+    "Accession.Format" in {
+      import GenBank.Accession
+      val format = new Accession.Format
+      val text1 = "ACCESSION   AE017263 AADU01000000 AADU01000001"
+      val text2 = "ACCESSION   NC_009347"
+      val lines =
+        """ACCESSION   BA000002 AP000058 AP000059 AP000060 AP000061 AP000062 AP000063
+          |            AP000064""".stripMargin.split("\n").toList
+      
+      "Head オブジェクトの行認知" in {
+        format.Head.unapply(text1) must beTrue
+        format.Head.unapply(text2) must beTrue
+        format.Head.unapply(lines.head) must beTrue
+        format.Head.unapply(lines.tail.head) must beFalse
+      }
+      
+      "単行1" in {
+        val a = format unapply text1 get;
+        a.primary must_==("AE017263")
+        a.secondary must_== IndexedSeq("AADU01000000", "AADU01000001")
+      }
+      
+      "単行2" in {
+        val a = format unapply text2 get;
+        a.primary must_==("NC_009347")
+        a.secondary must_== IndexedSeq()
+      }
+      
+      "複数行" in {
+        val a = format parse lines
+        a.primary must_==("BA000002")
+        a.secondary must_== IndexedSeq("AP000058", "AP000059", "AP000060",
+          "AP000061", "AP000062", "AP000063", "AP000064")
+      }
+    }
+    
     "Features 構文解析" in {
       import GenBank.Features
       
