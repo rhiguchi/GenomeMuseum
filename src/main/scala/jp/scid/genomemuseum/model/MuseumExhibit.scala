@@ -3,14 +3,23 @@ package jp.scid.genomemuseum.model
 import java.util.Date
 import net.liftweb.mapper._
 
-case class MuseumExhibit(
-  var name: String = "",
-  var sequenceLength: Int = 0,
-  var source: String = "",
-  var date: Option[Date] = None
-) extends LongKeyedMapper[MuseumExhibit] with IdPK {
+class MuseumExhibit extends LongKeyedMapper[MuseumExhibit] with IdPK {
   def getSingleton = MuseumExhibit
+  
+  object name extends MappedText(this)
+  object sequenceLength extends MappedInt(this)
+  object source extends MappedText(this)
+  object dateUpdate extends MappedDate(this)
+  
+  def date = Option(dateUpdate.is)
 }
 
-object MuseumExhibit extends MuseumExhibit("", 0, "", None) with LongKeyedMetaMapper[MuseumExhibit] {
+object MuseumExhibit extends MuseumExhibit with LongKeyedMetaMapper[MuseumExhibit] {
+  def apply(name: String, len: Int): MuseumExhibit =
+    apply(name, len, "")
+  
+  def apply(name: String, len: Int, source: String): MuseumExhibit = {
+    val e = MuseumExhibit.create
+    e.name(name).sequenceLength(len).source(source)
+  }
 }
