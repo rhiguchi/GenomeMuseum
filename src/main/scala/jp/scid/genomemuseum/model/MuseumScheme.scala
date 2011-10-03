@@ -5,6 +5,8 @@ import mapper.{Schemifier}
 
 trait MuseumScheme {
   def allMuseumExhibits(): List[MuseumExhibit]
+  
+  def store(entity: MuseumExhibit): Boolean
 }
 
 object MuseumScheme {
@@ -24,10 +26,14 @@ private class H2DatabaseMuseumScheme(location: String) extends MuseumScheme {
   Schemifier.schemify(true, Schemifier.neverF _, MuseumExhibit)
   
   def allMuseumExhibits() = MuseumExhibit.findAll
+  
+  def store(entity: MuseumExhibit) =
+    entity.save
 }
 
 private class EmptyMuseumScheme extends MuseumScheme {
   def allMuseumExhibits() = Nil
+  def store(entity: MuseumExhibit) = true
 }
 
 import mapper.{ConnectionIdentifier, ConnectionManager}
