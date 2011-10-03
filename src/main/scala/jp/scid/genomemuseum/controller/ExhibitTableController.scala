@@ -3,6 +3,9 @@ package jp.scid.genomemuseum.controller
 import javax.swing.{JTable, JTextField}
 import java.awt.event.{KeyAdapter, KeyEvent}
 
+import scala.collection.{mutable, script}
+import mutable.{ObservableBuffer, Undoable}
+
 import ca.odell.glazedlists.{swing => glswing, BasicEventList,
   TextFilterator, FilterList}
 import glswing.{EventTableModel, SearchEngineTextFieldMatcherEditor}
@@ -31,6 +34,50 @@ class ExhibitTableController(
   
   // データバインディング
   table.setModel(tableModel)
+  
+  def bindTableSource(buf: ObservableBuffer[MuseumExhibit]) {
+    import scala.collection.JavaConverters._
+    type Event = script.Message[MuseumExhibit] with Undoable
+    val subscription = new buf.Sub {
+      import script._
+      
+      def notify(src: buf.Pub, event: Event) {
+        tableSource.getReadWriteLock().writeLock().lock();
+        try {
+          processEvent(event)
+        }
+        finally {
+          tableSource.getReadWriteLock().writeLock().unlock();
+        }
+      }
+      
+      def processEvent(event: Message[MuseumExhibit]): Unit = event match {
+        case Include(loc, elm) =>
+          tableSource add elm
+        case Remove(loc, elm) =>
+          tableSource remove elm
+        case Update(loc, elm) => loc match {
+          case Index(index) => tableSource.set(index, elm)
+          case Start => tableSource.set(0, elm)
+          case End => tableSource.set(tableSource.size, elm)
+          case NoLo => // TODO logging
+        }
+        case event: Script[_] =>
+          event.asInstanceOf[Script[MuseumExhibit]].foreach(processEvent)
+        case Reset() => // TODO logging
+      }
+    }
+    
+    tableSource.getReadWriteLock().writeLock().lock();
+    try {
+      tableSource.clear()
+      tableSource.addAll(buf.asJava)
+      buf subscribe subscription
+    }
+    finally {
+      tableSource.getReadWriteLock().writeLock().unlock();
+    }
+  }
 }
 
 protected class ExhibitTableTextFilterator

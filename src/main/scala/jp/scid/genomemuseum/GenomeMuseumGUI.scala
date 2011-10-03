@@ -5,6 +5,7 @@ import java.io.{File, FileInputStream}
 import org.jdesktop.application.{Application, Action}
 import view.{MainView, MainViewMenuBar}
 import controller.{ExhibitTableController, MainViewController}
+import model.{MuseumScheme, MuseumDataSource}
 import scala.swing.Frame
 
 class GenomeMuseumGUI extends Application {
@@ -35,7 +36,13 @@ class GenomeMuseumGUI extends Application {
   lazy val openAction = actionFor("openFile")
   lazy val quitAction = actionFor("quit")
   
+  // Model
+  private var dataSource = new MuseumDataSource(MuseumScheme.empty)
+  
   override protected def initialize(args: Array[String]) {
+    
+    val scheme = MuseumScheme.onMemory
+    dataSource = new MuseumDataSource(scheme)
   }
   
   override def startup() {
@@ -45,7 +52,10 @@ class GenomeMuseumGUI extends Application {
     mainCtrl = new MainViewController(this,
       mainFrame.mainView, mainFrame.peer)
     bindMenuBarActions(mainFrame.mainMenu, mainCtrl)
-    loadSampleFilesTo(mainCtrl.tableCtrl)
+    
+    val tableSource = dataSource.allExibits
+    mainCtrl.tableCtrl bindTableSource tableSource
+    tableSource ++= sampleExhibits
   }
   
   override protected def ready() {
@@ -112,10 +122,8 @@ class GenomeMuseumGUI extends Application {
    * サンプルデータを 10 件設定する
    * @param controller 流し込み先コントローラ
    */
-  private def loadSampleExhibitsTo(controller: ExhibitTableController) {
+  private def sampleExhibits() = {
     import model.MuseumExhibit
-    import ca.odell.glazedlists.GlazedLists
-    import scala.collection.JavaConverters._
     
     val samples = List(
       MuseumExhibit("item1", 500, "item1-source"),
@@ -129,14 +137,7 @@ class GenomeMuseumGUI extends Application {
       MuseumExhibit("item9", 200000, "item9-source"),
       MuseumExhibit("item10", 55500, "item10-source")
     )
-    val target = controller.tableSource
-    target.getReadWriteLock().writeLock().lock();
-    try {
-      GlazedLists.replaceAll(target, samples.asJava, true)
-    }
-    finally {
-      target.getReadWriteLock().writeLock().unlock();
-    }
+    samples
   }
   
   /**
