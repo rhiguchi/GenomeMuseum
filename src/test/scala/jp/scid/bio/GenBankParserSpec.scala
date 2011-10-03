@@ -8,6 +8,8 @@ class GenBankParserSpec extends Specification {
   val testResource2 = classOf[GenBankParserSpec].getResource("NC_009347.gbk")
   
   "GenBankParser" should {
+    import GenBank._
+    def dateFromat = new java.text.SimpleDateFormat("yyyy-MM-dd")
     val parser = new GenBankParser
     
     "テキストファイルからの読み込み 1" in {
@@ -15,7 +17,15 @@ class GenBankParserSpec extends Specification {
         val source = io.Source.fromInputStream(inst)
         parser.parseFrom(source.getLines)
       }
-      genbank.locus.name must beEqualTo("NC_001773")
+      
+      "Locus" in {
+        genbank.locus must_== Locus("NC_001773", 3444, "bp", "DNA", "circular",
+          "BCT", Some(dateFromat.parse("2006-03-30")))
+      }
+      
+      "Definition" in {
+        genbank.definition must_== Definition("Pyrococcus abyssi GE5 plasmid pGT5, complete sequence.")
+      }
     }
     
     "テキストファイルからの読み込み 2" in {
@@ -23,7 +33,15 @@ class GenBankParserSpec extends Specification {
         val source = io.Source.fromInputStream(inst)
         parser.parseFrom(source.getLines)
       }
-      genbank.locus.name must beEqualTo("NC_009347")
+      
+      "Locus" in {
+        genbank.locus must_== Locus("NC_009347", 2101, "bp", "DNA", "circular",
+          "BCT", Some(dateFromat.parse("2007-04-19")))
+      }
+      
+      "Definition" in {
+        genbank.definition must_== Definition("Shigella sonnei Ss046 plasmid pSS046_spC, complete sequence.")
+      }
     }
   }
   

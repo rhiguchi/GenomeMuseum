@@ -12,6 +12,7 @@ class GenBankParser {
   import collection.mutable.{ListBuffer, Buffer}
   
   val locusFormat = new Locus.Format
+  val definitionFormat = new Definition.Format
   
   /**
    * 文字列情報から {@code GenBank} オブジェクトを生成する
@@ -34,8 +35,49 @@ class GenBankParser {
   @throws(classOf[ParseException])
   private def createFrom(source: BufferedIterator[String]) = {
     val locus = locusFormat.parse(source.next)
+    val defaultVal = GenBank()
+    var definition = defaultVal.definition
+    var accession = defaultVal.accession
+    var version = defaultVal.version
+    var keywords = defaultVal.keywords
+    var sourceObj = defaultVal.source
+    var references = defaultVal.references
+    var comment = defaultVal.comment
+    var features = defaultVal.features
+    var origin = defaultVal.origin
     
-    GenBank(locus)
+    /** 要素の行を読み込む。 */
+    def readElementLines(head: String, source: BufferedIterator[String]) =
+      readElementTail(ListBuffer(head), source, isElementContinuing _)
+    
+    /** 要素の構文解析 */
+    def parseElementFrom(head: String, tail: BufferedIterator[String]) = head match {
+      case definitionFormat.Head() => 
+        definition = definitionFormat parse readElementLines(head, source)
+      case _ =>
+        // TODO ログ出力
+    }
+    
+    /** 全ての要素の構文解析 */
+    @annotation.tailrec
+    def parseAllElementsFrom(source: BufferedIterator[String]) {
+      source.hasNext match {
+        case true =>
+          val head = source.next
+          isTermination(head) match {
+            case false =>
+              parseElementFrom(head, source)
+              parseAllElementsFrom(source)
+            case true =>
+          }
+        case false =>
+      }
+    }
+    
+    parseAllElementsFrom(source)
+    
+    GenBank(locus, definition, accession, version, keywords, sourceObj,
+      references, comment, features, origin)
   }
   
   /**
@@ -55,16 +97,12 @@ class GenBankParser {
     }
     else accumu
   
-  /** 要素の行を読み込む。最初の行は必ず要素行と見なされる。 */
-  private def readElementLines(source: BufferedIterator[String]) =
-    readElementTail(ListBuffer(source.next), source, elementContinuing _)
-  
   /** 要素の行が継続しているか */
-  private def elementContinuing(line: String) =
+  private def isElementContinuing(line: String) =
     line.startsWith("  ")
   
   /** セクションの終末を表す文字列であるか */
-  private def isTermination(line: String) =
+  protected def isTermination(line: String) =
     line.startsWith("//")
   
   /** Locus 行を表す文字列であるか */
