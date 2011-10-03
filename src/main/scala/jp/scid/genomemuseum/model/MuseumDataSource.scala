@@ -9,8 +9,8 @@ class MuseumDataSource(scheme: MuseumScheme) {
   
   def allExibits: ObservableBuffer[MuseumExhibit] = myAllExibits
   
-  def store(entity: MuseumExhibit) {
-    if (scheme store entity) {
+  def store(entities: Iterable[MuseumExhibit]) {
+    if (scheme saveExhibits entities) {
       reloadExibits()
     }
   }

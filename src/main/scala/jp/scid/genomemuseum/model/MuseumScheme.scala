@@ -4,6 +4,11 @@ trait MuseumScheme {
   def allMuseumExhibits(): List[MuseumExhibit]
   
   def store(entity: MuseumExhibit): Boolean
+  def saveExhibits(entities: Iterable[MuseumExhibit]): Boolean = {
+    var result = true
+    entities map store foreach (result &= _)
+    result
+  }
 }
 
 object MuseumScheme {
@@ -43,16 +48,20 @@ private class MuseumSquerylScheme(dbLocation: String,
     from(museumExhibits)(select(_)).toList
   }
   
-  def store(entity: MuseumExhibit) = transaction {
+  def store(entity: MuseumExhibit) = inTransaction {
     if (entity.isPersisted)
       museumExhibits.update(entity)
     else
       museumExhibits.insert(entity)
     true
   }
+  
+  override def saveExhibits(entities: Iterable[MuseumExhibit]) = inTransaction {
+    super.saveExhibits(entities)
+  }
 }
 
 private class EmptyMuseumScheme extends MuseumScheme {
   def allMuseumExhibits() = Nil
-  def store(entity: MuseumExhibit) = true
+  def store(entities: MuseumExhibit) = true
 }
