@@ -11,6 +11,8 @@ import GenBank._
 class GenBankParser {
   import collection.mutable.{ListBuffer, Buffer}
   
+  val locusFormat = new Locus.Format
+  
   /**
    * 文字列情報から {@code GenBank} オブジェクトを生成する
    * @param source 生成もとのテキスト。 LOCUS 行までは無視される。
@@ -31,7 +33,7 @@ class GenBankParser {
   
   @throws(classOf[ParseException])
   private def createFrom(source: BufferedIterator[String]) = {
-    val locus = Locus.parseFrom(source.next)
+    val locus = locusFormat.parse(source.next)
     
     GenBank(locus)
   }

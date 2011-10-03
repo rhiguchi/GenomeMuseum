@@ -44,7 +44,7 @@ object GenBank {
     molculeType: String = "",
     topology: String = "",
     division: String = "",
-    date: Date = new Date(0)
+    date: Option[Date] = None
   ) extends Element
   
   /**
@@ -60,33 +60,67 @@ object GenBank {
       """(\S+)?\s*""" + // Division 
       """(\S+)?""" r // Date
     
-    /**
-     * LOCUS 行の文字列から Locus インスタンスを作成する
-     * @param source 作成元文字列
-     * @return Locus インスタンス
-     * @throws ParseException {@code source} が {@code LOCUS}
-     *         から始まっていなく、また {@code keySize } で定義される
-     *         文字列長より短い場合。もしくは文字列形式に誤りがある場合。
-     */
-    @throws(classOf[ParseException])
-    def parseFrom(source: String): Locus = source match {
-      case source @ Head() if source.length >= keySize => source match {
-        case LocusPattern(name, seqLength, seqUnit, molType, topology,
-            division, date) =>
-          Locus(name, parseInt(seqLength), seqUnit, molType, topology,
-            division, parseDate(date))
-        case _ => throw new ParseException(
-          "sourse '%s' is invalid Locus format".format(source), 0)
-      }
-      case _ => throw new ParseException(
-        "sourse '%s' must start with '%s' and which length must >= %d"
-          .format(source, Head, keySize), 0)
-    }
+    private type Elements = (String, Option[(String, String)], Option[String],
+      Option[String], Option[String], Option[String])
     
-    /** 日付値を Date オブジェクトへ変換 */
-    @throws(classOf[ParseException])
-    private def parseDate(text: String): Date =
-      new SimpleDateFormat("dd-MMM-yyyy", java.util.Locale.US).parse(text)
+    /**
+     * LOCUS 行の文字列形式のクラス
+     */
+    class Format {
+      val headKey = Locus.headKey
+      
+      /**
+       * LOCUS 行の文字列から Locus インスタンスを作成する
+       * @param source 作成元文字列
+       * @return Locus インスタンス
+       * @throws ParseException {@code source} が {@code LOCUS}
+       *         から始まっていなく、また {@code keySize } で定義される
+       *         文字列長より短い場合。もしくは文字列形式に誤りがある場合。
+       */
+      @throws(classOf[ParseException])
+      def parse(source: String): Locus = unapply(source) match {
+        case Some(locus) => locus
+        case None => throw new ParseException("Invalid format", 0)
+      }
+      
+      /**
+       * LOCUS 行の文字列から Locus インスタンスを作成する
+       * @param source 作成元文字列
+       * @return 作成に成功した時は {@code Some[Locus]} 。
+       *         形式に誤りがあるなどで作成できない時は {@code None}
+       */
+      def unapply(source: String): Option[Locus] = fragmentate(source) match {
+        case Some((name, seqPair, molType, topology, division, date)) =>
+          val (seqLength, seqUnit) = seqPair.getOrElse("0", "")
+          Some(Locus(name, parseInt(seqLength), seqUnit, molType.getOrElse(""),
+            topology.getOrElse(""), division.getOrElse(""), date.map(parseDate)))
+        case _ => None
+      }
+      
+      /**
+       * 文字列を Locus 作成用に要素に分解する。
+       * @param source 作成元文字列
+       * @return 作成に成功した時は {@code Some()} 。
+       *         形式に誤りがあるなどで作成できない時は {@code None}
+       */
+      protected def fragmentate(source: String): Option[Elements] = source match {
+        case source @ Head() if source.length >= keySize => source match {
+          case LocusPattern(name, seqLength, seqUnit, molType, topology,
+              division, date) =>
+            val lengthPairOp = if (seqLength == null || seqUnit == null) None
+              else Some(seqLength, seqUnit)
+            Some(name, lengthPairOp, Option(molType), Option(topology),
+              Option(division), Option(date))
+          case _ => None
+        }
+        case _ => None
+      }
+    
+      /** 日付値を Date オブジェクトへ変換 */
+      @throws(classOf[ParseException])
+      protected def parseDate(text: String): Date =
+        new SimpleDateFormat("dd-MMM-yyyy", java.util.Locale.US).parse(text)
+    }
   }
   
   /**

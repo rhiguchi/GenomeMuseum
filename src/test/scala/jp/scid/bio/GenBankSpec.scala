@@ -10,6 +10,7 @@ class GenBankSpec extends Specification {
       import java.util.{Date, Calendar}
       import java.text.SimpleDateFormat
       
+      val format = new Locus.Format
       def dateFromat = new SimpleDateFormat("yyyy-MM-dd")
       val text1 = "LOCUS       NC_001773               3444 bp    DNA     circular BCT 30-MAR-2006"
       val text2 = "LOCUS       NC_009347               2101 aa    RNA     linear   BCT 19-APR-2007"
@@ -21,25 +22,25 @@ class GenBankSpec extends Specification {
       }
       
       "構文解析 1" in {
-        val locus = Locus parseFrom text1
+        val locus = format parse text1
         locus.name must_== "NC_001773"
         locus.sequenceLength must_== 3444
         locus.sequenceUnit must_== "bp"
         locus.molculeType must_== "DNA"
         locus.topology must_== "circular"
         locus.division must_== "BCT"
-        locus.date must_== dateFromat.parse("2006-03-30")
+        locus.date must_== Some(dateFromat.parse("2006-03-30"))
       }
       
       "構文解析 2" in {
-        val locus = Locus parseFrom text2
+        val locus = format unapply text2 get;
         locus.name must_== "NC_009347"
         locus.sequenceLength must_== 2101
         locus.sequenceUnit must_== "aa"
         locus.molculeType must_== "RNA"
         locus.topology must_== "linear"
         locus.division must_== "BCT"
-        locus.date must_== dateFromat.parse("2007-04-19")
+        locus.date must_== Some(dateFromat.parse("2007-04-19"))
       }
     }
     
