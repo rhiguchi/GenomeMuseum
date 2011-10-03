@@ -5,7 +5,7 @@ import org.specs2.mutable._
 
 class GenBankSpec extends Specification {
   "GenBank オブジェクト" should {
-    "Locus 構文解析" in {
+    "Locus.Format" in {
       import GenBank.Locus
       import java.util.{Date, Calendar}
       import java.text.SimpleDateFormat
@@ -16,9 +16,9 @@ class GenBankSpec extends Specification {
       val text2 = "LOCUS       NC_009347               2101 aa    RNA     linear   BCT 19-APR-2007"
       
       "Head オブジェクトの行認知" in {
-        Locus.Head.unapply(text1) must beTrue
-        Locus.Head.unapply(text2) must beTrue
-        Locus.Head.unapply("other") must beFalse
+        format.Head.unapply(text1) must beTrue
+        format.Head.unapply(text2) must beTrue
+        format.Head.unapply("other") must beFalse
       }
       
       "構文解析 1" in {
@@ -44,26 +44,27 @@ class GenBankSpec extends Specification {
       }
     }
     
-    "Definition 構文解析" in {
+    "Definition.Format" in {
       import GenBank.Definition
+      val format = new Definition.Format
       val text = "DEFINITION  Pyrococcus abyssi GE5 plasmid pGT5, complete sequence."
       val lines =
         """DEFINITION  Staphylococcus aureus subsp. aureus USA300 plasmid pUSA01, complete
           |            sequence.""".stripMargin.split("\n").toList
       
       "Head オブジェクトの行認知" in {
-        Definition.Head.unapply(text) must beTrue
-        Definition.Head.unapply(lines.head) must beTrue
-        Definition.Head.unapply(lines.tail.head) must beFalse
+        format.Head.unapply(text) must beTrue
+        format.Head.unapply(lines.head) must beTrue
+        format.Head.unapply(lines.tail.head) must beFalse
       }
       
       "単行" in {
-        val d = Definition.parseFrom(text)
+        val d = format unapply text get;
         d.value must_==("Pyrococcus abyssi GE5 plasmid pGT5, complete sequence.")
       }
       
       "複数行" in {
-        val d = Definition.parseFrom(lines)
+        val d = format parse lines
         d.value must_==("Staphylococcus aureus subsp. aureus USA300 plasmid pUSA01, complete sequence.")
       }
     }

@@ -23,7 +23,7 @@ class GenBankParser {
   def parseFrom(source: Iterator[String]): GenBank = {
     val bufferedSource = source.buffered
     
-    def nonLocusHead(line: String) = ! isLocusHead(line)
+    def nonLocusHead(line: String) = ! isSectionHead(line)
     
     val unknownStart = readElementTail(ListBuffer.empty[String],
       bufferedSource, nonLocusHead _)
@@ -68,6 +68,6 @@ class GenBankParser {
     line.startsWith("//")
   
   /** Locus 行を表す文字列であるか */
-  private def isLocusHead(line: String) =
-    Locus.Head unapply line
+  protected def isSectionHead(line: String) =
+    line.startsWith(locusFormat.headKey)
 }

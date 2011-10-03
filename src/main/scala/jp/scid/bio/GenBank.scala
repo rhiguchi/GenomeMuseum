@@ -26,6 +26,16 @@ object GenBank {
     val keySize = 12
   }
   type Features = List[Feature]
+  
+  sealed abstract private[GenBank] class ElementFormat(val headKey: String) {
+    val keySize = 12
+    
+    object Head {
+      override def toString = headKey
+      def unapply(line: String): Boolean =
+        line != null && line.length >= keySize && line.startsWith(headKey)
+    }
+  }
     
   /**
    * Locus 要素
@@ -50,7 +60,7 @@ object GenBank {
   /**
    * Locus 生成など
    */
-  object Locus extends ElementObject("LOCUS") {
+  object Locus {
     /** LOCUS 行マッチパターン（8 要素） */
     lazy private val LocusPattern = "LOCUS       (?x)" + // Header
       """(\S+)\s+""" + // Locus Name
@@ -66,9 +76,7 @@ object GenBank {
     /**
      * LOCUS 行の文字列形式のクラス
      */
-    class Format {
-      val headKey = Locus.headKey
-      
+    class Format extends ElementFormat("LOCUS") {
       /**
        * LOCUS 行の文字列から Locus インスタンスを作成する
        * @param source 作成元文字列
@@ -134,31 +142,41 @@ object GenBank {
   /**
    * Definition 生成など
    */
-  object Definition extends ElementObject("DEFINITION") {
-    /**
-     * DEFINITION 行の文字列から Definition インスタンスを作成する
-     * @param source 作成元文字列
-     * @return Definition インスタンス
-     * @throws ParseException {@code source} が {@code DEFINITION}
-     *         から始まっていない場合。
-     */
-    @throws(classOf[ParseException])
-    def parseFrom(source: String): Definition = parseFrom(List(source))
-    
-    /**
-     * DEFINITION 行の文字列から Definition インスタンスを作成する
-     * @param source 作成元文字列の配列
-     * @return Definition インスタンス
-     * @throws ParseException {@code source} の一つ目の要素が
-     *         {@code DEFINITION} から始まっていない場合。
-     */
-    @throws(classOf[ParseException])
-    def parseFrom(source: Seq[String]): Definition = source match {
-      case Seq(Head(), _*) =>
-        val defValue = toSingleValue(source, keySize)
-        Definition(defValue)
-      case _ => throw new ParseException(
-        "souse '%s' does not start with '%s'".format(source, Head), 0)
+  object Definition {
+    class Format extends ElementFormat("DEFINITION") {
+      /**
+       * DEFINITION 行の文字列から Definition インスタンスを作成する
+       * @param source 作成元文字列
+       * @return Definition インスタンス
+       * @throws ParseException {@code source} が {@code DEFINITION}
+       *         から始まっていない場合。
+       */
+      @throws(classOf[ParseException])
+      def parse(source: Seq[String]): Definition = unapply(source) match {
+        case Some(definition) => definition
+        case None => throw new ParseException("Invalid format", 0)
+      }
+      
+      /**
+       * DEFINITION 行の文字列から Definition インスタンスを作成する
+       * @param source 作成元文字列
+       * @return 作成に成功した時は {@code Some[Definition]} 。
+       *         形式に誤りがあるなどで作成できない時は {@code None}
+       */
+      def unapply(source: String): Option[Definition] = unapply(Seq(source))
+      
+      /**
+       * DEFINITION 行の文字列から Definition インスタンスを作成する
+       * @param source 作成元文字列の配列
+       * @throws ParseException {@code source} の一つ目の要素が
+       *         {@code DEFINITION} から始まっていない場合。
+       */
+      def unapply(source: Seq[String]): Option[Definition] = source match {
+        case Seq(Head(), _*) =>
+          val defValue = toSingleValue(source, keySize)
+          Some(Definition(defValue))
+        case _ => None
+      }
     }
   }
   
@@ -167,6 +185,8 @@ object GenBank {
     primary: String = "",
     secondary: IndexedSeq[String] = IndexedSeq.empty
   ) extends Element
+  
+  
   
   /** Version 要素 */
   case class Version (
@@ -255,6 +275,9 @@ object GenBank {
   
   object Origin extends ElementObject("ORIGIN") {
   }
+  
+  /** 終末要素 */
+  object Termination extends ElementObject("//")
   
   /**
    * 先頭行の開始文字の抽出子オブジェクト Head をもたせるトレイト
