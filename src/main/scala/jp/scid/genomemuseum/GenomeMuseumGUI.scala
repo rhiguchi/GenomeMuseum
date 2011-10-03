@@ -55,7 +55,7 @@ class GenomeMuseumGUI extends Application {
     
     val tableSource = dataSource.allExibits
     mainCtrl.tableCtrl bindTableSource tableSource
-    tableSource ++= sampleExhibits
+    tableSource ++= GenomeMuseumGUI.sampleExhibits
   }
   
   override protected def ready() {
@@ -117,15 +117,32 @@ class GenomeMuseumGUI extends Application {
   private def insertElement(e: MuseumExhibit) {
     mainCtrl.tableCtrl.tableSource add e
   }
+}
+
+object GenomeMuseumGUI {
+  import org.jdesktop.application.ApplicationActionMap
+  import java.awt.event.ActionEvent
+  import scala.swing.Action
+  import model.MuseumExhibit
+  
+  def actionFor(actionMap: ApplicationActionMap)(key: String) = new Action(key) {
+    override lazy val peer = actionMap.get(key) match {
+      case null => throw new IllegalStateException(
+        "Action '%s' is not defined on '%s'.".format(key, actionMap.getActionsClass))
+      case action => action
+    }
+    override def apply() {
+      val e = new ActionEvent(this, ActionEvent.ACTION_PERFORMED, "apply")
+      apply(e)
+    }
+    def apply(event: ActionEvent) = peer.actionPerformed(event)
+  }
   
   /**
-   * サンプルデータを 10 件設定する
-   * @param controller 流し込み先コントローラ
+   * サンプルデータを 10 件作成する
    */
   private def sampleExhibits() = {
-    import model.MuseumExhibit
-    
-    val samples = List(
+    List(
       MuseumExhibit("item1", 500, "item1-source"),
       MuseumExhibit("item2", 1000, "item2-source"),
       MuseumExhibit("item3", 1500, "item3-source"),
@@ -137,18 +154,12 @@ class GenomeMuseumGUI extends Application {
       MuseumExhibit("item9", 200000, "item9-source"),
       MuseumExhibit("item10", 55500, "item10-source")
     )
-    samples
   }
   
   /**
-   * サンプルファイルを 10 件設定する
-   * @param controller 流し込み先コントローラ
+   * サンプルファイルを 10 件読み込む
    */
-  private def loadSampleFilesTo(controller: ExhibitTableController) {
-    import model.MuseumExhibit
-    import ca.odell.glazedlists.GlazedLists
-    import scala.collection.JavaConverters._
-    
+  private def loadSampleFiles() = {
     val samples = List("NC_004554.gbk", "NC_004555.gbk", "NC_006375.gbk",
       "NC_006376.gbk", "NC_006676.gbk", "NC_007504.gbk", "NC_009347.gbk",
       "NC_009517.gbk", "NC_009934.gbk", "NC_010550.gbk")
@@ -169,32 +180,6 @@ class GenomeMuseumGUI extends Application {
     }}
     .map( e => MuseumExhibit(e.locus.name, e.locus.sequenceLength) )
     
-    val target = controller.tableSource
-    target.getReadWriteLock().writeLock().lock();
-    try {
-      GlazedLists.replaceAll(target, list.asJava, true)
-    }
-    finally {
-      target.getReadWriteLock().writeLock().unlock();
-    }
-  }
-}
-
-object GenomeMuseumGUI {
-  import org.jdesktop.application.ApplicationActionMap
-  import java.awt.event.ActionEvent
-  import scala.swing.Action
-  
-  def actionFor(actionMap: ApplicationActionMap)(key: String) = new Action(key) {
-    override lazy val peer = actionMap.get(key) match {
-      case null => throw new IllegalStateException(
-        "Action '%s' is not defined on '%s'.".format(key, actionMap.getActionsClass))
-      case action => action
-    }
-    override def apply() {
-      val e = new ActionEvent(this, ActionEvent.ACTION_PERFORMED, "apply")
-      apply(e)
-    }
-    def apply(event: ActionEvent) = peer.actionPerformed(event)
+    list
   }
 }
