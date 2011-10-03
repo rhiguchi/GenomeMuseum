@@ -10,7 +10,6 @@ class MuseumDataSource(scheme: MuseumScheme) {
   def allExibits: ObservableBuffer[MuseumExhibit] = myAllExibits
   
   def store(entity: MuseumExhibit) {
-    val isInsert = entity.id.is <= 0
     if (scheme store entity) {
       reloadExibits()
     }

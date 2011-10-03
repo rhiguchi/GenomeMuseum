@@ -13,7 +13,7 @@ libraryDependencies ++= Seq(
   "org.jdesktop.bsaf" % "bsaf" % "1.9.2",
   "net.java.dev.glazedlists" % "glazedlists_java15" % "1.8.0",
   "com.h2database" % "h2" % "1.3.160",
-  "net.liftweb" %% "lift-mapper" % "2.4-M4",
+  "org.squeryl" %% "squeryl" % "0.9.4",
   "org.specs2" %% "specs2" % "1.6.1" % "test",
   "org.mockito" % "mockito-all" % "1.8.5" % "test",
   "junit" % "junit" % "4.9" % "test",
