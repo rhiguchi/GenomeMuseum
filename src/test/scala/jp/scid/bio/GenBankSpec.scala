@@ -117,6 +117,8 @@ class GenBankSpec extends Specification {
       
       "Head オブジェクトの行認知" in {
         format.Head.unapply(text1) must beTrue
+        format.Head.unapply(lines.head) must beTrue
+        format.Head.unapply(lines.tail.head) must beFalse
       }
       
       "単行" in {
