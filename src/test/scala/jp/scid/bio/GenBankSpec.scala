@@ -105,6 +105,34 @@ class GenBankSpec extends Specification {
       }
     }
     
+    "Source.Format" in {
+      import GenBank.Source
+      val format = new Source.Format
+      val text1 = "SOURCE      Pyrococcus abyssi GE5"
+      val lines =
+        """SOURCE      Shigella sonnei Ss046
+          |  ORGANISM  Shigella sonnei Ss046
+          |            Bacteria; Proteobacteria; Gammaproteobacteria; Enterobacteriales;
+          |            Enterobacteriaceae; Shigella.""".stripMargin.split("\n").toList
+      
+      "Head オブジェクトの行認知" in {
+        format.Head.unapply(text1) must beTrue
+      }
+      
+      "単行" in {
+        val s = format unapply text1 get;
+        s.value must_== "Pyrococcus abyssi GE5"
+      }
+      
+      "複数行" in {
+        val s = format parse lines
+        s.value must_== "Shigella sonnei Ss046"
+        s.organism must_== "Shigella sonnei Ss046"
+        s.taxonomy must_== IndexedSeq("Bacteria", "Proteobacteria", "Gammaproteobacteria",
+          "Enterobacteriales", "Enterobacteriaceae", "Shigella")
+      }
+    }
+    
     "Features 構文解析" in {
       import GenBank.Features
       

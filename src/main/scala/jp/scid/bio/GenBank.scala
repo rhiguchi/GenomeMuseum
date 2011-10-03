@@ -3,6 +3,7 @@ package jp.scid.bio
 import java.io.InputStream
 import java.text.{ParseException, SimpleDateFormat}
 import java.util.Date
+import collection.mutable.Buffer
 import GenBank._
 
 case class GenBank (
@@ -254,6 +255,75 @@ object GenBank {
     organism: String = "",
     taxonomy: IndexedSeq[String] = IndexedSeq.empty
   ) extends Element
+  
+  object Source {
+    class Format extends ElementFormat("SOURCE") {
+      val organismFormat = new OrganismFormat
+      
+      @throws(classOf[ParseException])
+      def parse(source: Seq[String]): Source = unapply(source) match {
+        case Some(s) => s
+        case None => throw new ParseException("Invalid format", 0)
+      }
+      
+      def unapply(source: String): Option[Source] = unapply(Seq(source))
+      
+      /**
+       * ACCESSION 行の文字列から Accession インスタンスを作成する
+       * @param source 作成元文字列の配列
+       * @return 作成に成功した時は {@code Some[Accession]} 。
+       *         形式に誤りがあるなどで作成できない時は {@code None}
+       */
+      def unapply(source: Seq[String]): Option[Source] = source match {
+        case Seq(head @ Head(), tail @ _*) =>
+          val (sourceLines, remaining) = tail span isValueContinuing
+          val sourceValue = toSingleValue(head +: sourceLines, keySize)
+          val (organism, taxonomy) = organismFormat.unapply(remaining)
+            .getOrElse("", IndexedSeq.empty)
+          
+          Some(Source(sourceValue, organism, taxonomy))
+        case _ => None
+      }
+      
+      protected def isValueContinuing(line: String) =
+        line != null && line.startsWith("   ")
+    }
+    
+    class OrganismFormat extends ElementFormat("  ORGANISM") {
+      def unapply(source: Seq[String]): Option[(String, IndexedSeq[String])] = source match {
+        case Seq(Head(), _*) =>
+          val (organismLines, taxonomyLines) = source span (isOrganismValue)
+          val organism = toSingleValue(organismLines, keySize)
+          val taxonomy = makeTaxonomy(taxonomyLines)
+          
+          Some(organism, taxonomy)
+        case _ => None
+      }
+      
+      private def isOrganismValue(line: String) =
+        line != null && line.indexOf(";") < 0
+      
+      protected def makeTaxonomy(lines: Seq[String]): IndexedSeq[String] = {
+        var text = toSingleValue(lines, keySize)
+        if (text.endsWith(".")) text = text.substring(0, text.length - 1)
+        text.split(";\\s+")
+      }
+    }
+  }
+  
+  // GenBankParser と重複
+  @annotation.tailrec
+  private def readElementLines(accumu: Buffer[String], source: Seq[String], 
+      elementContinuing: String => Boolean): Seq[String] = source match {
+    case Seq(head, tail @ _*) => elementContinuing(head) match {
+      case true =>
+        accumu += head
+        readElementLines(accumu, tail, elementContinuing)
+      case false =>
+        source
+    }
+    case _ => source
+  }
   
   /** Reference 要素 */
   case class Reference (

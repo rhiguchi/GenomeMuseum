@@ -14,6 +14,7 @@ class GenBankParser {
   val locusFormat = new Locus.Format
   val definitionFormat = new Definition.Format
   val accessionFormat = new Accession.Format
+  val sourceFormat = new Source.Format
   
   /**
    * 文字列情報から {@code GenBank} オブジェクトを生成する
@@ -57,6 +58,8 @@ class GenBankParser {
         definition = definitionFormat parse readElementLines(head, source)
       case accessionFormat.Head() => 
         accession = accessionFormat parse readElementLines(head, source)
+      case sourceFormat.Head() => 
+        sourceObj = sourceFormat parse readElementLines(head, source)
       case _ =>
         // TODO ログ出力
     }

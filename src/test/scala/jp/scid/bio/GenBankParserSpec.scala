@@ -1,6 +1,5 @@
 package jp.scid.bio
 
-import scala.io.Source
 import org.specs2.mutable._
 
 class GenBankParserSpec extends Specification {
@@ -30,6 +29,12 @@ class GenBankParserSpec extends Specification {
       "Accession" in {
         genbank.accession must_== Accession("NC_001773")
       }
+      
+      "Source" in {
+        genbank.source must_== Source("Pyrococcus abyssi GE5", "Pyrococcus abyssi GE5",
+          IndexedSeq("Archaea", "Euryarchaeota", "Thermococci", "Thermococcales",
+            "Thermococcaceae", "Pyrococcus"))
+      }
     }
     
     "テキストファイルからの読み込み 2" in {
@@ -49,6 +54,12 @@ class GenBankParserSpec extends Specification {
       
       "Accession" in {
         genbank.accession must_== Accession("NC_009347")
+      }
+      
+      "Source" in {
+        genbank.source must_== Source("Shigella sonnei Ss046", "Shigella sonnei Ss046",
+          IndexedSeq("Bacteria", "Proteobacteria", "Gammaproteobacteria",
+            "Enterobacteriales", "Enterobacteriaceae", "Shigella"))
       }
     }
   }
