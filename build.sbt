@@ -24,7 +24,10 @@ resolvers += "releases" at "http://scala-tools.org/repo-releases"
 
 proguardOptions ++= Seq(
   keepMain("jp.scid.genomemuseum.GenomeMuseum"),
-  "-dontobfuscate", "-dontoptimize", "-dontnote", "-keep class jp.scid.** { *; }"
+  "-dontnote",
+  "-keepclassmembers class ** {@org.jdesktop.application.*Action *;}",
+  "-keepclassmembers class * extends org.jdesktop.application.AbstractBean { public *;}",
+  "-keep class * implements java.sql.Driver"
 )
 
 maxErrors := 20
