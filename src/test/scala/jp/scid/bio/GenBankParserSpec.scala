@@ -26,6 +26,10 @@ class GenBankParserSpec extends Specification {
       "Definition" in {
         genbank.definition must_== Definition("Pyrococcus abyssi GE5 plasmid pGT5, complete sequence.")
       }
+      
+      "Accession" in {
+        genbank.accession must_== Accession("NC_001773")
+      }
     }
     
     "テキストファイルからの読み込み 2" in {
@@ -41,6 +45,10 @@ class GenBankParserSpec extends Specification {
       
       "Definition" in {
         genbank.definition must_== Definition("Shigella sonnei Ss046 plasmid pSS046_spC, complete sequence.")
+      }
+      
+      "Accession" in {
+        genbank.accession must_== Accession("NC_009347")
       }
     }
   }
