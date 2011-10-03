@@ -12,6 +12,9 @@ object MuseumScheme {
     new H2DatabaseMuseumScheme(location)
   def onMemory(): MuseumScheme =
     new H2DatabaseMuseumScheme("mem:")
+  
+  private lazy val emptyScheme = new EmptyMuseumScheme
+  def empty: MuseumScheme = emptyScheme
 }
 
 private class H2DatabaseMuseumScheme(location: String) extends MuseumScheme {
@@ -21,6 +24,10 @@ private class H2DatabaseMuseumScheme(location: String) extends MuseumScheme {
   Schemifier.schemify(true, Schemifier.neverF _, MuseumExhibit)
   
   def allMuseumExhibits() = MuseumExhibit.findAll
+}
+
+private class EmptyMuseumScheme extends MuseumScheme {
+  def allMuseumExhibits() = Nil
 }
 
 import mapper.{ConnectionIdentifier, ConnectionManager}
