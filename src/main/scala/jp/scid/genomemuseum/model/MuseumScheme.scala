@@ -4,7 +4,7 @@ import net.liftweb.mapper
 import mapper.{Schemifier}
 
 trait MuseumScheme {
-  
+  def allMuseumExhibits(): List[MuseumExhibit]
 }
 
 object MuseumScheme {
@@ -19,6 +19,8 @@ private class H2DatabaseMuseumScheme(location: String) extends MuseumScheme {
   val vendor = new DBVendor(location)
   DB.defineConnectionManager(DefaultConnectionIdentifier, vendor)
   Schemifier.schemify(true, Schemifier.neverF _, MuseumExhibit)
+  
+  def allMuseumExhibits() = MuseumExhibit.findAll
 }
 
 import mapper.{ConnectionIdentifier, ConnectionManager}
