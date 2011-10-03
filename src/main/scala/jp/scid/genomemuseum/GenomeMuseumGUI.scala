@@ -55,7 +55,7 @@ class GenomeMuseumGUI extends Application {
     
     val tableSource = dataSource.allExibits
     mainCtrl.tableCtrl bindTableSource tableSource
-    tableSource ++= GenomeMuseumGUI.sampleExhibits
+    GenomeMuseumGUI.sampleExhibits map dataSource.store
   }
   
   override protected def ready() {
@@ -115,7 +115,7 @@ class GenomeMuseumGUI extends Application {
   }
   
   private def insertElement(e: MuseumExhibit) {
-    mainCtrl.tableCtrl.tableSource add e
+    dataSource store e
   }
 }
 
