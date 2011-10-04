@@ -29,12 +29,23 @@ object GenBank {
   type Features = IndexedSeq[Feature]
   
   sealed abstract private[GenBank] class ElementFormat(val headKey: String) {
+    /** この要素のキー領域の大きさ */
     val keySize = 12
     
+    /**
+     * この要素の先頭行であるかの判定
+     * @param line GenBank データ行
+     * @return 先頭である場合 true
+     */
+    protected def isElementHead(line: String) = 
+      line.length >= keySize && line.startsWith(headKey)
+    
+    /**
+     * 要素の先頭行判定の抽出子
+     */
     object Head {
       override def toString = headKey
-      def unapply(line: String): Boolean =
-        line != null && line.length >= keySize && line.startsWith(headKey)
+      def unapply(line: String): Boolean = isElementHead(line)
     }
   }
   
