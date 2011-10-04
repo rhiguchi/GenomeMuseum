@@ -11,6 +11,8 @@ import GenBank._
 class GenBankParser {
   import collection.mutable.{ArrayBuffer, ListBuffer, Buffer}
   
+  private val logger = org.slf4j.LoggerFactory.getLogger(classOf[GenBankParser].getName)
+  
   val locusFormat = new Locus.Format
   val definitionFormat = new Definition.Format
   val accessionFormat = new Accession.Format
@@ -61,7 +63,7 @@ class GenBankParser {
     
     /** 要素の構文解析 */
     def parseElementFrom(head: String, tail: BufferedIterator[String]) = head match {
-      case definitionFormat.Head() => 
+      case definitionFormat.Head() =>
         definition = definitionFormat parse readElementLines(head, tail)
       case accessionFormat.Head() => 
         accession = accessionFormat parse readElementLines(head, tail)
@@ -81,7 +83,7 @@ class GenBankParser {
         val sequence = originFormat.readSequence(tail)
         origin = Origin(sequence)
       case _ =>
-        // TODO ログ出力
+        logger.warn("unparsableElement", head)
     }
     
     /** 全ての要素の構文解析 */
