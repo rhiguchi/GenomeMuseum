@@ -93,6 +93,10 @@ class GenBankParserSpec extends Specification {
         genbank.features(4).location must_== "103..2067"
         genbank.features(4).qualifiers.size must_== 9
       }
+      
+      "Origin" in {
+        genbank.origin.sequence.length must_== 3444
+      }
     }
     
     "テキストファイルからの読み込み 2" in {
@@ -149,6 +153,10 @@ class GenBankParserSpec extends Specification {
         genbank.features(2).key must_== "CDS"
         genbank.features(2).location must_== "703..1668"
         genbank.features(2).qualifiers.size must_== 10
+      }
+      
+      "Origin" in {
+        genbank.origin.sequence.length must_== 2101
       }
     }
   }

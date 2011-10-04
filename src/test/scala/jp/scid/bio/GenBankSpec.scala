@@ -404,8 +404,28 @@ class GenBankSpec extends Specification {
     "Origin 構文解析" in {
       import GenBank.Origin
       
+      val format = new Origin.Format
+      val lines1 = """ORIGIN      
+                     |        1 attatccttt agaaacgcgt tgggtattgg gggagccccc cttagtgggg agctccccct
+                     |       61 aaacaccccc aagacaatag gaaaccatag gaggcccctg caatggtgat atacacttca
+                     |      121 taggagttat aaatccttga gaat""".stripMargin.split("\n").toList
+      val lines2 = """ORIGIN      
+                     |        1 aacactctgc gagtggtata ttttccccgg attatcgtcc tgagcctgcc gctggctctc
+                     |       61 t""".stripMargin.split("\n").toList
       "Head オブジェクトの行認知" in {
-        Origin.Head.unapply("ORIGIN      ") must beTrue
+        format.Head.unapply(lines1.head) must beTrue
+        format.Head.unapply(lines2.head) must beTrue
+      }
+      
+      "複数行 1" in {
+        val o = format parse lines1
+        o.sequence must_== ("attatcctttagaaacgcgttgggtattgggggagccccccttagtggggagctccccct" +
+          "aaacacccccaagacaataggaaaccataggaggcccctgcaatggtgatatacacttcataggagttataaatccttgagaat")
+      }
+      
+      "複数行 2" in {
+        val o = format parse lines2
+        o.sequence must_== ("aacactctgcgagtggtatattttccccggattatcgtcctgagcctgccgctggctctct")
       }
     }
     

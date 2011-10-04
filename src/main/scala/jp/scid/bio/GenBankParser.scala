@@ -21,6 +21,7 @@ class GenBankParser {
   val commentFormat = new Comment.Format
   val featuresFormat = new Features.Format
   val featureFormat = new Feature.Format
+  val originFormat = new Origin.Format
   
   /**
    * 文字列情報から {@code GenBank} オブジェクトを生成する
@@ -76,6 +77,9 @@ class GenBankParser {
         references = references :+ (referenceFormat parse readElementLines(head, source))
       case featuresFormat.Head() => 
         features = parseFeatures(tail)
+      case originFormat.Head() =>
+        val sequence = originFormat.readSequence(tail)
+        origin = Origin(sequence)
       case _ =>
         // TODO ログ出力
     }

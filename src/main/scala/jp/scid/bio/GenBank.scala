@@ -628,10 +628,41 @@ object GenBank {
   
   /** Origin 要素 */
   case class Origin (
-    value: String = ""
+    sequence: String = ""
   ) extends Element
   
-  object Origin extends ElementObject("ORIGIN") {
+  object Origin {
+    class Format extends ElementFormat("ORIGIN") {
+      val locationSize = 10
+      
+      @throws(classOf[ParseException])
+      def parse(source: Seq[String]): Origin = source match {
+        case Seq(Head(), tail @ _*) =>
+          val sequence = readSequence(tail.iterator)
+          Origin(sequence)
+        case _ => throw new ParseException("Invalid format", 0)
+      }
+      
+      def readSequence(source: Iterator[String]): String =
+        readSequence(new StringBuilder, source.buffered).toString
+      
+      protected def isSequenceContinuing(line: String) =
+        line.length >= locationSize && line.charAt(0) == ' '
+      
+      protected def extractSequence(line: String) =
+        if (line.length >= 75)
+          line.substring(10, 20) + line.substring(21, 31) + line.substring(32, 42) +
+            line.substring(43, 53) + line.substring(54, 64) + line.substring(65, 75)
+        else line.substring(10).replace(" ", "")
+      
+      private def readSequence(sb: StringBuilder, source: BufferedIterator[String]): StringBuilder = {
+        if (source.hasNext && isSequenceContinuing(source.head)) {
+          sb.append(extractSequence(source.next))
+          readSequence(sb, source)
+        }
+        else sb
+      }
+    }
   }
   
   /** 終末要素 */
