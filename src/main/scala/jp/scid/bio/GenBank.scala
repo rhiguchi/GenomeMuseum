@@ -460,10 +460,10 @@ object GenBank {
     case class Qualifier(
       key: String = "",
       value: String = ""
-    )
+    ) extends Element
     
     object Qualifier {
-      class Format {
+      class Format extends Extractable[Qualifier] {
         val keyIndent = 21
         val keyStartChar = '/'
         val valueSplitChar = '='
@@ -480,33 +480,14 @@ object GenBank {
         }
         
         /**
-         * Qualifier キーと値を抽出する
-         * @param source Feature 項目の最初の行
-         * @return {@code Head} が {@code true} を返すとき、
-         *         {@code keyIndent + 1} から {@code valueSplitChar} が表れるまでの文字列の
-         *         {@code Option} 値。当てはまらない場合は {@code None}
+         * Qualifier のキーを抽出する
+         * @param line {@code null} でない行文字列
+         * @return {@code line} の長さが {@code keyIndent + 1} 以上でかつ、
+         *         {@code keyIndent} 文字目が {@code keyStartChar} である場合 {@code true} 。
          */
-        def unapply(source: Seq[String]): Option[Qualifier] =
-          try { Some(parse(source)) }
-          catch {
-            case e: ParseException => None
-            case e => throw e
-          }
-        
-        def unapply(source: String): Option[Qualifier] = unapply(Seq(source))
-        
-        /** Qualifier 開始行の抽出子 */
-        object Head {
-          /**
-           * Qualifier のキーを抽出する
-           * @param line {@code null} でない行文字列
-           * @return {@code line} の長さが {@code keyIndent + 1} 以上でかつ、
-           *         {@code keyIndent} 文字目が {@code keyStartChar} である場合 {@code true} 。
-           */
-          def unapply(line: String): Boolean =
-            line.length > keyIndent && line.charAt(keyIndent) == keyStartChar &&
-              line.charAt(keyIndent + 1) != ' '
-        }
+        protected def isQualifierHead(line: String) =
+          line.length > keyIndent && line.charAt(keyIndent) == keyStartChar &&
+            line.charAt(keyIndent + 1) != ' '
         
         /**
          * Qualifier 文字列行を、キーと値に分解する。
@@ -544,6 +525,11 @@ object GenBank {
           
           // ダブルクオート無しの文字列に
           removeDoubleQuates(value)
+        }
+        
+        /** Qualifier 開始行の抽出子 */
+        object Head {
+          def unapply(line: String): Boolean = isQualifierHead(line)
         }
       }
     }
@@ -604,16 +590,18 @@ object GenBank {
           qualis
       }
       
+      /**
+       * Feature のキー行であるかの判定
+       * @param line {@code null} でない行文字列
+       * @return {@code line} の長さが {@code keySize} 以上でかつ、
+       *         {@code keyIndent} 文字目に文字列が含まれている場合 {@code true} 。
+       */
+      protected def isFeatureHead(line: String) =
+        line.charAt(keyIndent) != ' ' && line.length >= keySize
+      
       /** Feature 開始行の抽出子 */
       object Head {
-        /**
-         * Feature のキーを抽出する
-         * @param line {@code null} でない行文字列
-         * @return {@code line} の長さが {@code keySize} 以上でかつ、
-         *         {@code keyIndent} 文字目に文字列が含まれている場合 {@code true} 。
-         */
-        def unapply(line: String): Boolean =
-          line.charAt(keyIndent) != ' ' && line.length >= keySize
+        def unapply(line: String): Boolean = isFeatureHead(line)
       }
     }
   }
