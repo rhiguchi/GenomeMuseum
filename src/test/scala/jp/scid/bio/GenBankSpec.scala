@@ -106,6 +106,33 @@ class GenBankSpec extends Specification {
       }
     }
     
+    "Version.Format" in {
+      import GenBank.Version
+      val format = new Version.Format
+      val text1 = "VERSION     NC_001773.2  GI:10954552"
+      val text2 = "VERSION     NC_009347  GI:145294040"
+      
+      "Head オブジェクトの行認知" in {
+        format.Head.unapply(text1) must beTrue
+        format.Head.unapply(text2) must beTrue
+      }
+      
+      "単行1" in {
+        val v = format parse text1
+        v.accession must_== "NC_001773"
+        v.number must_== 2
+        v.identifier must_== "10954552"
+      }
+      
+      "単行2" in {
+        val v = format parse text2
+        v.accession must_== "NC_009347"
+        v.number must_== 0
+        v.identifier must_== "145294040"
+      }
+    }
+    
+    
     "Source.Format" in {
       import GenBank.Source
       val format = new Source.Format

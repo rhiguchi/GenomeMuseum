@@ -232,6 +232,38 @@ object GenBank {
     identifier: String = ""
   ) extends Element
   
+  object Version {
+    class Format extends ElementFormat("VERSION") {
+      /** VERSION 行マッチパターン（8 要素） */
+      lazy private val VersionPattern = "VERSION     (?x)" + // Header
+        """([^.\s]+)  (?: \. (\d+) )? \s*""" + // Accession.VersionNum
+        """(?: GI: (\S+) )?""" r // Identifier
+      
+      @throws(classOf[ParseException])
+      def parse(source: Seq[String]): Version = parse(source.head)
+      
+      @throws(classOf[ParseException])
+      def parse(source: String): Version = fragmentate(source) match {
+        case Some((accession, versionOp, identifierOp)) => 
+          Version(accession, versionOp.map(parseInt).getOrElse(0), identifierOp.getOrElse(""))
+        case None => throw new ParseException("Invalid format", 0)
+      }
+      
+      private type Elements = (String, Option[String], Option[String])
+      
+      /**
+       * Version 文字列行を、要素に分解する。
+       * @return キーと値。値は、先頭 {@code keyStart} 文字が落とされている。
+       */
+      protected def fragmentate(source: String): Option[Elements] = source match {
+        case VersionPattern(accession, version, identifier) =>
+          Some(accession, Option(version), Option(identifier))
+        case _ => None
+      }
+      
+    }
+  }
+  
   /** Keywords 要素 */
   case class Keywords (
     values: List[String] = Nil
@@ -486,7 +518,7 @@ object GenBank {
           val (keyTail, otherQfLines) = tail span isQualifierContinuing
           val qf = try { qualifierFormat.parse(keyHead +: keyTail) }
           catch { case e: ParseException => throw new ParseException(
-                "Invalid format for qualifire: '" + (keyHead +: keyTail).mkString("\\n") + "'", 0) }
+                "Invalid format for qualifier: '" + (keyHead +: keyTail).mkString("\\n") + "'", 0) }
           qualis += qf
           readQualifiers(qualis, otherQfLines)
         case _ =>
