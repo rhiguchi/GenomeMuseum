@@ -666,7 +666,11 @@ object GenBank {
   }
   
   /** 終末要素 */
-  object Termination extends ElementObject("//")
+  object Termination {
+    class Format extends ElementFormat("//") {
+      override val keySize = 2
+    }
+  }
   
   /**
    * 先頭行の開始文字の抽出子オブジェクト Head をもたせるトレイト

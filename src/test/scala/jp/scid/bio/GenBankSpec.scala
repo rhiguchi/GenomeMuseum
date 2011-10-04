@@ -429,6 +429,16 @@ class GenBankSpec extends Specification {
       }
     }
     
+    "Termination 構文解析" in {
+      import GenBank.Termination
+      
+      val format = new Termination.Format
+      val line = "//"
+      "Head オブジェクトの行認知" in {
+        format.Head.unapply(line) must beTrue
+        format.Head.unapply("other") must beFalse
+      }
+    }
   }
   
   private def using[A <% java.io.Closeable, B](s: A)(f: A => B) = {

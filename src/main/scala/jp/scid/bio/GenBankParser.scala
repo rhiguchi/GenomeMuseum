@@ -24,6 +24,7 @@ class GenBankParser {
   val featuresFormat = new Features.Format
   val featureFormat = new Feature.Format
   val originFormat = new Origin.Format
+  val terminationFormat = new Termination.Format
   
   /**
    * 文字列情報から {@code GenBank} オブジェクトを生成する
@@ -159,7 +160,7 @@ class GenBankParser {
   
   /** セクションの終末を表す文字列であるか */
   protected def isTermination(line: String) =
-    line.startsWith("//")
+    terminationFormat.Head.unapply(line)
   
   /** Locus 行を表す文字列であるか */
   protected def isSectionHead(line: String) =
