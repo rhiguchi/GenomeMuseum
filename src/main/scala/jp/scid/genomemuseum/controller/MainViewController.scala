@@ -18,10 +18,16 @@ class MainViewController(
     mainView.quickSearchField)
   val sourceModel = new MuseumSourceModel
   protected val transferHandler = new BioFileTransferHandler(parent)
+  private val sourceList = mainView.sourceList
   
   mainView.dataTableScroll.setTransferHandler(transferHandler)
-  mainView.sourceList.setModel(sourceModel.treeModel)
-  mainView.sourceList.setSelectionModel(sourceModel.treeSelectionModel)
+  sourceList.setModel(sourceModel.treeModel)
+  sourceList.setSelectionModel(sourceModel.treeSelectionModel)
+  sourceList.setRootVisible(false)
+  sourceList.setUI(new jp.scid.macwidgets.plaf.SourceListTreeUI())
+  sourceList setFocusable false
+  sourceList setInvokesStopCellEditing false
+  sourceList setToggleClickCount 0
   
   reloadResources()
   
