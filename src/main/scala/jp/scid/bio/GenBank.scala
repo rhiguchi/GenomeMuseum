@@ -44,36 +44,6 @@ object GenBank {
     }
   }
   
-  private[GenBank] trait ElementParser[T <: Element] {
-    /**
-     * GenBank 要素の行文字列からインスタンスを作成する
-     * @param source 作成元文字列
-     * @return 要素インスタンス
-     * @throws ParseException {@code source} が {@code DEFINITION}
-     *         から始まっていない場合。
-     */
-    @throws(classOf[ParseException])
-    def parse(source: Seq[String]): T = unapply(source) match {
-      case Some(definition) => definition
-      case None => throw new ParseException("Invalid format", 0)
-    }
-    
-    /**
-     * GenBank 要素行の文字列から要素インスタンスを作成する
-     * @param source 作成元文字列
-     * @return 作成に成功した時は {@code Some[Definition]} 。
-     *         形式に誤りがあるなどで作成できない時は {@code None}
-     */
-    def unapply(source: String): Option[T] = unapply(Seq(source))
-    
-    /**
-     * 要素の行文字列からインスタンスを作成する
-     * @param source 作成元文字列
-     * @return 要素インスタンス。形式に誤りがあるなどで作成できない時は {@code None} 。
-     */
-    def unapply(source: Seq[String]): Option[T]
-  }
-  
   /**
    * parse メソッドでの例外を補足する unapply メソッドを提供するトレイト
    */
