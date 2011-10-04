@@ -342,20 +342,6 @@ object GenBank {
     }
   }
   
-  // GenBankParser と重複
-  @annotation.tailrec
-  private def readElementLines(accumu: Buffer[String], source: Seq[String], 
-      elementContinuing: String => Boolean): Seq[String] = source match {
-    case Seq(head, tail @ _*) => elementContinuing(head) match {
-      case true =>
-        accumu += head
-        readElementLines(accumu, tail, elementContinuing)
-      case false =>
-        source
-    }
-    case _ => source
-  }
-  
   /** Reference 要素 */
   case class Reference (
     basesStart: Int = 0,
