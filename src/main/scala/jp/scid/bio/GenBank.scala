@@ -148,7 +148,7 @@ object GenBank {
     /**
      * LOCUS 行の文字列形式のクラス
      */
-    class Format extends ElementFormat("LOCUS") with ElementParser[Locus] {
+    class Format extends ElementFormat("LOCUS") with Extractable[Locus] {
       /**
        * LOCUS 行の文字列から Locus インスタンスを作成する
        * @param source 作成元文字列
@@ -158,28 +158,15 @@ object GenBank {
        *         文字列長より短い場合。もしくは文字列形式に誤りがある場合。
        */
       @throws(classOf[ParseException])
-      def parse(source: String): Locus = unapply(source) match {
-        case Some(locus) => locus
-        case None => throw new ParseException("Invalid format", 0)
-      }
-      
-      override def parse(source: Seq[String]) = parse(source.head)
-      
-      /**
-       * LOCUS 行の文字列から Locus インスタンスを作成する
-       * @param source 作成元文字列
-       * @return 作成に成功した時は {@code Some[Locus]} 。
-       *         形式に誤りがあるなどで作成できない時は {@code None}
-       */
-      override def unapply(source: String): Option[Locus] = fragmentate(source) match {
+      def parse(source: String): Locus = fragmentate(source) match {
         case Some((name, seqPair, molType, topology, division, date)) =>
           val (seqLength, seqUnit) = seqPair.getOrElse("0", "")
-          Some(Locus(name, parseInt(seqLength), seqUnit, molType.getOrElse(""),
-            topology.getOrElse(""), division.getOrElse(""), date.map(parseDate)))
-        case _ => None
+          Locus(name, parseInt(seqLength), seqUnit, molType.getOrElse(""),
+            topology.getOrElse(""), division.getOrElse(""), date.map(parseDate))
+        case _ => throw new ParseException("Invalid format for Locus", 0)
       }
       
-      def unapply(source: Seq[String]) = unapply(source.head)
+      def parse(source: Seq[String]) = parse(source.head)
       
       /**
        * 文字列を Locus 作成用に要素に分解する。
@@ -219,18 +206,18 @@ object GenBank {
    * Definition 生成など
    */
   object Definition {
-    class Format extends ElementFormat("DEFINITION") with ElementParser[Definition] {
+    class Format extends ElementFormat("DEFINITION") with Extractable[Definition] {
       /**
        * DEFINITION 行の文字列から Definition インスタンスを作成する
        * @param source 作成元文字列の配列
-       * @return 作成に成功した時は {@code Some[Definition]} 。
-       *         形式に誤りがあるなどで作成できない時は {@code None}
+       * @return {@code Definition} インスタンス
+       * @throws ParseException 形式に誤りがあるなどで作成できない場合
        */
-      def unapply(source: Seq[String]): Option[Definition] = source match {
+      def parse(source: Seq[String]): Definition = source match {
         case Seq(Head(), _*) =>
           val defValue = toSingleValue(source, keySize)
-          Some(Definition(defValue))
-        case _ => None
+          Definition(defValue)
+        case _ => throw new ParseException("Invalid format for Definition", 0)
       }
     }
   }
@@ -245,23 +232,23 @@ object GenBank {
    * Accession 生成など
    */
   object Accession {
-    class Format extends ElementFormat("ACCESSION") with ElementParser[Accession] {
+    class Format extends ElementFormat("ACCESSION") with Extractable[Accession] {
       /**
        * ACCESSION 行の文字列から Accession インスタンスを作成する
        * @param source 作成元文字列の配列
-       * @return 作成に成功した時は {@code Some[Accession]} 。
-       *         形式に誤りがあるなどで作成できない時は {@code None}
+       * @return {@code Accession} インスタンス
+       * @throws ParseException 形式に誤りがあるなどで作成できない場合
        */
-      def unapply(source: Seq[String]): Option[Accession] = source match {
+      @throws(classOf[ParseException])
+      def parse(source: Seq[String]): Accession = source match {
         case Seq(Head(), _*) =>
           val seqVal = source withFilter (_.length >= keySize) flatMap
             (_ substring keySize trim() split "\\s+")
-          val acc = seqVal match {
+          seqVal match {
             case Seq(head, tail @ _*) => Accession(head, tail.toIndexedSeq)
             case _ => Accession()
           }
-          Some(acc)
-        case _ => None
+        case _ => throw new ParseException("Invalid format for Accession", 0)
       }
     }
   }
@@ -274,7 +261,7 @@ object GenBank {
   ) extends Element
   
   object Version {
-    class Format extends ElementFormat("VERSION") {
+    class Format extends ElementFormat("VERSION") with Extractable[Version] {
       /** VERSION 行マッチパターン（8 要素） */
       lazy private val VersionPattern = "VERSION     (?x)" + // Header
         """([^.\s]+)  (?: \. (\d+) )? \s*""" + // Accession.VersionNum
@@ -313,7 +300,7 @@ object GenBank {
   object Keywords {
     val Dot = Keywords(List("."))
     
-    class Format extends ElementFormat("KEYWORDS") {
+    class Format extends ElementFormat("KEYWORDS") with Extractable[Keywords] {
       @throws(classOf[ParseException])
       def parse(source: Seq[String]): Keywords = {
         val seqVal = source withFilter (_.length >= keySize) flatMap
@@ -338,24 +325,25 @@ object GenBank {
   ) extends Element
   
   object Source {
-    class Format extends ElementFormat("SOURCE") with ElementParser[Source] {
+    class Format extends ElementFormat("SOURCE") with Extractable[Source] {
       val organismFormat = new OrganismFormat
       
       /**
-       * ACCESSION 行の文字列から Accession インスタンスを作成する
+       * SOURCE 行の文字列から Source インスタンスを作成する
        * @param source 作成元文字列の配列
-       * @return 作成に成功した時は {@code Some[Accession]} 。
-       *         形式に誤りがあるなどで作成できない時は {@code None}
+       * @return {@code Source} インスタンス
+       * @throws ParseException 形式に誤りがあるなどで作成できない場合
        */
-      def unapply(source: Seq[String]): Option[Source] = source match {
+      @throws(classOf[ParseException])
+      def parse(source: Seq[String]): Source = source match {
         case Seq(head @ Head(), tail @ _*) =>
           val (sourceLines, remaining) = tail span isValueContinuing
           val sourceValue = toSingleValue(head +: sourceLines, keySize)
           val (organism, taxonomy) = organismFormat.unapply(remaining)
             .getOrElse("", IndexedSeq.empty)
           
-          Some(Source(sourceValue, organism, taxonomy))
-        case _ => None
+          Source(sourceValue, organism, taxonomy)
+        case _ => throw new ParseException("Invalid format", 0)
       }
       
       protected def isValueContinuing(line: String) =
@@ -411,7 +399,7 @@ object GenBank {
   ) extends Element
   
   object Reference {
-    class Format extends ElementFormat("REFERENCE") {
+    class Format extends ElementFormat("REFERENCE") with Extractable[Reference] {
       import collection.mutable.Map
       /** REFERENCE 行マッチパターン（8 要素） */
       lazy private val ReferencePattern = "(?x)" +
@@ -470,7 +458,7 @@ object GenBank {
   ) extends Element
   
   object Comment {
-    class Format extends ElementFormat("COMMENT") {
+    class Format extends ElementFormat("COMMENT") with Extractable[Comment] {
       /**
        * COMMENT 行の文字列から Comment インスタンスを作成する
        * @param source 作成元文字列の配列
@@ -590,7 +578,7 @@ object GenBank {
       }
     }
     
-    class Format {
+    class Format extends Extractable[Feature] {
       val qualifierFormat = new Qualifier.Format
       val keySize = qualifierFormat.keyIndent
       val keyIndent = 5
@@ -610,13 +598,6 @@ object GenBank {
           Feature(key, location, qualifiers)
         case _ => throw new ParseException("Invalid format", 0)
       }
-      
-      def unapply(source: Seq[String]): Option[Feature] =
-        try { Some(parse(source)) }
-        catch {
-          case e: ParseException => None
-          case e => throw e
-        }
       
       protected def isQualifierContinuing(line: String) =
         line.length >= keySize && line.charAt(keySize) != '/'
@@ -673,7 +654,7 @@ object GenBank {
   ) extends Element
   
   object Origin {
-    class Format extends ElementFormat("ORIGIN") {
+    class Format extends ElementFormat("ORIGIN") with Extractable[Origin] {
       val locationSize = 10
       
       @throws(classOf[ParseException])
