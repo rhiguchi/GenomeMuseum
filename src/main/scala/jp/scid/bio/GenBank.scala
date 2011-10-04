@@ -309,11 +309,11 @@ object GenBank {
         case Seq(head @ Head(), tail @ _*) =>
           val (sourceLines, remaining) = tail span isValueContinuing
           val sourceValue = toSingleValue(head +: sourceLines, keySize)
-          val (organism, taxonomy) = organismFormat.unapply(remaining)
-            .getOrElse("", IndexedSeq.empty)
-          
+          val (organism, taxonomy) =
+            if (remaining.isEmpty) ("", IndexedSeq.empty)
+            else organismFormat.parse(remaining)
           Source(sourceValue, organism, taxonomy)
-        case _ => throw new ParseException("Invalid format", 0)
+        case _ => throw new ParseException("Invalid format for Source", 0)
       }
       
       protected def isValueContinuing(line: String) =
@@ -321,14 +321,14 @@ object GenBank {
     }
     
     class OrganismFormat extends ElementFormat("  ORGANISM") {
-      def unapply(source: Seq[String]): Option[(String, IndexedSeq[String])] = source match {
+      @throws(classOf[ParseException])
+      def parse(source: Seq[String]): (String, IndexedSeq[String]) = source match {
         case Seq(Head(), _*) =>
           val (organismLines, taxonomyLines) = source span (isOrganismValue)
           val organism = toSingleValue(organismLines, keySize)
           val taxonomy = makeTaxonomy(taxonomyLines)
-          
-          Some(organism, taxonomy)
-        case _ => None
+          (organism, taxonomy)
+        case _ => throw new ParseException("Invalid format for Organism", 0)
       }
       
       private def isOrganismValue(line: String) =
