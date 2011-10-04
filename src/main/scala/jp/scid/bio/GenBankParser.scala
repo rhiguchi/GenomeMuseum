@@ -62,19 +62,19 @@ class GenBankParser {
     /** 要素の構文解析 */
     def parseElementFrom(head: String, tail: BufferedIterator[String]) = head match {
       case definitionFormat.Head() => 
-        definition = definitionFormat parse readElementLines(head, source)
+        definition = definitionFormat parse readElementLines(head, tail)
       case accessionFormat.Head() => 
-        accession = accessionFormat parse readElementLines(head, source)
+        accession = accessionFormat parse readElementLines(head, tail)
       case versionFormat.Head() => 
-        version = versionFormat parse readElementLines(head, source)
+        version = versionFormat parse readElementLines(head, tail)
       case keywordsFormat.Head() => 
-        keywords = keywordsFormat parse readElementLines(head, source)
+        keywords = keywordsFormat parse readElementLines(head, tail)
       case sourceFormat.Head() => 
-        sourceObj = sourceFormat parse readElementLines(head, source)
+        sourceObj = sourceFormat parse readElementLines(head, tail)
       case commentFormat.Head() => 
-        comment = commentFormat parse readElementLines(head, source)
+        comment = commentFormat parse readElementLines(head, tail)
       case referenceFormat.Head() => 
-        references = references :+ (referenceFormat parse readElementLines(head, source))
+        references = references :+ (referenceFormat parse readElementLines(head, tail))
       case featuresFormat.Head() => 
         features = parseFeatures(tail)
       case originFormat.Head() =>
