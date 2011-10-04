@@ -9,12 +9,14 @@ import GenBank._
  * {@code GenBank} オブジェクトを文字列から作成する構文解析クラス
  */
 class GenBankParser {
-  import collection.mutable.{ListBuffer, Buffer}
+  import collection.mutable.{ArrayBuffer, ListBuffer, Buffer}
   
   val locusFormat = new Locus.Format
   val definitionFormat = new Definition.Format
   val accessionFormat = new Accession.Format
   val sourceFormat = new Source.Format
+  val featuresFormat = new Features.Format
+  val featureFormat = new Feature.Format
   
   /**
    * 文字列情報から {@code GenBank} オブジェクトを生成する
@@ -60,6 +62,8 @@ class GenBankParser {
         accession = accessionFormat parse readElementLines(head, source)
       case sourceFormat.Head() => 
         sourceObj = sourceFormat parse readElementLines(head, source)
+      case featuresFormat.Head() => 
+        features = parseFeatures(tail)
       case _ =>
         // TODO ログ出力
     }
@@ -84,6 +88,31 @@ class GenBankParser {
     
     GenBank(locus, definition, accession, version, keywords, sourceObj,
       references, comment, features, origin)
+  }
+  
+  @throws(classOf[ParseException])
+  protected def parseFeatures(source: BufferedIterator[String]) = {
+    // Feature 行の継続判定
+    def isFeatureContinuing(line: String) =
+      isElementContinuing(line) && !featureFormat.Head.unapply(line)
+    
+    /** Feature の行を読み込む。 */
+    def readFeatureLines(head: String, source: BufferedIterator[String]) =
+      readElementTail(ListBuffer(head), source, isFeatureContinuing _).toList
+    
+    @annotation.tailrec
+    def readFeatures(accume: Buffer[Feature], source: BufferedIterator[String]): Buffer[Feature] = {
+      if (source.hasNext && isElementContinuing(source.head)) source.next match {
+        case head @ featureFormat.Head() =>
+          val lines = readFeatureLines(head, source)
+          accume += featureFormat parse lines
+          readFeatures(accume, source)
+        case _ => accume
+      }
+      else accume
+    }
+    
+    readFeatures(ArrayBuffer.empty, source).toIndexedSeq
   }
   
   /**

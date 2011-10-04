@@ -15,7 +15,7 @@ case class GenBank (
   source: Source = Source(),
   references: IndexedSeq[Reference] = IndexedSeq.empty,
   comment: Comment = Comment(),
-  features: GenBank.Features = Nil,
+  features: GenBank.Features = IndexedSeq.empty,
   origin: Origin = Origin()
 )
 
@@ -26,7 +26,7 @@ object GenBank {
     override protected val headKey = head
     val keySize = 12
   }
-  type Features = List[Feature]
+  type Features = IndexedSeq[Feature]
   
   sealed abstract private[GenBank] class ElementFormat(val headKey: String) {
     val keySize = 12
@@ -327,42 +327,183 @@ object GenBank {
   ) extends Element
   
   /** Features 要素 */
-  object Features extends ElementObject("FEATURES") {
+  object Features {
+    class Format extends ElementFormat("FEATURES")
   }
   
   /** Feature 要素 */
   case class Feature (
     key: String = "",
     location: String = "",
-    qualifiers: List[(String, String)] = Nil
+    qualifiers: IndexedSeq[Feature.Qualifier] = IndexedSeq.empty
   ) extends Element
   
   object Feature {
-    val keySize: Int = 21
+    case class Qualifier(
+      key: String = "",
+      value: String = ""
+    )
     
-    /** Feature キーの抽出子 */
-    object Head {
-      /**
-       * Feature のキーを抽出する
-       * @param source Feature 項目の最初の行
-       * @return {@code source} の長さが {@code keySize} 以上でかつ、
-       *         {@code keySize} 文字以内に文字列が含まれていたらその文字列の
-       *         {@code Option} 値。当てはまらない場合は {@code None}
-       */
-      def unapply(source: String) = source match {
-        case source if source.length >= keySize =>
-          val key = source.substring(0, keySize).trim
-          if (key.isEmpty) None
-          else Some(key)
-        case _ => None
+    object Qualifier {
+      class Format {
+        val keyIndent = 21
+        val keyStartChar = '/'
+        val valueSplitChar = '='
+        
+        @throws(classOf[ParseException])
+        def parse(source: String): Qualifier = parse(Seq(source))
+        
+        @throws(classOf[ParseException])
+        def parse(source: Seq[String]): Qualifier = fragmentate(source.toList) match {
+          case Some((key, valueLines)) =>
+            var value = makeValueFor(key, valueLines)
+            Qualifier(key, value)
+          case None => throw new ParseException("Invalid format", 0)
+        }
+        
+        /**
+         * Qualifier キーと値を抽出する
+         * @param source Feature 項目の最初の行
+         * @return {@code Head} が {@code true} を返すとき、
+         *         {@code keyIndent + 1} から {@code valueSplitChar} が表れるまでの文字列の
+         *         {@code Option} 値。当てはまらない場合は {@code None}
+         */
+        def unapply(source: Seq[String]): Option[Qualifier] =
+          try { Some(parse(source)) }
+          catch {
+            case e: ParseException => None
+            case e => throw e
+          }
+        
+        def unapply(source: String): Option[Qualifier] = unapply(Seq(source))
+        
+        /** Qualifier 開始行の抽出子 */
+        object Head {
+          /**
+           * Qualifier のキーを抽出する
+           * @param line {@code null} でない行文字列
+           * @return {@code line} の長さが {@code keyIndent + 1} 以上でかつ、
+           *         {@code keyIndent} 文字目が {@code keyStartChar} である場合 {@code true} 。
+           */
+          def unapply(line: String): Boolean =
+            line.length > keyIndent && line.charAt(keyIndent) == keyStartChar &&
+              line.charAt(keyIndent + 1) != ' '
+        }
+        
+        /**
+         * Qualifier 文字列行を、キーと値に分解する。
+         * @return キーと値。値は、先頭 {@code keyStart} 文字が落とされている。
+         */
+        protected def fragmentate(source: List[String]): Option[(String, List[String])] = source match {
+          case (head @ Head()) :: tail =>
+            val keyStart = keyIndent + 1
+            val keyEnd = head.indexOf(valueSplitChar, keyStart)
+            val (key, valueLines) = 
+              if (keyEnd >= 0) 
+                (head.substring(keyStart, keyEnd),
+                  head.substring(keyEnd + 1) :: tail.map(_.substring(keyIndent)))
+              else (head.substring(keyStart), Nil)
+            Some(key, valueLines)
+          case _ => None
+        }
+        
+        /**
+         * Qualifier のキーに対応した 1 行値を作成する
+         */
+        protected def makeValueFor(key: String, valueLines: List[String]) = {
+          // 文字列両端のダブルクオートを除去する
+          def removeDoubleQuates(value: String) = {
+            if (value.charAt(0) == '"' && value.charAt(value.length - 1) == '"')
+              value.substring(1, value.length - 1)
+            else value
+          }
+          
+          // 複数行の結合は、キーごとに手法を変える
+          val value = key match {
+            case "translation" => valueLines.mkString
+            case _ => toSingleValue(valueLines, 0)
+          }
+          
+          // ダブルクオート無しの文字列に
+          removeDoubleQuates(value)
+        }
       }
     }
     
-    @throws(classOf[ParseException])
-    def parseFrom(source: Seq[String]): Feature = source match {
-      case Seq(head @ Head(key), tail @ _*) =>
-        Feature(key)
-      case _ => throw new ParseException("invalid format", 0)
+    class Format {
+      val qualifierFormat = new Qualifier.Format
+      val keySize = qualifierFormat.keyIndent
+      val keyIndent = 5
+      
+      @throws(classOf[ParseException])
+      def parse(source: Seq[String]): Feature = source match {
+        case Seq(head, tail @ _*) =>
+          val key = try { parseKey(head) }
+            catch {
+              case _: ParseException => throw new ParseException(
+                "Invalid format for feature key: '" + head + "'", 0)
+            }
+          val (locationLines, qualifiersLines) = tail span isQualifierContinuing
+          val location = toSingleValue(head +: locationLines, keySize, "")
+          val qualifiers = readQualifiers(Buffer.empty, qualifiersLines).toIndexedSeq
+          
+          Feature(key, location, qualifiers)
+        case _ => throw new ParseException("Invalid format", 0)
+      }
+      
+      def unapply(source: Seq[String]): Option[Feature] =
+        try { Some(parse(source)) }
+        catch {
+          case e: ParseException => None
+          case e => throw e
+        }
+      
+      protected def isQualifierContinuing(line: String) =
+        line.length >= keySize && line.charAt(keySize) != '/'
+      
+      /**
+       * Feature のキーを抽出する
+       * @param line Feature 項目の最初の行
+       * @return {@code Head} が {@code true} を返すとき、
+       *         {@code keyIndent} から空白文字が洗われるまでの文字列。
+       */
+      @throws(classOf[ParseException])
+      protected[bio] def parseKey(line: String) = {
+        val key = line match {
+          case Head() =>
+            val keyEnd = line.indexOf(' ', keyIndent)
+            if (keyEnd < 0) line.substring(keyIndent)
+            else line.substring(keyIndent, keyEnd)
+          case _ => ""
+        }
+        if (key.isEmpty) throw new ParseException("Invalid format", 0)
+        key
+      }
+      
+      @throws(classOf[ParseException])
+      private def readQualifiers(qualis: Buffer[Qualifier], source: Seq[String]): Buffer[Qualifier] = source match {
+        case Seq(keyHead, tail @ _*) =>
+          val (keyTail, otherQfLines) = tail span isQualifierContinuing
+          val qf = try { qualifierFormat.parse(keyHead +: keyTail) }
+          catch { case e: ParseException => throw new ParseException(
+                "Invalid format for qualifire: '" + (keyHead +: keyTail).mkString("\\n") + "'", 0) }
+          qualis += qf
+          readQualifiers(qualis, otherQfLines)
+        case _ =>
+          qualis
+      }
+      
+      /** Feature 開始行の抽出子 */
+      object Head {
+        /**
+         * Feature のキーを抽出する
+         * @param line {@code null} でない行文字列
+         * @return {@code line} の長さが {@code keySize} 以上でかつ、
+         *         {@code keyIndent} 文字目に文字列が含まれている場合 {@code true} 。
+         */
+        def unapply(line: String): Boolean =
+          line.charAt(keyIndent) != ' ' && line.length >= keySize
+      }
     }
   }
   
@@ -393,10 +534,11 @@ object GenBank {
    * 文字列リストを一行テキストの値に変換
    * @param source 変換元
    * @param dropSize 先頭から切り落とす文字数
+   * @param join 結合文字列。デフォルトで半角空白文字。
    */
-  private def toSingleValue(source: Seq[String], dropSize: Int) =
+  private def toSingleValue(source: Seq[String], dropSize: Int, join: String = " ") =
     source withFilter (_.length >= dropSize) map
-          (_ substring dropSize) mkString " "
+          (_ substring dropSize) mkString join
   
   /**
    * 数字文字列を {@code Int} に変換する。

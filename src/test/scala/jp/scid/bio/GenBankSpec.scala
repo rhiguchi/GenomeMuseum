@@ -1,5 +1,6 @@
 package jp.scid.bio
 
+import java.text.ParseException
 import scala.io.Source
 import org.specs2.mutable._
 
@@ -135,16 +136,58 @@ class GenBankSpec extends Specification {
       }
     }
     
-    "Features 構文解析" in {
+    "Features.Format" in {
       import GenBank.Features
       
+      val format = new Features.Format
       "Head オブジェクトの行認知" in {
-        Features.Head.unapply("FEATURES             Location/Qualifiers") must beTrue
+        format.Head.unapply("FEATURES             Location/Qualifiers") must beTrue
+      }
+    }
+    
+    "Feature.Qualifier.Format" in {
+      import GenBank.Feature.Qualifier
+      
+      val format = new Qualifier.Format
+      val line1 = """                     /organism="Pyrococcus abyssi GE5""""
+      val line2 = """                     /transl_table=11"""
+      val lines1 = """                     /note="putative double-stranded origin; dso; similar to
+                     |                     dso seequences from pC194 plasmids"""".stripMargin.split("\n").toList
+      val lines2 = """                     /translation="MSEDKFLSDYSPRDAVWDTQRTLTDSVGGIYQTAAEFERYALRM
+                     |                     ASCSGLLRFGWSTIMETGETRLRLRSAQFCRVRHCPVCQWRRTLMWQARFYQALPKIV
+                     |                     DRETNEDLVIADDVGDGTDDGKRTAFVWDSGKRRYKRAPEKDKSD"""".stripMargin.split("\n").toList
+      
+      "Head オブジェクトの行認知" in {
+        format.Head.unapply(line1) must beTrue
+        format.Head.unapply(line2) must beTrue
+        format.Head.unapply(lines1.head) must beTrue
+        format.Head.unapply(lines1.tail.head) must beFalse
+        format.Head.unapply(lines2.head) must beTrue
+        format.Head.unapply(lines2.tail.head) must beFalse
+      }
+      
+      "単行1" in {
+        val q = format parse line1
+        q.key must_== "organism"
+        q.value must_== "Pyrococcus abyssi GE5"
+        format unapply line1 must beSome.which(
+          Qualifier("organism", "Pyrococcus abyssi GE5").equals)
+      }
+      
+      "単行2" in {
+        val q = format parse line2
+        q.key must_== "transl_table"
+        q.value must_== "11"
+        format unapply line2 must beSome.which(
+          Qualifier("transl_table", "11").equals)
       }
     }
     
     "Feature 構文解析" in {
       import GenBank.Feature
+      import Feature.{Qualifier => Qf}
+      
+      val format = new Feature.Format
       val sourceFeature =
         """     source          1..3444
           |                     /organism="Pyrococcus abyssi GE5"
@@ -180,17 +223,54 @@ class GenBankSpec extends Specification {
           |                     /rpt_type=inverted""".stripMargin.split("\n").toList
       
       "Head オブジェクトの行認知" in {
-        Feature.Head.unapply(sourceFeature.head) must beSome.which("source".equals)
-        Feature.Head.unapply(geneFeature.head) must beSome.which("gene".equals)
-        Feature.Head.unapply(cdsFeature.head) must beSome.which("CDS".equals)
-        Feature.Head.unapply(repeatRegionFeature.head) must beSome.which("repeat_region".equals)
-        Feature.Head.unapply(sourceFeature.tail.head) must beNone
-        Feature.Head.unapply("     source         ") must beNone
+        format.Head.unapply(sourceFeature.head) must beTrue
+        format.Head.unapply(geneFeature.head) must beTrue
+        format.Head.unapply(cdsFeature.head) must beTrue
+        format.Head.unapply(repeatRegionFeature.head) must beTrue
+        format.Head.unapply(sourceFeature.tail.head) must beFalse
+        format.Head.unapply("     source         ") must beFalse
+      }
+      
+      "Key オブジェクト抽出" in {
+        format.parseKey(sourceFeature.head) must_== "source"
+        format.parseKey(geneFeature.head) must_== "gene"
+        format.parseKey(cdsFeature.head) must_== "CDS"
+        format.parseKey(repeatRegionFeature.head) must_== "repeat_region"
+        format.parseKey(sourceFeature.tail.head) must throwA[ParseException]
+        format.parseKey("     source         ") must throwA[ParseException]
       }
       
       "source 情報" in {
-        val f = Feature.parseFrom(sourceFeature)
+        val f = format parse sourceFeature
         f.key must_== "source"
+        f.location must_== "1..3444"
+        f.qualifiers must_== List(Qf("organism", "Pyrococcus abyssi GE5"),
+          Qf("mol_type", "genomic DNA"), Qf("strain", "GE5"), Qf("db_xref", "taxon:272844"),
+          Qf("plasmid", "pGT5"))
+      }
+      
+      "gene 情報" in {
+        val f = format parse geneFeature
+        f.key must_== "gene"
+        f.location must_== "703..1668"
+        f.qualifiers must_== List(Qf("gene", "rep"),
+          Qf("locus_tag", "SSON_PC01"), Qf("db_xref", "GeneID:4991518"))
+      }
+        
+      "CDS 情報" in {
+        val f = format parse cdsFeature
+        f.key must_== "CDS"
+        f.location must_== "703..1668"
+        f.qualifiers must_== List(Qf("gene", "rep"),
+          Qf("locus_tag", "SSON_PC01"), Qf("note", "replication protein"), Qf("codon_start", "1"),
+          Qf("transl_table", "11"), Qf("product", "Rep"), Qf("protein_id", "YP_001139965.1"),
+          Qf("db_xref", "GI:145294041"), Qf("db_xref", "GeneID:4991518"),
+          Qf("translation", "MSEDKFLSDYSPRDAVWDTQRTLTDSVGGIYQTAAEFERYALRM" +
+            "ASCSGLLRFGWSTIMETGETRLRLRSAQFCRVRHCPVCQWRRTLMWQARFYQALPKIV" +
+            "VDYPSSRWLFLTLTVRNCEIGELGTVLTAMNAAFKRMEKRKELSPVQGWIRATEVTRG" +
+            "KDGSAHPHFHCLLMVQPSWFKGKNYVKHERWVELWRDCLRVNYEPNIDIRAVKTKTGE" +
+            "VVANVAEQLQSAVAETLKYSVKPEDMANDPEWFLELTRQLHKRRFISTGGALKNVLQL" +
+            "DRETNEDLVIADDVGDGTDDGKRTAFVWDSGKRRYKRAPEKDKSD"))
       }
     }
     
