@@ -40,6 +40,9 @@ class GenBankParser {
     val unknownStart = readElementTail(ListBuffer.empty[String],
       bufferedSource, nonLocusHead _)
     
+    if (bufferedSource.isEmpty)
+      throw new ParseException("It is not a source for GenBank", 0)
+    
     createFrom(bufferedSource)
   }
   
