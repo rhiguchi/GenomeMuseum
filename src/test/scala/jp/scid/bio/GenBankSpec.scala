@@ -178,6 +178,56 @@ class GenBankSpec extends Specification {
       }
     }
     
+    "Reference.Format" in {
+      import GenBank.Reference
+      val format = new Reference.Format
+      val lines1 =
+        """REFERENCE   1  (bases 1 to 3444)
+          |  AUTHORS   Erauso,G., Marsin,S., Benbouzid-Rollet,N., Baucher,M.F.,
+          |            Barbeyron,T., Zivanovic,Y., Prieur,D. and Forterre,P.
+          |  TITLE     Sequence of plasmid pGT5 from the archaeon Pyrococcus abyssi:
+          |            evidence for rolling-circle replication in a hyperthermophile
+          |  JOURNAL   J. Bacteriol. 178 (11), 3232-3237 (1996)
+          |   PUBMED   8655503""".stripMargin.split("\n").toList
+      val lines2 =
+        """REFERENCE   2  (bases 1 to 2101)
+          |  CONSRTM   NCBI Genome Project
+          |  TITLE     Direct Submission
+          |  JOURNAL   Submitted (17-APR-2007) National Center for Biotechnology
+          |            Information, NIH, Bethesda, MD 20894, USA""".stripMargin.split("\n").toList
+      
+      "Head オブジェクトの行認知" in {
+        format.Head.unapply(lines1.head) must beTrue
+        format.Head.unapply(lines1.tail.head) must beFalse
+        format.Head.unapply(lines2.head) must beTrue
+        format.Head.unapply(lines2.tail.head) must beFalse
+      }
+            
+      "複数行 1" in {
+        val r = format parse lines1
+        r.basesStart must_== 1
+        r.basesEnd must_== 3444
+        r.authors must_== "Erauso,G., Marsin,S., Benbouzid-Rollet,N., Baucher,M.F., " +
+          "Barbeyron,T., Zivanovic,Y., Prieur,D. and Forterre,P."
+        r.title must_== "Sequence of plasmid pGT5 from the archaeon Pyrococcus abyssi: " +
+          "evidence for rolling-circle replication in a hyperthermophile"
+        r.journal must_== "J. Bacteriol. 178 (11), 3232-3237 (1996)"
+        r.pubmed must_== "8655503"
+        r.others.size must_== 0
+      }
+      
+      "複数行 2" in {
+        val r = format parse lines2
+        r.basesStart must_== 1
+        r.basesEnd must_== 2101
+        r.title must_== "Direct Submission"
+        r.journal must_== "Submitted (17-APR-2007) National Center for Biotechnology " +
+          "Information, NIH, Bethesda, MD 20894, USA"
+        r.others.size must_== 1
+        r.others.contains('CONSRTM) must beTrue
+        r.others('CONSRTM) must_== "NCBI Genome Project"
+      }
+    }
     
     "Comment.Format" in {
       import GenBank.Comment

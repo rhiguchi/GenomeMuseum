@@ -44,6 +44,23 @@ class GenBankParserSpec extends Specification {
             "Thermococcaceae", "Pyrococcus"))
       }
       
+      "References" in {
+        genbank.references.size must_== 3
+        genbank.references(0) must_== Reference(1, 3444,
+          "Erauso,G., Marsin,S., Benbouzid-Rollet,N., Baucher,M.F., " +
+          "Barbeyron,T., Zivanovic,Y., Prieur,D. and Forterre,P.",
+          "Sequence of plasmid pGT5 from the archaeon Pyrococcus abyssi: " +
+          "evidence for rolling-circle replication in a hyperthermophile",
+          "J. Bacteriol. 178 (11), 3232-3237 (1996)", "8655503")
+        genbank.references(1) must_== Reference(1, 3444, title = "Direct Submission",
+          journal = "Submitted (24-OCT-2000) National Center for Biotechnology " +
+          "Information, NIH, Bethesda, MD 20894, USA",
+          others = Map('CONSRTM -> "NCBI Genome Project"))
+        genbank.references(2) must_== Reference(1, 3444, "Forterre,P.",
+          "Direct Submission", "Submitted (20-FEB-1996) Patrick Forterre, Institut de Genetique et " +
+          "Microbiologie, Universite Paris-Sud, Orsay 91405, France")
+      }
+      
       "Comment" in {
         genbank.comment must_== Comment("PROVISIONAL REFSEQ: This record has not yet been subject to final " +
           "NCBI review. The reference sequence was derived from U49503. " +

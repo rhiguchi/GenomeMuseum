@@ -369,6 +369,60 @@ object GenBank {
     others: Map[Symbol, String] = Map.empty
   ) extends Element
   
+  object Reference {
+    class Format extends ElementFormat("REFERENCE") {
+      import collection.mutable.Map
+      /** REFERENCE 行マッチパターン（8 要素） */
+      lazy private val ReferencePattern = "(?x)" +
+        """(\d+)""" + // Reference 番号
+        """(?: \s* \(bases \s+ (\d+) \s+ to \s+ (\d+) \) )?""" r // 位置
+      
+      @throws(classOf[ParseException])
+      def parse(source: Seq[String]): Reference = source match {
+        case Seq(head @ Head(), tail @ _*) =>
+          
+          val (basesStart, basesEnd) = baseFragmentate(head) match {
+            case Some((start, end)) => (parseInt(start), parseInt(end))
+            case None => (0, 0)
+          }
+          
+          val elmMap = readElements(Map.empty, tail)
+          val authors = elmMap.remove('AUTHORS).getOrElse("")
+          val title = elmMap.remove('TITLE).getOrElse("")
+          val journal = elmMap.remove('JOURNAL).getOrElse("")
+          val pubmed = elmMap.remove('PUBMED).getOrElse("")
+          val remark = elmMap.remove('REMARK).getOrElse("")
+          
+          Reference(basesStart, basesEnd,
+            authors, title, journal, pubmed, remark, elmMap.toMap)
+        case _ => throw new ParseException("Invalid format", 0)
+      }
+      
+      @annotation.tailrec
+      private def readElements(accume: Map[Symbol, String], source: Seq[String]): Map[Symbol, String] = {
+        source match {
+          case Seq(keyLine, tail @ _*) =>
+            val key = Symbol(parseKey(keyLine))
+            val (valueTail, remaining) = tail span isReferenceValueContinuing
+            val value = toSingleValue(keyLine +: valueTail, keySize)
+            accume(key) = value
+            readElements(accume, remaining)
+          case _ => accume
+        }
+      }
+      
+      protected def baseFragmentate(source: String): Option[(String, String)] = source.drop(keySize) match {
+        case ReferencePattern(index, start, end) => Some(start, end)
+        case _ => None
+      }
+      
+      protected def isReferenceValueContinuing(line: String) =
+        line.startsWith("    ")
+      
+      protected def parseKey(line: String) = line.substring(0, keySize).trim()
+    }
+  }
+  
   /** Comment 要素 */
   case class Comment (
     value: String = ""
