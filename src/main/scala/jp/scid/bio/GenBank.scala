@@ -73,6 +73,41 @@ object GenBank {
      */
     def unapply(source: Seq[String]): Option[T]
   }
+  
+  /**
+   * parse メソッドでの例外を補足する unapply メソッドを提供するトレイト
+   */
+  private[GenBank] trait Extractable[T <: Element] {
+    /**
+     * GenBank 要素の行文字列からインスタンスを作成する
+     * @param source 作成元文字列
+     * @return 要素インスタンス
+     * @throws ParseException 文字列から要素が作成できない場合
+     */
+    @throws(classOf[ParseException])
+    def parse(source: Seq[String]): T
+    
+    /**
+     * GenBank 要素行の文字列から要素インスタンスを作成する
+     * @param source 作成元文字列
+     * @return 作成に成功した時は {@code Some[Definition]} 。
+     *         形式に誤りがあるなどで作成できない時は {@code None}
+     */
+    def unapply(source: Seq[String]): Option[T] =
+      try {
+        Some(parse(source))
+      }
+      catch {
+        case e: ParseException => None
+      }
+    
+    /**
+     * 要素の行文字列からインスタンスを作成する
+     * @param source 作成元文字列
+     * @return 要素インスタンス。形式に誤りがあるなどで作成できない時は {@code None} 。
+     */
+    def unapply(source: String): Option[T] = unapply(Seq(source))
+  }
     
   /**
    * Locus 要素
