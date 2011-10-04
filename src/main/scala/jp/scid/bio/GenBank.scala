@@ -271,6 +271,22 @@ object GenBank {
   
   object Keywords {
     val Dot = Keywords(List("."))
+    
+    class Format extends ElementFormat("KEYWORDS") {
+      @throws(classOf[ParseException])
+      def parse(source: Seq[String]): Keywords = {
+        val seqVal = source withFilter (_.length >= keySize) flatMap
+          (_ substring keySize trim() split "\\s+")
+        val acc = seqVal match {
+          case Seq(".") => Dot
+          case seqVal => Keywords(seqVal.toList)
+        }
+        acc
+      }
+      
+      @throws(classOf[ParseException])
+      def parse(source: String): Keywords = parse(Seq(source))
+    }
   }
   
   /** Source 要素 */

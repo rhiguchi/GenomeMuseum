@@ -34,6 +34,10 @@ class GenBankParserSpec extends Specification {
         genbank.version must_== Version("NC_001773", 1, "10954552")
       }
       
+      "Keywords" in {
+        genbank.keywords must_== Keywords.Dot
+      }
+      
       "Source" in {
         genbank.source must_== Source("Pyrococcus abyssi GE5", "Pyrococcus abyssi GE5",
           IndexedSeq("Archaea", "Euryarchaeota", "Thermococci", "Thermococcales",
@@ -89,6 +93,10 @@ class GenBankParserSpec extends Specification {
       
       "Version" in {
         genbank.version must_== Version("NC_009347", 1, "145294040")
+      }
+      
+      "Keywords" in {
+        genbank.keywords must_== Keywords(List("."))
       }
       
       "Source" in {

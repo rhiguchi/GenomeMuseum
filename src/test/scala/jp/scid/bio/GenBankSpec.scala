@@ -133,6 +133,21 @@ class GenBankSpec extends Specification {
     }
     
     
+    "Keywords.Format" in {
+      import GenBank.Keywords
+      val format = new Keywords.Format
+      val text = "KEYWORDS    ."
+      
+      "Head オブジェクトの行認知" in {
+        format.Head.unapply(text) must beTrue
+      }
+      
+      "単行" in {
+        val k = format parse text
+        k.values must_== List(".")
+      }
+    }
+    
     "Source.Format" in {
       import GenBank.Source
       val format = new Source.Format
