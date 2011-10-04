@@ -3,6 +3,7 @@ package jp.scid.genomemuseum.controller
 import java.util.ResourceBundle
 import java.io.{File, FileInputStream}
 import jp.scid.genomemuseum.{view, model, GenomeMuseumGUI}
+import com.explodingpixels.macwidgets.MacWidgetFactory
 import view.{MainView, MainViewMenuBar}
 import model.MuseumSourceModel
 import javax.swing.{JFrame, JTree}
@@ -22,6 +23,8 @@ class MainViewController(
   
   mainView.dataTableScroll.setTransferHandler(transferHandler)
   makeSourceList(sourceList)
+  // スクロールの UI を設定
+  MacWidgetFactory makeSourceListScrollPane mainView.sourceListScroll
   
   reloadResources()
   

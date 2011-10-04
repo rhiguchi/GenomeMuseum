@@ -13,9 +13,11 @@ import javax.swing.JTree;
 import javax.swing.SpringLayout;
 import javax.swing.SpringLayout.Constraints;
 
+import com.explodingpixels.macwidgets.MacWidgetFactory;
+
 public class MainView {
     public final JPanel contentPane = new JPanel();
-    public final JTable dataTable = new JTable();
+    public final JTable dataTable = MacWidgetFactory.createITunesTable(null);
     public final JScrollPane dataTableScroll = new JScrollPane(dataTable,
             JScrollPane.VERTICAL_SCROLLBAR_ALWAYS,
             JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
@@ -46,8 +48,8 @@ public class MainView {
             Constraints c = layout.getConstraints(sourceListDataTableSplit);
             c.setX(container.getX());
             c.setY(sum(container.getY(), constant(64)));
-            c.setWidth(container.getWidth());
-            c.setConstraint("South", container.getConstraint("South"));
+            c.setWidth(layout.getConstraint("Width", contentPane));
+            c.setConstraint("South", layout.getConstraint("South", contentPane));
         }
         {
             Constraints c = layout.getConstraints(quickSearchField);
