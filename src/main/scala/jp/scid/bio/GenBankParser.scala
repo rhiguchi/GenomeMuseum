@@ -3,6 +3,7 @@ package jp.scid.bio
 import java.io.InputStream
 import java.text.{ParseException, SimpleDateFormat}
 import java.util.Date
+import java.util.logging.{Logger, Level}
 import GenBank._
 
 /**
@@ -11,7 +12,8 @@ import GenBank._
 class GenBankParser {
   import collection.mutable.{ArrayBuffer, ListBuffer, Buffer}
   
-  private val logger = org.slf4j.LoggerFactory.getLogger(classOf[GenBankParser].getName)
+  private lazy val logger = Logger.getLogger(
+    classOf[GenBankParser].getName, classOf[GenBankParser].getName)
   
   val locusFormat = new Locus.Format
   val definitionFormat = new Definition.Format
@@ -87,7 +89,7 @@ class GenBankParser {
         val sequence = originFormat.readSequence(tail)
         origin = Origin(sequence)
       case _ =>
-        logger.warn("unparsableElement", head)
+        logger.log(Level.WARNING, "unparsableElement", head)
     }
     
     /** 全ての要素の構文解析 */
