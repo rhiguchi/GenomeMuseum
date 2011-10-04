@@ -5,7 +5,7 @@ import java.io.{File, FileInputStream}
 import jp.scid.genomemuseum.{view, model, GenomeMuseumGUI}
 import view.{MainView, MainViewMenuBar}
 import model.MuseumSourceModel
-import javax.swing.JFrame
+import javax.swing.{JFrame, JTree}
 import scala.swing.Action
 
 
@@ -21,13 +21,7 @@ class MainViewController(
   private val sourceList = mainView.sourceList
   
   mainView.dataTableScroll.setTransferHandler(transferHandler)
-  sourceList.setModel(sourceModel.treeModel)
-  sourceList.setSelectionModel(sourceModel.treeSelectionModel)
-  sourceList.setRootVisible(false)
-  sourceList.setUI(new jp.scid.macwidgets.plaf.SourceListTreeUI())
-  sourceList setFocusable false
-  sourceList setInvokesStopCellEditing false
-  sourceList setToggleClickCount 0
+  makeSourceList(sourceList)
   
   reloadResources()
   
@@ -43,6 +37,16 @@ class MainViewController(
   
   private def reloadResources(res: ResourceBundle) {
     val rm = new ResourceManager(res)
+  }
+  
+  private def makeSourceList(tree: JTree) {
+    tree setModel sourceModel.treeModel
+    tree setSelectionModel sourceModel.treeSelectionModel
+    tree setUI new jp.scid.macwidgets.plaf.SourceListTreeUI
+    tree setRootVisible false
+    tree setFocusable false
+    tree setInvokesStopCellEditing false
+    tree setToggleClickCount 0
   }
 }
 
