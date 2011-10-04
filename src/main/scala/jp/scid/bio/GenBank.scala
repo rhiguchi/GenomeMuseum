@@ -21,11 +21,6 @@ case class GenBank (
 
 object GenBank {
   sealed abstract class Element
-  sealed abstract private[GenBank] class ElementObject(head: String)
-      extends HeadExtractor {
-    override protected val headKey = head
-    val keySize = 12
-  }
   type Features = IndexedSeq[Feature]
   
   sealed abstract private[GenBank] class ElementFormat(val headKey: String) {
@@ -682,18 +677,6 @@ object GenBank {
       override val keySize = 2
       override protected def isElementHead(line: String) = 
         line.startsWith(headKey)
-    }
-  }
-  
-  /**
-   * 先頭行の開始文字の抽出子オブジェクト Head をもたせるトレイト
-   * {@code headKey} をオーバーライドして、実装する
-   */
-  private[GenBank] trait HeadExtractor {
-    protected val headKey: String
-    object Head {
-      override def toString = headKey
-      def unapply(line: String): Boolean = line.startsWith(headKey)
     }
   }
   
