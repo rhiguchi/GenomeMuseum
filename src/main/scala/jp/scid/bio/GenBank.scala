@@ -680,6 +680,8 @@ object GenBank {
   object Termination {
     class Format extends ElementFormat("//") {
       override val keySize = 2
+      override protected def isElementHead(line: String) = 
+        line.startsWith(headKey)
     }
   }
   
