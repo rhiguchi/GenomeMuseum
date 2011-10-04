@@ -27,7 +27,8 @@ proguardOptions ++= Seq(
   "-dontnote",
   "-keepclassmembers class ** {@org.jdesktop.application.*Action *;}",
   "-keepclassmembers class * extends org.jdesktop.application.AbstractBean { public *;}",
-  "-keep class * implements java.sql.Driver"
+  "-keep class * implements java.sql.Driver",
+  "-keep class net.sf.cglib.** {*;}"
 )
 
 maxErrors := 20
