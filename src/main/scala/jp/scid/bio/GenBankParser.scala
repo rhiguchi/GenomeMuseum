@@ -17,6 +17,7 @@ class GenBankParser {
   val sourceFormat = new Source.Format
   val versionFormat = new Version.Format
   val keywordsFormat = new Keywords.Format
+  val commentFormat = new Comment.Format
   val featuresFormat = new Features.Format
   val featureFormat = new Feature.Format
   
@@ -62,12 +63,14 @@ class GenBankParser {
         definition = definitionFormat parse readElementLines(head, source)
       case accessionFormat.Head() => 
         accession = accessionFormat parse readElementLines(head, source)
-      case sourceFormat.Head() => 
-        sourceObj = sourceFormat parse readElementLines(head, source)
       case versionFormat.Head() => 
         version = versionFormat parse readElementLines(head, source)
       case keywordsFormat.Head() => 
         keywords = keywordsFormat parse readElementLines(head, source)
+      case sourceFormat.Head() => 
+        sourceObj = sourceFormat parse readElementLines(head, source)
+      case commentFormat.Head() => 
+        comment = commentFormat parse readElementLines(head, source)
       case featuresFormat.Head() => 
         features = parseFeatures(tail)
       case _ =>

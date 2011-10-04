@@ -374,6 +374,23 @@ object GenBank {
     value: String = ""
   ) extends Element
   
+  object Comment {
+    class Format extends ElementFormat("COMMENT") {
+      /**
+       * COMMENT 行の文字列から Comment インスタンスを作成する
+       * @param source 作成元文字列の配列
+       * @return Comment インスタンス
+       */
+      @throws(classOf[ParseException])
+      def parse(source: Seq[String]): Comment = source match {
+        case Seq(Head(), _*) =>
+          val defValue = toSingleValue(source, keySize)
+          Comment(defValue)
+        case _ => throw new ParseException("Invalid format", 0)
+      }
+    }
+  }
+  
   /** Features 要素 */
   object Features {
     class Format extends ElementFormat("FEATURES")

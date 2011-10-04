@@ -178,6 +178,41 @@ class GenBankSpec extends Specification {
       }
     }
     
+    
+    "Comment.Format" in {
+      import GenBank.Comment
+      val format = new Comment.Format
+      val lines1 =
+        """COMMENT     PROVISIONAL REFSEQ: This record has not yet been subject to final
+          |            NCBI review. The reference sequence was derived from U49503.
+          |            COMPLETENESS: full length.""".stripMargin.split("\n").toList
+      val lines2 =
+        """COMMENT     PROVISIONAL REFSEQ: This record has not yet been subject to final
+          |            NCBI review. The reference sequence was derived from CP000643.
+          |            COMPLETENESS: full length.""".stripMargin.split("\n").toList
+      
+      "Head オブジェクトの行認知" in {
+        format.Head.unapply(lines1.head) must beTrue
+        format.Head.unapply(lines1.tail.head) must beFalse
+        format.Head.unapply(lines2.head) must beTrue
+        format.Head.unapply(lines2.tail.head) must beFalse
+      }
+      
+      "複数行 1" in {
+        val c = format parse lines1
+        c.value must_== "PROVISIONAL REFSEQ: This record has not yet been subject to final " +
+          "NCBI review. The reference sequence was derived from U49503. " +
+          "COMPLETENESS: full length."
+      }
+      
+      "複数行 2" in {
+        val c = format parse lines2
+        c.value must_== "PROVISIONAL REFSEQ: This record has not yet been subject to final " +
+          "NCBI review. The reference sequence was derived from CP000643. " +
+          "COMPLETENESS: full length."
+      }
+    }
+    
     "Features.Format" in {
       import GenBank.Features
       

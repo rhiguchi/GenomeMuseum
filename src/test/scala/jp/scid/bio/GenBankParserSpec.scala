@@ -44,6 +44,12 @@ class GenBankParserSpec extends Specification {
             "Thermococcaceae", "Pyrococcus"))
       }
       
+      "Comment" in {
+        genbank.comment must_== Comment("PROVISIONAL REFSEQ: This record has not yet been subject to final " +
+          "NCBI review. The reference sequence was derived from U49503. " +
+          "COMPLETENESS: full length.")
+      }
+      
       "Feature" in {
         genbank.features.size must_== 11
         genbank.features(0).key must_== "source"
@@ -103,6 +109,12 @@ class GenBankParserSpec extends Specification {
         genbank.source must_== Source("Shigella sonnei Ss046", "Shigella sonnei Ss046",
           IndexedSeq("Bacteria", "Proteobacteria", "Gammaproteobacteria",
             "Enterobacteriales", "Enterobacteriaceae", "Shigella"))
+      }
+      
+      "Comment" in {
+        genbank.comment must_== Comment("PROVISIONAL REFSEQ: This record has not yet been subject to final " +
+          "NCBI review. The reference sequence was derived from CP000643. " +
+          "COMPLETENESS: full length.")
       }
       
       "Feature" in {
