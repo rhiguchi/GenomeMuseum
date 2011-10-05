@@ -181,6 +181,7 @@ class GenBankSpec extends Specification {
     "Reference.Format" in {
       import GenBank.Reference
       val format = new Reference.Format
+      val line = "REFERENCE   1"
       val lines1 =
         """REFERENCE   1  (bases 1 to 3444)
           |  AUTHORS   Erauso,G., Marsin,S., Benbouzid-Rollet,N., Baucher,M.F.,
@@ -197,12 +198,19 @@ class GenBankSpec extends Specification {
           |            Information, NIH, Bethesda, MD 20894, USA""".stripMargin.split("\n").toList
       
       "Head オブジェクトの行認知" in {
+        format.Head.unapply(line) must beTrue
         format.Head.unapply(lines1.head) must beTrue
         format.Head.unapply(lines1.tail.head) must beFalse
         format.Head.unapply(lines2.head) must beTrue
         format.Head.unapply(lines2.tail.head) must beFalse
       }
             
+      "単数行 1" in {
+        val r = format parse line
+        r.basesStart must_== 0
+        r.basesEnd must_== 0
+      }
+      
       "複数行 1" in {
         val r = format parse lines1
         r.basesStart must_== 1

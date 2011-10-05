@@ -383,6 +383,9 @@ object GenBank {
         case _ => throw new ParseException("Invalid format", 0)
       }
       
+      @throws(classOf[ParseException])
+      def parse(source: String): Reference = parse(List(source))
+      
       @annotation.tailrec
       private def readElements(accume: Map[Symbol, String], source: Seq[String]): Map[Symbol, String] = {
         source match {
@@ -397,7 +400,11 @@ object GenBank {
       }
       
       protected def baseFragmentate(source: String): Option[(String, String)] = source.drop(keySize) match {
-        case ReferencePattern(index, start, end) => Some(start, end)
+        case ReferencePattern(index, start, end) =>
+          if (start == null || end == null)
+            None
+          else
+            Some(start, end)
         case _ => None
       }
       
