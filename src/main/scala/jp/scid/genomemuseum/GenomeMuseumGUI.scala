@@ -142,6 +142,7 @@ object GenomeMuseumGUI {
   import java.awt.event.ActionEvent
   import scala.swing.Action
   import model.MuseumExhibit
+  import jp.scid.bio.GenBank
   
   def actionFor(actionMap: ApplicationActionMap)(key: String) = new Action(key) {
     override lazy val peer = actionMap.get(key) match {
@@ -196,8 +197,24 @@ object GenomeMuseumGUI {
       val source = io.Source.fromInputStream(inst)
       parser.parseFrom(source.getLines)
     }}
-    .map( e => MuseumExhibit(e.locus.name, e.locus.sequenceLength) )
+    .map( createMuseumExibit )
     
     list
   }
+  
+  private def getVersionNumber(value: Int) =
+    if (value == 0) None else Some(value)
+  
+  private def createMuseumExibit(data: GenBank) = MuseumExhibit(
+    name = data.locus.name,
+    sequenceLength = data.locus.sequenceLength,
+    accession = data.accession.primary,
+    identifier = data.version.identifier,
+    namespace = data.locus.division,
+    version = getVersionNumber(data.version.number),
+    definition = data.definition.value,
+    source = data.source.value,
+    organism = data.source.taxonomy :+ data.source.organism mkString "\n",
+    date = data.locus.date
+  )
 }
