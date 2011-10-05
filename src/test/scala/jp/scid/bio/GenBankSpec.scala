@@ -286,6 +286,7 @@ class GenBankSpec extends Specification {
       val format = new Qualifier.Format
       val line1 = """                     /organism="Pyrococcus abyssi GE5""""
       val line2 = """                     /transl_table=11"""
+      val line3 = """                     /pseudo"""
       val lines1 = """                     /note="putative double-stranded origin; dso; similar to
                      |                     dso seequences from pC194 plasmids"""".stripMargin.split("\n").toList
       val lines2 = """                     /translation="MSEDKFLSDYSPRDAVWDTQRTLTDSVGGIYQTAAEFERYALRM
@@ -295,6 +296,7 @@ class GenBankSpec extends Specification {
       "Head オブジェクトの行認知" in {
         format.Head.unapply(line1) must beTrue
         format.Head.unapply(line2) must beTrue
+        format.Head.unapply(line3) must beTrue
         format.Head.unapply(lines1.head) must beTrue
         format.Head.unapply(lines1.tail.head) must beFalse
         format.Head.unapply(lines2.head) must beTrue
@@ -315,6 +317,26 @@ class GenBankSpec extends Specification {
         q.value must_== "11"
         format unapply line2 must beSome.which(
           Qualifier("transl_table", "11").equals)
+      }
+      
+      "単行3" in {
+        val q = format parse line3
+        q.key must_== "pseudo"
+        q.value must_== ""
+      }
+      
+      "複数行 1" in {
+        val q = format parse lines1
+        q.key must_== "note"
+        q.value must_== "putative double-stranded origin; dso; similar to dso seequences from pC194 plasmids"
+      }
+      
+      "複数行 2" in {
+        val q = format parse lines2
+        q.key must_== "translation"
+        q.value must_== "MSEDKFLSDYSPRDAVWDTQRTLTDSVGGIYQTAAEFERYALRM" +
+          "ASCSGLLRFGWSTIMETGETRLRLRSAQFCRVRHCPVCQWRRTLMWQARFYQALPKIV" +
+          "DRETNEDLVIADDVGDGTDDGKRTAFVWDSGKRRYKRAPEKDKSD"
       }
     }
     

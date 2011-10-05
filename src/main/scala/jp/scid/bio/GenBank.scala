@@ -505,7 +505,8 @@ object GenBank {
         protected def makeValueFor(key: String, valueLines: List[String]) = {
           // 文字列両端のダブルクオートを除去する
           def removeDoubleQuates(value: String) = {
-            if (value.charAt(0) == '"' && value.charAt(value.length - 1) == '"')
+            if (value.length > 2 && 
+                value.charAt(0) == '"' && value.charAt(value.length - 1) == '"')
               value.substring(1, value.length - 1)
             else value
           }
