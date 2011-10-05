@@ -11,7 +11,7 @@ import model.{MuseumExhibit}
 class ExhibitTableFormat extends TableFormat[MuseumExhibit] {
   import ExhibitTableFormat._
   
-  def getColumnCount = 4
+  def getColumnCount = 12
   def getColumnName(column: Int) = columnNames(column)
   def getColumnValue(e: MuseumExhibit, column: Int) = column match {
     case 0 => e.name
