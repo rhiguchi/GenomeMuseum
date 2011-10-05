@@ -43,6 +43,17 @@ private class MuseumSquerylScheme(dbLocation: String,
   )
   
   val museumExhibits = table[MuseumExhibit]("museum_exhibit")
+  on(museumExhibits) { table => declare (
+    table.name is (dbType("varchar")),
+    table.accession is (dbType("varchar")),
+    table.identifier is (dbType("varchar")),
+    table.namespace is (dbType("varchar")),
+    table.definition is (dbType("varchar")),
+    table.source is (dbType("varchar")),
+    table.organism is (dbType("varchar")),
+    table.sequenceUnit is (dbType("varchar")),
+    table.moleculeType is (dbType("varchar"))
+  )}
   
   def allMuseumExhibits() = transaction {
     from(museumExhibits)(select(_)).toList
