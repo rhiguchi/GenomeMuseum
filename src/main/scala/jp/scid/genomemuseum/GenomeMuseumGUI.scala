@@ -55,7 +55,7 @@ class GenomeMuseumGUI extends Application {
     
     val tableSource = dataSource.allExibits
     mainCtrl.tableCtrl bindTableSource tableSource
-    dataSource store GenomeMuseumGUI.sampleExhibits
+    dataSource store GenomeMuseumGUI.loadSampleFiles
   }
   
   override protected def ready() {
@@ -87,6 +87,9 @@ class GenomeMuseumGUI extends Application {
       try f(s) finally s.close()
     }
     
+    def getVersionNumber(value: Int) =
+      if (value == 0) None else Some(value)
+    
     // 拡張子で判別
     // TODO ファイルの中身を読んで判別
     val e = if (file.getName.endsWith(".gbk")) {
@@ -95,7 +98,18 @@ class GenomeMuseumGUI extends Application {
         val source = io.Source.fromInputStream(inst)
         parser.parseFrom(source.getLines)
       }
-      Some(MuseumExhibit(data.locus.name, data.locus.sequenceLength))
+      Some(MuseumExhibit(
+        name = data.locus.name,
+        sequenceLength = data.locus.sequenceLength,
+        accession = data.accession.primary,
+        identifier = data.version.identifier,
+        namespace = data.locus.division,
+        version = getVersionNumber(data.version.number),
+        definition = data.definition.value,
+        source = data.source.value,
+        organism = data.source.taxonomy :+ data.source.organism mkString "\n",
+        date = data.locus.date
+      ))
     }
     else if (file.getName.endsWith(".faa") ||
         file.getName.endsWith(".fna") || file.getName.endsWith(".ffn") ||
@@ -105,7 +119,15 @@ class GenomeMuseumGUI extends Application {
         val source = io.Source.fromInputStream(inst)
         parser.parseFrom(source.getLines)
       }
-      Some(MuseumExhibit(data.header.accession, data.sequence.value.length))
+      Some(MuseumExhibit(
+        name = data.header.name,
+        sequenceLength = data.sequence.value.length,
+        accession = data.header.accession,
+        identifier = data.header.identifier,
+        namespace = data.header.namespace,
+        version = getVersionNumber(data.header.version),
+        definition = data.header.description
+      ))
     }
     else {
       None
