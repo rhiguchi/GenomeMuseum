@@ -2,16 +2,17 @@ package jp.scid.genomemuseum.controller
 
 import javax.swing.{JTable, JTextField}
 import java.awt.event.{KeyAdapter, KeyEvent}
+import java.util.Comparator
 
 import scala.collection.{mutable, script}
 import mutable.{ObservableBuffer, Undoable}
 
 import ca.odell.glazedlists.{swing => glswing, BasicEventList,
-  TextFilterator, FilterList}
+  TextFilterator, FilterList, SortedList}
 import glswing.{EventTableModel, SearchEngineTextFieldMatcherEditor}
 
 import jp.scid.genomemuseum.{gui, model}
-import gui.ExhibitTableFormat
+import gui.{ExhibitTableFormat, ComparatorEditor, TableFormatComparatorFactory}
 import model.{MuseumExhibit}
 
 class ExhibitTableController(
@@ -22,8 +23,15 @@ class ExhibitTableController(
   protected val matcherEditor = new SearchEngineTextFieldMatcherEditor(
     quickSearchField, filterator)
   protected val filteredSource = new FilterList(tableSource, matcherEditor)
+  protected val sortedSource = new SortedList(filteredSource, null)
   protected val tableFormat = new ExhibitTableFormat
-  protected val tableModel = new EventTableModel(filteredSource, tableFormat)
+  protected val tableModel = new EventTableModel(sortedSource, tableFormat)
+  protected val comparatorFactory = new TableFormatComparatorFactory(tableFormat)
+  protected val tableHeaderSortHandler = new TableHeaderSortHandler[MuseumExhibit](
+    table.getTableHeader, comparatorFactory)
+  
+  /** FormatTableColumnManager の接続除去関数 */
+  private var comparatorEditorReactionRemover: () => Unit = () => ()
   
   // インクリメンタルサーチ
   quickSearchField addKeyListener new KeyAdapter {
@@ -34,6 +42,9 @@ class ExhibitTableController(
   
   // データバインディング
   table.setModel(tableModel)
+  
+  // ソーティング
+  sortWith(tableHeaderSortHandler.comparatorEditor)
   
   def bindTableSource(buf: ObservableBuffer[MuseumExhibit]) {
     import scala.collection.JavaConverters._
@@ -77,6 +88,28 @@ class ExhibitTableController(
     finally {
       tableSource.getReadWriteLock().writeLock().unlock();
     }
+  }
+  
+  /** ソート用の Comparator を設定 */
+  def sortWith(c: Comparator[MuseumExhibit]) {
+    sortedSource setComparator c
+  }
+  
+  /** ソート用に ComparatorEditor を設定 */
+  private def sortWith(e: ComparatorEditor[MuseumExhibit]) {
+    comparatorEditorReactionRemover()
+    
+    def resorting() = sortWith(e.comparator)
+    val reaction: swing.Reactions.Reaction = {
+      case ComparatorEditor.ComparatorChanged(e) => resorting()
+    }
+    e.reactions += reaction
+    
+    comparatorEditorReactionRemover = () => {
+      e.reactions -= reaction
+    }
+    
+    resorting()
   }
 }
 
