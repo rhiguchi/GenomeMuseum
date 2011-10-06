@@ -25,7 +25,7 @@ class TableHeaderSortHandler[E] (tableHeader: JTableHeader,
       }
     }
   }
-  
+
   val comparatorEditor = new StringComparatorEditor[E](comparatorFactory)
   
   private val currentOrderMap = mutable.Map.empty[String, String]
@@ -76,9 +76,55 @@ class TableHeaderSortHandler[E] (tableHeader: JTableHeader,
     
     // カラム選択
     columnSelectionModel.setSelectionInterval(columnIndex, columnIndex)
+    tableHeader.resizeAndRepaint()
   }
   
   /** クリックした場所がリサイズ領域であるか */
   private def isResizing(header: JTableHeader) =
     header.getCursor == Cursor.getPredefinedCursor(Cursor.E_RESIZE_CURSOR)
+}
+
+object TableHeaderSortHandler {
+  import javax.swing.{table, JTable, JLabel, Icon, SwingConstants}
+  import table.{TableCellRenderer, TableColumn}
+  import ca.odell.glazedlists.swing.SortableRenderer
+  
+  def toSortArrowHeaderRenderer(renderer: TableCellRenderer, ascending: Icon,
+      descending: Icon) = new TableCellRenderer {
+    def getTableCellRendererComponent(table: JTable, value: AnyRef, isSelected: Boolean,
+        hasFocus: Boolean, row: Int, column: Int) = {
+      val selected = table.getColumnModel.getSelectionModel.isSelectedIndex(column)
+      val iconOp =
+        if (!selected) None
+        else if (table.getColumnCount <= column) None
+        else sortingStateAscending(table.getColumnModel.getColumn(column)) map
+          { if (_) ascending else descending }
+        
+      val label = renderer match {
+        case renderer: SortableRenderer =>
+          renderer.setSortIcon(iconOp.getOrElse(null))
+          renderer.getTableCellRendererComponent(table, value, selected, hasFocus, row, column)
+        case _ => renderer.getTableCellRendererComponent(table, value, selected,
+            hasFocus, row, column) match {
+          case rendered: JLabel =>
+            rendered.setIcon(iconOp.getOrElse(null))
+            rendered.setHorizontalTextPosition(SwingConstants.LEADING)
+            rendered
+          case rendered =>
+            rendered
+        }
+      }
+      
+      label
+    }
+    
+    protected def sortingStateAscending(column: TableColumn) = column match {
+      case column: SortableColumn =>
+        if (column.orderStatement.split("\\s+").contains("desc"))
+          Some(false)
+        else
+          Some(true)
+      case _ => Some(true)
+    }
+  }
 }

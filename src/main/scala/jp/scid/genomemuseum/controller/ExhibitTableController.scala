@@ -9,7 +9,7 @@ import scala.collection.{mutable, script}
 import mutable.{ObservableBuffer, Undoable}
 
 import ca.odell.glazedlists.{swing => glswing, BasicEventList,
-  TextFilterator, FilterList, SortedList, gui => glgui}
+  TextFilterator, FilterList, SortedList, gui => glgui, impl => glimpl}
 import glswing.{EventTableModel, SearchEngineTextFieldMatcherEditor}
 import glgui.TableFormat
 
@@ -65,6 +65,10 @@ class ExhibitTableController(
   
   // ソーティング
   sortWith(tableHeaderSortHandler.comparatorEditor)
+  val icons = glimpl.SortIconFactory.loadIcons
+  val headerRenderer = TableHeaderSortHandler.toSortArrowHeaderRenderer(
+    table.getTableHeader.getDefaultRenderer, icons(1), icons(2))
+  table.getTableHeader setDefaultRenderer headerRenderer
   
   def bindTableSource(buf: ObservableBuffer[MuseumExhibit]) {
     import scala.collection.JavaConverters._
