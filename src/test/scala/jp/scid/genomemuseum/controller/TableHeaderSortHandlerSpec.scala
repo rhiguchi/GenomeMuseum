@@ -51,18 +51,18 @@ class TableHeaderSortHandlerSpec extends Specification {
       val handler = new TableHeaderSortHandler[Nothing](tableHeader, factory _) {
         override def ordersFor(columnIndex: Int) = {
           if (columnIndex == 2)
-            IndexedSeq("firstname", "secondname", "fullname")
+            List("firstname", "secondname", "fullname")
           else
             super.ordersFor(columnIndex)
         }
       }
       
-      handler.currentOrderFor(0) must_== ""
-      handler.currentOrderFor(1) must_== ""
-      handler.currentOrderFor(2) must_== ""
+      handler.currentOrderFor(0) must_== "col1 asc"
+      handler.currentOrderFor(1) must_== "col2 asc"
+      handler.currentOrderFor(2) must_== "firstname"
       
-      handler.ordersFor(0) must_== IndexedSeq("col1 asc", "col1 desc")
-      handler.ordersFor(1) must_== IndexedSeq("col2 asc", "col2 desc")
+      handler.ordersFor(0) must_== List("col1 asc", "col1 desc")
+      handler.ordersFor(1) must_== List("col2 asc", "col2 desc")
       
       handler.headerClick(0)
       handler.currentOrderFor(0) must_== "col1 asc"

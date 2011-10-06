@@ -1,6 +1,7 @@
 package jp.scid.genomemuseum.controller
 
-import javax.swing.{JTable, JTextField}
+import javax.swing.{JTable, JTextField, table}
+import table.{TableColumnModel, TableColumn}
 import java.awt.event.{KeyAdapter, KeyEvent}
 import java.util.Comparator
 
@@ -8,11 +9,13 @@ import scala.collection.{mutable, script}
 import mutable.{ObservableBuffer, Undoable}
 
 import ca.odell.glazedlists.{swing => glswing, BasicEventList,
-  TextFilterator, FilterList, SortedList}
+  TextFilterator, FilterList, SortedList, gui => glgui}
 import glswing.{EventTableModel, SearchEngineTextFieldMatcherEditor}
+import glgui.TableFormat
 
 import jp.scid.genomemuseum.{gui, model}
-import gui.{ExhibitTableFormat, ComparatorEditor, TableFormatComparatorFactory}
+import gui.{ExhibitTableFormat, ComparatorEditor, TableFormatComparatorFactory,
+  SortableColumn}
 import model.{MuseumExhibit}
 
 class ExhibitTableController(
@@ -41,7 +44,24 @@ class ExhibitTableController(
   }
   
   // データバインディング
+  table setAutoCreateColumnsFromModel false
   table.setModel(tableModel)
+  
+  // カラム準備
+  def setUpTableColumns(columnModel: TableColumnModel) {
+    Range(0, tableFormat.getColumnCount) map createTableColumn foreach
+      columnModel.addColumn
+  }
+  protected def createTableColumn(modelIndex: Int): TableColumn = {
+    val columName = tableFormat.getColumnName(modelIndex)
+    val column = new TableColumn(modelIndex) with SortableColumn {
+      val orderStatements = List(columName, columName + " desc")
+    }
+    column setHeaderValue columName
+    column setIdentifier columName
+    column
+  }
+  setUpTableColumns(table.getColumnModel)
   
   // ソーティング
   sortWith(tableHeaderSortHandler.comparatorEditor)

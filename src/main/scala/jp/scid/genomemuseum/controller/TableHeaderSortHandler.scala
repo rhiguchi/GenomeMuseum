@@ -4,7 +4,7 @@ import java.awt.Cursor
 import java.awt.event.{MouseEvent, MouseAdapter}
 import javax.swing.table.JTableHeader
 import collection.mutable
-import jp.scid.genomemuseum.gui.StringComparatorEditor
+import jp.scid.genomemuseum.gui.{StringComparatorEditor, SortableColumn}
 import java.util.Comparator
 
 /**
@@ -35,39 +35,41 @@ class TableHeaderSortHandler[E] (tableHeader: JTableHeader,
   private def columnIdentifierFor(columnIndex: Int): String =
     Some(columnModel.getColumn(columnIndex).getIdentifier).getOrElse("").toString
   
-  protected[controller] def ordersFor(columnIndex: Int): IndexedSeq[String] = {
-    columnIdentifierFor(columnIndex) match {
-      case null => IndexedSeq.empty
-      case identifier => IndexedSeq("asc", "desc").map(identifier + " " + _)
+  protected[controller] def ordersFor(columnIndex: Int): List[String] =
+    columnModel.getColumn(columnIndex) match {
+      case column: SortableColumn => column.orderStatements
+      case _ => List(" asc", " desc").map(columnIdentifierFor(columnIndex) + _)
     }
+  
+  def currentOrderFor(columnIndex: Int): String = {
+    val stmt = columnModel.getColumn(columnIndex) match {
+      case column: SortableColumn => column.orderStatement
+      case _ => currentOrderMap.getOrElse(columnIdentifierFor(columnIndex).toString, "")
+    }
+    if (stmt.nonEmpty) stmt
+    else ordersFor(columnIndex).headOption.getOrElse("")
   }
   
-  def currentOrderFor(columnIndex: Int): String =
-    currentOrderMap.getOrElse(columnIdentifierFor(columnIndex), "")
-  
-  def updateOrderFor(columnIndex: Int, newOrder: String) = {
-    currentOrderMap(columnIdentifierFor(columnIndex)) = newOrder
-  }
+  def updateOrderFor(columnIndex: Int, newOrder: String) =
+    columnModel.getColumn(columnIndex) match {
+      case column: SortableColumn => column.orderStatement = newOrder
+      case _ => currentOrderMap(columnIdentifierFor(columnIndex)) = newOrder
+    }
   
   /**
    * カラムヘッダをクリックした動作を実行する
    */
   def headerClick(columnIndex: Int) {
-    val currentColumnOrder = currentOrderFor(columnIndex)
-    val newOrder = if (currentColumnOrder.isEmpty) {
-      ordersFor(columnIndex).headOption.getOrElse("")
-    }
-    else if (columnSelectionModel.isSelectedIndex(columnIndex)) {
+    val newOrder = if (columnSelectionModel.isSelectedIndex(columnIndex)) {
       val orders = ordersFor(columnIndex)
-      orders.indexOf(currentColumnOrder) match {
+      orders.indexOf(currentOrderFor(columnIndex)) match {
         case -1 => orders.headOption.getOrElse("")
         case index => orders.drop(index + 1).headOption.getOrElse(orders.head)
       }
     }
     else {
-      currentColumnOrder
+      currentOrderFor(columnIndex)
     }
-    
     // 並べ替え記述の更新
     updateOrderFor(columnIndex, newOrder)
     comparatorEditor.orderStatement = newOrder
