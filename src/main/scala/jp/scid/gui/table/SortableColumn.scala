@@ -1,4 +1,4 @@
-package jp.scid.genomemuseum.gui
+package jp.scid.gui.table
 
 /**
  * 並び替え情報を持つ値のトレイト

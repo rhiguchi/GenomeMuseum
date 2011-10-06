@@ -1,4 +1,4 @@
-package jp.scid.genomemuseum.gui
+package jp.scid.gui
 
 import org.specs2.mutable._
 import java.util.Comparator

@@ -1,17 +1,21 @@
-package jp.scid.genomemuseum.controller
+package jp.scid.gui.table
 
 import java.awt.Cursor
 import java.awt.event.{MouseEvent, MouseAdapter}
 import javax.swing.table.JTableHeader
 import collection.mutable
-import jp.scid.genomemuseum.gui.{StringComparatorEditor, SortableColumn}
 import java.util.Comparator
+import jp.scid.gui.{ComparatorEditor, StringComparatorEditor}
 
 /**
  * テーブルヘッダクリックソートハンドラ
  */
-class TableHeaderSortHandler[E] (tableHeader: JTableHeader,
+class TableHeaderSortHandler[E](tableHeader: JTableHeader,
     comparatorFactory: String => Comparator[E]) {
+  /** このコンストラクタで作成したときは comparatorEditor は比較器を変更しない */
+  def this(tableHeader: JTableHeader) =
+    this(tableHeader, (aaa: String) => ComparatorEditor.noOrder)
+  
   /** ヘッダーのクリックを認識するハンドラ */
   tableHeader addMouseListener new MouseAdapter {
     override def mouseClicked(e: MouseEvent) {
@@ -25,23 +29,30 @@ class TableHeaderSortHandler[E] (tableHeader: JTableHeader,
       }
     }
   }
-
-  val comparatorEditor = new StringComparatorEditor[E](comparatorFactory)
   
+  /** 列整列情報が列オブジェクトに保存できない時の情報格納場所 */
   private val currentOrderMap = mutable.Map.empty[String, String]
   
-  private def columnSelectionModel = columnModel.getSelectionModel
+  /** クリックでの値が適用される比較器エディタ */
+  lazy val comparatorEditor = new StringComparatorEditor[E](comparatorFactory)
+  
+  /** カラムモデル取得ショートカット */
   private def columnModel = tableHeader.getColumnModel
+  
+  /** 選択モデル取得ショートカット */
+  private def columnSelectionModel = columnModel.getSelectionModel
+  
+  /**
+   * 識別子取得ショートカット
+   * @return null でない識別子 String 値。
+   */
   private def columnIdentifierFor(columnIndex: Int): String =
     Some(columnModel.getColumn(columnIndex).getIdentifier).getOrElse("").toString
   
-  protected[controller] def ordersFor(columnIndex: Int): List[String] =
-    columnModel.getColumn(columnIndex) match {
-      case column: SortableColumn => column.orderStatements
-      case _ => List(" asc", " desc").map(columnIdentifierFor(columnIndex) + _)
-    }
-  
-  def currentOrderFor(columnIndex: Int): String = {
+  /**
+   * 現在の列情報の取得
+   */
+  def currentOrder(columnIndex: Int): String = {
     val stmt = columnModel.getColumn(columnIndex) match {
       case column: SortableColumn => column.orderStatement
       case _ => currentOrderMap.getOrElse(columnIdentifierFor(columnIndex).toString, "")
@@ -56,19 +67,20 @@ class TableHeaderSortHandler[E] (tableHeader: JTableHeader,
       case _ => currentOrderMap(columnIdentifierFor(columnIndex)) = newOrder
     }
   
+  
   /**
    * カラムヘッダをクリックした動作を実行する
    */
   def headerClick(columnIndex: Int) {
     val newOrder = if (columnSelectionModel.isSelectedIndex(columnIndex)) {
       val orders = ordersFor(columnIndex)
-      orders.indexOf(currentOrderFor(columnIndex)) match {
+      orders.indexOf(currentOrder(columnIndex)) match {
         case -1 => orders.headOption.getOrElse("")
         case index => orders.drop(index + 1).headOption.getOrElse(orders.head)
       }
     }
     else {
-      currentOrderFor(columnIndex)
+      currentOrder(columnIndex)
     }
     // 並べ替え記述の更新
     updateOrderFor(columnIndex, newOrder)
@@ -78,6 +90,17 @@ class TableHeaderSortHandler[E] (tableHeader: JTableHeader,
     columnSelectionModel.setSelectionInterval(columnIndex, columnIndex)
     tableHeader.resizeAndRepaint()
   }
+  
+  /**
+   * 列整列情報の取得
+   * @return 列が {@code SortableColumn} の時は、そのオブジェクから取得。
+   *         それ以外は {@code TableColumn#getIdentifier() } の文字列から生成される
+   */
+  protected[table] def ordersFor(columnIndex: Int): List[String] =
+    columnModel.getColumn(columnIndex) match {
+      case column: SortableColumn => column.orderStatements
+      case _ => List("", " desc").map(columnIdentifierFor(columnIndex) + _)
+    }
   
   /** クリックした場所がリサイズ領域であるか */
   private def isResizing(header: JTableHeader) =
@@ -89,6 +112,9 @@ object TableHeaderSortHandler {
   import table.{TableCellRenderer, TableColumn}
   import ca.odell.glazedlists.swing.SortableRenderer
   
+  /**
+   * セルレンダラを整列矢印を付与するレンダラに変換する
+   */
   def toSortArrowHeaderRenderer(renderer: TableCellRenderer, ascending: Icon,
       descending: Icon) = new TableCellRenderer {
     def getTableCellRendererComponent(table: JTable, value: AnyRef, isSelected: Boolean,
@@ -128,3 +154,4 @@ object TableHeaderSortHandler {
     }
   }
 }
+

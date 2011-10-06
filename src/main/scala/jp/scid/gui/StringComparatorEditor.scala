@@ -1,4 +1,4 @@
-package jp.scid.genomemuseum.gui
+package jp.scid.gui
 
 import swing.Publisher
 import java.util.Comparator
@@ -6,7 +6,8 @@ import java.util.Comparator
 /**
  * 並び替え記述による比較器エディタ
  */
-class StringComparatorEditor[E](var factory: String => Comparator[E]) extends ComparatorEditor[E] with Publisher {
+class StringComparatorEditor[E](var factory: String => Comparator[E])
+    extends ComparatorEditor[E] with Publisher {
   import ComparatorEditor.ComparatorChanged
   
   /** 現在の並び替え記述 */

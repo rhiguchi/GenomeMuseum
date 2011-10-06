@@ -3,6 +3,7 @@ package jp.scid.genomemuseum.gui
 import ca.odell.glazedlists.GlazedLists
 import ca.odell.glazedlists.gui.TableFormat
 import java.util.Comparator
+import jp.scid.gui.ComparatorEditor
 
 /**
  * SortingColumnModel と接続し、Comparator の変化をするエディタ
@@ -10,10 +11,13 @@ import java.util.Comparator
 class TableFormatComparatorFactory[E] (tableFormat: TableFormat[E])
     extends (String => Comparator[E]) {
   import TableFormatComparatorFactory._
-  import ComparatorEditor.{noOrder, ComparatorChanged}
+  import ComparatorEditor.ComparatorChanged
   
   /** ソート記述の区切り文字 */
   val tokenSepalator = ","
+  
+  /** 比較を行わない比較器 */
+  private lazy val noOrder = new Comparator[E] { def compare(o1: E, o2: E) = 0 }
   
   /** 指定する識別子を列名としてモデルインデックスを取得 */
   private def findModelIndex(columnName: String) = {

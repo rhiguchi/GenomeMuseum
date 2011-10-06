@@ -1,4 +1,4 @@
-package jp.scid.genomemuseum.gui
+package jp.scid.gui
 
 import swing.{Reactions, Reactor}
 import java.util.Comparator
@@ -7,6 +7,10 @@ import java.util.Comparator
  * Comparator が変化するオブジェクト
  */
 trait ComparatorEditor[E] {
+  /**
+   * 現在の比較器を取得
+   * @return {@code Comparator}
+   */
   def comparator: Comparator[E]
   def reactions: Reactions
 }

@@ -13,9 +13,11 @@ import ca.odell.glazedlists.{swing => glswing, BasicEventList,
 import glswing.{EventTableModel, SearchEngineTextFieldMatcherEditor}
 import glgui.TableFormat
 
-import jp.scid.genomemuseum.{gui, model}
-import gui.{ExhibitTableFormat, ComparatorEditor, TableFormatComparatorFactory,
-  SortableColumn}
+import jp.scid.{gui, genomemuseum}
+import gui.ComparatorEditor
+import gui.table.{SortableColumn, TableHeaderSortHandler}
+import genomemuseum.{gui => gmgui, model}
+import gmgui.{ExhibitTableFormat, TableFormatComparatorFactory}
 import model.{MuseumExhibit}
 
 class ExhibitTableController(
