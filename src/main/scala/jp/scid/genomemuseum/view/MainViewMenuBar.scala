@@ -12,6 +12,9 @@ class MainViewMenuBar {
   val viewMenu = createMenu("view")
     
   // for fileMenu
+  val newListBox = createMenuItem("newListBox")
+  val newSmartBox = createMenuItem("newSmartBox")
+  val newGroupBox = createMenuItem("newGroupBox")
   val open = createMenuItem("open")
   val quit = createMenuItem("quit")
     
@@ -27,7 +30,8 @@ class MainViewMenuBar {
   val columnVisibility = createMenuItem("columnVisibility")
     
   container.contents += (fileMenu, editMenu, viewMenu)
-  fileMenu.contents += (open, new Separator, quit)
+  fileMenu.contents += (newListBox, newSmartBox, newGroupBox, new Separator,
+    open, new Separator, quit)
   editMenu.contents += (undo, new Separator,
     cut, copy, paste, delete, selectAll)
   viewMenu.contents += (columnVisibility)
