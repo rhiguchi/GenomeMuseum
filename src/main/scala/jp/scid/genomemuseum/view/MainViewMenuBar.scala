@@ -2,59 +2,54 @@ package jp.scid.genomemuseum.view
 
 import java.util.ResourceBundle
 import scala.swing.{MenuBar, Menu, MenuItem, Separator}
+import org.jdesktop.application.Application
 
 class MainViewMenuBar {
   val container = new MenuBar()
     
-  val fileMenu = new Menu("file")
-  val editMenu = new Menu("edit")
+  val fileMenu = createMenu("file")
+  val editMenu = createMenu("edit")
+  val viewMenu = createMenu("view")
     
   // for fileMenu
-  val open = new MenuItem("open")
-  val quit = new MenuItem("quit")
+  val open = createMenuItem("open")
+  val quit = createMenuItem("quit")
     
   // for editMenu
-  val undo = new MenuItem("undo")
-  val cut = new MenuItem("cut")
-  val copy = new MenuItem("copy")
-  val paste = new MenuItem("paste")
-  val delete = new MenuItem("delete")
-  val selectAll = new MenuItem("selectAll")
+  val undo = createMenuItem("undo")
+  val cut = createMenuItem("cut")
+  val copy = createMenuItem("copy")
+  val paste = createMenuItem("paste")
+  val delete = createMenuItem("delete")
+  val selectAll = createMenuItem("selectAll")
+  
+  // for viewMenu
+  val columnVisibility = createMenuItem("columnVisibility")
     
-  container.contents += (fileMenu, editMenu)
+  container.contents += (fileMenu, editMenu, viewMenu)
   fileMenu.contents += (open, new Separator, quit)
   editMenu.contents += (undo, new Separator,
     cut, copy, paste, delete, selectAll)
+  viewMenu.contents += (columnVisibility)
   
   // リソース読み込み
   reloadResources()
   
   def reloadResources() {
-    reloadResources(ResourceBundle.getBundle(classOf[MainViewMenuBar].getName))
+    Application.getInstance().getContext().getResourceMap(getClass())
+      .injectComponents(container.peer)
+    //reloadResources(ResourceBundle.getBundle(classOf[MainViewMenuBar].getName))
   }
   
-  def reloadResources(res: ResourceBundle) {
-    import collection.JavaConverters._
-    import java.lang.Boolean.parseBoolean
-    import scala.swing.AbstractButton
-    
-    def injectResourceTo(b: AbstractButton, resPrefix: String) {
-      val resKeys = res.getKeys.asScala.filter(_.startsWith(resPrefix)).toList
-      resKeys.foreach { resKey =>
-        resKey.substring(resPrefix.length) match {
-          case ".text" => b.text = res.getString(resKey)
-          case ".enabled" => b.enabled = parseBoolean(res.getString(resKey))
-          case _ => // TODO warnings
-        }
-      }
-    }
-    
-    def injectResourceFromText(btns: AbstractButton*) {
-      btns foreach { btn => injectResourceTo(btn, btn.text) }
-    }
-    
-    injectResourceFromText(fileMenu, editMenu)
-    injectResourceFromText(open, quit)
-    injectResourceFromText(undo, cut, copy, paste, delete, selectAll)
+  private def createMenuItem(name: String) = {
+    val menu = new MenuItem(name)
+    menu.name = name
+    menu
+  }
+  
+  private def createMenu(name: String) = {
+    val menu = new Menu(name)
+    menu.name = name
+    menu
   }
 }
