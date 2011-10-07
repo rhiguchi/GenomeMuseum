@@ -3,13 +3,14 @@ package jp.scid.genomemuseum
 import java.awt.{BorderLayout, FileDialog}
 import java.io.{File, FileInputStream}
 import org.jdesktop.application.{Application, Action}
-import view.{MainView, MainViewMenuBar}
-import controller.{ExhibitTableController, MainViewController}
+import view.{MainView, MainViewMenuBar, ColumnVisibilitySetting}
+import controller.{ExhibitTableController, MainViewController, ViewSettingDialogController}
 import model.{MuseumScheme, MuseumDataSource}
-import scala.swing.Frame
+import scala.swing.{Frame, Dialog, Panel}
 
 class GenomeMuseumGUI extends Application {
   import jp.scid.genomemuseum.model.MuseumExhibit
+  import GenomeMuseumGUI._
   
   // リソースのネームスペースを無しに設定
   getContext.getResourceManager.setResourceFolder("")
@@ -19,6 +20,14 @@ class GenomeMuseumGUI extends Application {
     val mainView = new MainView
     val mainMenu = new MainViewMenuBar
     
+    // 列表示設定
+    val columnConfigPane = new ColumnVisibilitySetting
+    lazy val columnConfigDialog = new Dialog(this) {
+      contents = new Panel{
+        override lazy val peer = columnConfigPane.contentPane
+      }
+    }
+    
     title = "GenomeMuseum"
     
     menuBar = mainMenu.container
@@ -27,6 +36,7 @@ class GenomeMuseumGUI extends Application {
     peer.getContentPane.add(mainView.contentPane, "Center")
   }
   lazy val openDialog = new FileDialog(mainFrame.peer, "", FileDialog.LOAD)
+  
   
   // Controllers
   var mainCtrl: MainViewController = _
@@ -56,6 +66,10 @@ class GenomeMuseumGUI extends Application {
     val tableSource = dataSource.allExibits
     mainCtrl.tableCtrl bindTableSource tableSource
     dataSource store GenomeMuseumGUI.loadSampleFiles
+    
+    val viewSettingDialogCtrl = new ViewSettingDialogController(
+      mainFrame.columnConfigPane, mainFrame.columnConfigDialog)
+    mainFrame.mainMenu.columnVisibility.action = viewSettingDialogCtrl.showAction
   }
   
   override protected def ready() {
@@ -144,12 +158,17 @@ object GenomeMuseumGUI {
   import model.MuseumExhibit
   import jp.scid.bio.GenBank
   
-  def actionFor(actionMap: ApplicationActionMap)(key: String) = new Action(key) {
-    override lazy val peer = actionMap.get(key) match {
+  def actionFor(actionMap: ApplicationActionMap)(key: String) = {
+    val swingAction = actionMap.get(key) match {
       case null => throw new IllegalStateException(
         "Action '%s' is not defined on '%s'.".format(key, actionMap.getActionsClass))
       case action => action
     }
+    convertToScalaSwingAction(swingAction)
+  }
+  
+  implicit def convertToScalaSwingAction(swingAction: javax.swing.Action) = new Action("") {
+    override lazy val peer = swingAction
     override def apply() {
       val e = new ActionEvent(this, ActionEvent.ACTION_PERFORMED, "apply")
       apply(e)
