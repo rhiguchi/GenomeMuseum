@@ -41,3 +41,5 @@ parallelExecution := true
 testOptions in Test += Tests.Argument("console", "junitxml")
 
 scalacOptions += "-unchecked"
+
+mainClass in (Compile, run) := Some("jp.scid.genomemuseum.GenomeMuseum")
