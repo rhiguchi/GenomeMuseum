@@ -1,6 +1,8 @@
 package jp.scid.genomemuseum.model
 
 trait MuseumScheme {
+  import MuseumScheme._
+  
   def allMuseumExhibits(): List[MuseumExhibit]
   
   def store(entity: MuseumExhibit): Boolean
@@ -9,6 +11,8 @@ trait MuseumScheme {
     entities map store foreach (result &= _)
     result
   }
+  
+  def exhibitRoomService: ExhibitRoomService
 }
 
 object MuseumScheme {
@@ -25,6 +29,22 @@ object MuseumScheme {
   
   private lazy val emptyScheme = new EmptyMuseumScheme
   def empty: MuseumScheme = emptyScheme
+  
+  trait ExhibitRoomService {
+    def save(room: ExhibitListBox)
+    def rootItems: List[ExhibitListBox]
+    def childrenFor(parent: ExhibitListBox): List[ExhibitListBox]
+  }
+  
+  object ExhibitRoomService {
+    class EmptyExhibitRoomService extends ExhibitRoomService {
+      def save(room: ExhibitListBox) {}
+      def rootItems = Nil
+      def childrenFor(parent: ExhibitListBox) = Nil
+    }
+    
+    val empty: ExhibitRoomService = new EmptyExhibitRoomService
+  }
 }
 
 private class MuseumSquerylScheme(dbLocation: String,
@@ -33,6 +53,7 @@ private class MuseumSquerylScheme(dbLocation: String,
   import org.squeryl.{SessionFactory, Session, adapters}
   import org.squeryl.PrimitiveTypeMode._
   import org.h2.jdbcx.JdbcConnectionPool
+  import MuseumScheme.ExhibitRoomService
   
   Class.forName("org.h2.Driver")
   
@@ -55,6 +76,36 @@ private class MuseumSquerylScheme(dbLocation: String,
     table.moleculeType is (dbType("varchar"))
   )}
   
+  /** リストボックステーブル定義 */
+  val exhibitRoom = table[ExhibitListBox]("exhibit_room")
+  /** リストボックス親子階層 */
+  val exhibitRoomRelation = oneToManyRelation(exhibitRoom, exhibitRoom)
+    .via((p, c) => c.parentId === p.id)
+  
+  /** リストボックス用データアクセスサービス */
+  val exhibitRoomService = new ExhibitRoomService {
+    private val table = exhibitRoom
+    
+    def save(room: ExhibitListBox) = inTransaction {
+      room.parentId match {
+        case Some(0) => room.parentId = None
+        case _ =>
+      }
+      if (room.isPersisted)
+        table.update(room)
+      else
+        table.insert(room)
+    }
+    
+    def rootItems = transaction {
+      from(exhibitRoom)(e => where(e.parentId.isNull) select(e)).toList
+    }
+    
+    def childrenFor(parent: ExhibitListBox) = transaction {
+      from(exhibitRoom)(e => where(e.parentId === parent.id) select(e)).toList
+    }
+  }
+  
   def allMuseumExhibits() = transaction {
     from(museumExhibits)(select(_)).toList
   }
@@ -73,6 +124,9 @@ private class MuseumSquerylScheme(dbLocation: String,
 }
 
 private class EmptyMuseumScheme extends MuseumScheme {
+  import MuseumScheme.ExhibitRoomService
   def allMuseumExhibits() = Nil
   def store(entities: MuseumExhibit) = true
+  
+  val exhibitRoomService = ExhibitRoomService.empty
 }

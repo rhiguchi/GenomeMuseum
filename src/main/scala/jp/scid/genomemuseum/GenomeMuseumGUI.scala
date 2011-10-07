@@ -47,21 +47,27 @@ class GenomeMuseumGUI extends Application {
   lazy val quitAction = actionFor("quit")
   
   // Model
-  private var dataSource = new MuseumDataSource(MuseumScheme.empty)
+  private var scheme = MuseumScheme.empty
+  private var dataSource = new MuseumDataSource(scheme)
   
   override protected def initialize(args: Array[String]) {
-    
-    val scheme = MuseumScheme.onMemory
+    scheme = MuseumScheme.onMemory
     dataSource = new MuseumDataSource(scheme)
   }
   
   override def startup() {
+    import jp.scid.genomemuseum.model.ExhibitListBox
     val frame = mainFrame.peer
     frame.setDefaultCloseOperation(javax.swing.WindowConstants.DO_NOTHING_ON_CLOSE)
     
     mainCtrl = new MainViewController(this,
       mainFrame.mainView, mainFrame.peer)
     bindMenuBarActions(mainFrame.mainMenu, mainCtrl)
+    
+    scheme.exhibitRoomService.save(ExhibitListBox("test1"))
+    scheme.exhibitRoomService.save(ExhibitListBox("test2"))
+    scheme.exhibitRoomService.save(ExhibitListBox("test3"))
+    mainCtrl.sourceModel.userBoxesSource = scheme.exhibitRoomService    
     
     val tableSource = dataSource.allExibits
     mainCtrl.tableCtrl bindTableSource tableSource

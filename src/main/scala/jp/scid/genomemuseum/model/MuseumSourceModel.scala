@@ -3,14 +3,32 @@ package jp.scid.genomemuseum.model
 import javax.swing.tree.{TreeModel, TreeSelectionModel, DefaultTreeSelectionModel,
   DefaultMutableTreeNode, DefaultTreeModel, TreePath}
 import javax.swing.event.TreeModelListener
-  
+import MuseumScheme.ExhibitRoomService
+
 class MuseumSourceModel {
   /** ソースリストのツリー構造 */
-  val treSource = new MuseumStructure()
+  val treeSource = new MuseumStructure()
   /** JTree モデルを取得 */
-  val treeModel = new SourceTreeModel[ExhibitRoom](treSource)
+  val treeModel = new SourceTreeModel[ExhibitRoom](treeSource)
   /** JTree 選択モデルを取得 */
   val treeSelectionModel = new DefaultTreeSelectionModel
+  
+  def addNewListBox(boxName: String) {
+    val newBox = ExhibitListBox(boxName)
+    userBoxesSource save newBox
+    updateSource()
+  }
+  
+  def userBoxesSource = treeSource.userBoxesSource
+  
+  def userBoxesSource_=(newSource: ExhibitRoomService) {
+    treeSource.userBoxesSource = newSource
+    updateSource()
+  }
+  
+  protected def updateSource() {
+    treeModel.reset()
+  }
 }
 
 /**
@@ -114,6 +132,23 @@ class SourceTreeModel[A <: AnyRef: ClassManifest](source: TreeSource[A]) extends
     }
   }
   
+  /**
+   * ツリー構造を初期化する。
+   */
+  def reset(): Unit = reset(getRoot)
+  
+  /**
+   * 指定した項目から下のツリーを初期化する
+   * @param node このノードから先をソースから読み込む
+   */
+  def reset(item: A) {
+    if (treeNodes.contains(item)) {
+      val node = treeNodes(item)
+      removeDescendant(node)
+      treeDelegate.reload(node)
+    }
+  }
+  
   // リスナー
   def addTreeModelListener(l: TreeModelListener) =
     treeDelegate addTreeModelListener l
@@ -133,6 +168,18 @@ class SourceTreeModel[A <: AnyRef: ClassManifest](source: TreeSource[A]) extends
       else
         source childrenFor node.nodeObject map treeNodeFor
     node.updateChildren(children)
+  }
+  
+  private def removeDescendant(parent: SourceTreeNode[A],
+      descendant: List[SourceTreeNode[A]] = Nil) {
+    val nextDescendant = descendant ::: parent.getChildren.toList
+    parent.resetChildren()
+    nextDescendant match {
+      case head :: descendant =>
+        head.removeFromParent()
+        removeDescendant(head, descendant)
+      case Nil =>
+    }
   }
   
   /** 
@@ -213,6 +260,12 @@ object SourceTreeModel {
       myChildren = Some(newChildren.toIndexedSeq)
       removeAllChildren()
       newChildren foreach add
+    }
+    
+    def getChildren = myChildren.getOrElse(IndexedSeq.empty)
+    
+    def resetChildren() {
+      myChildren = None
     }
   }
   
