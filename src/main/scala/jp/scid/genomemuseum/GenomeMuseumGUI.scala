@@ -64,10 +64,10 @@ class GenomeMuseumGUI extends Application {
       mainFrame.mainView, mainFrame.peer)
     bindMenuBarActions(mainFrame.mainMenu, mainCtrl)
     
-    scheme.exhibitRoomService.save(ExhibitListBox("test1"))
-    scheme.exhibitRoomService.save(ExhibitListBox("test2"))
-    scheme.exhibitRoomService.save(ExhibitListBox("test3"))
     mainCtrl.sourceModel.userBoxesSource = scheme.exhibitRoomService    
+    mainCtrl.sourceModel.addListBox("test1")
+    mainCtrl.sourceModel.addListBox("test2")
+    mainCtrl.sourceModel.addListBox("test3")
     
     val tableSource = dataSource.allExibits
     mainCtrl.tableCtrl bindTableSource tableSource

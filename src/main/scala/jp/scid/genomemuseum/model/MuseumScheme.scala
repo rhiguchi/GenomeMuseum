@@ -12,7 +12,7 @@ trait MuseumScheme {
     result
   }
   
-  def exhibitRoomService: ExhibitRoomService
+  def exhibitRoomService: TreeDataService[ExhibitListBox]
 }
 
 object MuseumScheme {
@@ -29,22 +29,6 @@ object MuseumScheme {
   
   private lazy val emptyScheme = new EmptyMuseumScheme
   def empty: MuseumScheme = emptyScheme
-  
-  trait ExhibitRoomService {
-    def save(room: ExhibitListBox)
-    def rootItems: List[ExhibitListBox]
-    def childrenFor(parent: ExhibitListBox): List[ExhibitListBox]
-  }
-  
-  object ExhibitRoomService {
-    class EmptyExhibitRoomService extends ExhibitRoomService {
-      def save(room: ExhibitListBox) {}
-      def rootItems = Nil
-      def childrenFor(parent: ExhibitListBox) = Nil
-    }
-    
-    val empty: ExhibitRoomService = new EmptyExhibitRoomService
-  }
 }
 
 private class MuseumSquerylScheme(dbLocation: String,
@@ -53,7 +37,6 @@ private class MuseumSquerylScheme(dbLocation: String,
   import org.squeryl.{SessionFactory, Session, adapters}
   import org.squeryl.PrimitiveTypeMode._
   import org.h2.jdbcx.JdbcConnectionPool
-  import MuseumScheme.ExhibitRoomService
   
   Class.forName("org.h2.Driver")
   
@@ -83,26 +66,13 @@ private class MuseumSquerylScheme(dbLocation: String,
     .via((p, c) => c.parentId === p.id)
   
   /** リストボックス用データアクセスサービス */
-  val exhibitRoomService = new ExhibitRoomService {
-    private val table = exhibitRoom
-    
-    def save(room: ExhibitListBox) = inTransaction {
-      room.parentId match {
-        case Some(0) => room.parentId = None
-        case _ =>
-      }
-      if (room.isPersisted)
-        table.update(room)
-      else
-        table.insert(room)
+  val exhibitRoomService = new squeryl.TreeDataService(exhibitRoom) {
+    protected def setParentTo(entity: ExhibitListBox, parent: ExhibitListBox) {
+      entity.parentId = Some(parent.id)
     }
     
-    def rootItems = transaction {
-      from(exhibitRoom)(e => where(e.parentId.isNull) select(e)).toList
-    }
-    
-    def childrenFor(parent: ExhibitListBox) = transaction {
-      from(exhibitRoom)(e => where(e.parentId === parent.id) select(e)).toList
+    protected def getParentValue(entity: ExhibitListBox): Option[Long] = {
+      entity.parentId
     }
   }
   
@@ -124,9 +94,8 @@ private class MuseumSquerylScheme(dbLocation: String,
 }
 
 private class EmptyMuseumScheme extends MuseumScheme {
-  import MuseumScheme.ExhibitRoomService
   def allMuseumExhibits() = Nil
   def store(entities: MuseumExhibit) = true
   
-  val exhibitRoomService = ExhibitRoomService.empty
+  val exhibitRoomService = TreeDataService[ExhibitListBox]()
 }

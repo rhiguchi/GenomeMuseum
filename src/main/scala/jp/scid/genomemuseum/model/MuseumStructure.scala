@@ -17,22 +17,19 @@ class MuseumStructure extends EditableTreeSource[ExhibitRoom] {
   
   private var myUserBoxesSource = TreeDataService[ExhibitListBox]()
   
-  @deprecated("userBoxes")
-  val userLists = new ExhibitRoom {
+  val userBoxes = new ExhibitRoom {
     def name = "User Lists"
     def children = Nil
   }
   
-  def userBoxes = userLists
-  
   /** ルートオブジェクト */
-  val root = ExhibitRoom("Museum", libraries, userLists)
+  val root = ExhibitRoom("Museum", libraries, userBoxes)
   
   /** 子要素 */
   def childrenFor(parent: ExhibitRoom) = {
     if (isLeaf(parent)) Nil
     else parent match {
-      case `userLists` =>
+      case `userBoxes` =>
         myUserBoxesSource.rootItems.toList
       case parent: ExhibitListBox => Nil
         myUserBoxesSource.getChildren(parent).toList

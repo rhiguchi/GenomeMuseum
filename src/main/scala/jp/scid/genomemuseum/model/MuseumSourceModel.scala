@@ -74,14 +74,10 @@ class MuseumSourceModel {
     newBox
   }
   
-  def userBoxesSource: MuseumScheme.ExhibitRoomService = MuseumScheme.ExhibitRoomService.empty
+  def userBoxesSource = treeSource.userBoxesSource
   
-  def userBoxesSource_=(newSource: MuseumScheme.ExhibitRoomService) {
-//    treeSource.userBoxesSource = newSource
-//    updateSource()
-  }
-  
-  protected def updateSource() {
-    treeModel.reset()
+  def userBoxesSource_=(newSource: TreeDataService[ExhibitListBox]) {
+    treeSource.userBoxesSource = newSource
+    treeModel.reset(treeSource.userBoxes)
   }
 }
