@@ -53,7 +53,7 @@ class MuseumStructure extends EditableTreeSource[ExhibitRoom] {
   
   def update(element: ExhibitListBox, newValue: AnyRef) {
     // TODO update impl
-    myUserBoxesSource.update(element)
+    myUserBoxesSource.save(element)
   }
   
   /** 値の更新 */

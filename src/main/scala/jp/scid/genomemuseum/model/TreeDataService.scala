@@ -38,7 +38,7 @@ trait TreeDataService[A] {
    * @param element 削除する要素。
    * @return 削除された要素数。
    */
-  def update(element: A)
+  def save(element: A)
   
   /**
    * 要素と、その子孫全てを削除する
@@ -85,7 +85,7 @@ private class HashMapImpl[A] extends TreeDataService[A] {
     store.getOrElse(parent, Iterable.empty).toIterable
   }
   
-  def update(element: A) {
+  def save(element: A) {
     // この実装では何もしない
   }
   

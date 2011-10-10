@@ -136,8 +136,8 @@ class MuseumStructureSpec extends Specification {
     structure.update(boxPath, "update")
     structure.update(boxChildPath, "update")
     
-    def ts1 = there was one(source).update(boxFolder)
+    def ts1 = there was one(source).save(boxFolder)
     
-    def ts2 = there was one(source).update(bfChild2)
+    def ts2 = there was one(source).save(bfChild2)
   }
 }
