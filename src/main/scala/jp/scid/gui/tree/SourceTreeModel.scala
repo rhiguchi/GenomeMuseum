@@ -119,7 +119,7 @@ class SourceTreeModel[A <: AnyRef: ClassManifest](source: TreeSource[A]) extends
   def reset(item: A) {
     if (treeNodes.contains(item)) {
       val node = treeNodes(item)
-      removeDescendant(node)
+      reloadChildren(node)
       treeDelegate.reload(node)
     }
   }
@@ -129,9 +129,9 @@ class SourceTreeModel[A <: AnyRef: ClassManifest](source: TreeSource[A]) extends
    */
   def someChildrenWereInserted(parent: A) {
     treeNodes.get(parent) filter (_.childPrepared) foreach { node =>
-      val oldChildren = node.getChildren
+      val oldChildren = node.getChildren.toList
       reloadChildren(node)
-      val newChildren = node.getChildren
+      val newChildren = node.getChildren.toList
       val inserted = newChildren diff oldChildren
       val indices = getIndices(Buffer.empty, newChildren, inserted).toIndexedSeq
       treeDelegate.nodesWereInserted(node, indices.toArray)
@@ -148,6 +148,7 @@ class SourceTreeModel[A <: AnyRef: ClassManifest](source: TreeSource[A]) extends
       val newChildren = node.getChildren
       val remove = oldChildren diff newChildren
       val indices = getIndices(Buffer.empty, oldChildren, remove).toIndexedSeq
+      removeDescendant(remove.toList)
       treeDelegate.nodesWereRemoved(node, indices.toArray, remove.toArray)
     }
   }
@@ -173,16 +174,15 @@ class SourceTreeModel[A <: AnyRef: ClassManifest](source: TreeSource[A]) extends
     node.updateChildren(children)
   }
   
-  private def removeDescendant(parent: SourceTreeNode[A],
-      descendant: List[SourceTreeNode[A]] = Nil) {
-    val nextDescendant = descendant ::: parent.getChildren.toList
-    parent.resetChildren()
-    nextDescendant match {
-      case head :: descendant =>
-        head.removeFromParent()
-        removeDescendant(head, descendant)
-      case Nil =>
-    }
+  private def removeDescendant(nodes: List[SourceTreeNode[A]]): Unit = nodes match {
+    case node :: tail =>
+      val children = node.getChildren.toList
+      node.resetChildren()
+      treeNodes.remove(node.nodeObject)
+      node.removeFromParent()
+      
+      removeDescendant(tail ::: children)
+    case Nil =>
   }
   
   /** 

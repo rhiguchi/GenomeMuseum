@@ -9,13 +9,13 @@ import org.squeryl.annotations.Column
 case class ExhibitListBox(
   var name: String,
   @Column("type")
-  var listType: ExhibitListBox.BoxType.Value = ExhibitListBox.BoxType.ListBox,
+  val boxType: ExhibitListBox.BoxType.Value = ExhibitListBox.BoxType.ListBox,
   @Column("parent_id")
-  var parentId: Option[Long] = Some(0)
+  var parentId: Option[Long] = None
 ) extends KeyedEntity[Long] with ExhibitRoom {
   var id: Long = 0
   
-  def this() = this("untitled")
+  def this() = this("", parentId = Some(0))
   
   def children = Nil
 }

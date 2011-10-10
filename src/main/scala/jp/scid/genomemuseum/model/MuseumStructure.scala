@@ -1,40 +1,86 @@
 package jp.scid.genomemuseum.model
 
-import MuseumScheme.ExhibitRoomService
-import jp.scid.gui.tree.TreeSource
+import jp.scid.gui.tree.EditableTreeSource
+import ExhibitListBox.BoxType._
 
 /**
  * ExhibitRoom のツリーのモデル
  */
-class MuseumStructure extends TreeSource[ExhibitRoom] {
+class MuseumStructure extends EditableTreeSource[ExhibitRoom] {
+  import MuseumStructure._
+  
+  private type ExhibitRoomService = TreeDataService[ExhibitListBox]
+  
   val localStore = ExhibitRoom("Local")
-  val libraries = ExhibitRoom("Libraries", localStore)
+  val entrez = ExhibitRoom("NCBI Entrez")
+  val libraries = ExhibitRoom("Libraries", localStore, entrez)
   
-  private var myUserBoxesSource = ExhibitRoomService.empty
+  private var myUserBoxesSource = TreeDataService[ExhibitListBox]()
   
+  @deprecated("userBoxes")
   val userLists = new ExhibitRoom {
     def name = "User Lists"
     def children = Nil
   }
   
+  def userBoxes = userLists
+  
   /** ルートオブジェクト */
   val root = ExhibitRoom("Museum", libraries, userLists)
   
   /** 子要素 */
-  def childrenFor(parent: ExhibitRoom) = parent match {
-    case `userLists` =>
-      myUserBoxesSource.rootItems
-    case parent: ExhibitListBox =>
-      myUserBoxesSource.childrenFor(parent)
-    case parent => parent.children
+  def childrenFor(parent: ExhibitRoom) = {
+    if (isLeaf(parent)) Nil
+    else parent match {
+      case `userLists` =>
+        myUserBoxesSource.rootItems.toList
+      case parent: ExhibitListBox => Nil
+        myUserBoxesSource.getChildren(parent).toList
+      case parent => parent.children
+    }
   }
   
   /** 末端要素であるか */
-  def isLeaf(node: ExhibitRoom) = false
+  def isLeaf(node: ExhibitRoom) = node match {
+    case box: ExhibitListBox => box.boxType match {
+      case BoxFolder => false
+      case _ => true
+    }
+    case `localStore` => true
+    case `entrez` => true
+    case _ => false // TODO 不明な要素には IllegalArgumentException
+  }
+  
+  def update(element: ExhibitListBox, newValue: AnyRef) {
+    // TODO update impl
+    myUserBoxesSource.update(element)
+  }
+  
+  /** 値の更新 */
+  def update(path: IndexedSeq[ExhibitRoom], newValue: AnyRef) = path match {
+    case Seq(root, userLists, userBoxPath @ _*) => userBoxPath.lastOption match {
+      case Some(element: ExhibitListBox) => 
+        update(element, newValue)
+      case None =>
+        throw new IllegalArgumentException("updating is not allowed")
+      }
+    case _ =>
+      throw new IllegalArgumentException("updating is not allowed")
+  }
   
   def userBoxesSource = myUserBoxesSource
   
   def userBoxesSource_=(newSource: ExhibitRoomService) {
     myUserBoxesSource = newSource
+  }
+}
+
+object MuseumStructure {
+  private class Element {
+    
+  }
+  
+  private object Element {
+    
   }
 }
