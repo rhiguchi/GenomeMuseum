@@ -120,6 +120,24 @@ class GenomeMuseumGUI extends Application {
     fileName.map(new File(openDialog.getDirectory, _)).foreach(loadBioFile)
   }
   
+  /** データをライブラリから削除 */
+  def deleteFromLibrary(exhibits: Seq[MuseumExhibit]) {
+    // TODO 削除確認ダイアログの表示
+    // TODO ファイルも削除するか確認
+    
+    exhibits foreach { exhibit =>
+      val uri = exhibit.filePathAsURI
+      // データベースから削除
+      scheme.exhibitsService.remove(exhibit)
+      
+      // URI が妥当であればファイルを削除
+      libFiles foreach { lib =>
+        if (lib.isLibraryURI(uri))
+          lib.delete(uri) 
+      }
+    }
+  }
+  
   def loadBioFile(files: Seq[File]) {
     files foreach loadBioFile
   }

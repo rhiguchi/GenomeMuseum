@@ -130,7 +130,13 @@ class MainViewController(
   def deleteSelectedExhibit() {
     println("deleteSelectedExhibit")
     val selections = tableModel.selectedItemsWithReadLock(a => a)
-    tableModel removeElements selections
+    // 現在のテーブルモデルがライブラリだと、ファイル削除
+    // ユーザーボックスだと、項目のみ削除
+    val service = dataSchema.exhibitsService
+    tableModel.dataService match {
+      case `service` => parent.deleteFromLibrary(selections)
+      case _ => tableModel removeElements selections
+    }
   }
   
   

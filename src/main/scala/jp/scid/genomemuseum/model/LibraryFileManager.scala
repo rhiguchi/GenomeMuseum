@@ -8,7 +8,7 @@ class LibraryFileManager(baseDir: File) {
   
   if (!baseDir.exists) baseDir.mkdirs
   
-  val uriScheme = "gmlib"
+  private[model] val uriScheme = "gmlib"
   
   /**
    * ファイルをライブラリにコピーして保存
@@ -27,6 +27,13 @@ class LibraryFileManager(baseDir: File) {
     
     val libURI = toLibraryURI(dest)
     exhibit.filePathAsURI = libURI
+  }
+  
+  /**
+   * URI がこのライブラリ内ファイルを表すものか
+   */
+  def isLibraryURI(uri: URI): Boolean = {
+    uri.getScheme == uriScheme
   }
   
   /**

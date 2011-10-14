@@ -16,6 +16,9 @@ class LibraryFileManagerSpec extends Specification {
       "fileType が GenBank の拡張子は .gbk" ! pathFor.s4 ^
       "fileType が FASTA の拡張子は .fasta" ! pathFor.s5 ^
       "fileType が Unknown の拡張子は .txt" ! pathFor.s6 ^
+    bt ^ "isLibraryURI" ^
+      "ライブラリスキーマで true" ! isLibraryURI.s1 ^
+      "ライブラリスキーマでないと false" ! isLibraryURI.s2 ^
     bt ^ "getFile" ^
       "URI のパス部分と File の絶対パスの終端が一致" ! getFile.s1 ^
       "ライブラリのパスから開始されている" ! getFile.s2 ^
@@ -52,6 +55,15 @@ class LibraryFileManagerSpec extends Specification {
     
     def s6 = pathFor(MuseumExhibit("c", fileType = Unknown))
       .getPath must endWith("/c.txt")
+  }
+  
+  def isLibraryURI = new TestBase {
+    val uri = new URI(manager.uriScheme, "/path/to/file", null)
+    val invalidSchemeURI = new URI(manager.uriScheme + "x", "/path/to/file", null)
+    
+    def s1 = manager.isLibraryURI(uri) must beTrue
+    
+    def s2 = manager.isLibraryURI(invalidSchemeURI) must beFalse
   }
   
   def getFile = new TestBase {
