@@ -60,7 +60,11 @@ class GenomeMuseumGUI extends Application {
   private val exhibitParser = new MuseumExhibitParser
   
   override protected def initialize(args: Array[String]) {
+    val genomemuseumHome = getContext.getLocalStorage.getDirectory
+    
+    println("LibraryDir: " + genomemuseumHome)
     scheme = MuseumScheme.onMemory
+    libFiles = Some(new LibraryFileManager(new File(genomemuseumHome, "BioFiles")))
   }
   
   override def startup() {
