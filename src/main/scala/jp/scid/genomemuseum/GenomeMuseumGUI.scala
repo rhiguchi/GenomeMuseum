@@ -6,7 +6,7 @@ import java.text.ParseException
 import org.jdesktop.application.{Application, Action, ProxyActions}
 import view.{MainView, MainViewMenuBar, ColumnVisibilitySetting}
 import controller.{ExhibitTableController, MainViewController, ViewSettingDialogController}
-import model.{MuseumScheme, MuseumExhibitParser}
+import model.{MuseumScheme, MuseumExhibitParser, LibraryFileManager}
 import scala.swing.{Frame, Dialog, Panel}
 
 @ProxyActions(Array("selectAll"))
@@ -55,6 +55,7 @@ class GenomeMuseumGUI extends Application {
   
   // Model
   private var scheme = MuseumScheme.empty
+  private var libFiles: Option[LibraryFileManager] = None
   
   private val exhibitParser = new MuseumExhibitParser
   
@@ -119,6 +120,8 @@ class GenomeMuseumGUI extends Application {
     files foreach loadBioFile
   }
   
+  /** ローカル環境にファイルが保存できるか */
+  private def isLocalStorable(): Boolean = libFiles.nonEmpty
   
   @throws(classOf[IOException])
   @throws(classOf[ParseException])
@@ -127,6 +130,10 @@ class GenomeMuseumGUI extends Application {
     println("loadBioFile: " + file)
     
     val e = exhibitParser.parseFrom(file)
+    
+    if (isLocalStorable) e foreach { e =>
+      libFiles.get.store(e, file)
+    }
     
     e.map(mainCtrl.tableModel.addElement)
   }
