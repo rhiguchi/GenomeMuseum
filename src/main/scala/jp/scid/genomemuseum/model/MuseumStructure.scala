@@ -20,6 +20,7 @@ class MuseumStructure extends EditableTreeSource[ExhibitRoom] {
   val userBoxes = new ExhibitRoom {
     def name = "User Lists"
     def children = Nil
+    override def toString() = "User Lists"
   }
   
   /** ルートオブジェクト */

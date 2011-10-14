@@ -1,5 +1,7 @@
 package jp.scid.genomemuseum.model
 
+import java.util.Date
+
 /**
  * ツリー構造のデータを扱うためのトレイト
  */
@@ -46,6 +48,11 @@ trait TreeDataService[A] {
    * @return 削除された要素数。
    */
   def remove(element: A): Int
+  
+  /**
+   * このサービスの最終変更時間を取得する
+   */
+  def lastModified: Date
 }
 
 object TreeDataService {
@@ -63,6 +70,7 @@ private class HashMapImpl[A] extends TreeDataService[A] {
   private val store = Map.empty[A, Set[A]]
   private val parentMap = Map.empty[A, Option[A]]
   private val rootItem = Set.empty[A]
+  var lastModified = new Date()
   
   def count = rootItem.size +
     store.foldLeft(0){ (count, pair) => count + pair._2.size }
@@ -75,6 +83,7 @@ private class HashMapImpl[A] extends TreeDataService[A] {
         rootItem += newRoom
     }
     parentMap(newRoom) = parent
+    updateLastModified()
   }
   
   def rootItems = {
@@ -86,11 +95,13 @@ private class HashMapImpl[A] extends TreeDataService[A] {
   }
   
   def save(element: A) {
-    // この実装では何もしない
+    updateLastModified()
   }
   
   def remove(element: A): Int = {
-    removeDescendent(element)
+    val c = removeDescendent(element)
+    updateLastModified()
+    c
   }
   
   def getParent(element: A): Option[A] = {
@@ -110,5 +121,9 @@ private class HashMapImpl[A] extends TreeDataService[A] {
     val c = getChildren(element).toList.map(removeDescendent(_)).sum
     removeElement(element)
     c + 1
+  }
+    
+  private def updateLastModified() {
+    lastModified = new Date()
   }
 }

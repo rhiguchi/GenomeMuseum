@@ -3,6 +3,7 @@ package jp.scid.genomemuseum.model.squeryl
 import org.squeryl.{Table, KeyedEntity}
 import org.squeryl.PrimitiveTypeMode._
 import org.squeryl.PrimitiveTypeMode.{count => queryCount}
+import java.util.Date
 
 /**
  * ツリー構造のデータを扱うためのトレイト

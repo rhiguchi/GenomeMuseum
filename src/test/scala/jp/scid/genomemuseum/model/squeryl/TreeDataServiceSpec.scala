@@ -1,6 +1,7 @@
 package jp.scid.genomemuseum.model.squeryl
 
 import org.specs2._
+import java.util.Date
 
 /**
  * ツリー構造のデータを扱うためのトレイト
@@ -28,6 +29,7 @@ class TreeDataServiceSpec extends Specification {
       protected def setParentTo(entity: TestEntity, parent: TestEntity) {
         entity.parentId = Some(parent.id)
       }
+      val lastModified = new Date()
     }
   }
   

@@ -1,5 +1,7 @@
 package jp.scid.genomemuseum.model
 
+import java.util.Date
+
 trait MuseumScheme {
   import MuseumScheme._
   
@@ -12,7 +14,15 @@ trait MuseumScheme {
     result
   }
   
+  /** ボックス用のテーブルデータサービス */
+  def dataServiceFor(box: ExhibitListBox): TableDataService[MuseumExhibit] =
+    TableDataService()
+  
+  /** リストボックスデータサービス */
   def exhibitRoomService: TreeDataService[ExhibitListBox]
+  
+  /** 全てのデータのテーブルデータサービス */
+  def exhibitsService: ExhibitDataService
 }
 
 object MuseumScheme {
@@ -30,6 +40,22 @@ object MuseumScheme {
   private lazy val emptyScheme = new EmptyMuseumScheme
   def empty: MuseumScheme = emptyScheme
 }
+
+trait ExhibitDataService extends TableDataService[MuseumExhibit] {
+  def findBy(listBox: ExhibitListBox): List[MuseumExhibit]
+}
+
+object ExhibitDataService {
+  def apply(): ExhibitDataService = new ListImpl()
+  
+  private class ListImpl extends TableDataService.ListImpl[MuseumExhibit] with ExhibitDataService {
+    def findBy(listBox: ExhibitListBox): List[MuseumExhibit] = {
+      // TODO
+      Nil
+    }
+  }
+}
+
 
 private class MuseumSquerylScheme(dbLocation: String,
     user: String = "genomemuseum", password: String = "genomemuseum")
@@ -74,7 +100,14 @@ private class MuseumSquerylScheme(dbLocation: String,
     protected def getParentValue(entity: ExhibitListBox): Option[Long] = {
       entity.parentId
     }
+  
+    def lastModified: Date = {
+      // TODO
+      new Date()
+    }
   }
+  
+  val exhibitsService = ExhibitDataService()
   
   def allMuseumExhibits() = transaction {
     from(museumExhibits)(select(_)).toList
@@ -98,4 +131,5 @@ private class EmptyMuseumScheme extends MuseumScheme {
   def store(entities: MuseumExhibit) = true
   
   val exhibitRoomService = TreeDataService[ExhibitListBox]()
+  val exhibitsService = ExhibitDataService()
 }

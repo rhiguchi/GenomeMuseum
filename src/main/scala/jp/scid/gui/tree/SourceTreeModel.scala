@@ -41,7 +41,17 @@ class SourceTreeModel[A <: AnyRef: ClassManifest](source: TreeSource[A]) extends
    * @throws NoSuchElementException {@code node} の親が不明でパスが定まっていない時
    */
   def isLeaf(node: Any): Boolean = withSource(node){ treeDelegate isLeaf }
-    
+  
+  /**
+   * 子要素が source から読み込まれているか。
+   * @return ノードの子要素が読み込み済みの時は {@code true} 。Leaf の時は常に {@code false} 。
+   * @throws IllegalArgumentException {@code node} が {@code A} 型でない時
+   * @throws NoSuchElementException {@code node} の親が不明でパスが定まっていない時
+   */
+  def isChildrenExposed(node: Any): Boolean = withSource(node) { node => node.isLeaf match {
+    case true => false
+    case false => node.childPrepared
+  }}
   
   /** 
    * 子項目数の取得
@@ -80,11 +90,13 @@ class SourceTreeModel[A <: AnyRef: ClassManifest](source: TreeSource[A]) extends
    * @retrun 順序番号
    * @throws IllegalArgumentException {@code parent} もしくは {@code child} が
    *         {@code A} 型でない時
-   * @throws NoSuchElementException {@code parent} の親が不明でパスが定まっていない時
+   * @throws NoSuchElementException {@code parent} が不明でパスが定まっていない時
    */
   def getIndexOfChild(parent: Any, child: Any) = withSource(parent) { parent =>
-    withSource(child) { child =>
-      treeDelegate.getIndexOfChild(parent, child)
+    getTreeNode(child) match {
+      case Some(childNode) =>
+        treeDelegate.getIndexOfChild(parent, childNode)
+      case None => -1
     }
   }
   
@@ -116,12 +128,10 @@ class SourceTreeModel[A <: AnyRef: ClassManifest](source: TreeSource[A]) extends
    * 指定した項目から下のツリーを初期化する
    * @param node このノードから先をソースから読み込む
    */
-  def reset(item: A) {
-    if (treeNodes.contains(item)) {
-      val node = treeNodes(item)
-      reloadChildren(node)
-      treeDelegate.reload(node)
-    }
+  def reset(item: A) = getTreeNode(item) map { node =>
+    val node = treeNodes(item)
+    reloadChildren(node)
+    treeDelegate.reload(node)
   }
   
   /**
@@ -185,6 +195,16 @@ class SourceTreeModel[A <: AnyRef: ClassManifest](source: TreeSource[A]) extends
     case Nil =>
   }
   
+  /**
+   * このモデルの要素クラスで、 TreeNode を参照することができれば、Option 値に格納して返す
+   * @throws IllegalArgumentException {@code item} が {@code A} 型 でない時
+   */
+  private def getTreeNode(item: Any) = itemClass.erasure isInstance item match {
+    case true => treeNodes.get(item.asInstanceOf[A])
+    case false => throw new IllegalArgumentException("%s must be a %s"
+          .format(item.getClass, itemClass.erasure.getName))
+  }
+  
   /** 
    * {@code A} 型項目を持つ TreeNode に対する処理 
    * @param item {@code A} 型のオブジェクト
@@ -193,11 +213,12 @@ class SourceTreeModel[A <: AnyRef: ClassManifest](source: TreeSource[A]) extends
    * @throws NoSuchElementException {@code item} がこのモデルでは不明である時
    */
   private def withSource[B](item: Any)(taskWith: SourceTreeNode[A] => B) = 
-    if (itemClass.erasure isInstance item)
-      taskWith(treeNodes(item.asInstanceOf[A]))
-    else
-      throw new IllegalArgumentException("%s must be a %s"
-        .format(item.getClass, itemClass.erasure.getName))
+    getTreeNode(item) match {
+      case Some(node) => taskWith(node)
+      case None =>
+        throw new NoSuchElementException("%s treeNode is not prepared yet."
+          .format(item.getClass))
+    }
   
   /** 
    * {@code SourceTreeNode[A]} 型ノードから項目を取得
@@ -251,21 +272,37 @@ class SourceTreeModel[A <: AnyRef: ClassManifest](source: TreeSource[A]) extends
 }
 
 object SourceTreeModel {
+  /**
+   * 型を保持しながらノードオブジェクトを格納する TreeNode
+   */
   private class SourceTreeNode[A](
       val nodeObject: A, override val isLeaf: Boolean) 
       extends DefaultMutableTreeNode(nodeObject, !isLeaf) {
     private var myChildren: Option[IndexedSeq[SourceTreeNode[A]]] = None
     
+    /**
+     * 子ノードが設定されているか
+     */
     def childPrepared = myChildren.isDefined
     
+    /**
+     * このノードの子ノードを設定する。
+     * 設定後 {@code childPrepared} は {@code true} を返すようになる。
+     */
     def updateChildren(newChildren: Seq[SourceTreeNode[A]]) {
       myChildren = Some(newChildren.toIndexedSeq)
       removeAllChildren()
       newChildren foreach add
     }
     
+    /**
+     * SourceTreeNode 型で子ノードを返す
+     */
     def getChildren = myChildren.getOrElse(IndexedSeq.empty)
     
+    /**
+     * 子ノードを未設定状態に戻す。
+     */
     def resetChildren() {
       myChildren = None
     }

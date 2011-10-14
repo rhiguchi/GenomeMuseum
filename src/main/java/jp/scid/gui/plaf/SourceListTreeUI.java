@@ -1,4 +1,4 @@
-package jp.scid.macwidgets.plaf;
+package jp.scid.gui.plaf;
 
 import com.explodingpixels.macwidgets.MacWidgetFactory;
 import com.explodingpixels.macwidgets.SourceList;

@@ -1,9 +1,8 @@
-package jp.scid.genomemuseum.gui
+package jp.scid.gui.table
 
 import ca.odell.glazedlists.GlazedLists
 import ca.odell.glazedlists.gui.TableFormat
 import java.util.Comparator
-import jp.scid.gui.ComparatorEditor
 
 /**
  * SortingColumnModel と接続し、Comparator の変化をするエディタ
@@ -11,7 +10,6 @@ import jp.scid.gui.ComparatorEditor
 class TableFormatComparatorFactory[E] (tableFormat: TableFormat[E])
     extends (String => Comparator[E]) {
   import TableFormatComparatorFactory._
-  import ComparatorEditor.ComparatorChanged
   
   /** ソート記述の区切り文字 */
   val tokenSepalator = ","

@@ -15,11 +15,13 @@ import glgui.TableFormat
 
 import jp.scid.{gui, genomemuseum}
 import gui.ComparatorEditor
-import gui.table.{SortableColumn, TableHeaderSortHandler}
+import gui.table.{SortableColumn, TableHeaderSortHandler, TableFormatComparatorFactory,
+  TableSortingMouseHandler}
 import genomemuseum.{gui => gmgui, model}
-import gmgui.{ExhibitTableFormat, TableFormatComparatorFactory}
+import gmgui.{ExhibitTableFormat}
 import model.{MuseumExhibit}
 
+@deprecated("use ExhibitTableModel")
 class ExhibitTableController(
   table: JTable, quickSearchField: JTextField
 ) {
@@ -68,7 +70,7 @@ class ExhibitTableController(
   // ソーティング
   sortWith(tableHeaderSortHandler.comparatorEditor)
   val icons = glimpl.SortIconFactory.loadIcons
-  val headerRenderer = TableHeaderSortHandler.toSortArrowHeaderRenderer(
+  val headerRenderer = TableSortingMouseHandler.toSortArrowHeaderRenderer(
     table.getTableHeader.getDefaultRenderer, icons(1), icons(2))
   table.getTableHeader setDefaultRenderer headerRenderer
   

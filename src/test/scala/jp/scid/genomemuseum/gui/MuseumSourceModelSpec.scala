@@ -1,9 +1,9 @@
-package jp.scid.genomemuseum.model
+package jp.scid.genomemuseum.gui
 
 import org.specs2._
 import mock._
-//import org.specs2.specification.Scope
-//import org.specs2.matcher.Matcher
+import jp.scid.genomemuseum.model.{MuseumStructure, ExhibitListBox,
+  TreeDataService}
 import ExhibitListBox.BoxType._
 
 class MuseumSourceModelSpec extends Specification {
@@ -44,7 +44,7 @@ class MuseumSourceModelSpec extends Specification {
       "ListBox は親にできない" ! AddBoxFolderToParentSpec().s4 ^
       "SmartBox は親にできない" ! AddBoxFolderToParentSpec().s5 ^
       "treeModel の更新" ! AddBoxFolderToParentSpec().s6 ^
-    bt ^ "removeBoxFromParent" ^
+    bt ^ "removeElementFromParent" ^
       "TreeDataService#remove 呼び出し" ! RemoveBoxSpec().s1 ^
       "treeSource に反映" ! RemoveBoxSpec().s2 ^
       "treeModel の更新" ! RemoveBoxSpec().s3 ^
@@ -53,18 +53,17 @@ class MuseumSourceModelSpec extends Specification {
   trait Base extends Mockito {
     import jp.scid.gui.tree.SourceTreeModel
     
-    val model = new MuseumSourceModel {
-      override val treeModel = spy(new SourceTreeModel(treeSource))
-    }
-    model.treeSource.userBoxesSource = spy(TreeDataService[ExhibitListBox]())
+    val treeSource = new MuseumStructure
     
-    protected def treeSource = model.treeSource
+    val model = new MuseumSourceModel(treeSource)
+    
+    model.userBoxesSource = spy(TreeDataService[ExhibitListBox]())
     
     protected def boxesSource = treeSource.userBoxesSource
     
     protected def userBoxesNode = treeSource.userBoxes
     
-    protected def treeModel = model.treeModel
+    protected def treeModel = model.treeModel.asInstanceOf[SourceTreeModel[ExhibitListBox]]
   }
   
   trait AddBoxSpec extends Base {
@@ -192,9 +191,9 @@ class MuseumSourceModelSpec extends Specification {
     assert(treeModel.getChildCount(boxFolder) == 3)
     assert(treeModel.getChildCount(boxFolder2) == 2)
     
-    model.removeBoxFromParent(listBox)
-    model.removeBoxFromParent(boxChild2)
-    model.removeBoxFromParent(boxFolder2)
+    model.removeElementFromParent(listBox)
+    model.removeElementFromParent(boxChild2)
+    model.removeElementFromParent(boxFolder2)
     
     def childrenForBoxFolder = treeSource.childrenFor(boxFolder)
     def childrenForListBox = treeSource.childrenFor(listBox)
@@ -216,12 +215,6 @@ class MuseumSourceModelSpec extends Specification {
       (treeModel.isLeaf(boxChild2) must throwA[NoSuchElementException]) and
       (treeModel.isLeaf(boxFolder2) must throwA[NoSuchElementException]) and
       (treeModel.getChildCount(boxFolder2) must throwA[NoSuchElementException])
-  }
-  
-  def newMuseumSourceModel = {
-    new MuseumSourceModel {
-      
-    }
   }
 }
 

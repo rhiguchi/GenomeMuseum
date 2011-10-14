@@ -2,12 +2,13 @@ package jp.scid.genomemuseum
 
 import java.awt.{BorderLayout, FileDialog}
 import java.io.{File, FileInputStream}
-import org.jdesktop.application.{Application, Action}
+import org.jdesktop.application.{Application, Action, ProxyActions}
 import view.{MainView, MainViewMenuBar, ColumnVisibilitySetting}
 import controller.{ExhibitTableController, MainViewController, ViewSettingDialogController}
-import model.{MuseumScheme, MuseumDataSource}
+import model.MuseumScheme
 import scala.swing.{Frame, Dialog, Panel}
 
+@ProxyActions(Array("selectAll"))
 class GenomeMuseumGUI extends Application {
   import jp.scid.genomemuseum.model.MuseumExhibit
   import GenomeMuseumGUI._
@@ -45,14 +46,17 @@ class GenomeMuseumGUI extends Application {
   private lazy val actionFor = GenomeMuseumGUI.actionFor(getContext.getActionMap(this))_
   lazy val openAction = actionFor("openFile")
   lazy val quitAction = actionFor("quit")
+  lazy val cutAction = actionFor("cut")
+  lazy val copyAction = actionFor("copy")
+  lazy val pasteAction = actionFor("paste")
+  lazy val deleteAction = actionFor("delete")
+  lazy val selectAllAction = actionFor("selectAll")
   
   // Model
   private var scheme = MuseumScheme.empty
-  private var dataSource = new MuseumDataSource(scheme)
   
   override protected def initialize(args: Array[String]) {
     scheme = MuseumScheme.onMemory
-    dataSource = new MuseumDataSource(scheme)
   }
   
   override def startup() {
@@ -60,18 +64,16 @@ class GenomeMuseumGUI extends Application {
     val frame = mainFrame.peer
     frame.setDefaultCloseOperation(javax.swing.WindowConstants.DO_NOTHING_ON_CLOSE)
     
-    mainCtrl = new MainViewController(this,
-      mainFrame.mainView, mainFrame.peer)
+    mainCtrl = new MainViewController(this, mainFrame.mainView)
     bindMenuBarActions(mainFrame.mainMenu, mainCtrl)
     
-    mainCtrl.sourceModel.userBoxesSource = scheme.exhibitRoomService    
-    mainCtrl.sourceModel.addListBox("test1")
-    mainCtrl.sourceModel.addListBox("test2")
-    mainCtrl.sourceModel.addListBox("test3")
+    GenomeMuseumGUI.loadSampleFiles.foreach(scheme.exhibitsService.add)
+    mainCtrl.dataSchema = scheme
+    // サンプルデータ追加    
+    mainCtrl.sourceListModel.addListBox("test1")
+    mainCtrl.sourceListModel.addListBox("test2")
+    mainCtrl.sourceListModel.addListBox("test3")
     
-    val tableSource = dataSource.allExibits
-    mainCtrl.tableCtrl bindTableSource tableSource
-    dataSource store GenomeMuseumGUI.loadSampleFiles
     
     val viewSettingDialogCtrl = new ViewSettingDialogController(
       mainFrame.columnConfigPane, mainFrame.columnConfigDialog)
@@ -79,12 +81,26 @@ class GenomeMuseumGUI extends Application {
   }
   
   override protected def ready() {
-    mainCtrl.showFrame
+    mainFrame.peer.pack
+    mainFrame.peer setLocationRelativeTo null
+    mainFrame.peer setVisible true
   }
   
   private def bindMenuBarActions(menu: MainViewMenuBar, controller: MainViewController) {
     menu.open.action = openAction
     menu.quit.action = quitAction
+    
+    menu.cut.action = cutAction
+    menu.copy.action = copyAction
+    menu.paste.action = pasteAction
+    menu.delete.action = deleteAction
+    menu.selectAll.action = selectAllAction
+    
+    menu.newListBox.action = controller.addListBoxAction
+    menu.newSmartBox.action = controller.addSmartBoxAction
+    menu.newGroupBox.action = controller.addBoxFolderAction
+    
+    menu.reloadResources()
   }
   
   @Action
@@ -153,7 +169,7 @@ class GenomeMuseumGUI extends Application {
       None
     }
     
-    dataSource store e
+    e.map(mainCtrl.tableModel.addElement)
   }
 }
 
@@ -182,6 +198,19 @@ object GenomeMuseumGUI {
     def apply(event: ActionEvent) = peer.actionPerformed(event)
   }
   
+  /**
+   * リソースマップの取得
+   */
+  def resourceMap(c: Class[_]) =
+    Application.getInstance().getContext().getResourceMap(c)
+  
+  /**
+   * アクションの取得
+   */
+  def actionFor(controller: AnyRef, key: String): Action =
+    actionFor(Application.getInstance().getContext().getActionMap(controller))(key)
+    
+    
   /**
    * サンプルデータを 10 件作成する
    */
