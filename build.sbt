@@ -31,7 +31,8 @@ proguardOptions ++= Seq(
   "-keepclassmembers class ** {@org.jdesktop.application.*Action *;}",
   "-keepclassmembers class * extends org.jdesktop.application.AbstractBean { public *;}",
   "-keep class * implements java.sql.Driver",
-  "-keep class net.sf.cglib.** {*;}"
+  "-keep class net.sf.cglib.** {*;}",
+  "-keep class jp.scid.**.*$anon* { *;}"
 )
 
 maxErrors := 20
@@ -41,5 +42,7 @@ parallelExecution := true
 testOptions in Test += Tests.Argument("console", "junitxml")
 
 scalacOptions += "-unchecked"
+
+mainClass in (Compile, packageBin) := Some("jp.scid.genomemuseum.GenomeMuseum")
 
 mainClass in (Compile, run) := Some("jp.scid.genomemuseum.GenomeMuseum")
