@@ -1,11 +1,12 @@
 package jp.scid.genomemuseum
 
 import java.awt.{BorderLayout, FileDialog}
-import java.io.{File, FileInputStream}
+import java.io.{File, FileInputStream, IOException}
+import java.text.ParseException
 import org.jdesktop.application.{Application, Action, ProxyActions}
 import view.{MainView, MainViewMenuBar, ColumnVisibilitySetting}
 import controller.{ExhibitTableController, MainViewController, ViewSettingDialogController}
-import model.MuseumScheme
+import model.{MuseumScheme, MuseumExhibitParser}
 import scala.swing.{Frame, Dialog, Panel}
 
 @ProxyActions(Array("selectAll"))
@@ -54,6 +55,8 @@ class GenomeMuseumGUI extends Application {
   
   // Model
   private var scheme = MuseumScheme.empty
+  
+  private val exhibitParser = new MuseumExhibitParser
   
   override protected def initialize(args: Array[String]) {
     scheme = MuseumScheme.onMemory
@@ -116,58 +119,14 @@ class GenomeMuseumGUI extends Application {
     files foreach loadBioFile
   }
   
+  
+  @throws(classOf[IOException])
+  @throws(classOf[ParseException])
   protected def loadBioFile(file: File) {
+    
     println("loadBioFile: " + file)
     
-    def using[A <% java.io.Closeable, B](s: A)(f: A => B) = {
-      try f(s) finally s.close()
-    }
-    
-    def getVersionNumber(value: Int) =
-      if (value == 0) None else Some(value)
-    
-    // 拡張子で判別
-    // TODO ファイルの中身を読んで判別
-    val e = if (file.getName.endsWith(".gbk")) {
-      val parser = new jp.scid.bio.GenBankParser
-      val data = using(new FileInputStream(file)) { inst =>
-        val source = io.Source.fromInputStream(inst)
-        parser.parseFrom(source.getLines)
-      }
-      Some(MuseumExhibit(
-        name = data.locus.name,
-        sequenceLength = data.locus.sequenceLength,
-        accession = data.accession.primary,
-        identifier = data.version.identifier,
-        namespace = data.locus.division,
-        version = getVersionNumber(data.version.number),
-        definition = data.definition.value,
-        source = data.source.value,
-        organism = data.source.taxonomy :+ data.source.organism mkString "\n",
-        date = data.locus.date
-      ))
-    }
-    else if (file.getName.endsWith(".faa") ||
-        file.getName.endsWith(".fna") || file.getName.endsWith(".ffn") ||
-        file.getName.endsWith(".fasta")) {
-      val parser = new jp.scid.bio.FastaParser
-      val data = using(new FileInputStream(file)) { inst =>
-        val source = io.Source.fromInputStream(inst)
-        parser.parseFrom(source.getLines)
-      }
-      Some(MuseumExhibit(
-        name = data.header.name,
-        sequenceLength = data.sequence.value.length,
-        accession = data.header.accession,
-        identifier = data.header.identifier,
-        namespace = data.header.namespace,
-        version = getVersionNumber(data.header.version),
-        definition = data.header.description
-      ))
-    }
-    else {
-      None
-    }
+    val e = exhibitParser.parseFrom(file)
     
     e.map(mainCtrl.tableModel.addElement)
   }

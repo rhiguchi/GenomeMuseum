@@ -17,7 +17,7 @@ case class GenBank (
   comment: Comment = Comment(),
   features: GenBank.Features = IndexedSeq.empty,
   origin: Origin = Origin()
-)
+) extends BioData
 
 object GenBank {
   sealed abstract class Element

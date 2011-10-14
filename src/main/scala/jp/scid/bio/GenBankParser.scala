@@ -9,7 +9,7 @@ import GenBank._
 /**
  * {@code GenBank} オブジェクトを文字列から作成する構文解析クラス
  */
-class GenBankParser {
+class GenBankParser extends BioFileParser[GenBank] {
   import collection.mutable.{ArrayBuffer, ListBuffer, Buffer}
   
   private lazy val logger = Logger.getLogger(

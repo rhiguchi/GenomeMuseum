@@ -11,7 +11,7 @@ import Fasta._
 case class Fasta(
   val header: Header = Header(),
   val sequence: Sequence = Sequence()
-)
+) extends BioData
 
 object Fasta {
   /**
