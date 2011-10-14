@@ -65,6 +65,14 @@ class LibraryFileManager(baseDir: File) {
   }
   
   /**
+   * ライブラリのファイルを削除
+   */
+  def delete(uri: URI): Boolean = {
+    val file = getFile(uri)
+    file.delete
+  }
+  
+  /**
    * ファイルパスから ライブラリ URI を作成。
    * @throws IllegalArgumentException {@code file} がライブラリディレクトリで開始されていない時
    */

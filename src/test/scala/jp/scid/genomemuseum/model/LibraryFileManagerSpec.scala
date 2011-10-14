@@ -24,7 +24,10 @@ class LibraryFileManagerSpec extends Specification {
     bt ^ "store" ^
       "MuseumExhibit にパスが適用される" ! store.s1 ^
       "ライブラリ内にファイルがコピーされる" ! store.s2 ^
-      "標準の保存先にすでにファイルがある時は、拡張子前に連番でリネームされる" ! store.s3
+      "標準の保存先にすでにファイルがある時は、拡張子前に連番でリネームされる" ! store.s3 ^
+    bt ^ "delete" ^
+      "URI を渡すと削除される" ! delete.s1 ^
+      "ライブラリスキーマでない URI は例外" ! delete.s2
   
   trait TestBase {
     val baseDir = tryCreateTempDir.get
@@ -90,6 +93,24 @@ class LibraryFileManagerSpec extends Specification {
     def s3_2 = e3File.getPath must endWith("/exhibit 2.gbk")
     def s3 = e2File.getPath must be_!=(libraryFile.getPath) and
       endWith("/exhibit 1.gbk") and s3_2
+  }
+  
+  def delete = new TestBase {
+    val e = MuseumExhibit("exhibit", fileType = GenBank)
+    val testFile = File.createTempFile("testTemp", ".gbk")
+    manager.store(e, testFile)
+    
+    val invalidSchemeURI = new URI(manager.uriScheme + "x", e.filePathAsURI.getPath, null)
+    
+    val file = manager.getFile(e.filePathAsURI)
+    
+    assert(file.exists)
+    
+    val result = manager.delete(e.filePathAsURI)
+    
+    def s1 = result must beTrue and (file must not be exist)
+    
+    def s2 = manager.delete(invalidSchemeURI) must throwA[IllegalArgumentException]
   }
   
   @throws(classOf[IOException])
