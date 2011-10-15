@@ -35,12 +35,26 @@ import com.explodingpixels.macwidgets.UnifiedToolBar;
 public class MainView {
     private final ComponentFactory factory = new ComponentFactory();
     
+    // Data table
     public final JTable dataTable = MacWidgetFactory.createITunesTable(null);
     public final JScrollPane dataTableScroll = MacWidgetFactory.createSourceListScrollPane(dataTable);
+    
+    // Content Viewer
+    public final FileContentView fileContentView = new FileContentView();
+    
+    // Data and content area
+    public final JSplitPane dataListContentSplit = new JSplitPane(
+            JSplitPane.VERTICAL_SPLIT, true, dataTableScroll,
+            fileContentView.getContentPane());
+    {
+        dataListContentSplit.setDividerLocation(Integer.MAX_VALUE);
+        dataListContentSplit.setOneTouchExpandable(true);
+    }
+    
     public final JTextField quickSearchField = new JTextField(); {
         quickSearchField.setPreferredSize(new Dimension(200, 28));
     }
-    
+
     public final JTree sourceList = new JTree();
     public final JScrollPane sourceListScroll = new JScrollPane(sourceList,
             JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED,
@@ -102,7 +116,7 @@ public class MainView {
     }
     public final JSplitPane sourceListDataTableSplit = new JSplitPane(
             JSplitPane.HORIZONTAL_SPLIT, true,
-            sourceListPane, dataTableScroll);
+            sourceListPane, dataListContentSplit);
 
     public final JPanel contentPane = new JPanel(new BorderLayout()); {
         contentPane.add(toolBarPane, "North");
