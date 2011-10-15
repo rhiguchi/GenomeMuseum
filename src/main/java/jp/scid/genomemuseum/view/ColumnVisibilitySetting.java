@@ -5,11 +5,9 @@ import static java.lang.String.*;
 import java.awt.BorderLayout;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.ResourceBundle;
 
 import javax.swing.BorderFactory;
 import javax.swing.GroupLayout;
@@ -17,11 +15,9 @@ import javax.swing.GroupLayout.ParallelGroup;
 import javax.swing.GroupLayout.SequentialGroup;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
-import javax.swing.JComponent;
 import javax.swing.JPanel;
 
 import org.jdesktop.application.Application;
-import org.jdesktop.application.FrameView;
 
 import com.jgoodies.forms.builder.ButtonBarBuilder2;
 
@@ -119,34 +115,5 @@ public class ColumnVisibilitySetting {
     // view test
     public static void main(String[] args) {
         Application.launch(GUICheckApp.class, new String[]{"ColumnVisibilitySetting"});
-    }
-}
-
-class GUICheckApp extends Application {
-    private JComponent contentPane = new JPanel();
-    private FrameView view = new FrameView(this);
-    
-    GUICheckApp() {
-        getContext().getResourceManager().setResourceFolder("");
-    }
-    
-    @Override
-    protected void initialize(String[] args) {
-        List<String> argList = Arrays.asList(args);
-        if (argList.contains("ColumnVisibilitySetting")) {
-            ColumnVisibilitySetting pane = new ColumnVisibilitySetting();
-            contentPane = pane.contentPane;
-        }
-    }
-    @Override
-    protected void startup() {
-        view.setComponent(contentPane);
-    }
-    
-    @Override
-    protected void ready() {
-        view.getFrame().setLocationRelativeTo(null);
-        view.getFrame().pack();
-        view.getFrame().setVisible(true);
     }
 }
