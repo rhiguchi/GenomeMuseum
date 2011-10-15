@@ -2,6 +2,7 @@ package jp.scid.genomemuseum.view;
 
 import java.awt.BorderLayout;
 import java.awt.Dimension;
+import java.awt.Font;
 
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
@@ -11,6 +12,8 @@ public class FileContentView implements GenomeMuseumView {
 
     public final JTextArea textArea = new JTextArea(); {
         textArea.setEditable(false);
+        textArea.setFont(Font.decode("monospaced-14"));
+        textArea.setText("Test Content");
     }
     public final JScrollPane textAreaScroll = new JScrollPane(textArea,
             JScrollPane.VERTICAL_SCROLLBAR_ALWAYS,

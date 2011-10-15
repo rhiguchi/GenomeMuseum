@@ -24,7 +24,9 @@ class FileContentViewer(view: FileContentView) {
     
     currentSource = newSource
     clearDocument()
+    val caretPos = textArea.getCaretPosition
     loadSource()
+    textArea setCaretPosition caretPos
   }
   
   /** Document の中身を消去する */
