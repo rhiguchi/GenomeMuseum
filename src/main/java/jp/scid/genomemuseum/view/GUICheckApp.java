@@ -1,17 +1,19 @@
 package jp.scid.genomemuseum.view;
 
-import java.util.Arrays;
-import java.util.List;
-
-import javax.swing.JComponent;
-import javax.swing.JPanel;
 
 import org.jdesktop.application.Application;
 import org.jdesktop.application.FrameView;
 
 class GUICheckApp extends Application {
-    private JComponent contentPane = new JPanel();
+    private static Class<? extends GenomeMuseumView> viewClass;
+    
+    private GenomeMuseumView contentView;
     private FrameView view = new FrameView(this);
+
+    public static void launch(String[] args, Class<? extends GenomeMuseumView> viewClass) {
+        GUICheckApp.viewClass = viewClass;
+        Application.launch(GUICheckApp.class, args);
+    }
     
     GUICheckApp() {
         getContext().getResourceManager().setResourceFolder("");
@@ -19,15 +21,20 @@ class GUICheckApp extends Application {
     
     @Override
     protected void initialize(String[] args) {
-        List<String> argList = Arrays.asList(args);
-        if (argList.contains("ColumnVisibilitySetting")) {
-            ColumnVisibilitySetting pane = new ColumnVisibilitySetting();
-            contentPane = pane.contentPane;
+        try {
+            contentView = viewClass.newInstance();
+        }
+        catch (InstantiationException e) {
+            throw new IllegalStateException(e);
+        }
+        catch (IllegalAccessException e) {
+            throw new IllegalStateException(e);
         }
     }
+    
     @Override
     protected void startup() {
-        view.setComponent(contentPane);
+        view.setComponent(contentView.getContentPane());
     }
     
     @Override

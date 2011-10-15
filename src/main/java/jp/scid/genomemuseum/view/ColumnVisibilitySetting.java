@@ -21,7 +21,7 @@ import org.jdesktop.application.Application;
 
 import com.jgoodies.forms.builder.ButtonBarBuilder2;
 
-public class ColumnVisibilitySetting {
+public class ColumnVisibilitySetting implements GenomeMuseumView {
     private final static List<String> propertyNames = Arrays.asList("sequenceLength",
             "accession", "identifier", "namespace", "version", "definition",
             "source", "organism", "date", "sequenceUnit", "molculeType");
@@ -92,6 +92,10 @@ public class ColumnVisibilitySetting {
         reloadResources();
     }
     
+    public JPanel getContentPane() {
+        return contentPane;
+    }
+    
     public JCheckBox getCheckBox(String columnName) {
         JCheckBox cb = checkBoxes.get(columnName);
         if (cb == null)
@@ -114,6 +118,6 @@ public class ColumnVisibilitySetting {
     
     // view test
     public static void main(String[] args) {
-        Application.launch(GUICheckApp.class, new String[]{"ColumnVisibilitySetting"});
+        GUICheckApp.launch(args, ColumnVisibilitySetting.class);
     }
 }
