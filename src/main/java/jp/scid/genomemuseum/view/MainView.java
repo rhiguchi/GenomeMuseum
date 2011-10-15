@@ -32,7 +32,7 @@ import com.explodingpixels.macwidgets.MacIcons;
 import com.explodingpixels.macwidgets.MacWidgetFactory;
 import com.explodingpixels.macwidgets.UnifiedToolBar;
 
-public class MainView {
+public class MainView implements GenomeMuseumView {
     private final ComponentFactory factory = new ComponentFactory();
     
     // Data table
@@ -127,6 +127,10 @@ public class MainView {
     public MainView() {
     }
     
+    public JPanel getContentPane() {
+        return contentPane;
+    }
+    
     static class ComponentFactory {
         private Font normalFont = UIManager.getFont("Label.font").deriveFont(11.0f);
         
@@ -213,5 +217,10 @@ public class MainView {
             }
         }
 
+    }
+
+    // view test
+    public static void main(String[] args) {
+        GUICheckApp.launch(args, MainView.class);
     }
 }
