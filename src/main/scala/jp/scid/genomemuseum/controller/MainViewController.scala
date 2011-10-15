@@ -37,6 +37,8 @@ class MainViewController(
   val sourceStructure = new MuseumStructure()
   /** ソースリストのモデル */
   val sourceListModel = new MuseumSourceModel(sourceStructure)
+  /** ソーティングの時の再選択処理に対応するための、前回の選択項目 */
+  private var previousSelections: List[MuseumExhibit] = Nil
   
   // モデルバインディング
   // テーブル
@@ -51,8 +53,13 @@ class MainViewController(
   // テーブル行選択
   tableModel.reactions += {
     case DataListSelectionChanged(source, isAdjusting, selections) =>
+      val s = selections.map(_.asInstanceOf[MuseumExhibit])
       if (!isAdjusting) {
-        showContent(selections.map(_.asInstanceOf[MuseumExhibit]))
+        if (previousSelections != s) {
+          println("sel")
+          showContent(s)
+        }
+        previousSelections = s
       }
   }
   
