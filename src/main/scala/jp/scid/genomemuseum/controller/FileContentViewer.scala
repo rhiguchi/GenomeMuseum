@@ -80,9 +80,13 @@ class FileContentViewer(view: FileContentView) {
       }
     }
     
+    // キャレットの位置、選択範囲を保存する
     val caretPos = textArea.getCaretPosition
+    val (selStart, selEnd) = (textArea.getSelectionStart, textArea.getSelectionEnd)
     loadNext(currentSource, lines)
     textArea setCaretPosition caretPos
+    textArea.setSelectionStart(selStart)
+    textArea.setSelectionEnd(selEnd)
   }
   
   /** ソースから 1 要素読み込む */
