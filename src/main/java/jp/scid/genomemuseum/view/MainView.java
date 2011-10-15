@@ -49,6 +49,7 @@ public class MainView implements GenomeMuseumView {
     {
         dataListContentSplit.setDividerLocation(Integer.MAX_VALUE);
         dataListContentSplit.setOneTouchExpandable(true);
+        dataListContentSplit.setResizeWeight(1);
     }
     
     public final JTextField quickSearchField = new JTextField(); {
@@ -129,6 +130,21 @@ public class MainView implements GenomeMuseumView {
     
     public JPanel getContentPane() {
         return contentPane;
+    }
+    
+    /**
+     * @return whether viewer is closed
+     */
+    public boolean isContentViewerClosed() {
+        return dataListContentSplit.getDividerLocation() >= dataListContentSplit.getMaximumDividerLocation();
+    }
+    
+    /**
+     * set the size for the viewer
+     * @param sizeForViewer
+     */
+    public void openContentViewer(int sizeForViewer) {
+        dataListContentSplit.setDividerLocation(dataListContentSplit.getSize().height - sizeForViewer);
     }
     
     static class ComponentFactory {

@@ -11,7 +11,7 @@ import jp.scid.gui.tree.DataTreeModel
 import DataTreeModel.Path
 import jp.scid.genomemuseum.{view, model, gui, GenomeMuseumGUI}
 import view.{MainView, MainViewMenuBar}
-import model.{MuseumScheme, ExhibitRoom, MuseumStructure, ExhibitListBox}
+import model.{MuseumScheme, ExhibitRoom, MuseumStructure, ExhibitListBox, MuseumExhibit}
 import gui.{ExhibitTableModel, MuseumSourceModel}
 import ExhibitListBox.BoxType._
 
@@ -22,6 +22,11 @@ class MainViewController(
   // ビュー
   /** ソースリストショートカット */
   private def sourceList = mainView.sourceList
+  private def contentViewerSplit = mainView.dataListContentSplit
+  
+  // コントローラ
+  /** コンテントビューワー */
+  private val contentViewer = new FileContentViewer(mainView.fileContentView)
   
   // モデル
   /** 現在のスキーマ */
@@ -46,7 +51,9 @@ class MainViewController(
   // テーブル行選択
   tableModel.reactions += {
     case DataListSelectionChanged(source, isAdjusting, selections) =>
-      
+      if (!isAdjusting) {
+        showContent(selections.map(_.asInstanceOf[MuseumExhibit]))
+      }
   }
   
   // ソースリスト項目選択
@@ -139,7 +146,29 @@ class MainViewController(
     }
   }
   
+  /** Exhibit の中身を表示 */
+  def showContent(exhibits: List[MuseumExhibit]) {
+    // TODO 先頭のみ
+    val source = exhibits.headOption match {
+      case Some(exhibit) => getFileFor(exhibit) match {
+        case Some(file) => io.Source.fromFile(file).getLines
+        case None => Iterator.empty
+      }
+      case None => Iterator.empty
+    }
+    
+    // ソースが存在する時はビューワーを開く
+    if (source.hasNext)
+      showContentViewer()
+    
+    contentViewer.source = source
+  }
   
+  /** コンテントビューワーを表示する */
+  def showContentViewer() {
+    if (mainView.isContentViewerClosed)
+      mainView.openContentViewer(200)
+  }
   
   /** リソース取得 */
   private def resourceMap = GenomeMuseumGUI.resourceMap(getClass)
@@ -211,6 +240,9 @@ class MainViewController(
     case b: ExhibitListBox => true
     case _ => false
   }
+  
+  /** ファイルパスの取得 */
+  private def getFileFor(exhibit: MuseumExhibit) = parent.filePathFor(exhibit)
   
   /** リソースを設定する */
   private def reloadResources() {

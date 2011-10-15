@@ -138,6 +138,15 @@ class GenomeMuseumGUI extends Application {
     }
   }
   
+  /** Exhibit のファイルを取得 */
+  def filePathFor(exhibit: MuseumExhibit): Option[File] = {
+    exhibit.filePathAsURI match {
+      case uri if uri.toString == "" => None
+      case uri if uri.getScheme == "file" => Some(new File(uri))
+      case uri => libFiles.map(_.getFile(uri))
+    }
+  }
+  
   def loadBioFile(files: Seq[File]) {
     files foreach loadBioFile
   }
