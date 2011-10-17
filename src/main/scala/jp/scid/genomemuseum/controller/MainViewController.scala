@@ -19,6 +19,7 @@ class MainViewController(
   parent: GenomeMuseumGUI,
   mainView: MainView
 ) {
+  import MainViewController.ViewMode._
   // ビュー
   /** ソースリストショートカット */
   private def sourceList = mainView.sourceList
@@ -42,6 +43,9 @@ class MainViewController(
   
   /** 検索モデル */
   val webServiceResultModel = new WebServiceResultsModel()
+  
+  /** 現在の表示モード */
+  private var currentViewMode: ViewMode = WebSource
   
   // モデルバインディング
   // テーブル
@@ -233,10 +237,35 @@ class MainViewController(
    * 通常は、ソースリストの選択項目となる
    */
   private def setRoomContentsTo(newRoom: ExhibitRoom) {
-    tableModel.dataService = newRoom match {
-      case listBox: ExhibitListBox => dataSchema.dataServiceFor(listBox)
-      case _ => dataSchema.exhibitsService
+    newRoom match {
+      case sourceStructure.entrez =>
+        dataViewMode = WebSource
+      case other =>
+        dataViewMode = LocalSource
+        tableModel.dataService = other match {
+          case listBox: ExhibitListBox => dataSchema.dataServiceFor(listBox)
+          case _ => dataSchema.exhibitsService
+        }
     }
+  }
+  
+  /** 表示モードを取得 */
+  def dataViewMode = currentViewMode
+  
+  /** 表示モードを設定 */
+  def dataViewMode_=(newMode: ViewMode) {
+    if (currentViewMode != newMode) {
+      currentViewMode = newMode
+      updateDataView()
+    }
+  }
+  
+  /** 表示モードを変更 */
+  private def updateDataView() = currentViewMode match {
+    case WebSource =>
+      
+    case LocalSource =>
+      
   }
   
   /** データスキーマからモデルの再設定 */
@@ -266,6 +295,14 @@ class MainViewController(
   reloadResources()
   // モデルをリセット
   reloadSchema()
+}
+
+object MainViewController {
+  object ViewMode extends Enumeration {
+    type ViewMode = Value
+    val LocalSource = Value
+    val WebSource = Value
+  }
 }
 
 class ResourceManager(res: ResourceBundle) {
