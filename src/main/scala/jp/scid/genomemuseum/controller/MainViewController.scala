@@ -8,6 +8,9 @@ import org.jdesktop.application.{Application, Action, ResourceMap}
 
 import ca.odell.glazedlists.matchers.SearchEngineTextMatcherEditor
 
+import com.jgoodies.binding.adapter.TextComponentConnector
+import com.jgoodies.binding.value.ValueModel
+
 import jp.scid.gui.event.{DataListSelectionChanged, DataTreePathsSelectionChanged, StringValueChanged}
 import jp.scid.gui.tree.DataTreeModel
 import jp.scid.gui.StringValueModel
@@ -60,6 +63,8 @@ class MainViewController(
   
   
   // モデルバインディング
+  // 検索フィールドバインド解除関数
+  private var searchFieldUnbinder: () => Unit = () => {}
   // テーブル
   updateDataView()
   
@@ -103,7 +108,16 @@ class MainViewController(
   // Web 検索文字列の変更
   webSourceSearchText.reactions += {
     case StringValueChanged(source, newValue, oldValue) =>
-      webServiceResultModel searchWith newValue
+      if (newValue.length > 3) actors.Actor.actor {
+        println("searching: " + newValue)
+        val resultFut = webServiceResultModel getResultWith newValue
+        val result = resultFut()
+        val count = result.size
+        println("count: " + count)
+        if (count < 200) {
+          webServiceResultModel setSource result
+        }
+      }
   }
   
   // アクション
@@ -285,21 +299,31 @@ class MainViewController(
   
   /** 表示モードを変更 */
   private def updateDataView() {
-    import com.jgoodies.binding.adapter.Bindings._
     
     val dataTable = mainView.dataTable
     val quickSearchField = mainView.quickSearchField
     // 全てのバインディングリスナの削除
-    removeComponentPropertyHandler(quickSearchField)
+    searchFieldUnbinder()
+    
+    println("updateDataView: " + currentViewMode)
+    println("listeners: " + quickSearchField.getPropertyChangeListeners.length)
     
     currentViewMode match {
       case WebSource =>
         webServiceResultModel installTo dataTable
-        bind(quickSearchField, webSourceSearchText)
+        val con = connect(webSourceSearchText, quickSearchField)
+        searchFieldUnbinder = () => { con.release() }
       case LocalSource =>
         tableModel installTo dataTable
-        bind(quickSearchField, tableFilteringText)
+        val con = connect(tableFilteringText, quickSearchField)
+        searchFieldUnbinder = () => { con.release() }
     }
+  }
+  
+  private def connect(valueModel: ValueModel, field: JTextField) = {
+    val conn = new TextComponentConnector(valueModel, field)
+    conn.updateTextComponent()
+    conn
   }
   
   /** データスキーマからモデルの再設定 */
