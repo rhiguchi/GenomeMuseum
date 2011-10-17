@@ -2,12 +2,15 @@ package jp.scid.genomemuseum.controller
 
 import java.util.ResourceBundle
 import java.io.{File, FileInputStream}
-import javax.swing.{JFrame, JTree}
+import javax.swing.{JFrame, JTree, JTextField}
 
 import org.jdesktop.application.{Application, Action, ResourceMap}
 
-import jp.scid.gui.event.{DataListSelectionChanged, DataTreePathsSelectionChanged}
+import ca.odell.glazedlists.matchers.SearchEngineTextMatcherEditor
+
+import jp.scid.gui.event.{DataListSelectionChanged, DataTreePathsSelectionChanged, StringValueChanged}
 import jp.scid.gui.tree.DataTreeModel
+import jp.scid.gui.StringValueModel
 import DataTreeModel.Path
 import jp.scid.genomemuseum.{view, model, gui, GenomeMuseumGUI}
 import view.{MainView, MainViewMenuBar}
@@ -19,7 +22,8 @@ class MainViewController(
   parent: GenomeMuseumGUI,
   mainView: MainView
 ) {
-  import MainViewController.ViewMode._
+  import MainViewController._
+  import ViewMode._
   // ビュー
   /** ソースリストショートカット */
   private def sourceList = mainView.sourceList
@@ -34,6 +38,11 @@ class MainViewController(
   private var _dataSchema = MuseumScheme.empty
   /** テーブルモデル */
   val tableModel = new ExhibitTableModel
+  /** テーブルモデルフィルタリング検索文字列 */
+  private val tableFilteringText = new StringValueModel("")
+  /** テーブルモデルフィルタリングマッチャー */
+  private val filteringMatcherEditor = new SearchEngineTextMatcherEditor
+  
   /** ソースリストのツリー構造 */
   val sourceStructure = new MuseumStructure()
   /** ソースリストのモデル */
@@ -41,16 +50,18 @@ class MainViewController(
   /** ソーティングの時の再選択処理に対応するための、前回の選択項目 */
   private var previousSelections: List[MuseumExhibit] = Nil
   
-  /** 検索モデル */
+  /** ウェブソース検索モデル */
   val webServiceResultModel = new WebServiceResultsModel()
+  /** ウェブソース検索文字列 */
+  private val webSourceSearchText = new StringValueModel("")
   
   /** 現在の表示モード */
   private var currentViewMode: ViewMode = WebSource
   
+  
   // モデルバインディング
   // テーブル
-  tableModel installTo mainView.dataTable
-  tableModel filterUsing mainView.quickSearchField
+  updateDataView()
   
   // ソースリスト
   sourceListModel installTo sourceList
@@ -81,6 +92,18 @@ class MainViewController(
         // ノード削除アクションの使用可不可
         deleteSelectedBoxAction.enabled = newPaths.find(pathDeletable).nonEmpty
     }
+  }
+  
+  // フィルタリング文字列の変更
+  tableFilteringText.reactions += {
+    case StringValueChanged(source, newValue, oldValue) =>
+      tableModel refilterWith newValue
+  }
+  
+  // Web 検索文字列の変更
+  webSourceSearchText.reactions += {
+    case StringValueChanged(source, newValue, oldValue) =>
+      webServiceResultModel searchWith newValue
   }
   
   // アクション
@@ -261,11 +284,22 @@ class MainViewController(
   }
   
   /** 表示モードを変更 */
-  private def updateDataView() = currentViewMode match {
-    case WebSource =>
-      
-    case LocalSource =>
-      
+  private def updateDataView() {
+    import com.jgoodies.binding.adapter.Bindings._
+    
+    val dataTable = mainView.dataTable
+    val quickSearchField = mainView.quickSearchField
+    // 全てのバインディングリスナの削除
+    removeComponentPropertyHandler(quickSearchField)
+    
+    currentViewMode match {
+      case WebSource =>
+        webServiceResultModel installTo dataTable
+        bind(quickSearchField, webSourceSearchText)
+      case LocalSource =>
+        tableModel installTo dataTable
+        bind(quickSearchField, tableFilteringText)
+    }
   }
   
   /** データスキーマからモデルの再設定 */
