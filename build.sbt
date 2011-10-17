@@ -16,6 +16,8 @@ libraryDependencies ++= Seq(
   "com.h2database" % "h2" % "1.3.160",
   "org.squeryl" %% "squeryl" % "0.9.4",
   "org.apache.httpcomponents" % "httpclient" % "4.1.2",
+  "com.jgoodies" % "binding" % "2.5.0" from "http://www.sci-d.co.jp/jar-files/jgoodies-common-1.2.1.jar",
+  "com.jgoodies" % "common" % "1.2.1" from "http://www.sci-d.co.jp/jar-files/jgoodies-binding-2.5.0.jar",
   "org.specs2" %% "specs2" % "1.6.1" % "test",
   "org.mockito" % "mockito-all" % "1.8.5" % "test",
   "junit" % "junit" % "4.9" % "test",
