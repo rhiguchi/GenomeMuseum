@@ -19,8 +19,13 @@ class TableSortingMouseHandler(var tableModel: DataTableModel[_]) {
         case tableHeader: JTableHeader => 
           if (!isResizing(tableHeader)) {
             val clickecColumn = tableHeader.getColumnModel.getColumnIndexAtX(e.getX)
-            headerClick(clickecColumn, tableHeader.getColumnModel)
-            tableHeader.resizeAndRepaint()
+            // TableColumnModel がクリックしたヘッダと同一の時は処理を続行
+            // 別の TableColumnModel にバインディングされた時に無視するため
+            // TODO テストの追加
+            if (tableHeader.getColumnModel == tableModel.columnModel) {
+              headerClick(clickecColumn, tableHeader.getColumnModel)
+              tableHeader.resizeAndRepaint()
+            }
           }
         case _ =>
       }
