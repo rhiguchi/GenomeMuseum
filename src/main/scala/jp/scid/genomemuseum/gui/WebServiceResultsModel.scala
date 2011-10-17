@@ -4,17 +4,18 @@ import java.util.Comparator
 
 import actors.{Actor, Future, Futures, TIMEOUT}
 
-import ca.odell.glazedlists.SortedList
-
-import jp.scid.gui.DataListModel
+import jp.scid.gui.table.DataTableModel
 import jp.scid.genomemuseum.model.SearchResult
 import jp.scid.bio.ws.{WebServiceAgent, WebSourceIterator}
 import WebServiceAgent.{Identifier, EntryValues}
 
-class WebServiceResultsModel extends DataListModel[SearchResult] {
+class WebServiceResultsModel(format: WebServiceResultTableFormat)
+    extends DataTableModel[SearchResult](format) {
   import SearchResult.Status._
   import Actor._
   import WebSourceActor._
+  
+  def this() = this(new WebServiceResultTableFormat)
   
   private type EntryFeature = Future[(Identifier, Future[EntryValues])]
   
