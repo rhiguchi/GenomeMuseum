@@ -78,6 +78,10 @@ class MuseumSourceModel(source: MuseumStructure) extends DataTreeModel[ExhibitRo
   def pathForLocalLibrary: Path[ExhibitRoom] =
     Path(source.root, source.libraries, source.localStore)
   
+  /** ウェブソースノードへのパス */
+  def pathForWebSource: Path[ExhibitRoom] =
+    Path(source.root, source.libraries, source.entrez)
+  
   /** ユーザーボックスノードへのパス */
   def pathForUserBoxes: Path[ExhibitRoom] =
     Path(source.root, source.userBoxes)
