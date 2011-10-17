@@ -12,7 +12,7 @@ import DataTreeModel.Path
 import jp.scid.genomemuseum.{view, model, gui, GenomeMuseumGUI}
 import view.{MainView, MainViewMenuBar}
 import model.{MuseumScheme, ExhibitRoom, MuseumStructure, ExhibitListBox, MuseumExhibit}
-import gui.{ExhibitTableModel, MuseumSourceModel}
+import gui.{ExhibitTableModel, MuseumSourceModel, WebServiceResultsModel}
 import ExhibitListBox.BoxType._
 
 class MainViewController(
@@ -39,6 +39,9 @@ class MainViewController(
   val sourceListModel = new MuseumSourceModel(sourceStructure)
   /** ソーティングの時の再選択処理に対応するための、前回の選択項目 */
   private var previousSelections: List[MuseumExhibit] = Nil
+  
+  /** 検索モデル */
+  val webServiceResultModel = new WebServiceResultsModel()
   
   // モデルバインディング
   // テーブル
