@@ -22,6 +22,7 @@ trait WebServiceAgent {
    * @param offset 取得開始位置
    * @param limit 取得最大数
    * @return 検索結果。項目数は {@code limit} が最大。
+   * @throws IllegalArgumentException query で結果が見つからない時
    */
   def searchIdentifiers(query: String, offset: Int, limit: Int): Future[IndexedSeq[Identifier]]
   
@@ -64,4 +65,6 @@ object WebServiceAgent {
     // 空の EntryValues を作成
     def empty = EntryValues(Identifier.empty, "")
   }
+  
+  def apply(): WebServiceAgent = new TogoWebServiceAgent
 }

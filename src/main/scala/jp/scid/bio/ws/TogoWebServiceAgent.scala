@@ -17,7 +17,7 @@ import WebServiceAgent.{Identifier, EntryValues}
 /**
  * TogoWS を利用した Web サービスアクセス
  */
-class TogoWebServiceAgent {
+protected class TogoWebServiceAgent extends WebServiceAgent {
   /** Web アクセスクライアント */
   def client = new DefaultHttpClient
   
