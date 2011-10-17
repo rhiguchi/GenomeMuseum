@@ -39,6 +39,21 @@ class WebServiceResultsModel(format: WebServiceResultTableFormat)
     }
   }
   
+  def getResultWith(query: String) = Futures.future {
+    getSourceBy(query)
+  }
+  
+  def setSource(newSource: WebSourceIterator) {
+    currentSourceActor.map(_.stopActor())
+    currentSourceActor = None
+    sourceWithWriteLock { _.clear }
+    
+    val newActor = new WebSourceActor
+    newActor.start()
+    newActor.loadWith(newSource)
+    currentSourceActor = Some(newActor)
+  }
+  
   /**
    * 検索クエリから {@code WebSourceIterator} を作成。
    * {@code WebServiceAgent#count} が取得できるまではすべてのメソッドの処理はブロックされる。
