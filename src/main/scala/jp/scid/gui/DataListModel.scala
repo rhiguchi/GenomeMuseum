@@ -63,6 +63,9 @@ class DataListModel[A] extends DataModel with swing.Publisher {
     }
   }
   
+  /** 項目数の取得 */
+  def sourceSize = sourceWithReadLock { source => source.size }
+  
   /** 行選択モデルの取得 */
   def selectionModel: ListSelectionModel = eventSelectionModel
   

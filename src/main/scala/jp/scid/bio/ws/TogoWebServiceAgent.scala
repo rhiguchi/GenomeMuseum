@@ -64,10 +64,8 @@ protected class TogoWebServiceAgent extends WebServiceAgent {
    */
   private def getCountFromWeb(query: String) = {
     val url = countUrl(query)
-    val content = contentGet(url)
-    
     val count = using(new BufferedReader(
-        new InputStreamReader(content))) { reader =>
+        new InputStreamReader(contentGet(url)))) { reader =>
       reader.readLine match {
         case null =>
           throw new IllegalStateException("Content is null")
@@ -91,8 +89,7 @@ protected class TogoWebServiceAgent extends WebServiceAgent {
    */
   private def getIdentifiersFromWeb(query: String, offset: Int, limit: Int) = {
     val url = searchUrl(query, offset, limit)
-    val content = contentGet(url)
-    val identifiers = using(content) { inst =>
+    val identifiers = using(contentGet(url)) { inst =>
       Source.fromInputStream(inst).getLines.toIndexedSeq map { identifier: String =>
         Identifier(identifier)
       }
@@ -165,6 +162,7 @@ protected class TogoWebServiceAgent extends WebServiceAgent {
    */
   @throws(classOf[IllegalStateException])
   private def contentGet(url: String): InputStream = {
+    println("contentGet: " + url)
     val method = new HttpGet(url)
     val response: HttpResponse = client.execute(method)
     
@@ -180,7 +178,8 @@ protected class TogoWebServiceAgent extends WebServiceAgent {
           source.getLines.mkString("\n")
         }
         throw new IllegalStateException(
-          "The response %d is recieved. The reason: %s".format(code, content))
+          "The response %d is recieved from '%s'. The reason: %s"
+              .format(code, url, content))
     }
     
     entity.getContent
