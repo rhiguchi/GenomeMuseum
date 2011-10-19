@@ -1,6 +1,7 @@
 package jp.scid.genomemuseum.model
 
-import java.io.{File, FileInputStream, FileOutputStream, IOException}
+import java.io.{File, FileInputStream, FileOutputStream, IOException,
+  BufferedInputStream, BufferedOutputStream}
 import java.net.URI
 
 class LibraryFileManager(baseDir: File) {
@@ -27,6 +28,37 @@ class LibraryFileManager(baseDir: File) {
     
     val libURI = toLibraryURI(dest)
     exhibit.filePathAsURI = libURI
+  }
+  
+  /**
+   * ファイルをライブラリにコピーして保存
+   * {@code exhibit.filePath} に保管場所が適用される
+   */
+  @throws(classOf[IOException])
+  def store(exhibit: MuseumExhibit, source: java.net.URL) {
+    val dest = getFile(getDefaultStorePathFor(exhibit)) match {
+      case file if file.exists =>
+        findOtherDest(file)
+      case file =>
+        file
+    }
+    
+    using(new BufferedInputStream(source.openStream)) { inst =>
+      using(new BufferedOutputStream(new FileOutputStream(dest))) { outst =>
+        val buf = new Array[Byte](8192)
+        Stream.continually(inst.read(buf)).takeWhile(_ != -1) foreach { read: Int =>
+          outst.write(buf, 0, read)
+          outst.flush
+        }
+      }
+    }
+    
+    val libURI = toLibraryURI(dest)
+    exhibit.filePathAsURI = libURI
+  }
+  
+  private def using[A <% java.io.Closeable, B](s: A)(f: A => B) = {
+    try f(s) finally s.close()
   }
   
   /**

@@ -1,7 +1,8 @@
 package jp.scid.genomemuseum.model
 
 import java.text.ParseException
-import java.io.{File, FileInputStream, IOException}
+import java.net.URL
+import java.io.{File, FileInputStream, IOException, InputStream}
 import jp.scid.bio.{BioFileParser, GenBankParser, FastaParser, BioData,
   GenBank, Fasta}
 import collection.mutable.{ListBuffer, Buffer}
@@ -29,17 +30,41 @@ class MuseumExhibitParser {
     exhibitOp
   }
   
+  def parseFrom(url: URL): Option[MuseumExhibit] = {
+    val loader = url match {
+      case GenBankFileLoader() => Some(GenBankFileLoader)
+      case FastaFileLoader() => Some(FastaFileLoader)
+      case _ => None
+    }
+    
+    val exhibitOp = loader map { loader =>
+      using(url.openStream) { inst =>
+        createMuseumExhibitFrom(inst, loader)
+      }
+    }
+    
+    exhibitOp
+  }
+  
   /**
    * ビルダを使用してファイルから MuseumExhibit を作成する
    */
   private def createMuseumExhibitFrom(file: File,
       builder: MuseumExhibitBuilder[_]): MuseumExhibit = {
     val data = using(new FileInputStream(file)) { inst =>
-      val source = io.Source.fromInputStream(inst)
-      builder.createFrom(source.getLines)
+      createMuseumExhibitFrom(inst, builder)
     }
     
     data
+  }
+  
+  /**
+   * ビルダを使用してファイルから MuseumExhibit を作成する
+   */
+  private def createMuseumExhibitFrom(inst: InputStream,
+      builder: MuseumExhibitBuilder[_]): MuseumExhibit = {
+    val source = io.Source.fromInputStream(inst)
+    builder.createFrom(source.getLines)
   }
   
   /**
@@ -50,6 +75,9 @@ class MuseumExhibitParser {
     
     def unapply(file: File): Boolean =
       file.getName.endsWith(".gbk")
+    
+    def unapply(file: URL): Boolean =
+      file.getFile.endsWith(".gbk")
     
     def convertToMuseumExhibit(sections: List[GenBank]) = {
       val data = sections.head
@@ -80,7 +108,11 @@ class MuseumExhibitParser {
     def unapply(file: File): Boolean =
       file.getName.endsWith(".faa") || file.getName.endsWith(".fna") || 
         file.getName.endsWith(".ffn") || file.getName.endsWith(".fasta")
-        
+    
+    def unapply(file: URL): Boolean =
+      file.getFile.endsWith(".faa") || file.getFile.endsWith(".fna") || 
+        file.getFile.endsWith(".ffn") || file.getFile.endsWith(".fasta")
+    
     def convertToMuseumExhibit(sections: List[Fasta]) = {
       val data = sections.head
       
