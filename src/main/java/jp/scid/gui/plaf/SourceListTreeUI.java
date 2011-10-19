@@ -407,7 +407,7 @@ public class SourceListTreeUI extends BasicTreeUI {
 
     // Custom TreeCellRenderer. ///////////////////////////////////////////////////////////////////
 
-    private class SourceListTreeCellRenderer implements TreeCellRenderer {
+    public class SourceListTreeCellRenderer implements TreeCellRenderer {
 
         private CategoryTreeCellRenderer iCategoryRenderer = new CategoryTreeCellRenderer();
 

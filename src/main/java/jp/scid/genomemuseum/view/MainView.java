@@ -10,9 +10,12 @@ import java.beans.PropertyChangeListener;
 
 import javax.swing.AbstractButton;
 import javax.swing.BorderFactory;
+import javax.swing.Icon;
+import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JComponent;
+import javax.swing.JLabel;
 import javax.swing.JMenuItem;
 import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
@@ -22,9 +25,13 @@ import javax.swing.JTable;
 import javax.swing.JTextField;
 import javax.swing.JToggleButton;
 import javax.swing.JTree;
+import javax.swing.SwingConstants;
 import javax.swing.UIManager;
 import javax.swing.event.PopupMenuEvent;
 import javax.swing.event.PopupMenuListener;
+import javax.swing.tree.DefaultTreeCellEditor;
+
+import jp.scid.gui.plaf.SourceListTreeUI;
 
 import com.explodingpixels.macwidgets.ComponentBottomBar;
 import com.explodingpixels.macwidgets.MacButtonFactory;
@@ -34,10 +41,13 @@ import com.explodingpixels.macwidgets.UnifiedToolBar;
 
 public class MainView implements GenomeMuseumView {
     private final ComponentFactory factory = new ComponentFactory();
+    private final static Icon loadingIcon = new ImageIcon(MainView.class.getResource("loading.gif"));
     
     // Data table
     public final JTable dataTable = MacWidgetFactory.createITunesTable(null);
-    public final JScrollPane dataTableScroll = MacWidgetFactory.createSourceListScrollPane(dataTable);
+    public final JScrollPane dataTableScroll = new JScrollPane(dataTable,
+            JScrollPane.VERTICAL_SCROLLBAR_ALWAYS,
+            JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
     
     // Content Viewer
     public final FileContentView fileContentView = new FileContentView();
@@ -52,19 +62,40 @@ public class MainView implements GenomeMuseumView {
         dataListContentSplit.setResizeWeight(1);
     }
     
+    // Search Field
     public final JTextField quickSearchField = new JTextField(); {
         quickSearchField.setPreferredSize(new Dimension(200, 28));
     }
+    
+    // Search Status
+    public final JLabel statusLabel = new JLabel("status"); {
+        statusLabel.setPreferredSize(new Dimension(200, 28));
+        statusLabel.setHorizontalAlignment(SwingConstants.RIGHT);
+    }
+    // Loading Icon
+    public final JLabel loadingIconLabel = new JLabel(loadingIcon); {
+//        loadingIconLabel.setPreferredSize(new Dimension(24, 24));
+    }
 
-    public final JTree sourceList = new JTree();
-    public final JScrollPane sourceListScroll = new JScrollPane(sourceList,
-            JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED,
-            JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+    public final SourceListCellEditor sourceListCellEditor = new SourceListCellEditor();
+    public final JTree sourceList = new JTree(); {
+        sourceList.setUI(new SourceListTreeUI());
+        sourceList.setCellEditor(new DefaultTreeCellEditor(sourceList,
+                null, sourceListCellEditor));
+        sourceList.setRootVisible(false);
+        sourceList.setInvokesStopCellEditing(true);
+        sourceList.setToggleClickCount(0);
+        sourceList.setEditable(true);
+
+    }
+    public final JScrollPane sourceListScroll = MacWidgetFactory.createSourceListScrollPane(sourceList);
     
     // Top
     private final UnifiedToolBar toolBarView = new UnifiedToolBar();
     public final JComponent toolBarPane = toolBarView.getComponent(); {
+        toolBarView.addComponentToRight(statusLabel);
         toolBarView.addComponentToRight(quickSearchField);
+        toolBarView.addComponentToRight(loadingIconLabel);
     }
     
     // Bottom left

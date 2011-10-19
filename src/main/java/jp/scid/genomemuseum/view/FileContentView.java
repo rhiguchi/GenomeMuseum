@@ -23,6 +23,7 @@ public class FileContentView implements GenomeMuseumView {
         contentPane.add(textAreaScroll, "Center");
         
         contentPane.setPreferredSize(new Dimension(300, 300));
+        contentPane.setMinimumSize(new Dimension(200, 0));
     }
     
     public JPanel getContentPane() {

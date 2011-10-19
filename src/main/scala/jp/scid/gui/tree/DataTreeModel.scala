@@ -5,7 +5,6 @@ import javax.swing.tree.{TreeModel, TreeSelectionModel, DefaultTreeSelectionMode
   TreePath}
 
 import jp.scid.gui.{DataModel}
-import jp.scid.gui.plaf.SourceListTreeUI
 
 class DataTreeModel[A <: AnyRef: ClassManifest](source: TreeSource[A])
     extends DataModel with swing.Publisher {
@@ -67,15 +66,6 @@ class DataTreeModel[A <: AnyRef: ClassManifest](source: TreeSource[A])
    * JTree にこのモデルを適用する。
    */
   def installTo(tree: JTree) {
-    // UI
-    tree setUI new SourceListTreeUI
-    tree setRootVisible false
-//    tree setFocusable false
-    tree setInvokesStopCellEditing false
-    tree setToggleClickCount 0
-    tree setEditable true
-    
-    // モデル SourceListTreeUI が selectionModel を設定するため後から設定
     tree setModel treeModel
     tree setSelectionModel selectionModel
   }
