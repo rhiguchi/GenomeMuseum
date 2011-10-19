@@ -8,9 +8,6 @@ import org.jdesktop.application.{Application, Action, ResourceMap}
 
 import ca.odell.glazedlists.matchers.SearchEngineTextMatcherEditor
 
-import com.jgoodies.binding.adapter.TextComponentConnector
-import com.jgoodies.binding.value.ValueModel
-
 import jp.scid.gui.event.{DataListSelectionChanged, DataTreePathsSelectionChanged, StringValueChanged}
 import jp.scid.gui.tree.DataTreeModel
 import jp.scid.gui.StringValueModel
@@ -25,8 +22,8 @@ class MainViewController(
   parent: GenomeMuseumGUI,
   mainView: MainView
 ) {
-  import MainViewController._
-  import ViewMode._
+  import DataListViewController.ViewMode._
+  
   // ビュー
   /** ソースリストショートカット */
   private def sourceList = mainView.sourceList
@@ -36,15 +33,17 @@ class MainViewController(
   /** コンテントビューワー */
   private val contentViewer = new FileContentViewer(mainView.fileContentView)
   
+  private val dataListViewController = new DataListViewController(
+    mainView.dataTable, mainView.quickSearchField, mainView.statusLabel,
+    mainView.loadingIconLabel )
+  
+  
   // モデル
   /** 現在のスキーマ */
   private var _dataSchema = MuseumScheme.empty
+  
   /** テーブルモデル */
-  val tableModel = new ExhibitTableModel
-  /** テーブルモデルフィルタリング検索文字列 */
-  private val tableFilteringText = new StringValueModel("")
-  /** テーブルモデルフィルタリングマッチャー */
-  private val filteringMatcherEditor = new SearchEngineTextMatcherEditor
+  def tableModel = dataListViewController.tableModel
   
   /** ソースリストのツリー構造 */
   val sourceStructure = new MuseumStructure()
@@ -53,24 +52,13 @@ class MainViewController(
   /** ソーティングの時の再選択処理に対応するための、前回の選択項目 */
   private var previousSelections: List[MuseumExhibit] = Nil
   
-  /** ウェブソース検索モデル */
-  val webServiceResultModel = new WebServiceResultsModel()
-  /** ウェブソース検索文字列 */
-  private val webSourceSearchText = new StringValueModel("")
-  
-  /** 現在の表示モード */
-  private var currentViewMode: ViewMode = WebSource
-  
+  private val sourceListExpansionHandler = new SourceListExpansionHandler(sourceListModel)
   
   // モデルバインディング
-  // 検索フィールドバインド解除関数
-  private var searchFieldUnbinder: () => Unit = () => {}
-  // テーブル
-  updateDataView()
-  
   // ソースリスト
   sourceListModel installTo sourceList
   sourceListModel.sourceListSelectionMode = true
+  sourceList addTreeWillExpandListener sourceListExpansionHandler
   
   // モデルイベント処理
   // テーブル行選択
@@ -97,27 +85,6 @@ class MainViewController(
         // ノード削除アクションの使用可不可
         deleteSelectedBoxAction.enabled = newPaths.find(pathDeletable).nonEmpty
     }
-  }
-  
-  // フィルタリング文字列の変更
-  tableFilteringText.reactions += {
-    case StringValueChanged(source, newValue, oldValue) =>
-      tableModel refilterWith newValue
-  }
-  
-  // Web 検索文字列の変更
-  webSourceSearchText.reactions += {
-    case StringValueChanged(source, newValue, oldValue) =>
-      if (newValue.length > 3) actors.Actor.actor {
-        println("searching: " + newValue)
-        val resultFut = webServiceResultModel getResultWith newValue
-        val result = resultFut()
-        val count = result.size
-        println("count: " + count)
-        if (count < 200) {
-          webServiceResultModel setSource result
-        }
-      }
   }
   
   // アクション
@@ -276,9 +243,9 @@ class MainViewController(
   private def setRoomContentsTo(newRoom: ExhibitRoom) {
     newRoom match {
       case sourceStructure.entrez =>
-        dataViewMode = WebSource
+        dataListViewController.viewMode = WebSource
       case other =>
-        dataViewMode = LocalSource
+        dataListViewController.viewMode = LocalSource
         tableModel.dataService = other match {
           case listBox: ExhibitListBox => dataSchema.dataServiceFor(listBox)
           case _ => dataSchema.exhibitsService
@@ -286,48 +253,10 @@ class MainViewController(
     }
   }
   
-  /** 表示モードを取得 */
-  def dataViewMode = currentViewMode
-  
-  /** 表示モードを設定 */
-  def dataViewMode_=(newMode: ViewMode) {
-    if (currentViewMode != newMode) {
-      currentViewMode = newMode
-      updateDataView()
-    }
-  }
-  
-  /** 表示モードを変更 */
-  private def updateDataView() {
-    
-    val dataTable = mainView.dataTable
-    val quickSearchField = mainView.quickSearchField
-    // 全てのバインディングリスナの削除
-    searchFieldUnbinder()
-    
-    println("updateDataView: " + currentViewMode)
-    println("listeners: " + quickSearchField.getPropertyChangeListeners.length)
-    
-    currentViewMode match {
-      case WebSource =>
-        webServiceResultModel installTo dataTable
-        val con = connect(webSourceSearchText, quickSearchField)
-        searchFieldUnbinder = () => { con.release() }
-      case LocalSource =>
-        tableModel installTo dataTable
-        val con = connect(tableFilteringText, quickSearchField)
-        searchFieldUnbinder = () => { con.release() }
-    }
-  }
-  
-  private def connect(valueModel: ValueModel, field: JTextField) = {
-    val conn = new TextComponentConnector(valueModel, field)
-    conn.updateTextComponent()
-    conn
-  }
-  
   /** データスキーマからモデルの再設定 */
   private def reloadSchema() {
+    sourceListExpansionHandler openNodeOf sourceList
+    
     sourceListModel.selectPathLocalLibrary
     sourceListModel.userBoxesSource = dataSchema.exhibitRoomService
   }
@@ -353,14 +282,6 @@ class MainViewController(
   reloadResources()
   // モデルをリセット
   reloadSchema()
-}
-
-object MainViewController {
-  object ViewMode extends Enumeration {
-    type ViewMode = Value
-    val LocalSource = Value
-    val WebSource = Value
-  }
 }
 
 class ResourceManager(res: ResourceBundle) {

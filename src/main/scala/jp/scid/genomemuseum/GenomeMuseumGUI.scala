@@ -54,7 +54,7 @@ class GenomeMuseumGUI extends Application {
   lazy val selectAllAction = actionFor("selectAll")
   
   // Model
-  private var scheme = MuseumScheme.empty
+  private var scheme: MuseumScheme = null
   private var libFiles: Option[LibraryFileManager] = None
   
   private val exhibitParser = new MuseumExhibitParser
@@ -75,13 +75,13 @@ class GenomeMuseumGUI extends Application {
     mainCtrl = new MainViewController(this, mainFrame.mainView)
     bindMenuBarActions(mainFrame.mainMenu, mainCtrl)
     
-    GenomeMuseumGUI.loadSampleFiles.foreach(scheme.exhibitsService.add)
     mainCtrl.dataSchema = scheme
     // サンプルデータ追加    
     mainCtrl.sourceListModel.addListBox("test1")
     mainCtrl.sourceListModel.addListBox("test2")
     mainCtrl.sourceListModel.addListBox("test3")
     
+    loadSampleDataTo(this)
     
     val viewSettingDialogCtrl = new ViewSettingDialogController(
       mainFrame.columnConfigPane, mainFrame.columnConfigDialog)
@@ -168,6 +168,20 @@ class GenomeMuseumGUI extends Application {
     
     e.map(mainCtrl.tableModel.addElement)
   }
+  
+  @throws(classOf[IOException])
+  @throws(classOf[ParseException])
+  protected def loadBioFile(url: java.net.URL) {
+    println("loadBioFile: " + url)
+    
+    val e = exhibitParser.parseFrom(url)
+    
+    if (isLocalStorable) e foreach { e =>
+      libFiles.get.store(e, url)
+    }
+    
+    e.map(scheme.exhibitsService.add)
+  }
 }
 
 object GenomeMuseumGUI {
@@ -252,6 +266,19 @@ object GenomeMuseumGUI {
     
     list
   }
+  
+  private def loadSampleDataTo(loader: GenomeMuseumGUI) {
+    val samples = List("NC_004554.gbk", "NC_004555.gbk", "NC_006375.gbk",
+      "NC_006376.gbk", "NC_006676.gbk", "NC_007504.gbk", "NC_009347.gbk",
+      "NC_009517.gbk", "NC_009934.gbk", "NC_010550.gbk")
+    val resourceBase = "sample_bio_files/"
+    val cls = this.getClass
+    
+    val resources = samples.map(resourceBase.+).map(cls.getResource)
+    
+    resources foreach loader.loadBioFile
+  }
+  
   
   private def getVersionNumber(value: Int) =
     if (value == 0) None else Some(value)
