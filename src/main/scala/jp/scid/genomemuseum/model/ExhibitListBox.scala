@@ -18,6 +18,8 @@ case class ExhibitListBox(
   def this() = this("", parentId = Some(0))
   
   def children = Nil
+  
+  def getText = name
 }
 
 object ExhibitListBox {

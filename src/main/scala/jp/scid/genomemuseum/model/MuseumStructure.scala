@@ -17,11 +17,7 @@ class MuseumStructure extends EditableTreeSource[ExhibitRoom] {
   
   private var myUserBoxesSource = TreeDataService[ExhibitListBox]()
   
-  val userBoxes = new ExhibitRoom {
-    def name = "User Lists"
-    def children = Nil
-    override def toString() = "User Lists"
-  }
+  val userBoxes = ExhibitRoom("User Boxes")
   
   /** ルートオブジェクト */
   val root = ExhibitRoom("Museum", libraries, userBoxes)
@@ -50,7 +46,10 @@ class MuseumStructure extends EditableTreeSource[ExhibitRoom] {
   }
   
   def update(element: ExhibitListBox, newValue: AnyRef) {
-    // TODO update impl
+    newValue match {
+      case value: String => element.name = value
+      case _ =>
+    }
     myUserBoxesSource.save(element)
   }
   
