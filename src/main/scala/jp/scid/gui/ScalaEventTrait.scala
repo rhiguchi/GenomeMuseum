@@ -17,12 +17,13 @@ trait ScalaEventTrait {
   private val selfPCL = new JavaEventHandler(this)
   addValueChangeListener(selfPCL)
   
-  protected[gui] def convertEvent(propertyName: String, newValue: AnyRef, oldValue: AnyRef): DataModelEvent
+  protected[gui] def convertPropertyEvent(propertyName: String,
+    newValue: AnyRef, oldValue: AnyRef): DataModelEvent
 }
 
 private class JavaEventHandler(set: ScalaEventTrait with Publisher) extends PropertyChangeListener {
   def propertyChange(evt: PropertyChangeEvent) {
-    val pubEvt = set.convertEvent(evt.getPropertyName, evt.getNewValue, evt.getOldValue)
+    val pubEvt = set.convertPropertyEvent(evt.getPropertyName, evt.getNewValue, evt.getOldValue)
     set.publish(pubEvt)
   }
 }
