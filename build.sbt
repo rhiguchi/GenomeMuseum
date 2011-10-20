@@ -35,6 +35,7 @@ proguardOptions ++= Seq(
   "-keepclassmembers class * extends org.jdesktop.application.AbstractBean { public *;}",
   "-keep class * implements java.sql.Driver",
   "-keep class net.sf.cglib.** {*;}",
+  "-keep class org.apache.commons.logging.impl.*",
   "-keep class jp.scid.**.*$anon* { *;}"
 )
 
