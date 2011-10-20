@@ -18,7 +18,7 @@ class WebSourceIterator(agent: WebServiceAgent, val query: String, override val 
   /** 現在まで取得した結果数 */
   private var offset = 0
   /** 一回に取得する結果数 */
-  var defaultLimit = 30
+  var defaultLimit = 20
   /** 取得した結果キュー */
   val queue = Queue.empty[Future[(Identifier, Future[EntryValues])]]
   

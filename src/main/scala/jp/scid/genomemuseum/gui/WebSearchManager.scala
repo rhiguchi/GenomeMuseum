@@ -19,7 +19,7 @@ class WebSearchManager(val listModel: DataListModel[SearchResult], var agent: We
   
   // パラメータ
   /** 項目数取得のタイムアウト */
-  var timeoutTime = 5000L
+  var timeoutTime = 10000L
   /** リストに表示する最大項目数 */
   var resultMaximumCount = 200
   

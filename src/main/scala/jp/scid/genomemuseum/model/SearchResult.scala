@@ -17,6 +17,6 @@ object SearchResult {
     val Pending = Value(0)
     val Searching = Value(1)
     val Failed = Value(2)
-    val Successed = Value(3)
+    val Succeed = Value(3)
   }
 }

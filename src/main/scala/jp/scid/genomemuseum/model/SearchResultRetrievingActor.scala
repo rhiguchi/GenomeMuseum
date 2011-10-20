@@ -8,41 +8,42 @@ import WebServiceAgent.{Identifier, EntryValues}
 
 class SearchResultRetrievingActor(listModel: DataListModel[SearchResult]) extends Actor {
   import SearchResultRetrievingActor._
-  import SearchResult.Status._
+  import SearchResult.Status
   
   private var retrievingCount = 0
   
   def act() { loop {
-    reactWithin(0) {
+    reactWithin(5) {
       case Cancel() =>
         println("Cancel")
         done()
         exit
       case Succeed() =>
+        println("Succeed")
         done()
         exit
       case TIMEOUT => react {
-        case IdentifierRetriving(element) if element.isSet =>
-          val (identifier, evFut) = element()
-          println("IdentifierRetriving: " + identifier)
-          try {
-            evFut()
-          }
-          catch {
-            case e: Throwable => e.printStackTrace
-          }
-          println("fut" + evFut())
-          retrievingCount += 1
-          identifierRetrived(identifier)
-          this ! EntryValuesRetriving(evFut)
-          
-        case EntryValuesRetriving(element) if element.isSet =>
-          retrievingCount -= 1
-          println("EntryValuesRetriving: " + element())
-          elementValueRetrived(element())
-          
-          if (retrievingCount <= 0)
-            this ! Succeed()
+        case msg @ IdentifierRetriving(element) => element.isSet match {
+          case true =>
+            val (identifier, evFut) = element()
+            println("IdentifierRetriving: " + identifier)
+            retrievingCount += 1
+            identifierRetrived(identifier)
+            this ! EntryValuesRetriving(evFut)
+          case false =>
+            this ! msg
+        }
+        case msg @ EntryValuesRetriving(element) => element.isSet match {
+          case true =>
+            retrievingCount -= 1
+            println("EntryValuesRetriving: " + element())
+            elementValueRetrived(element())
+            
+            if (retrievingCount <= 0)
+              this ! Succeed()
+          case false =>
+            this ! msg
+        }
       }
     }
   }}
@@ -58,7 +59,7 @@ class SearchResultRetrievingActor(listModel: DataListModel[SearchResult]) extend
   /** 識別子の取得が完了した時の処理 */
   protected def identifierRetrived(identifier: Identifier) {
     // 行オブジェクトの追加
-    val rowObj = SearchResult(identifier.value, status = Searching)
+    val rowObj = SearchResult(identifier.value, status = Status.Searching)
     listModel.sourceWithWriteLock { source =>
       source += rowObj
     }
@@ -69,7 +70,7 @@ class SearchResultRetrievingActor(listModel: DataListModel[SearchResult]) extend
     listModel.sourceWithReadLock { source =>    
       findByIdentifier(values.identifier, source) match {
         case Some((element, index)) =>
-          element.status = Successed
+          element.status = Status.Succeed
           element.accession = values.accession
           element.length = values.length
           element.definition = values.definition
