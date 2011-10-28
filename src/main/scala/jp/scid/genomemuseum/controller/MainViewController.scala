@@ -97,7 +97,7 @@ class MainViewController(
   
   // アクションバインディング
   // ファイルのドラッグ＆ドロップ追加ハンドラ
-  protected val transferHandler = new BioFileTransferHandler(parent)
+  protected val transferHandler = new BioFileTransferHandler(this)
   mainView.dataTableScroll.setTransferHandler(transferHandler)
   
   mainView.addListBox.setAction(addListBoxAction.peer)
@@ -162,6 +162,11 @@ class MainViewController(
       case `service` => parent.deleteFromLibrary(selections)
       case _ => tableModel removeElements selections
     }
+  }
+  
+  /** ファイル読み込み */
+  private[controller] def loadBioFile(files: List[File]) {
+    parent.loadBioFile(files)
   }
   
   /** Exhibit の中身を表示 */
@@ -317,7 +322,7 @@ import scala.swing.Swing
 /**
  * ファイル転送ハンドラ
  */
-class BioFileTransferHandler(controller: GenomeMuseumGUI) extends TransferHandler {
+class BioFileTransferHandler(controller: MainViewController) extends TransferHandler {
   import java.awt.datatransfer.DataFlavor
   
   override def canImport(comp: JComponent, flavors: Array[DataFlavor]): Boolean = {
@@ -381,4 +386,6 @@ class BioFileTransferHandler(controller: GenomeMuseumGUI) extends TransferHandle
     
     collectFiles(files.toList)
   }
+  
+  
 }
