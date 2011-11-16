@@ -1,6 +1,6 @@
 name := "GenomeMuseum"
 
-version := "0.8a1"
+version := "0.9a1"
 
 scalaVersion := "2.9.1"
 
@@ -18,6 +18,8 @@ libraryDependencies ++= Seq(
   "org.apache.httpcomponents" % "httpclient" % "4.1.2",
   "com.jgoodies" % "binding" % "2.5.0" from "http://www.sci-d.co.jp/jar-files/jgoodies-common-1.2.1.jar",
   "com.jgoodies" % "common" % "1.2.1" from "http://www.sci-d.co.jp/jar-files/jgoodies-binding-2.5.0.jar",
+  "org.slf4j" % "slf4j-api" % "1.6.4",
+  "com.weiglewilczek.slf4s" %% "slf4s" % "1.0.7",
   "org.specs2" %% "specs2" % "1.6.1" % "test",
   "org.mockito" % "mockito-all" % "1.8.5" % "test",
   "junit" % "junit" % "4.9" % "test",

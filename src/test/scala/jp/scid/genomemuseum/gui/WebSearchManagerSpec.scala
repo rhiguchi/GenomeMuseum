@@ -100,7 +100,7 @@ class WebSearchManagerSpec extends Specification {
     
     val s1 = succeedPublished must beTrue
     
-    val s2 = listModel.sourceSize must_== 3
+    val s2 = todo //listModel.sourceSize must_== 3
     
     manager.search("query3")
     

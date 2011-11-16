@@ -4,7 +4,7 @@ import actors.{Actor, Futures}
 
 import jp.scid.bio.ws.{WebServiceAgent, WebSourceIterator}
 import WebServiceAgent.{Identifier, EntryValues}
-import jp.scid.gui.{DataListModel, BooleanValueHolder, IntValueHolder}
+import jp.scid.gui.DataListModel
 import jp.scid.genomemuseum.model.{SearchResult, SearchResultRetrievingActor}
 
 /**
@@ -57,7 +57,7 @@ class WebSearchManager(val listModel: DataListModel[SearchResult], var agent: We
   
   /** リストモデルの内容を消去 */
   private def clearListModel() {
-    listModel.sourceWithWriteLock { _.clear }
+    listModel.source = Nil
   }
   
   /** 検索結果数を取得。処理をタイムアウト時間まで待つ。 */

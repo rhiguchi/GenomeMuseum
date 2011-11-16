@@ -2,219 +2,315 @@ package jp.scid.genomemuseum.gui
 
 import org.specs2._
 import mock._
-import jp.scid.genomemuseum.model.{MuseumStructure, ExhibitListBox,
-  TreeDataService}
-import ExhibitListBox.BoxType._
+import jp.scid.gui.tree.DataTreeModel.Path
+import jp.scid.genomemuseum.model.{MuseumStructure, ExhibitRoom,
+     UserExhibitRoomService, UserExhibitRoom}
+import UserExhibitRoom.RoomType._
 
-class MuseumSourceModelSpec extends Specification {
+class MuseumSourceModelSpec extends Specification with Mockito {
   def is = "MuseumSourceModel" ^
-    "addListBox" ^
-      "ListBox のオブジェクト生成" ! AddListBoxSpec().s1 ^
-      "TreeDataService#add(ListBox) 呼び出し" ! AddListBoxSpec().s2 ^
-      "treeSource に反映" ! AddListBoxSpec().s3 ^
-      "treeModel の更新" ! AddListBoxSpec().s4 ^
-    bt ^ "addListBox (子要素としての追加)" ^
-      "ListBox のオブジェクト生成" ! AddListBoxToParentSpec().s1 ^
-      "TreeDataService#add(ListBox, Some) 呼び出し" ! AddListBoxToParentSpec().s2 ^
-      "treeModel に反映" ! AddListBoxToParentSpec().s3 ^
-      "ListBox は親にできない" ! AddListBoxToParentSpec().s4 ^
-      "SmartBox は親にできない" ! AddListBoxToParentSpec().s5 ^
-      "treeModel の更新" ! AddListBoxToParentSpec().s6 ^
-    bt ^ "addSmartBox" ^
-      "SmartBox のオブジェクト生成" ! AddSmartBoxSpec().s1 ^
-      "TreeDataService#add(SmartBox) 呼び出し" ! AddSmartBoxSpec().s2 ^
-      "treeSource に反映" ! AddSmartBoxSpec().s3 ^
-      "treeModel の更新" ! AddSmartBoxSpec().s4 ^
-    bt ^ "addSmartBox (子要素としての追加)" ^
-      "ListBox のオブジェクト生成" ! AddSmartBoxToParentSpec().s1 ^
-      "TreeDataService#add(ListBox, Some) 呼び出し" ! AddSmartBoxToParentSpec().s2 ^
-      "treeModel に反映" ! AddSmartBoxToParentSpec().s3 ^
-      "ListBox は親にできない" ! AddSmartBoxToParentSpec().s4 ^
-      "SmartBox は親にできない" ! AddSmartBoxToParentSpec().s5 ^
-      "treeModel の更新" ! AddSmartBoxToParentSpec().s6 ^
-    bt ^ "addBoxFolder" ^
-      "BoxFolder のオブジェクト生成" ! AddBoxFolderSpec().s1 ^
-      "TreeDataService#add(BoxFolder) 呼び出し" ! AddBoxFolderSpec().s2 ^
-      "treeSource に反映" ! AddBoxFolderSpec().s3 ^
-      "treeModel の更新" ! AddBoxFolderSpec().s4 ^
-    bt ^ "addBoxFolder (子要素としての追加)" ^
-      "ListBox のオブジェクト生成" ! AddBoxFolderToParentSpec().s1 ^
-      "TreeDataService#add(ListBox, Some) 呼び出し" ! AddBoxFolderToParentSpec().s2 ^
-      "treeSource に反映" ! AddBoxFolderToParentSpec().s3 ^
-      "ListBox は親にできない" ! AddBoxFolderToParentSpec().s4 ^
-      "SmartBox は親にできない" ! AddBoxFolderToParentSpec().s5 ^
-      "treeModel の更新" ! AddBoxFolderToParentSpec().s6 ^
-    bt ^ "removeElementFromParent" ^
-      "TreeDataService#remove 呼び出し" ! RemoveBoxSpec().s1 ^
-      "treeSource に反映" ! RemoveBoxSpec().s2 ^
-      "treeModel の更新" ! RemoveBoxSpec().s3 ^
-      "削除した要素は treeModel からアクセスできない" ! RemoveBoxSpec().s4
+    "ローカルライブラリへのパス取得" ! s1 ^
+    "ライブラリノードへのパス取得" ! s2 ^
+    "ユーザールームルートへのパス取得" ! s3 ^
+    "findAncestorGroupRoom" ^
+      "GroupRoom のみ" ! s5 ^
+      "最終ノードが GroupRoom ではない" ! s6 ^
+      "最初と最終ノードが GroupRoom ではない" ! s7 ^
+      "GroupRoom を含まない" ! s8 ^
+    bt ^ "部屋の追加" ^
+      "サービス未設定時は例外" ! s4 ^
+      "サービスのメソッドコール" ! withService.s1 ^
+      "GroupRoom 親を指定して追加" ! withService.s3 ^
+      "GroupRoom でない親は例外" ! withService.s4 ^
+    bt ^ "選択パスに部屋追加" ^
+      "無選択時" ^
+        "サービスのメソッドコール" ! addUserRoom.s1 ^
+        "追加された部屋が選択される" ! addUserRoom.s2 ^
+      bt ^ "GroupRoom 選択時" ^
+        "サービスのメソッドコール" ! addUserRoomSel.s1 ^
+        "追加された部屋が選択される" ! addUserRoomSel.s2 ^
+      bt ^ "GroupRoom の子で BasicRoom 選択時" ^
+        "サービスのメソッドコール" ! addUserRoomSel2.s1 ^
+        "追加された部屋が選択される" ! addUserRoomSel2.s2 ^
+      bt ^ "同じ名前が存在するとき、名前に連番がつく" ! addUserRoomName.s1 ^
+    bt ^ "moveRoom" ^
+      "Group フォルダへ移動" ! moveRoom.s1 ^
+      "ルートへ移動" ! moveRoom.s2 ^
+      "GroupRoom 以外を親に指定で例外" ! moveRoom.s3 ^
+      "自分の子孫を指定すると例外" ! moveRoom.s4 ^
+    bt ^ "UserExhibitRoom 削除" ^
+      "サービスのメソッドコール" ! removeRoom.s1 ^
+    bt ^ "Swing Event 発行" ^
+      "addRoom to user rooms root" ! insertEvent.s1 ^
+      "addRoom to GroupRoom" ! insertEvent.s2 ^
+      "removeRoom from user rooms root" ! removeEvent.s1 ^
+      "removeRoom from GroupRoom" ! removeEvent.s2 ^
+      "moveRoom" ! moveEvent.s1
   
-  trait Base extends Mockito {
-    import jp.scid.gui.tree.SourceTreeModel
-    
-    val treeSource = new MuseumStructure
-    
-    val model = new MuseumSourceModel(treeSource)
-    
-    model.userBoxesSource = spy(TreeDataService[ExhibitListBox]())
-    
-    protected def boxesSource = treeSource.userBoxesSource
-    
-    protected def userBoxesNode = treeSource.userBoxes
-    
-    protected def treeModel = model.treeModel.asInstanceOf[SourceTreeModel[ExhibitListBox]]
+  class TestBase {
+    val structure = new MuseumStructure()
+    val model = new MuseumSourceModel(structure)
   }
   
-  trait AddBoxSpec extends Base {
-    treeModel.getChildCount(treeModel.getRoot)
-    assert(treeModel.getChildCount(userBoxesNode) == 0)
-    
-    val newBox = createBox
-    
-    protected def createBox: ExhibitListBox
-    
-    def s2 = there was one(boxesSource).add(newBox, None)
-    
-    def s3 = treeSource.childrenFor(userBoxesNode) must contain(newBox) and
-      have size(1)
-    
-    def s4 = treeModel.getChildCount(userBoxesNode).must_==(1) and
-      treeModel.getChild(userBoxesNode, 0).must_==(newBox)
+  // 初期状態
+  val initialState = new TestBase
+  
+  def s1 = pathTest(initialState.model.pathForLocalLibrary,
+    initialState.structure.localSource)
+  
+  def s2 = pathTest(initialState.model.pathForLibraries,
+    initialState.structure.sourcesRoot)
+  
+  def s3 = pathTest(initialState.model.pathForUserRooms,
+    initialState.structure.userRoomsRoot)
+  
+  def pathTest(path: Path[ExhibitRoom], lastNode: ExhibitRoom) = {
+    (path.head must_== initialState.structure.root) and
+    (path.last must_== lastNode)
   }
   
-  case class AddListBoxSpec() extends AddBoxSpec {
-    def createBox = model.addListBox("List Box")
-    
-    def s1 = newBox.name must_== "List Box" and
-      (newBox.boxType must_== ListBox)
+  def s4 = initialState.model.addRoom(BasicRoom, "name", None) must
+    throwA[IllegalStateException]
+  
+  import MuseumSourceModel.findAncestorGroupRoom
+  val group = UserExhibitRoom("group", GroupRoom)
+  
+  def s5 = {
+    findAncestorGroupRoom(Path(group)) must_== Path(group)
   }
   
-  case class AddSmartBoxSpec() extends AddBoxSpec {
-    def createBox = model.addSmartBox("Smart Box")
-    
-    def s1 = newBox.name must_== "Smart Box" and
-      (newBox.boxType must_== SmartBox)
+  def s6 = {
+    findAncestorGroupRoom(Path(group, UserExhibitRoom("group", BasicRoom))) must_== Path(group)
   }
   
-  case class AddBoxFolderSpec() extends AddBoxSpec {
-    def createBox = model.addBoxFolder("Box Folder")
-    
-    def s1 = newBox.name must_== "Box Folder" and
-      (newBox.boxType must_== BoxFolder)
+  def s7 = {
+    val room = UserExhibitRoom("group", BasicRoom)
+    findAncestorGroupRoom(Path(room, group,
+      UserExhibitRoom("group", BasicRoom))) must_== Path(room, group)
   }
   
-  trait AddChildBoxSpec extends Base {
-    val listBox = model.addListBox("List Box")
-    val smartBox = model.addSmartBox("Smart Box")
-    val boxFolder = model.addBoxFolder("Box Folder")
-    
-    // boxFolder ノードには子が無いことの確認
-    treeModel.getChildCount(treeModel.getRoot)
-    assert(treeModel.getChildCount(userBoxesNode) == 3)
-    assert(treeModel.getChildCount(boxFolder) == 0)
-    
-    val newBox = createBox
-    
-    protected def createBox: ExhibitListBox
-    
-    def childrenForBoxFolder = treeSource.childrenFor(boxFolder)
-    def childrenForListBox = treeSource.childrenFor(listBox)
-    def childrenForSmartBox = treeSource.childrenFor(smartBox)
-    
-    def s2 = there was one(boxesSource).add(newBox, Some(boxFolder))
-    
-    def s3 =
-      treeSource.childrenFor(boxFolder) must contain(newBox) and have size(1)
-    
-    def s4_2 = childrenForListBox must be empty
-    
-    def s5_2 = childrenForSmartBox must be empty
-    
-    def s6 = treeModel.getChildCount(boxFolder).must_==(1) and
-      treeModel.getChild(boxFolder, 0).must_==(newBox)
+  def s8 = {
+    findAncestorGroupRoom(Path(UserExhibitRoom("", BasicRoom),
+      UserExhibitRoom("", SmartRoom))) must beEmpty
   }
   
-  case class AddListBoxToParentSpec() extends AddChildBoxSpec {
-    def createBox = model.addListBox("List Box", boxFolder)
-    
-    def s1 = newBox.name must_== "List Box" and
-      (newBox.boxType must_== ListBox)
-    
-    def s4 = model.addListBox("List Box", listBox) must
-      throwA[IllegalArgumentException] and s4_2
-    
-    def s5 = model.addListBox("List Box", smartBox) must
-      throwA[IllegalArgumentException] and s5_2
+  class WithService extends TestBase {
+    val service = mock[UserExhibitRoomService]
+    service.addRoom(any, any, any) returns UserExhibitRoom("room")
+    model.dataService = service
   }
   
-  case class AddSmartBoxToParentSpec() extends AddChildBoxSpec {
-    def createBox = model.addSmartBox("Smart Box", boxFolder)
+  // サービス付き
+  val withService = new WithService {
+    val newRoom = model.addRoom(GroupRoom, "group", None)
+    model.addRoom(BasicRoom, "basic", None)
+    model.addRoom(SmartRoom, "smart", None)
     
-    def s1 = newBox.name must_== "Smart Box" and
-      (newBox.boxType must_== SmartBox)
+    val parent = Some(UserExhibitRoom("parent", GroupRoom))
+    model.addRoom(BasicRoom, "child", parent)
     
-    def s4 = model.addSmartBox("Smart Box", listBox) must
-      throwA[IllegalArgumentException] and s4_2
+    def s1_1 = there was one(service).addRoom(BasicRoom, "basic", None)
+    def s1_2 = there was one(service).addRoom(SmartRoom, "smart", None)
+    def s1_3 = there was one(service).addRoom(GroupRoom, "group", None)
+    def s1 = s1_1 and s1_2 and s1_3
     
-    def s5 = model.addSmartBox("Smart Box", smartBox) must
-      throwA[IllegalArgumentException] and s5_2
+    def s3 = there was one(service).addRoom(BasicRoom, "child", parent) 
+    
+    def s4_1 = model.addRoom(BasicRoom, "", Some(UserExhibitRoom("parent",
+      SmartRoom))) must throwA[IllegalArgumentException] 
+    def s4_2 = model.addRoom(GroupRoom, "", Some(UserExhibitRoom("parent",
+      SmartRoom))) must throwA[IllegalArgumentException] 
+    def s4 = s4_1 and s4_2
   }
   
-  case class AddBoxFolderToParentSpec() extends AddChildBoxSpec {
-    def createBox = model.addBoxFolder("Box Folder", boxFolder)
+  val addUserRoom = new WithService {
+    model.addUserRoomToSelectedPath(BasicRoom)
+    model.addUserRoomToSelectedPath(GroupRoom)
+    val newRoom = model.addUserRoomToSelectedPath(SmartRoom)
+    val selection = model.selectedPath
     
-    def s1 = newBox.name must_== "Box Folder" and
-      (newBox.boxType must_== BoxFolder)
+    def s1_1 = there was one(service)
+      .addRoom(BasicRoom, model.basicRoomDefaultName, None)
+    def s1_2 = there was one(service)
+      .addRoom(GroupRoom, model.groupRoomDefaultName, None)
+    def s1_3 = there was one(service)
+      .addRoom(SmartRoom, model.smartRoomDefaultName, None)
+    def s1 = s1_1 and s1_2 and s1_3
     
-    def s4 = model.addBoxFolder("Box Folder", listBox) must
-      throwA[IllegalArgumentException] and s4_2
-    
-    def s5 = model.addBoxFolder("Box Folder", smartBox) must
-      throwA[IllegalArgumentException] and s5_2
+    def s2_1 = selection must beSome
+    def s2_2 = selection.get must_== (model.pathForUserRooms :+ newRoom)
+    def s2 = s2_1 and s2_2
   }
+  
+  val addUserRoomSel = new WithService {
+    // GroupRoom を選択
+    val groupRoom = UserExhibitRoom("group", GroupRoom)
+    model.selectPath(model.pathForUserRooms :+ groupRoom)
+    val newRoom = model.addUserRoomToSelectedPath(BasicRoom)
     
-  case class RemoveBoxSpec extends Base {
-    val listBox = model.addListBox("List Box")
-    val smartBox = model.addSmartBox("Smart Box")
-    val boxFolder = model.addBoxFolder("Box Folder")
-    val boxChild1 = model.addListBox("Child1", boxFolder)
-    val boxChild2 = model.addListBox("Child2", boxFolder)
-    val boxChild3 = model.addSmartBox("Child3", boxFolder)
-    val boxFolder2 = model.addBoxFolder("Box Folder2")
-    val box2Child1 = model.addListBox("Child1", boxFolder2)
-    val box2Child2 = model.addListBox("Child2", boxFolder2)
+    def s1 = there was one(service)
+      .addRoom(BasicRoom, model.basicRoomDefaultName, Some(groupRoom))
+    def s2 = model.selectedPath.get must_==
+      (model.pathForUserRooms :+ groupRoom :+ newRoom)
+  }
+  
+  val addUserRoomSel2 = new WithService {
+    // GroupRoom, BasicRoom を選択
+    val groupRoom = UserExhibitRoom("group", GroupRoom)
+    model.selectPath(model.pathForUserRooms :+ group :+
+      UserExhibitRoom("parent", BasicRoom))
+    val newRoom = model.addUserRoomToSelectedPath(BasicRoom)
     
-    // boxFolder ノードに子が存在していることの確認
-    treeModel.getChildCount(treeModel.getRoot)
-    assert(treeModel.getChildCount(userBoxesNode) == 4)
-    assert(treeModel.getChildCount(boxFolder) == 3)
-    assert(treeModel.getChildCount(boxFolder2) == 2)
+    def s1 = there was one(service)
+      .addRoom(BasicRoom, model.basicRoomDefaultName, Some(groupRoom))
+    def s2 = model.selectedPath.get must_==
+      (model.pathForUserRooms :+ groupRoom :+ newRoom)
+  }
+  
+  val addUserRoomName = new WithService {
+    service.nameExists(model.basicRoomDefaultName) returns true
+    model.addUserRoomToSelectedPath(BasicRoom)
+    service.nameExists(model.basicRoomDefaultName + " 1") returns true
+    model.addUserRoomToSelectedPath(BasicRoom)
     
-    model.removeElementFromParent(listBox)
-    model.removeElementFromParent(boxChild2)
-    model.removeElementFromParent(boxFolder2)
+    def s1_1 = there was one(service)
+      .addRoom(BasicRoom, model.basicRoomDefaultName + " 1", None)
+    def s1_2 = there was one(service)
+      .addRoom(BasicRoom, model.basicRoomDefaultName + " 2", None)
+    def s1 = s1_1 and s1_2
+  }
+  
+  val moveRoom = new WithService {
+    val basicRoom = UserExhibitRoom("room1", BasicRoom)
+    val groupRoom = UserExhibitRoom("room2", GroupRoom)
+    val smartRoom = UserExhibitRoom("rooom4", SmartRoom)
+    val groupRoom2 = UserExhibitRoom("room3", GroupRoom)
     
-    def childrenForBoxFolder = treeSource.childrenFor(boxFolder)
-    def childrenForListBox = treeSource.childrenFor(listBox)
-    def childrenForSmartBox = treeSource.childrenFor(smartBox)
+    service.getParent(basicRoom) returns None
+    service.getParent(groupRoom) returns None
+    service.getParent(smartRoom) returns Some(groupRoom)
+    service.getParent(groupRoom2) returns Some(groupRoom)
     
-    def s1 = (there was one(boxesSource).remove(listBox)) and
-      (there was one(boxesSource).remove(boxChild2)) and
-      (there was one(boxesSource).remove(boxFolder2))
+    model.moveRoom(basicRoom, Some(groupRoom))
+    model.moveRoom(smartRoom, None)
     
-    def s2 = treeSource.childrenFor(userBoxesNode) must
-      contain(smartBox, boxFolder) and have size(2) and
-      (treeSource.childrenFor(boxFolder) must
-      contain(boxChild1, boxChild3) and have size(2))
+    def s1 = there was one(service).setParent(basicRoom, Some(groupRoom))
     
-    def s3 = treeModel.getChildCount(userBoxesNode) must_== 2 and
-      treeModel.getChildCount(boxFolder).must_==(2)
+    def s2 = there was one(service).setParent(smartRoom, None)
     
-    def s4 = treeModel.isLeaf(listBox) must throwA[NoSuchElementException] and
-      (treeModel.isLeaf(boxChild2) must throwA[NoSuchElementException]) and
-      (treeModel.isLeaf(boxFolder2) must throwA[NoSuchElementException]) and
-      (treeModel.getChildCount(boxFolder2) must throwA[NoSuchElementException])
+    def s3_1 = model.moveRoom(groupRoom, Some(basicRoom)) must
+      throwA[IllegalArgumentException]
+    def s3_2 = model.moveRoom(groupRoom, Some(smartRoom)) must
+      throwA[IllegalArgumentException]
+    def s3 = s3_1 and s3_2
+    
+    def s4_1 = model.moveRoom(groupRoom, Some(groupRoom)) must
+      throwA[IllegalStateException]
+    def s4_2 = model.moveRoom(groupRoom, Some(groupRoom2)) must
+      throwA[IllegalStateException]
+    def s4 = s4_1 and s4_2
+  }
+  
+  val removeRoom = new WithService {
+    val room = UserExhibitRoom("room")
+    service.getParent(room) returns None
+    
+    model.removeRoom(room)
+    
+    def s1 = there was one(service).remove(room)
+  }
+  
+  class EventBase extends WithService {
+    import javax.swing.event.{TreeModelListener, TreeModelEvent}
+    
+    var lastInsertedEvent: Option[TreeModelEvent] = None
+    var lastRemovedEvent: Option[TreeModelEvent] = None
+    val listener = mock[TreeModelListener]
+    model.treeModel addTreeModelListener listener
+    listener.treeNodesInserted(any) answers { event =>
+      lastInsertedEvent = Some(event.asInstanceOf[TreeModelEvent])
+      event
+    }
+    listener.treeNodesRemoved(any) answers { event =>
+      lastRemovedEvent = Some(event.asInstanceOf[TreeModelEvent])
+      event
+    }
+    
+    val child1 = UserExhibitRoom("new child1")
+    val child2 = UserExhibitRoom("new child2")
+    val child3 = UserExhibitRoom("new child3", GroupRoom)
+    service.getChildren(None) returns List(child1, child2, child3)
+    service.getParent(child1) returns None
+    service.getParent(child2) returns None
+    service.getParent(child3) returns None
+    
+    val child3_1 = UserExhibitRoom("child3 child", GroupRoom)
+    service.getChildren(Some(child3)) returns List(child3_1)
+    service.getParent(child2) returns None
+    service.getParent(child3_1) returns Some(child3)
+    
+    model.pathForUserRooms foreach model.treeModel.getChildCount
+    model.treeModel.getChildCount(child3)
+  }
+  
+  val insertEvent = new EventBase {
+    // ユーザールートに要素が追加したことを想定
+    val newChild = UserExhibitRoom("new child")
+    service.getChildren(None) returns List(child1, newChild, child2, child3)
+    model.addRoom(BasicRoom, "test", None)
+    
+    val s1_1 = lastInsertedEvent.get.getPath must_== model.pathForUserRooms.toArray
+    val s1_2 = lastInsertedEvent.get.getChildIndices must_== Array(1)
+    val s1_3 = lastInsertedEvent.get.getChildren must_== Array(newChild)
+    def s1 = s1_1 and s1_2 and s1_3
+    
+    // child3 に要素が追加したことを想定
+    val newChild2 = UserExhibitRoom("new child2")
+    service.getChildren(Some(child3)) returns List(newChild2, child3_1)
+    model.addRoom(BasicRoom, "test", Some(child3))
+    
+    val s2_1 = lastInsertedEvent.get.getPath must_==
+      (model.pathForUserRooms :+ child3).toArray
+    val s2_2 = lastInsertedEvent.get.getChildIndices must_== Array(0)
+    val s2_3 = lastInsertedEvent.get.getChildren must_== Array(newChild2)
+    def s2 = s2_1 and s2_2 and s2_3
+    
+  }
+  
+  val removeEvent = new EventBase {
+    // ユーザールートから要素が削除されたことを想定
+    service.getChildren(None) returns List(child1, child3)
+    model.removeRoom(child2)
+    
+    val s1_1 = lastRemovedEvent.get.getPath must_== model.pathForUserRooms.toArray
+    val s1_2 = lastRemovedEvent.get.getChildIndices must_== Array(1)
+    val s1_3 = lastRemovedEvent.get.getChildren must_== Array(child2)
+    def s1 = s1_1 and s1_2 and s1_3
+    
+    // child3 から要素が削除されたことを想定
+    service.getChildren(Some(child3)) returns Nil
+    model.removeRoom(child3_1)
+    
+    val s2_1 = lastRemovedEvent.get.getPath must_== (model.pathForUserRooms :+ child3).toArray
+    val s2_2 = lastRemovedEvent.get.getChildIndices must_== Array(0)
+    val s2_3 = lastRemovedEvent.get.getChildren must_== Array(child3_1)
+    def s2 = s2_1 and s2_2 and s2_3
+  }
+  
+  val moveEvent = new EventBase {
+    // 移動を想定
+    service.getChildren(None) returns List(child2, child3)
+    service.getChildren(Some(child3)) returns List(child3_1, child1)
+    model.moveRoom(child1, Some(child3))
+    
+    val s1_1 = lastRemovedEvent.get.getPath must_==
+      model.pathForUserRooms.toArray
+    val s1_2 = lastRemovedEvent.get.getChildIndices must_== Array(0)
+    val s1_3 = lastRemovedEvent.get.getChildren must_== Array(child1)
+    val s1_4 = lastInsertedEvent.get.getPath must_==
+      (model.pathForUserRooms :+ child3).toArray
+    val s1_5 = lastInsertedEvent.get.getChildIndices must_== Array(1)
+    val s1_6 = lastInsertedEvent.get.getChildren must_== Array(child1)
+    def s1 = s1_1 and s1_2 and s1_3 and s1_4 and s1_5 and s1_6
   }
 }
-

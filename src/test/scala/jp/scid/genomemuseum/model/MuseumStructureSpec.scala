@@ -2,142 +2,140 @@ package jp.scid.genomemuseum.model
 
 import org.specs2._
 import mock._
-import ExhibitListBox.BoxType._
-import jp.scid.gui.tree.TreeSource
+import UserExhibitRoom.RoomType._
 
-class MuseumStructureSpec extends Specification {
+class MuseumStructureSpec extends Specification with Mockito {
   def newMuseumStructure = {
     new MuseumStructure
   }
   
   def is = "MuseumStructure" ^
-    "初期状態" ^
-      "userBoxes の子項目数は 0" ! InitialState.s2 ^
-    bt ^ "ExhibitListBox の isLeaf 判定" ^
-      "libraries は Leaf ではない" ! InitialState.isLeafOfRoot ^
-      "libraries は Leaf ではない" ! InitialState.isLeafOfLibraries ^
-      "localStore は true" ! InitialState.isLeafOfLocalStore ^
-      "entrez は true" ! InitialState.isLeafOfEntrez ^
-      "userBoxes は true" ! InitialState.isLeafOfUserBoxes ^
-      "ListBox は true" ! InitialState.isLeafListBox ^
-      "SmartBox は true" ! InitialState.isLeafSmartBot ^
-      "BoxFolder は false" ! InitialState.isLeafBoxFolder ^
-    bt ^ "childrenFor メソッド" ^
-      "userBoxes 内" ! ChildrenFor().ts1 ^
-      "userBoxesSource#rootItems 呼び出し" ! ChildrenFor().callRootItemsOfSource ^
-      "BoxFolder から" ! ChildrenFor().ts2 ^
-      "userBoxesSource#getChildren(BoxFolder) 呼び出し" ! ChildrenFor().ts2_2 ^
-      "ListBox からは子が返されない" ! ChildrenFor().ts3 ^
-      "userBoxesSource#getChildren(ListBox) は呼ばない" ! ChildrenFor().ts3_2 ^
-      "SmartBox からは子が返されない" ! ChildrenFor().ts4 ^
-      "userBoxesSource#getChildren(SmartBox) は呼ばない" ! ChildrenFor().ts4_2 ^
-    bt ^ "update メソッド" ^
-      "userBoxesSource#update 呼び出し" ! Update().ts1 ^
-      "userBoxesSource#update 呼び出し 2" ! Update().ts2
-    
-  def insertAndGetChildren(parent: ExhibitListBox) = {
-    val structure = newMuseumStructure
-    val source = structure.userBoxesSource
-    
-    source add parent
-    source.add(ExhibitListBox("child box"), Some(parent))
-    
-    structure.childrenFor(parent)
-  }
+    "isLeaf" ^
+      "root は false" ! initial.s1 ^
+      "localSource は true" ! initial.s2 ^
+      "webSource は true" ! initial.s3 ^
+      "sourcesRoot は false" ! initial.s4 ^
+      "userRoomsRoot は false" ! initial.s5 ^
+      "UserExhibitRoom オブジェクト" ^
+        "GroupRoom は false" ! initial.s6 ^
+        "BasicRoom は true" ! initial.s7 ^
+        "SmartRoom は true" ! initial.s8 ^
+    bt ^ bt ^ "childrenFor" ^
+      "root の子要素" ! initial.s9 ^
+      "UserExhibitRoom オブジェクト" ^
+        "GroupRoom で roomSource から取得" ! childrenFor.s1 ^
+        "BasicRoom では Nil" ! childrenFor.s2 ^
+        "SmartRoom では Nil" ! childrenFor.s3 ^
+      bt ^"childrenForUserRooms の子要素" ! childrenForUserRooms.s1 ^
+    bt ^ "pathToRoot" ^
+      "root" ! pathToRoot.s1 ^
+      "sourcesRoot" ! pathToRoot.s2 ^
+      "localSource" ! pathToRoot.s3 ^
+      "webSource" ! pathToRoot.s4 ^
+      "userRoomsRoot" ! pathToRoot.s5 ^
+      "UserExhibitRoom オブジェクト" ^
+        "直下" ! pathToRoot.s6 ^
+        "GroupRoom が親" ! pathToRoot.s7 ^
+    bt ^ "update" ^
+      "UserExhibitRoom オブジェクト" ^
+        "名前の更新" ! update.s1 ^
+        "roomSource#save 呼び出し" ! update.s2
   
-  object InitialState {
+  class TestBase {
     val structure = new MuseumStructure
+    val roomSource = mock[TreeDataService[UserExhibitRoom]]
+    structure.userExhibitRoomSource = roomSource
     
-    def s2 = structure.childrenFor(structure.userBoxes).size must_== 0
-    
-    def isLeafOfRoot = structure.isLeaf(structure.root) must beFalse
-    def isLeafOfLibraries = structure.isLeaf(structure.libraries) must beFalse
-    def isLeafOfLocalStore = structure.isLeaf(structure.localStore) must beTrue
-    def isLeafOfEntrez = structure.isLeaf(structure.entrez) must beTrue
-    def isLeafOfUserBoxes = structure.isLeaf(structure.userBoxes) must beFalse
-    
-    def isLeafListBox = structure.isLeaf(ExhibitListBox("ListBox", ListBox)) must beTrue
-    def isLeafSmartBot = structure.isLeaf(ExhibitListBox("SmartBox", SmartBox)) must beTrue
-    def isLeafBoxFolder = structure.isLeaf(ExhibitListBox("BoxFolder", BoxFolder)) must beFalse
+    val groupRoom = UserExhibitRoom("", GroupRoom)
+    val basicRoom = UserExhibitRoom("", BasicRoom)
+    val smartRoom = UserExhibitRoom("", SmartRoom)
   }
   
-  case class ChildrenFor() extends Mockito {
-    val structure = newMuseumStructure
-    val source = spy(TreeDataService[ExhibitListBox]())
-    structure.userBoxesSource = source
-    // UserBoxes に子を設定
-    val boxFolder = ExhibitListBox("BoxFolder", BoxFolder)
-    val listBox = ExhibitListBox("ListBox", ListBox)
-    val smartBox = ExhibitListBox("SmartBox", SmartBox)
-    source add boxFolder
-    source add listBox
-    source add smartBox
+  val initial = new TestBase {
+    def s1 = structure.isLeaf(structure.root) must beFalse
     
-    // BoxFolder に子を設定
-    val bfChild1 = ExhibitListBox("child box")
-    val bfChild2 = ExhibitListBox("child box")
-    source.add(bfChild1, Some(boxFolder))
-    source.add(bfChild2, Some(boxFolder))
+    def s2 = structure.isLeaf(structure.localSource) must beTrue
     
-    // ListBox に子を設定
-    source.add(ExhibitListBox("child box"), Some(listBox))
+    def s3 = structure.isLeaf(structure.webSource) must beTrue
     
-    // SmartBox に子を設定
-    source.add(ExhibitListBox("child box"), Some(smartBox))
+    def s4 = structure.isLeaf(structure.sourcesRoot) must beFalse
     
-    def ts1 = structure.childrenFor(structure.userBoxes) must
-      contain(boxFolder, listBox, smartBox) and have size(3)
+    def s5 = structure.isLeaf(structure.userRoomsRoot) must beFalse
     
-    def callRootItemsOfSource = {
-      structure.childrenFor(structure.userBoxes)
-      there was one(source).rootItems
-    }
+    def s6 = structure.isLeaf(groupRoom) must beFalse
     
-    def ts2 = structure.childrenFor(boxFolder) must
-      contain(bfChild1, bfChild2) and have size(2)
+    def s7 = structure.isLeaf(basicRoom) must beTrue
     
-    def ts2_2 = {
-      structure.childrenFor(boxFolder)
-      there was one(source).getChildren(boxFolder)
-    }
+    def s8 = structure.isLeaf(smartRoom) must beTrue
     
-    def ts3 = structure.childrenFor(listBox) must be empty
-    
-    def ts3_2 = {
-      structure.childrenFor(listBox)
-      there was no(source).getChildren(listBox)
-    }
-    
-    def ts4 = structure.childrenFor(smartBox) must be empty
-    
-    def ts4_2 = {
-      structure.childrenFor(smartBox)
-      there was no(source).getChildren(smartBox)
-    }
+    def s9 = structure.childrenFor(structure.root) must
+      contain(structure.sourcesRoot, structure.userRoomsRoot).inOrder
   }
   
-  case class Update() extends Mockito {
-    val structure = newMuseumStructure
-    val source = spy(TreeDataService[ExhibitListBox]())
-    structure.userBoxesSource = source
-    // UserBoxes に子を設定
-    val boxFolder = ExhibitListBox("BoxFolder", BoxFolder)
-    source add boxFolder
+  val childrenFor = new TestBase {
+    val dummy1 = UserExhibitRoom("dummy1")
+    val dummy2 = UserExhibitRoom("dummy2")
+    roomSource.getChildren(Some(groupRoom)) returns List(dummy1, dummy2)
+    roomSource.getChildren(Some(basicRoom)) returns List(dummy2)
+    roomSource.getChildren(Some(smartRoom)) returns List(dummy1)
     
-    // BoxFolder に子を設定
-    val bfChild1 = ExhibitListBox("child box")
-    val bfChild2 = ExhibitListBox("child box")
-    source.add(bfChild1, Some(boxFolder))
-    source.add(bfChild2, Some(boxFolder))
+    val groupChildren = structure.childrenFor(groupRoom)
+    val basicChildren = structure.childrenFor(basicRoom)
+    val smartChildren = structure.childrenFor(smartRoom)
     
-    val boxPath = IndexedSeq(structure.root, structure.userBoxes, boxFolder)
-    val boxChildPath = boxPath :+ bfChild2
+    val s1_1 = groupChildren must contain(dummy1, dummy2)
+    val s1_2 = there was one(roomSource).getChildren(Some(groupRoom))
+    def s1 = s1_1 and s1_2
     
-    structure.update(boxPath, "update")
-    structure.update(boxChildPath, "update")
+    def s2 = basicChildren must_== Nil
     
-    def ts1 = there was one(source).save(boxFolder)
+    def s3 = smartChildren must_== Nil
+  }
+  
+  val childrenForUserRooms = new TestBase {
+    roomSource.getChildren(None) returns List(groupRoom, basicRoom, smartRoom)
     
-    def ts2 = there was one(source).save(bfChild2)
+    def s1 = structure.childrenFor(structure.userRoomsRoot) must
+      contain(groupRoom, basicRoom, smartRoom)
+  }
+  
+  val pathToRoot = new TestBase {
+    val rootPath = IndexedSeq(structure.root)
+    val sourcesPath = rootPath :+ structure.sourcesRoot
+    val localSourcePath = sourcesPath :+ structure.localSource
+    val webSourcePath = sourcesPath :+ structure.webSource
+    val userRoomsPath = rootPath :+ structure.userRoomsRoot
+    
+    roomSource.getParent(basicRoom) returns None
+    roomSource.getParent(groupRoom) returns None
+    roomSource.getParent(smartRoom) returns Some(groupRoom)
+    
+    val basicRoomPath = userRoomsPath :+ basicRoom
+    val smartRoomPath = userRoomsPath :+ groupRoom :+ smartRoom
+    
+    def s1 = structure.pathToRoot(structure.root) must_== rootPath
+    
+    def s2 = structure.pathToRoot(structure.sourcesRoot) must_== sourcesPath
+    
+    def s3 = structure.pathToRoot(structure.localSource) must_== localSourcePath
+    
+    def s4 = structure.pathToRoot(structure.webSource) must_== webSourcePath
+    
+    def s5 = structure.pathToRoot(structure.userRoomsRoot) must_== userRoomsPath
+    
+    def s6 = structure.pathToRoot(basicRoom) must_== basicRoomPath
+    
+    def s7 = structure.pathToRoot(smartRoom) must_== smartRoomPath
+  }
+  
+  val update = new TestBase {
+    val anyRoom = UserExhibitRoom("", GroupRoom)
+    val userRoomsPath = structure.pathToRoot(structure.userRoomsRoot)
+    
+    structure.update(userRoomsPath :+ anyRoom, "new value")
+    
+    def s1 = anyRoom.name must_== "new value"
+    
+    def s2 = there was one(roomSource).save(anyRoom)
   }
 }

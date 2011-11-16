@@ -1,14 +1,12 @@
 package jp.scid.gui
 
 import java.util.Comparator
-import javax.swing.{JTextField, ListSelectionModel}
+import javax.swing.ListSelectionModel
 import javax.swing.event.{ListSelectionListener, ListSelectionEvent}
-
-import collection.mutable.Buffer
 
 import ca.odell.glazedlists.{swing => glswing, matchers, EventList,
   GlazedLists, FilterList, SortedList, BasicEventList}
-import glswing.{EventSelectionModel, SearchEngineTextFieldMatcherEditor}
+import glswing.EventSelectionModel
 import matchers.{Matcher, MatcherEditor}
 
 import event.DataListSelectionChanged
@@ -17,87 +15,85 @@ class DataListModel[A] extends DataModel with swing.Publisher {
   import DataListModel._
   
   /** ソースリスト */
-  protected val tableSource = new BasicEventList[A]
+  private[gui] val tableSource = new BasicEventList[A]
   /** フィルタリング */
-  protected val filteredSource = new FilterList(tableSource)
+  private[gui] val filteredSource = new FilterList(tableSource)
   /** ソーティング */
-  protected val sortedSource = new SortedList(filteredSource, null)
+  private[gui] val sortedSource = new SortedList(filteredSource, null)
   
   /** リスト選択モデル */
-  protected val eventSelectionModel = new EventSelectionModel[A](viewSource)
+  protected val eventSelectionModel = new EventSelectionModel[A](viewEventList)
+  
+  /** 変換やフィルタリングを行った後の EventList */
+  protected[gui] def viewEventList: EventList[A] = sortedSource
   
   /** 変換やフィルタリングを行った後のソース */
-  def viewSource: EventList[A] = sortedSource
+  def viewSource = {
+    import scala.collection.JavaConverters._
+    withReadLock(viewEventList) { list => list.asScala.toIndexedSeq }
+  }
   
-  /**
-   * 書き込みロックをして {@code source} を編集するためのメソッド
-   */
-  def sourceWithWriteLock[B](function: (Buffer[A]) => B): B =
-    withWriteLockedBuffer(tableSource, function)
+  /** 行選択モデルの取得 */
+  def selectionModel: ListSelectionModel = eventSelectionModel
   
-  /**
-   * 読み込みロックをしてから {@code source} を読み込むためのメソッド
-   */
-  def sourceWithReadLock[B](function: Buffer[A] => B): B =
-    withReadLockedBuffer(tableSource, function)
-  
-  /** インクリメンタルサーチ解除関数 */
-  private var removeSeachFieldKeyListener = () => {}
+  /** 項目数の取得 */
+  def sourceSize = sourceListWithReadLock { source => source.size }
   
   /** 設定されているデータソース取得 */
-  def source: Buffer[A] = {
+  def source: IndexedSeq[A] = {
     import scala.collection.JavaConverters._
-    tableSource.asScala
+    sourceListWithReadLock { _.asScala.toIndexedSeq }
   }
   
   /** データソースの設定 */
   def source_=(newSource: Seq[A]) {
     import scala.collection.JavaConverters._
-    
-    tableSource.getReadWriteLock().writeLock().lock()
-    try {
-      GlazedLists.replaceAll(tableSource, newSource.asJava, true)
-    }
-    finally {
-      tableSource.getReadWriteLock().writeLock().unlock()
+    val javaSource = newSource.asJava
+    sourceListWithWriteLock { tableSource =>
+      GlazedLists.replaceAll(tableSource.asInstanceOf[EventList[A]], javaSource, true)
     }
   }
   
-  /** 項目数の取得 */
-  def sourceSize = sourceWithReadLock { source => source.size }
+  /**
+   * 選択中の項目を取得。
+   */
+  def selections: List[A] = {
+    import scala.collection.JavaConverters._
+    withReadLock(selectedItems) { list => list.asScala.toList }
+  }
   
-  /** 行選択モデルの取得 */
-  def selectionModel: ListSelectionModel = eventSelectionModel
+  /**
+   * 要素を選択状態にする。
+   */
+  def selections_=(items: Seq[A]) {
+    import scala.collection.JavaConverters._
+    val jItems = items.asJava
+    withWriteLock(selectedItems) { list =>
+      list.clear()
+      list addAll jItems
+    }
+  }
+  
+  /**
+   * 要素を選択する。
+   */
+  def select(item: A, items: A*) {
+    selections = item :: items.toList
+  }
+  
+  /**
+   * 要素の選択状態を解除する。
+   */
+  
   
   /** 選択されている項目を取得 */
   def selectedItems = eventSelectionModel.getTogglingSelected
   
-  /** 書き込みロックをして {@code selectedItems} を編集する */
-  def selectedItemsWithWriteLock[B](function: (Buffer[A]) => B): B = 
-    withWriteLockedBuffer(selectedItems, function)
-  
-  /** 読み込みロックをして {@code selectedItems} を編集する */
-  def selectedItemsWithReadLock[B](function: (Buffer[A]) => B): B = 
-    withReadLockedBuffer(selectedItems, function)
-  
-  def deselectedItems = eventSelectionModel.getTogglingDeselected
-  
-  /** 書き込みロックをして {@code deselectedItems} を編集する */
-  def deselectedItemsWithWriteLock[B](function: (Buffer[A]) => B): B = 
-    withWriteLockedBuffer(deselectedItems, function)
-  
-  /** 読み込みロックをして {@code deselectedItems} を編集する */
-  def deselectedItemsWithReadLock[B](function: (Buffer[A]) => B): B = 
-    withReadLockedBuffer(deselectedItems, function)
-  
   /** ソート用の Comparator を設定 */
   def sortWith(c: Comparator[_ >: A]) {
-    sortedSource setComparator c
-  }
-  
-  /** ソート用の比較関数を設定 */
-  def sortWith[B >: A](c: (B, B) => Int) {
-    sortWith(new FunctionComparator(c))
+    withReadLock(sortedSource) { _ =>
+      sortedSource setComparator c
+    }
   }
   
   /** フィルタリング用 Matcher 設定 */
@@ -107,72 +103,35 @@ class DataListModel[A] extends DataModel with swing.Publisher {
   
   /** フィルタリング用 MatcherEditor 設定 */
   def filterWith(matcher: MatcherEditor[_ >: A]) {
-    // 現在のインクリメンタルサーチを解除
-    removeSeachFieldKeyListener()
-    
     filteredSource setMatcherEditor matcher
   }
   
-  /** テキストフィールドを使用してのフィルタリング */
-  def filterUsing(field: JTextField, filterator: (Buffer[String], _ >: A) => Unit) {
-    import java.awt.event.{KeyEvent, KeyAdapter}
-    
-    val textFilterator = new ScalaTextFilterator(filterator)
-    val matcherEditor = new SearchEngineTextFieldMatcherEditor(field, textFilterator)
-    
-    // JTextFields の MatcherEditor を使用する。
-    filterWith(matcherEditor)
-    
-    // インクリメンタルサーチの設定
-    val keyHandler = new KeyAdapter {
-      override def keyReleased(e: KeyEvent) {
-        matcherEditor refilter field.getText
-      }
-    }
-    field addKeyListener keyHandler
-    
-    // インクリメンタルサーチ解除関数を更新
-    removeSeachFieldKeyListener = () => {
-      field removeKeyListener keyHandler
-    }
+  /**
+   * tableSource の読み込みロックをしながら処理行う
+   */
+  protected[gui] def sourceListWithReadLock[B](function: (java.util.List[A]) => B): B = {
+    withWriteLock(tableSource)(function)
+  }
+  
+  /**
+   * tableSource の書き込みロックをしながら処理行う
+   */
+  protected[gui] def sourceListWithWriteLock[B](function: (java.util.List[A]) => B): B = {
+    withReadLock(tableSource)(function)
   }
   
   // イベント結合
   bindListSelectionEventPublisher(this)
 }
 
-object DataListModel {
-  import ca.odell.glazedlists.TextFilterator
-  
-  /** TextFilterator の Scala 用委譲クラス */
-  private class ScalaTextFilterator[A](filterator: (Buffer[String], _ >: A) => Unit)
-      extends TextFilterator[A] {
-    import collection.JavaConverters._
-    private val baseBuffer = Buffer.empty[String]
-    
-    def getFilterStrings(baseList: java.util.List[String], element: A) {
-      baseBuffer.clear()
-      filterator(baseBuffer, element)
-      baseBuffer.map(baseList.add)
-    }
-  }
-  
-  /** Scala 関数から Comparator に変換するクラス */
-  private class FunctionComparator[A](comparator: (A, A) => Int) extends Comparator[A] {
-    def compare(o1: A, o2: A): Int = {
-      comparator(o1, o2)
-    }
-  }
-  
+protected[gui] object DataListModel {
   /**
-   * EventList の書き込みロックをして Buffer として処理を行う
+   * EventList の書き込みロックをして処理を行う
    */
-  private def withWriteLockedBuffer[A, B](el: EventList[A], function: (Buffer[A]) => B): B = {
-    import scala.collection.JavaConverters._
-    
+  protected[gui] def withWriteLock[A, B](el: EventList[A])(function: (EventList[A]) => B): B = {
     el.getReadWriteLock().writeLock().lock()
     try {
-      function(el.asScala)
+      function(el)
     }
     finally {
       el.getReadWriteLock().writeLock().unlock()
@@ -180,14 +139,12 @@ object DataListModel {
   }
   
   /**
-   * EventList の読み込みロックをして Buffer として処理を行う
+   * EventList の読み込みロックをして処理を行う
    */
-  private def withReadLockedBuffer[A, B](el: EventList[A], function: (Buffer[A]) => B): B = {
-    import scala.collection.JavaConverters._
-    
+  protected[gui] def withReadLock[A, B](el: EventList[A])(function: (EventList[A]) => B): B = {
     el.getReadWriteLock().readLock().lock()
     try {
-      function(el.asScala)
+      function(el)
     }
     finally {
       el.getReadWriteLock().readLock().unlock()
@@ -207,9 +164,8 @@ object DataListModel {
    */
   private class ListSelectionEventHandler[A](source: DataListModel[A]) extends ListSelectionListener {
     def valueChanged(e: ListSelectionEvent) {
-      val selections = source.selectedItemsWithReadLock(_.toList)
       val evt = DataListSelectionChanged(source,
-        e.getValueIsAdjusting, selections)
+        e.getValueIsAdjusting, source.selections)
       
       source publish evt
     }

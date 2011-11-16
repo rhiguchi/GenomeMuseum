@@ -1,71 +1,108 @@
 package jp.scid.gui.table
 
-import java.util.Comparator
-import javax.swing.{JTable, JTextField, ListSelectionModel}
-import javax.swing.table.{TableModel, TableColumnModel, DefaultTableColumnModel,
-  TableColumn}
-
-import collection.mutable.Buffer
+import javax.swing.table.{TableModel, TableColumnModel, TableColumn}
 
 import ca.odell.glazedlists.{swing => glswing, gui => glgui,
-  GlazedLists}
-import glswing.EventTableModel
+  GlazedLists, EventList, FunctionList}
+import glswing.{EventTableModel, EventTableColumnModel}
 import glgui.TableFormat
 
 import jp.scid.gui.DataListModel
 
-class DataTableModel[A](tableFormat: TableFormat[A]) extends DataListModel[A] {
-  /** テーブルモデル */
-  private val eventTableModel = new EventTableModel(viewSource, tableFormat)
+class DataTableModel[A](val tableFormat: TableFormat[A]) extends DataListModel[A] {
+  import DataTableModel._
+  import DataListModel.{withWriteLock, withReadLock}
+  
+  /** 全テーブルカラム */
+  private val allTableColumns = Range(0, tableFormat.getColumnCount) map { index =>
+    val name = tableFormat getColumnName(index)
+    val column = createTableColumn(index)
+    name -> column
+  } toIndexedSeq
+  
+  /** テーブルカラム名前マップ */
+  private[table] val tableColumnMap = allTableColumns.toMap
+  
+  /** 表示されているテーブルカラム名の EventList */
+  private val visibledColumnList: EventList[String] =
+    GlazedLists.eventListOf(allTableColumns map (_._1): _*)
+  
+  /** 表示されているカラム名と同期したテーブルカラム EventList */
+  private[table] val tableColumnSource = new FunctionList(visibledColumnList,
+      new IdentifierTableColumnConvertFunction(allTableColumns toMap),
+      new TableColumnIdentifierConvertFunction(tableFormat))
   
   /** テーブルカラムモデル */
-  private val myColumnModel = {
-    val columnModel = new DefaultTableColumnModel
-    Range(0, tableFormat.getColumnCount) map createTableColumn foreach
-      columnModel.addColumn
-    columnModel
-  }
+  private val eventColumnModel = new EventTableColumnModel(tableColumnSource)
   
-  /** Comparators */
-  private lazy val comparatorFactory = new TableFormatComparatorFactory(tableFormat)
-  
-  /** ヘッダーソートハンドラ */
-  private val tableHeaderSortHandler = new TableSortingMouseHandler(this)
-  
-  /** ソート記述からソート */
-  def sortWith(orderStatement: String) {
-    sortWith(getComparatorFor(orderStatement))
-  }
+  /** テーブルモデル */
+  private val eventTableModel = new EventTableModel(viewEventList, tableFormat)
   
   /** テーブルモデルの取得 */
   def tableModel: TableModel = eventTableModel
   
   /** テーブルカラムモデルの取得 */
-  def columnModel: TableColumnModel = myColumnModel
+  def columnModel: TableColumnModel = eventColumnModel
   
-  /** JTable ビューにモデルを設定する */
-  def installTo(table: JTable) {
-    table setAutoCreateColumnsFromModel false
-    table setModel tableModel
-    table setColumnModel columnModel
-    table setSelectionModel selectionModel
-    // ヘッダーソーター
-    tableHeaderSortHandler installTo table.getTableHeader
+  /** 現在表示されているカラムの識別子を取得 */
+  def visibledColumns: IndexedSeq[String] = {
+    import collection.JavaConverters._
+    
+    withReadLock(visibledColumnList) { list =>
+      list.asScala.toIndexedSeq
+    }
+  }
+  
+  /** 表示するカラムを指定 */
+  def visibledColumns_=(newIdentifiers: Seq[String]) {
+    import collection.JavaConverters._
+    val jIdentifiers = newIdentifiers.asJava
+    
+    withReadLock(visibledColumnList) { list =>
+      GlazedLists.replaceAll(list, jIdentifiers, true)
+    }
   }
   
   /** テーブルカラムを作成 */
   protected def createTableColumn(modelIndex: Int): TableColumn = {
     val columName = tableFormat.getColumnName(modelIndex)
-    val column = new TableColumn(modelIndex) with SortableColumn {
-      val orderStatements = List(columName, columName + " desc")
-    }
+    val column = new TableColumn(modelIndex)
     column setHeaderValue columName
     column setIdentifier columName
     column
   }
+}
+
+object DataTableModel {
+  import javax.swing.JTable
+  import FunctionList.Function
   
-  /** 文字列から比較器を取得 */
-  protected def getComparatorFor(orderStatement: String): Comparator[_ >: A] = {
-    comparatorFactory(orderStatement)
+  /** JTable ビューとモデルを接続する */
+  def connect(model: DataTableModel[_], table: JTable) {
+    table setAutoCreateColumnsFromModel false
+    table setModel model.tableModel
+    table setColumnModel model.columnModel
+    table setSelectionModel model.selectionModel
+  }
+  
+  /**
+   * {@code TableColumn} から識別子に変換する関数。
+   */
+  private class TableColumnIdentifierConvertFunction(tableFormat: TableFormat[_])
+      extends Function[TableColumn, String] {
+    def evaluate(column: TableColumn): String = {
+      tableFormat.getColumnName(column.getModelIndex)
+    }
+  }
+  
+  /**
+   * 識別子 から {@code TableColumn} に変換する関数。
+   */
+  private class IdentifierTableColumnConvertFunction(
+    identifierTableColumnMap: Map[String, TableColumn]
+  ) extends Function[String, TableColumn] {
+    def evaluate(identifier: String): TableColumn = {
+      identifierTableColumnMap(identifier)
+    }
   }
 }

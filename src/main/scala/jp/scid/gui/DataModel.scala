@@ -9,3 +9,15 @@ import swing.Publisher
 trait DataModel {
   this: Publisher =>
 }
+
+object DataModel {
+  /**
+   * モデルバインディングの結合を保持するインターフェイス
+   */
+  trait Connector {
+    /**
+     * モデル結合を解除する。
+     */
+    def release()
+  }
+}

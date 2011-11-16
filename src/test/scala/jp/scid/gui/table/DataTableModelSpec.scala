@@ -8,81 +8,98 @@ import ca.odell.glazedlists.gui.TableFormat
 import ca.odell.glazedlists.matchers.{Matcher, MatcherEditor}
 
 class DataTableModelSpec extends Specification with Mockito {
-  import DataListModelSpec.TestElement
+  import DataTableModelSpec.{TestElement, TestElementTableFormat}
   
   def is = "DataTableModel" ^
-    "tableModel" ^
-      "列数" ! test.s1 ^
-      "行数" ! test.s2 ^
-      "列名" ! test.s3 ^
-      "値" ! test.s4 ^
+    "初期プロパティ" ^
+      "visibledColumns" ! initial.s1 ^
+    bt ^ "tableModel" ^
+      "列数" ! tableModel.s1 ^
+      "行数" ! tableModel.s2 ^
+      "列名" ! tableModel.s3 ^
+      "値" ! tableModel.s4 ^
     bt ^ "columnModel" ^
-      "列数" ! test.s5 ^
-      "識別子取得" ! test.s6 ^
-      "TableColumn" ! test.s7
-      
-  val format = new TableFormat[TestElement] {
-    def getColumnCount() = 2
-    def getColumnName(column: Int) = column match {
-      case 0 => "name"
-      case 1 => "age"
-      case _ => throw new IllegalArgumentException
-    }
-    def getColumnValue(baseObject: TestElement, column: Int) = column match {
-      case 0 => baseObject.name
-      case 1 => baseObject.age.asInstanceOf[AnyRef]
-      case _ => throw new IllegalArgumentException
-    }
-  }
+      "列数" ! columnModel.s1 ^
+    bt ^ "visibledColumns" ^
+      "識別子からの変更" ! visibledColumns.s1 ^
+      "列モデルからの変更" ! visibledColumns.s2
   
-  trait ModelPrep  {
-    val model = new DataTableModel(format)
+  private[DataTableModelSpec] class TestBase {
+    val model = new DataTableModel(TestElementTableFormat)
     
-    val elements = List(
-      TestElement("user4", 20),
-      TestElement("user2", 40),
-      TestElement("user1", 30),
-      TestElement("user3", 10)
-    )
+    val e1 = TestElement("element1", 30, "apple")
+    val e2 = TestElement("element2", 50, "bread")
+    val e3 = TestElement("element3", 10, "chair")
+    val e4 = TestElement("element4", 20, "dog")
     
-    model.source = elements
+    model.source = List(e1, e2, e3, e4)
     
     def tableModel = model.tableModel
     
     def columnModel = model.columnModel
   }
+  
+  def initial = new TestBase {
+    def s1 = model.visibledColumns must contain("name", "age", "addr").only.inOrder
+  }
+  
+  def tableModel = new TestBase {
+    def getColumnName(index: Int) = tableModel.getColumnName(index)
+    def getValueAt(row: Int, column: Int) = tableModel.getValueAt(row, column)
     
-  def test = new ModelPrep {
-    def s1 = tableModel.getColumnCount must_== 2
+    def s1 = tableModel.getColumnCount must_== 3
     
     def s2 = tableModel.getRowCount must_== 4
     
-    def s3 = tableModel.getColumnName(0) must_== "name" and
-      (tableModel.getColumnName(1) must_== "age")
+    def s3_1 = getColumnName(0) must_== "name"
+    def s3_2 = getColumnName(1) must_== "age"
+    def s3_3 = getColumnName(2) must_== "addr"
+    def s3 = s3_1 and s3_2 and s3_3
     
-    def s4_1 = tableModel.getValueAt(0, 0) must_== "user4"
-    def s4_2 = tableModel.getValueAt(2, 1) must_== 30
-    def s4 = s4_1 and s4_2
+    def s4_1 = getValueAt(0, 0) must_== "element1"
+    def s4_2 = getValueAt(1, 1) must_== 50
+    def s4_3 = getValueAt(2, 2) must_== "chair"
+    def s4 = s4_1 and s4_2 and s4_3
+  }
+  
+  def columnModel = new TestBase {
+    def s1 = columnModel.getColumnCount must_== 3
+  }
+  
+  def visibledColumns = new TestBase {
+    def byProperty = {
+      model.visibledColumns = List("addr", "age")
+      
+      Range(0, columnModel.getColumnCount) map columnModel.getColumn map
+        (_.getIdentifier.toString) toList
+    }
     
-    def s5 = columnModel.getColumnCount must_== 2
+    def byColumnModel = {
+      columnModel.moveColumn(0, 1)
+      model.visibledColumns
+    }
     
-    def s6_1 = columnModel.getColumnIndex("name") must_== 0
-    def s6_2 = columnModel.getColumnIndex("age") must_== 1
-    def s6 = s6_1 and s6_2
+    def s1 = byProperty must contain("addr", "age").only.inOrder
     
-    def s7_1 = columnModel.getColumn(0).getHeaderValue must_== "name"
-    def s7_2 = columnModel.getColumn(1).getHeaderValue must_== "age"
-    def s7_3 = columnModel.getColumn(0).getIdentifier must_== "name"
-    def s7_4 = columnModel.getColumn(1).getIdentifier must_== "age"
-    def s7_5 = columnModel.getColumn(0).getModelIndex must_== 0
-    def s7_6 = columnModel.getColumn(1).getModelIndex must_== 1
-    def s7 = s7_1 and s7_2 and s7_3 and s7_4 and s7_5 and s7_6
+    def s2 = byColumnModel must contain("age", "name", "addr").only.inOrder
   }
 }
 
-object DataListModelSpec {
+private[table] object DataTableModelSpec {
   case class TestElement(
     name: String,
-    age: Int
+    age: Int,
+    addr: String
   )
+  
+  object TestElementTableFormat extends TableFormat[TestElement] {
+    val columnNames = Array("name", "age", "addr")
+    def getColumnCount = 3
+    def getColumnName(column: Int) = columnNames(column)
+    def getColumnValue(e: TestElement, column: Int) = column match {
+      case 0 => e.name
+      case 1 => e.age.asInstanceOf[AnyRef]
+      case 2 => e.addr
+    }
+  }
 }

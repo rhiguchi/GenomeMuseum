@@ -5,8 +5,8 @@ import java.io.{File, FileInputStream, IOException}
 import java.text.ParseException
 import org.jdesktop.application.{Application, Action, ProxyActions}
 import view.{MainView, MainViewMenuBar, ColumnVisibilitySetting}
-import controller.{ExhibitTableController, MainViewController, ViewSettingDialogController}
-import model.{MuseumScheme, MuseumExhibitParser, LibraryFileManager}
+import controller.{MainViewController, ViewSettingDialogController}
+import model.{MuseumSchema, LibraryFileManager}
 import scala.swing.{Frame, Dialog, Panel}
 
 @ProxyActions(Array("selectAll"))
@@ -17,32 +17,7 @@ class GenomeMuseumGUI extends Application {
   // リソースのネームスペースを無しに設定
   getContext.getResourceManager.setResourceFolder("")
   
-  // Views
-  lazy val mainFrame = new Frame {
-    val mainView = new MainView
-    val mainMenu = new MainViewMenuBar
-    
-    // 列表示設定
-    val columnConfigPane = new ColumnVisibilitySetting
-    lazy val columnConfigDialog = new Dialog(this) {
-      contents = new Panel{
-        override lazy val peer = columnConfigPane.contentPane
-      }
-    }
-    
-    title = "GenomeMuseum"
-    
-    menuBar = mainMenu.container
-    
-    peer.getContentPane.setLayout(new BorderLayout)
-    peer.getContentPane.add(mainView.contentPane, "Center")
-  }
-  lazy val openDialog = new FileDialog(mainFrame.peer, "", FileDialog.LOAD)
-  
-  
-  // Controllers
-  var mainCtrl: MainViewController = _
-  
+  lazy val openDialog = new FileDialog(null.asInstanceOf[java.awt.Frame], "", FileDialog.LOAD)
   // Actions
   private lazy val actionFor = GenomeMuseumGUI.actionFor(getContext.getActionMap(this))_
   lazy val openAction = actionFor("openFile")
@@ -54,47 +29,49 @@ class GenomeMuseumGUI extends Application {
   lazy val selectAllAction = actionFor("selectAll")
   
   // Model
-  private var scheme: MuseumScheme = null
+  private var genomemuseumHome = new File(".", "GenomeMuseum")
   private var libFiles: Option[LibraryFileManager] = None
   
-  private val exhibitParser = new MuseumExhibitParser
-  
   override protected def initialize(args: Array[String]) {
-    val genomemuseumHome = getContext.getLocalStorage.getDirectory
-    
-    println("LibraryDir: " + genomemuseumHome)
-    scheme = MuseumScheme.onMemory
-    libFiles = Some(new LibraryFileManager(new File(genomemuseumHome, "BioFiles")))
+    genomemuseumHome = getContext.getLocalStorage.getDirectory
   }
   
   override def startup() {
-    import jp.scid.genomemuseum.model.ExhibitListBox
-    val frame = mainFrame.peer
-    frame.setDefaultCloseOperation(javax.swing.WindowConstants.DO_NOTHING_ON_CLOSE)
-    
-    mainCtrl = new MainViewController(this, mainFrame.mainView)
-    bindMenuBarActions(mainFrame.mainMenu, mainCtrl)
-    
-    mainCtrl.dataSchema = scheme
+//    mainCtrl.dataSchema = scheme
     // サンプルデータ追加    
-    mainCtrl.sourceListModel.addListBox("test1")
-    mainCtrl.sourceListModel.addListBox("test2")
-    mainCtrl.sourceListModel.addListBox("test3")
+//    mainCtrl.sourceListModel.addListBox("test1")
+//    mainCtrl.sourceListModel.addListBox("test2")
+//    mainCtrl.sourceListModel.addListBox("test3")
     
-    loadSampleDataTo(this)
+//    loadSampleDataTo(this)
     
-    val viewSettingDialogCtrl = new ViewSettingDialogController(
-      mainFrame.columnConfigPane, mainFrame.columnConfigDialog)
-    mainFrame.mainMenu.columnVisibility.action = viewSettingDialogCtrl.showAction
+    
+    
+    // ビュー構築
+    val mainViewFrame = new javax.swing.JFrame
+    mainViewFrame.setDefaultCloseOperation(javax.swing.WindowConstants.DO_NOTHING_ON_CLOSE)
+    
+    // コントローラ構築
+    val mainController = new controller.MuseumFrameViewController(mainViewFrame)
+    bindApplicationActionsTo(mainController.mainMenu)
+    
+    // スキーマ構築
+    println("LibraryDir: " + genomemuseumHome)
+    val dataSchema = MuseumSchema.fromMemory
+    val libFiles = Some(new LibraryFileManager(new File(genomemuseumHome, "BioFiles")))
+    
+    // スキーマ適用
+    mainController.dataSchema = dataSchema
+    
+    // 表示
+    mainController.show()
   }
   
   override protected def ready() {
-    mainFrame.peer.pack
-    mainFrame.peer setLocationRelativeTo null
-    mainFrame.peer setVisible true
   }
   
-  private def bindMenuBarActions(menu: MainViewMenuBar, controller: MainViewController) {
+  /** アプリケーションの持つアクションをメニューバーに設定 */
+  private def bindApplicationActionsTo(menu: MainViewMenuBar) {
     menu.open.action = openAction
     menu.quit.action = quitAction
     
@@ -103,10 +80,6 @@ class GenomeMuseumGUI extends Application {
     menu.paste.action = pasteAction
     menu.delete.action = deleteAction
     menu.selectAll.action = selectAllAction
-    
-    menu.newListBox.action = controller.addListBoxAction
-    menu.newSmartBox.action = controller.addSmartBoxAction
-    menu.newGroupBox.action = controller.addBoxFolderAction
     
     menu.reloadResources()
   }
@@ -117,7 +90,7 @@ class GenomeMuseumGUI extends Application {
     openDialog setVisible true
     val fileName = Option(openDialog.getFile)
     
-    fileName.map(new File(openDialog.getDirectory, _)).foreach(loadBioFile)
+//    fileName.map(new File(openDialog.getDirectory, _)).foreach(loadBioFile)
   }
   
   /** データをライブラリから削除 */
@@ -128,7 +101,7 @@ class GenomeMuseumGUI extends Application {
     exhibits foreach { exhibit =>
       val uri = exhibit.filePathAsURI
       // データベースから削除
-      scheme.exhibitsService.remove(exhibit)
+//      scheme.exhibitsService.remove(exhibit)
       
       // URI が妥当であればファイルを削除
       libFiles foreach { lib =>
@@ -145,42 +118,6 @@ class GenomeMuseumGUI extends Application {
       case uri if uri.getScheme == "file" => Some(new File(uri))
       case uri => libFiles.map(_.getFile(uri))
     }
-  }
-  
-  def loadBioFile(files: Seq[File]) {
-    files foreach loadBioFile
-  }
-  
-  /** ローカル環境にファイルが保存できるか */
-  private def isLocalStorable(): Boolean = libFiles.nonEmpty
-  
-  @throws(classOf[IOException])
-  @throws(classOf[ParseException])
-  protected def loadBioFile(file: File) {
-    
-    println("loadBioFile: " + file)
-    
-    val e = exhibitParser.parseFrom(file)
-    
-    if (isLocalStorable) e foreach { e =>
-      libFiles.get.store(e, file)
-    }
-    
-    e.map(mainCtrl.tableModel.addElement)
-  }
-  
-  @throws(classOf[IOException])
-  @throws(classOf[ParseException])
-  protected def loadBioFile(url: java.net.URL) {
-    println("loadBioFile: " + url)
-    
-    val e = exhibitParser.parseFrom(url)
-    
-    if (isLocalStorable) e foreach { e =>
-      libFiles.get.store(e, url)
-    }
-    
-    e.map(scheme.exhibitsService.add)
   }
 }
 
@@ -276,7 +213,7 @@ object GenomeMuseumGUI {
     
     val resources = samples.map(resourceBase.+).map(cls.getResource)
     
-    resources foreach loader.loadBioFile
+//    resources foreach loader.loadBioFile
   }
   
   
@@ -296,3 +233,5 @@ object GenomeMuseumGUI {
     date = data.locus.date
   )
 }
+
+

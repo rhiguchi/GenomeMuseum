@@ -23,6 +23,9 @@ class FastaParser extends BioFileParser[Fasta] {
     val unknownStart = readElementTail(ListBuffer.empty[String],
       bufferedSource, nonSectionHead _)
     
+    if (bufferedSource.isEmpty)
+      throw new ParseException("It is not FASTA source", 0)
+    
     createFrom(bufferedSource)
   }
   

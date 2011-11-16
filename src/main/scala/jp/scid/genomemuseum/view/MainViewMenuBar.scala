@@ -40,8 +40,8 @@ class MainViewMenuBar {
   reloadResources()
   
   def reloadResources() {
-    Application.getInstance().getContext().getResourceMap(getClass())
-      .injectComponents(container.peer)
+//    Application.getInstance().getContext().getResourceMap(getClass())
+//      .injectComponents(container.peer)
     //reloadResources(ResourceBundle.getBundle(classOf[MainViewMenuBar].getName))
   }
   

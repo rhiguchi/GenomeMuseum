@@ -51,8 +51,18 @@ class DataTreeModel[A <: AnyRef: ClassManifest](source: TreeSource[A])
   /**
    * 選択パスを取得
    */
+  def selectedPath: Option[Path[A]] = {
+    Option(selectionModel.getSelectionPath).map(convertTreePathToPath[A])
+  }
+  
+  /**
+   * 選択パスを取得
+   */
   def selectedPaths(): IndexedSeq[Path[A]] = {
-    selectionModel.getSelectionPaths.map(convertTreePathToPath[A]).toIndexedSeq
+    selectionModel.getSelectionPaths match {
+      case null => IndexedSeq.empty
+      case paths => paths.map(convertTreePathToPath[A]).toIndexedSeq
+    }
   }
   
   /**
@@ -60,14 +70,6 @@ class DataTreeModel[A <: AnyRef: ClassManifest](source: TreeSource[A])
    */
   def isPathSelected(path: Path[A]) = {
     selectionModel.isPathSelected(convertPathToTreePath(path))
-  }
-  
-  /**
-   * JTree にこのモデルを適用する。
-   */
-  def installTo(tree: JTree) {
-    tree setModel treeModel
-    tree setSelectionModel selectionModel
   }
   
   /**
@@ -93,6 +95,21 @@ object DataTreeModel {
   
   def convertPathToTreePath[A](path: Path[A]) =
     new TreePath(path.map(_.asInstanceOf[Object]).toArray)
+  
+  /**
+   * JTree と DataTreeModel を結合する。
+   * @param tree 結びつけられるビュー
+   * @param model 結びつけるモデル
+   * @return 接続解除関数
+   */
+  def bind(tree: JTree, model: DataTreeModel[_]) = {
+    tree setModel model.treeModel
+    tree setSelectionModel model.selectionModel
+    () => {
+      tree setSelectionModel null
+      tree setModel null
+    }
+  }
   
   /** TreeSelectionModel のイベントを swing.Publisher から発行するように結合 */
   private def bindSelectionEvent[A <: AnyRef](model: DataTreeModel[A]) {
@@ -125,7 +142,7 @@ object DataTreeModel {
       extends DefaultTreeSelectionModel {
     override def setSelectionPath(path: TreePath) {
       if (isSelectable(path))
-        super.setSelectionPath(path)
+        super.setSelectionPaths(Array(path))
     }
     
     override def setSelectionPaths(paths: Array[TreePath]) {

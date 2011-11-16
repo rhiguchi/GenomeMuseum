@@ -112,7 +112,7 @@ public class ColumnVisibilitySetting implements GenomeMuseumView {
     }
     
     public void reloadResources() {
-        Application.getInstance().getContext().getResourceMap(getClass()).injectComponents(contentPane);
+//        Application.getInstance().getContext().getResourceMap(getClass()).injectComponents(contentPane);
         
     }
     

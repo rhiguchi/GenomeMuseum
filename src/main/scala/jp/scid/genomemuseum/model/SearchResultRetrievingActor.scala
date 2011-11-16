@@ -60,26 +60,26 @@ class SearchResultRetrievingActor(listModel: DataListModel[SearchResult]) extend
   protected def identifierRetrived(identifier: Identifier) {
     // 行オブジェクトの追加
     val rowObj = SearchResult(identifier.value, status = Status.Searching)
-    listModel.sourceWithWriteLock { source =>
-      source += rowObj
-    }
+//    listModel.sourceWithWriteLock { source =>
+//      source += rowObj
+//    }
   }
   
   /** 要素の値の取得が完了した時の処理 */
   protected def elementValueRetrived(values: EntryValues) {
-    listModel.sourceWithReadLock { source =>    
-      findByIdentifier(values.identifier, source) match {
-        case Some((element, index)) =>
-          element.status = Status.Succeed
-          element.accession = values.accession
-          element.length = values.length
-          element.definition = values.definition
-          
-          // 行オブジェクトに更新通知
-          source(index) = element
-        case None =>
-      }
-    }
+//    listModel.sourceWithReadLock { source =>    
+//      findByIdentifier(values.identifier, source) match {
+//        case Some((element, index)) =>
+//          element.status = Status.Succeed
+//          element.accession = values.accession
+//          element.length = values.length
+//          element.definition = values.definition
+//          
+//          // 行オブジェクトに更新通知
+//          source(index) = element
+//        case None =>
+//      }
+//    }
   }
 
   // 成功処理
