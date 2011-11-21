@@ -8,6 +8,8 @@ import Fasta._
  * {@code Fasta} オブジェクトを文字列から作成する構文解析クラス
  */
 class FastaParser extends BioFileParser[Fasta] {
+  
+  val headerParser = Fasta.Header
   /**
    * 文字列情報から {@code Fasta} オブジェクトを生成する
    * @param source 生成もとのテキスト。 ヘッダ行までは無視される。

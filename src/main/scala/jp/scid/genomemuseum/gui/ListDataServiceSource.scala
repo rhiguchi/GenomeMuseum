@@ -49,6 +49,14 @@ trait ListDataServiceSource[A] {
   }
   
   /**
+   * 要素の削除を行う
+   */
+  def removeElement(element: A) {
+    // TODO
+  }
+  
+  
+  /**
    * 要素の更新を行う。
    */
   def updateElement(element: A) {

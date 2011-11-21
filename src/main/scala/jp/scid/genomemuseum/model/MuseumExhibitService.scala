@@ -1,5 +1,7 @@
 package jp.scid.genomemuseum.model
 
+import java.io.File
+
 /**
  * MuseumExhibit データ提供サービスのインターフェイス。
  */
