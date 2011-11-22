@@ -3,109 +3,113 @@ package jp.scid.genomemuseum.controller
 import org.specs2._
 import mock._
 
-import jp.scid.genomemuseum.view
-import jp.scid.genomemuseum.model.{ExhibitRoom, UserExhibitRoom, MuseumSchema,
-  MuseumExhibitService, UserExhibitRoomService, RoomExhibitService}
+import jp.scid.gui.event.ValueChange
+import jp.scid.genomemuseum.{view, gui, model}
+import model.{ExhibitRoom, UserExhibitRoom, MuseumSchema,
+  MuseumSchemaSpec}
 import view.MainView
-import MuseumExhibitListController.TableSource._
+import gui.ExhibitTableModel
 
 class MainViewControllerSpec extends Specification with Mockito {
   def is = "MainViewController" ^
-    "mainView" ^ pending
-      "sourceList にモデルが設定" ! initial.s1 ^
-      "dataTable にモデルが設定" ! initial.s2 ^
-      "初期状態で LocalSource 表示モード" ! initial.s3 ^
-    bt ^ "ソース選択" ^
-      "ウェブソース選択で WebSource 表示モード" ! sourceSelect.s1 ^
-      "ローカルソース選択で LocalSource 表示モード" ! sourceSelect.s2 ^
-      "WebSource モードで部屋を選択すると LocalSource 表示モード" ! sourceSelect.s3 ^
-    bt ^ "sourceListCtrl 状態" ^
-      "userExhibitRoomService が dataSchema#userExhibitRoomService である" ! slctrl.s1 ^
-    bt ^ "dataTableCtrl 状態" ^
-      "localDataService が dataSchema#museumExhibitService である" ! dtctrl.s1 ^
-      "部屋を選択するとその部屋の RoomExhibitService が localDataService に設定される" ! dtctrl.s2
+    "mainView" ^ mainViewSpec(defaultController) ^ bt ^
+    "ウェブソース選択" ^ webSourceModeSpec(webSourceSelected) ^ bt ^
+    "UserRoom 選択" ^ localSourceModeSpec(userRoomSelected) ^ bt ^
+    "ExhibitRoom 選択" ^ localSourceModeSpec(userRoomSelected) ^ bt ^
+    "プロパティ" ^ propertiesSpec(defaultController) ^ bt ^
+    "ボタンアクション" ^ appliedActions(defaultController) ^ bt ^
+    end
   
-  class TestBase {
-    val mainview = new MainView
-    mainview.sourceList.setModel(null)
-    val ctrl = new MainViewController(mainview)
-    
-    def tableSource = ctrl.dataTableCtrl.tableSource
-    
-    def sourceStructure = ctrl.sourceListCtrl.sourceStructure
+  def defaultController = {
+    val view = new MainView()
+    new MainViewController(view)
   }
   
-  lazy val initial = new TestBase {
-    def s1 = mainview.sourceList.getModel must not beNull
-    
-    def s2 = mainview.dataTable.getModel.getColumnCount must be_>=(10)
-    
-    def s3 = tableSource must_== LocalSource
+  def webSourceSelected = {
+    val ctrl = new MainViewController(new MainView())
+    ctrl.dataSchema = MuseumSchemaSpec.makeMock(mock[MuseumSchema])
+    ctrl.sourceListCtrl.selectedRoom :=
+      ctrl.sourceListCtrl.sourceStructure.webSource
+    ctrl
   }
   
-  lazy val sourceSelect = new TestBase {
-    // ウェブソースを選択
-    val s1_mode = sourceSelectAndGetCurrentSource(sourceStructure.webSource)
-    // ローカルソースを選択
-    val s2_mode = sourceSelectAndGetCurrentSource(sourceStructure.localSource)
-    // WebSource モードで部屋を選択
-    ctrl.dataTableCtrl.tableSource = WebSource
-    val s3_mode = sourceSelectAndGetCurrentSource(UserExhibitRoom("room"))
+  def userRoomSelected = {
+    val ctrl = new MainViewController(new MainView())
+    ctrl.dataSchema = MuseumSchemaSpec.makeMock(mock[MuseumSchema])
+    ctrl.sourceListCtrl.selectedRoom := mock[UserExhibitRoom]
+    ctrl
+  }
+  
+  def exhibitRoomSelected = {
+    val ctrl = new MainViewController(new MainView())
+    ctrl.dataSchema = MuseumSchemaSpec.makeMock(mock[MuseumSchema])
+    ctrl.sourceListCtrl.selectedRoom := mock[ExhibitRoom]
+    ctrl
+  }
+  
+  def mainViewSpec(ctrl: => MainViewController) =
+    "ツリーにモデルの設定" ! views(ctrl).appliedTreeModel ^
+    "テーブルに展示物リストモデルの設定" ! views(ctrl).appliedExhibitTableModel
+  
+  def webSourceModeSpec(ctrl: => MainViewController) =
+    "テーブルモデルが webServiceResultCtrl#tableModel" ! views(ctrl).appliedWebSourceTableModel
+  
+  def localSourceModeSpec(ctrl: => MainViewController) =
+    "テーブルモデルが museumExhibitListCtrl#tableModel" ! views(ctrl).appliedExhibitTableModel
+  
+  def propertiesSpec(ctrl: => MainViewController) =
+    "loadManager 設定" ! properteis(ctrl).loadManager ^
+    "dataSchema 設定" ! properteis(ctrl).dataSchema
+  
+  def appliedActions(ctrl: => MainViewController) =
+    "addBasicRoom" ! actionBound(ctrl).addBasicRoom ^
+    "addGroupRoom" ! actionBound(ctrl).addGroupRoom ^
+    "addSmartRoom" ! actionBound(ctrl).addSmartRoom ^
+    "removeRoom" ! actionBound(ctrl).removeRoom
+  
+  class TestBase(ctrl: MainViewController) {
+    def mainView = ctrl.mainView
     
-    /** ソースを選択して現在のテーブルソース型を返す */
-    def sourceSelectAndGetCurrentSource(room: ExhibitRoom) = {
-      ctrl.sourceListCtrl.selectedRoom := room
-      tableSource
+    def sourceListCtrl = ctrl.sourceListCtrl
+  }
+  
+  def views(ctrl: MainViewController) = new TestBase(ctrl) {
+    def appliedTreeModel =
+      mainView.sourceList.getModel must_== ctrl.sourceListCtrl.sourceListModel.treeModel
+    
+    def appliedExhibitTableModel =
+      mainView.dataTable.getModel must_== ctrl.museumExhibitListCtrl.tableModel.tableModel
+    
+    def appliedWebSourceTableModel =
+      mainView.dataTable.getModel must_== ctrl.webServiceResultCtrl.tableModel.tableModel
+  }
+  
+  def properteis(ctrl: MainViewController) = new TestBase(ctrl) {
+    def loadManager = {
+      val manager = mock[MuseumExhibitLoadManager]
+      ctrl.loadManager = manager
+      ctrl.museumExhibitListCtrl.loadManager must_== manager
     }
     
-    def s1 = s1_mode must_== WebSource
-    
-    def s2 = s2_mode must_== LocalSource
-    
-    def s3 = s3_mode must_== LocalSource
+    def dataSchema = {
+      val schema = MuseumSchemaSpec.makeMock(mock[MuseumSchema])
+      ctrl.dataSchema = schema
+      ctrl.sourceListCtrl.userExhibitRoomService must_== schema.userExhibitRoomService
+    }
   }
   
-  class WithSource extends TestBase {
-    import MainViewControllerSpec.makeTreeDataServiceMock
-    // MuseumSchema 用 UserExhibitRoomService 構築
-    val userExhibitRoomService = mock[UserExhibitRoomService]
-    makeTreeDataServiceMock(userExhibitRoomService)
-    // MuseumSchema 用 MuseumExhibitService 構築
-    val museumExhibitService = mock[MuseumExhibitService]
-    museumExhibitService.allElements returns Nil
+  def actionBound(ctrl: MainViewController) = new TestBase(ctrl) {
+    def addBasicRoom =
+      mainView.addListBox.getAction must_== sourceListCtrl.addBasicRoomAction.peer
     
-    val roomExhibitService = mock[RoomExhibitService]
-    museumExhibitService.allElements returns Nil
+    def addGroupRoom =
+      mainView.addSmartBox.getAction must_== sourceListCtrl.addSamrtRoomAction.peer
     
-    // dataSchema 用 MuseumSchema 構築
-    val schema = mock[MuseumSchema]
-    schema.museumExhibitService returns museumExhibitService
-    schema.userExhibitRoomService returns userExhibitRoomService
-    schema.roomExhibitService(any) returns roomExhibitService
+    def addSmartRoom =
+      mainView.addBoxFolder.getAction must_== sourceListCtrl.addGroupRoomAction.peer
     
-    // dataSchema 設定
-    ctrl.dataSchema = schema
-  }
-  
-  lazy val slctrl = new WithSource {
-    def s1 = ctrl.sourceListCtrl.userExhibitRoomService must_== userExhibitRoomService
-  }
-  
-  lazy val dtctrl = new WithSource {
-    private val initialLocalDataService = ctrl.dataTableCtrl.localDataService
-    
-    // 部屋の service を構築
-    val testRoom = UserExhibitRoom("testRoom")
-    val testRoomExhibitService = mock[RoomExhibitService]
-    schema.roomExhibitService(testRoom) returns testRoomExhibitService
-    
-    // 部屋を選択
-    ctrl.sourceListCtrl.selectedRoom := testRoom
-    private val testRoomLocalDataService = ctrl.dataTableCtrl.localDataService
-    
-    def s1 = initialLocalDataService must_== museumExhibitService
-    
-    def s2 = testRoomLocalDataService must_== testRoomExhibitService
+    def removeRoom =
+      mainView.removeBoxButton.getAction must_== sourceListCtrl.removeSelectedUserRoomAction.peer
   }
 }
 

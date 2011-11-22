@@ -14,132 +14,113 @@ import MuseumExhibitTransferData.{dataFlavor => exhibitDataFlavor}
 import DataFlavor.javaFileListFlavor
 
 class MuseumExhibitListTransferHandlerSpec extends Specification with Mockito {
-  import MuseumExhibitListController.TableSource._
-  
   def is = "MuseumExhibitListTransferHandler" ^
-    "getSourceActions" ^
-      "LocalSource モード の時に転送可能" ! getSourceActions.s1 ^
-      "WebSource モード の時は転送不可" ! getSourceActions.s2 ^
-    bt ^ "exportToClipboard" ^
-      "選択されている項目が転送される" ! exportToClipboard.s1 ^
-      "無選択状態の時は転送されない" ! exportToClipboard.s2 ^
-    bt ^ "canImport" ^
-      "ファイルの受け入れ可能" ! canImport.s1 ^
-      "MuseumExhibitTransferData の受け入れ可能" ! canImport.s2 ^
-    bt ^ "importData" ^
-      "ファイル読み込み受付" ! importData.s1 ^
-      "親コントローラの loadBioFiles コール" ! importData.s2 ^
-      "空フォルダでは読み込まない" ! importData.s3 ^
-      "MuseumExhibitTransferData の時はファイル読み込みを行わない" ! importData.s4
+    "項目が選択されていない状態" ^ cannotTransfer(defaultHandler) ^ bt ^
+    "項目が選択されている状態" ^ canTransfer(itemSelectedHandler) ^ bt ^
+    "読み込みハンドラが設定されている時" ^ withLoadManager(handlerWithLoadManager) ^ bt ^
+    "読み込みハンドラが設定されていない時" ^ withNoLoadManager(defaultHandler) ^ bt ^
+    end
   
-  private[MuseumExhibitListTransferHandlerSpec] class TestBase {
-    val e1 = MuseumExhibit("element1")
-    val e2 = MuseumExhibit("element2")
-    
-    val localTableModel = mock[ExhibitTableModel]
-    
-    val ctrl = mock[MuseumExhibitListController]
-    ctrl.tableSource returns LocalSource
-    ctrl.localSourceTableModel returns localTableModel
-    
-    val handler = new MuseumExhibitListTransferHandler(ctrl)
+  def defaultHandler = {
+    val tableModel = spy(new ExhibitTableModel)
+    new MuseumExhibitListTransferHandler(tableModel)
   }
   
-  def getSourceActions = new TestBase {
-    import TransferHandler.{NONE, COPY}
-    
-    def onLocalSource = {
-      handler.getSourceActions(null)
-    }
-    
-    def onWebSource = {
-      ctrl.tableSource returns WebSource
-      handler.getSourceActions(null)
-    }
-    
-    def s1 = onLocalSource must_!= NONE
-    
-    def s2 = onWebSource must_== NONE
+  def itemSelectedHandler = {
+    val tableModel = spy(new ExhibitTableModel)
+    tableModel.selections returns List(mock[MuseumExhibit])
+    new MuseumExhibitListTransferHandler(tableModel)
   }
   
-  def exportToClipboard = new TestBase {
-    import TransferHandler.COPY
+  def handlerWithLoadManager = {
+    val loadManager = mock[MuseumExhibitLoadManager]
+    val handler = defaultHandler
+    handler.loadManager = Some(loadManager)
+    handler
+  }
+  
+  def cannotTransfer(handler: => MuseumExhibitListTransferHandler) =
+    "アクション取得" ! exportingSpec(handler).sourceAction ^
+    "転送オブジェクトは作成されない" ! exportingSpec(handler).notCreateTransferable
+  
+  def canTransfer(handler: => MuseumExhibitListTransferHandler) =
+    "アクション取得" ! exportingSpec(handler).sourceAction ^
+    "転送オブジェクトが作成される" ! exportingSpec(handler).createsTransferable ^
+    "選択項目が転送される" ! exportingSpec(handler).exportsSelectedItem
+  
+  def withLoadManager(handler: => MuseumExhibitListTransferHandler) =
+    "ファイルフレーバーの取り込みが可能" ! importingSpec(handler).acceptFileFlavor ^
+    "ファイルが読み込まれる" ! importingSpec(handler).importsFile ^
+    "ディレクトリは読み込まれない" ! importingSpec(handler).notImportsDir ^
+    "読み込みハンドラの読み込み処理が呼ばれる" ! importingSpec(handler).callsLoadExhibits
+  
+  def withNoLoadManager(handler: => MuseumExhibitListTransferHandler) =
+    "ファイルフレーバーの取り込みはできない" ! importingSpec(handler).notAcceptFileFlavor
+  
+  class TestBase {
+  }
+  
+  def exportingSpec(handler: MuseumExhibitListTransferHandler) = new Object {
+    def sourceAction =
+      handler.getSourceActions(null) must_!= TransferHandler.NONE
     
-    private def selectAndTransferToClipboard(data: List[MuseumExhibit]) = {
-      localTableModel.selections returns data
+    def createsTransferable =
+      handler.createTransferable(null) must beAnInstanceOf[MuseumExhibitTransferData]
+    
+    def notCreateTransferable =
+      handler.createTransferable(null) must beNull
+    
+    def exportsSelectedItem = {
       val testClipboard = new Clipboard("testClipboard")
-      handler.exportToClipboard(null, testClipboard, COPY)
-      testClipboard
+      handler.exportToClipboard(null, testClipboard, TransferHandler.COPY)
+      handler.createTransferable(null) must beAnInstanceOf[MuseumExhibitTransferData]
+      testClipboard.getData(exhibitDataFlavor).asInstanceOf[MuseumExhibitTransferData]
+        .exhibits must_== handler.tableModel.selections
     }
-    
-    def transferedObj = {
-      selectAndTransferToClipboard(List(e1, e2))
-    }
-    
-    def noSelectionTransfering = {
-      selectAndTransferToClipboard(Nil).getContents(null)
-    }
-    
-    def s1_1 = transferedObj.isDataFlavorAvailable(exhibitDataFlavor) must beTrue
-    def s1_2 = transferedObj.getData(exhibitDataFlavor)
-      .asInstanceOf[MuseumExhibitTransferData].exhibits must contain(e1, e2).only.inOrder
-    def s1 = s1_1 and s1_2
-    
-    def s2 = noSelectionTransfering must beNull
   }
   
-  def canImport = new TestBase {
-    def s1 = handler.canImport(null, Array(javaFileListFlavor)) must beTrue
-    def s2 = handler.canImport(null, Array(exhibitDataFlavor)) must beTrue
-  }
-  
-  def importData = new TestBase {
-    val file1 = File.createTempFile("test_file", ".txt")
+  def importingSpec(handler: MuseumExhibitListTransferHandler) = new Object {
+    import DataFlavor.javaFileListFlavor
+    import java.io.File
     
-    private def fileTransferObjectOf(files: File*) = {
-      val fileList = new java.util.ArrayList[File]
+    def acceptFileFlavor = {
+      handler.canImport(null, Array(javaFileListFlavor)) must beTrue
+    }
+    
+    def notAcceptFileFlavor = {
+      handler.canImport(null, Array(javaFileListFlavor)) must beFalse
+    }
+    
+    def importsFile = {
+      val t = fileTransferObject(File.createTempFile("test", ".dat"))
+      
+      handler.importData(null, t) must beTrue
+    }
+    
+    def notImportsDir = {
+      val t = fileTransferObject(new File("xxxx"))
+      
+      handler.importData(null, t) must beFalse
+    }
+    
+    def callsLoadExhibits = {
+      val file = File.createTempFile("test", ".dat")
+      val t = fileTransferObject(file)
+      
+      there was one(handler.loadManager.get).loadExhibits(handler.tableModel, Seq(file))
+      handler.importData(null, t) must beTrue
+    }
+    
+    def fileTransferObject(files: File*) = {
+      val fileList = new java.util.ArrayList[File]()
       files foreach fileList.add
       
-      val fileTransferObject = mock[Transferable]
-      fileTransferObject.getTransferData(javaFileListFlavor) returns fileList
-      fileTransferObject.isDataFlavorSupported(javaFileListFlavor) returns true
-      fileTransferObject.getTransferDataFlavors returns Array(javaFileListFlavor)
-      fileTransferObject
-    }
-    
-    def fileTransfered = {
-      ctrl.loadBioFiles(any) returns true
-      handler.importData(null, fileTransferObjectOf(file1))
-    }
-    
-    def ctrlCall = {
-      handler.importData(null, fileTransferObjectOf(file1))
-      ctrl
-    }
-    
-    def emptyFolder = {
-      val emptyDir = new File(file1.getParent, file1.getName + ".f")
-      emptyDir.mkdir
-      handler.importData(null, fileTransferObjectOf(emptyDir))
-    }
-    
-    def meData = {
-      ctrl.loadBioFiles(any) returns true
-      val data = MuseumExhibitTransferData(List(e1, e2))
-      val tObj = fileTransferObjectOf(file1)
-      tObj.getTransferData(exhibitDataFlavor) returns data
-      tObj.isDataFlavorSupported(exhibitDataFlavor) returns true
-      handler.importData(null, tObj)
+      val t = mock[Transferable]
+      t.getTransferData(javaFileListFlavor) returns fileList
+      t.getTransferDataFlavors returns Array(javaFileListFlavor)
+      t.isDataFlavorSupported(javaFileListFlavor) returns true
       
-      ctrl
+      t
     }
-    
-    def s1 = fileTransfered must beTrue
-    
-    def s2 = there was one(ctrlCall).loadBioFiles(List(file1))
-    
-    def s3 = emptyFolder must beFalse
-    
-    def s4 = there was no(meData).loadBioFiles(List(file1))
   }
 }

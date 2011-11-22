@@ -9,6 +9,8 @@ import ca.odell.glazedlists.matchers.SearchEngineTextMatcherEditor
 trait StringFilterable[A] {
   this: DataListModel[A] =>
   
+  var filterText = ""
+  
   private val matcherEditor = new SearchEngineTextMatcherEditor(new TextFilterator[A]{
     def getFilterStrings(baseList: java.util.List[String], element: A) {
       StringFilterable.this.getFilterString(baseList, element)
@@ -19,6 +21,7 @@ trait StringFilterable[A] {
    * 文字列でフィルタリング
    */
   def filterWith(text: String) {
+    filterText = text
     matcherEditor refilter text
   }
   

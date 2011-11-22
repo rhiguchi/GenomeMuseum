@@ -1,76 +1,107 @@
 package jp.scid.genomemuseum.controller
 
-import java.util.ResourceBundle
-import java.io.{File, FileInputStream}
 import javax.swing.{JFrame, JTree, JTextField}
 
-import org.jdesktop.application.{Application, Action, ResourceMap}
-
-import ca.odell.glazedlists.matchers.SearchEngineTextMatcherEditor
-
-import jp.scid.gui.event.{DataListSelectionChanged, DataTreePathsSelectionChanged}
-import jp.scid.gui.tree.DataTreeModel
 import jp.scid.gui.event.ValueChange
-import DataTreeModel.Path
+import jp.scid.gui.DataModel.Connector
 import jp.scid.genomemuseum.{view, model, gui, GenomeMuseumGUI}
-import view.{MainView, MainViewMenuBar}
-import model.{MuseumSchema, ExhibitRoom, UserExhibitRoom, MuseumStructure, MuseumExhibit}
-import gui.{ExhibitTableModel, MuseumSourceModel, WebServiceResultsModel}
-import MuseumExhibitListController.TableSource._
+import view.MainView
+import model.{MuseumSchema, ExhibitRoom, UserExhibitRoom, MuseumExhibit}
 
 class MainViewController(
-  mainView: MainView
+  private[controller] val mainView: MainView
 ) {
+  import MainViewController.TableSource._
   // ビュー
   /** ソースリストショートカット */
   private def sourceList = mainView.sourceList
   private def contentViewerSplit = mainView.dataListContentSplit
   private def dataTable = mainView.dataTable
+  private def quickSearchField = mainView.quickSearchField
+  private def statusField = mainView.statusLabel
+  private def progressView = mainView.loadingIconLabel
+  private def fileContentView = mainView.fileContentView
   
   // コントローラ
   /** ソースリスト用 */
   val sourceListCtrl = new ExhibitRoomListController(mainView.sourceList)
-  /** データテーブル用 */
-  private[controller] val dataTableCtrl = new MuseumExhibitListController(dataTable,
-    mainView.quickSearchField)
   
-  /** コンテントビューワー */
-  private val contentViewer = new FileContentViewer(mainView.fileContentView)
+  // データリスト用
+  /** MuseumExhibit 表示用 */
+  private[controller] val museumExhibitListCtrl = new MuseumExhibitListController(dataTable,
+    quickSearchField, statusField, fileContentView)
+  /** WebService 表示用 */
+  private[controller] val webServiceResultCtrl = new WebServiceResultController(dataTable,
+    quickSearchField, statusField, progressView)
   
   // モデル
   /** 現在のスキーマ */
   private var currentSchema: Option[MuseumSchema] = None
+  /** データテーブルの現在の表示モード */
+  private var currentTableSource: TableSource = LocalSource
+  /** データリストテーブルの結合 */
+  private var currentConnectors: List[Connector] = Nil
   
-  // ソースリスト項目選択
+  // モデルバインド
+  /** ソースリスト項目選択 */
   sourceListCtrl.selectedRoom.reactions += {
     case ValueChange(_, _, newRoom: ExhibitRoom) =>
       setRoomContentsTo(newRoom)
   }
+  // データリストコントローラと結合
+  updateTableSource()
   
   // アクションバインディング
-  // ファイルのドラッグ＆ドロップ追加ハンドラ
-//  protected val transferHandler = new ExhibitTransferHandler(this)
-//  mainView.dataTableScroll.setTransferHandler(transferHandler)
-  
   setActionTo(mainView.addListBox -> sourceListCtrl.addBasicRoomAction,
     mainView.addSmartBox -> sourceListCtrl.addSamrtRoomAction,
     mainView.addBoxFolder -> sourceListCtrl.addGroupRoomAction,
     mainView.removeBoxButton -> sourceListCtrl.removeSelectedUserRoomAction)
   
-  dataTable.getActionMap.put("delete", dataTableCtrl.removeSelectedExhibitAction.peer)
-  
   private def setActionTo(binds: (javax.swing.AbstractButton, swing.Action)*) {
     binds foreach { pair => pair._1 setAction pair._2.peer }
   }
   
-  
+  // プロパティ
   /** 現在のデータモデルを取得設定 */
   def dataSchema = currentSchema.get
   
   /** ソースリストやデータリストの表示に使用するデータモデルを設定 */
   def dataSchema_=(newSchema: MuseumSchema) {
     currentSchema = Option(newSchema)
-    reloadSchema()
+    currentSchema foreach { dataSchema =>
+      // ソースリスト
+      sourceListCtrl.userExhibitRoomService = dataSchema.userExhibitRoomService
+    }
+  }
+  
+  /** 読み込み管理オブジェクトを取得 */
+  def loadManager = museumExhibitListCtrl.loadManager
+  
+  /** 読み込み管理オブジェクトを設定 */
+  def loadManager_=(newManager: MuseumExhibitLoadManager) {
+    museumExhibitListCtrl.loadManager = newManager
+  }
+  
+  /** 表示モードを取得 */
+  private def tableSource = currentTableSource
+  
+  /** 表示モードを設定 */
+  private def tableSource_=(newSource: TableSource) {
+    if (currentTableSource != newSource) {
+      currentTableSource = newSource
+      updateTableSource()
+    }
+  }
+  
+  /** データテーブルの表示状態を変更する */
+  private def updateTableSource() {
+    // 結合解除
+    currentConnectors.foreach(_.release())
+    
+    currentConnectors = tableSource match {
+      case LocalSource => museumExhibitListCtrl.bind()
+      case WebSource => webServiceResultCtrl.bind()
+    }
   }
   
   /**
@@ -79,22 +110,26 @@ class MainViewController(
    */
   private def setRoomContentsTo(newRoom: ExhibitRoom) {
     if (newRoom == sourceListCtrl.sourceStructure.webSource) {
-      dataTableCtrl.tableSource = WebSource
+      tableSource = WebSource
     }
     else {
-      dataTableCtrl.tableSource = LocalSource
-      currentSchema map { dataSchema =>
-        dataTableCtrl.localDataService = newRoom match {
-          case newRoom: UserExhibitRoom => dataSchema.roomExhibitService(newRoom)
-          case _ => dataSchema.museumExhibitService
-        }
+      // データテーブルに指定
+      museumExhibitListCtrl.dataService = newRoom match {
+        case newRoom: UserExhibitRoom => dataSchema.roomExhibitService(newRoom)
+        case _ => dataSchema.museumExhibitService
       }
+      tableSource = LocalSource
     }
   }
-  
-  /** データスキーマからモデルの再設定 */
-  private def reloadSchema() {
-    dataTableCtrl.localDataService = dataSchema.museumExhibitService
-    sourceListCtrl.userExhibitRoomService = dataSchema.userExhibitRoomService
+}
+
+object MainViewController {
+  /**
+   * ビューに表示するデータソースの種類
+   */
+  private object TableSource extends Enumeration {
+    type TableSource = Value
+    val LocalSource = Value
+    val WebSource = Value
   }
 }

@@ -6,44 +6,51 @@ import java.io.{File, IOException}
 import javax.swing.{JComponent, TransferHandler}
 
 import jp.scid.genomemuseum.model.MuseumExhibit
+import jp.scid.genomemuseum.gui.ExhibitTableModel
 
 /**
  * MuseumExhibit の転送ハンドラ。
  */
-private class MuseumExhibitListTransferHandler(ctrl: MuseumExhibitListController) extends TransferHandler {
-  import MuseumExhibitListController.TableSource._
+private[controller] class MuseumExhibitListTransferHandler(
+    private[controller] val tableModel: ExhibitTableModel) extends TransferHandler {
   import DataFlavor.javaFileListFlavor
   import MuseumExhibitTransferData.{dataFlavor => exhibitDataFlavor}
   import MuseumExhibitListTransferHandler._
   
   private val importableFlavors = IndexedSeq(javaFileListFlavor, exhibitDataFlavor)
   
+  var loadManager: Option[MuseumExhibitLoadManager] = None
+  
   override def canImport(comp: JComponent, transferFlavors: Array[DataFlavor]) = {
-    transferFlavors.intersect(importableFlavors).nonEmpty
+    loadManager match {
+      case None => false
+      case Some(manager) =>
+        transferFlavors.contains(javaFileListFlavor)
+    }
   }
   
   override def importData(comp: JComponent, t: Transferable) = {
     import collection.JavaConverters._
+    import util.control.Exception.catching
     
     if (t.isDataFlavorSupported(exhibitDataFlavor)) {
       false
     }
-    else if (t.isDataFlavorSupported(javaFileListFlavor)) {
-      try {
-        val files = t.getTransferData(javaFileListFlavor).asInstanceOf[java.util.List[File]]
-        files match {
+    else if (t.isDataFlavorSupported(javaFileListFlavor) && loadManager.nonEmpty) {
+      catching(classOf[UnsupportedFlavorException], classOf[IOException]) either {
+        t.getTransferData(javaFileListFlavor).asInstanceOf[java.util.List[File]]
+      } match {
+        case Right(files) => files match {
           case null => false
-          case files =>
-            val allFiles = getAllFiles(files.asScala)
-            ctrl.loadBioFiles(allFiles)
+          case files => getAllFiles(files.asScala) match {
+            case Nil => false
+            case files =>
+              loadManager.get.loadExhibits(tableModel, files)
+              true
+          }
         }
-      }
-      catch {
-        case e: UnsupportedFlavorException =>
-          e.printStackTrace
-          false
-        case e: IOException =>
-          e.printStackTrace
+        case Left(e: Exception) =>
+          loadManager.get.alertFailToTransfer(e)
           false
       }
     }
@@ -52,23 +59,19 @@ private class MuseumExhibitListTransferHandler(ctrl: MuseumExhibitListController
     }
   }
   
-  override def getSourceActions(c: JComponent) = {
-    isTransferAllowed match {
-      case true => TransferHandler.COPY_OR_MOVE
-      case false => TransferHandler.NONE
-    }
-  }
+  /**
+   * 転送許可
+   */
+  override def getSourceActions(c: JComponent) =
+    TransferHandler.COPY_OR_MOVE
   
   override def createTransferable(c: JComponent) = {
-    if (isTransferAllowed) ctrl.localSourceTableModel.selections match {
+    tableModel.selections match {
       case Nil => null
       case selections => MuseumExhibitTransferData(selections)
     }
-    else
-      null
   }
   
-  private def isTransferAllowed = ctrl.tableSource == LocalSource
 }
 
 private object MuseumExhibitListTransferHandler {
@@ -114,7 +117,7 @@ private object MuseumExhibitListTransferHandler {
 /**
  * MuseumExhibit 行の転送データ
  */
-private case class MuseumExhibitTransferData(
+private[controller] case class MuseumExhibitTransferData(
   exhibits: List[MuseumExhibit]
 ) extends Transferable {
   import MuseumExhibitTransferData.{dataFlavor => exhibitDataFlavor}

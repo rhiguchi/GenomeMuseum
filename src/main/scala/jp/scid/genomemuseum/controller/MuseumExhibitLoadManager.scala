@@ -1,6 +1,8 @@
 package jp.scid.genomemuseum.controller
 
-import java.io.File
+import java.net.URL
+import java.io.{File, BufferedOutputStream, BufferedInputStream,
+  FileOutputStream, IOException}
 import java.beans.{PropertyChangeListener, PropertyChangeEvent}
 import java.util.concurrent.ExecutionException
 import javax.swing.SwingWorker
@@ -8,8 +10,10 @@ import SwingWorker.StateValue
 
 import actors.{Future, Futures}
 import swing.Publisher
+import util.control.Exception.catching
 
-import jp.scid.genomemuseum.model.{MuseumExhibit, MuseumExhibitLoader}
+import jp.scid.genomemuseum.model.{MuseumExhibit, MuseumExhibitLoader,
+  MuseumExhibitStorage}
 import jp.scid.genomemuseum.gui.ListDataServiceSource
 
 /**
@@ -20,6 +24,8 @@ class MuseumExhibitLoadManager extends Publisher {
   
   /** ファイルから MuseumExhibit を作成するオブジェクト */
   private[controller] val loader = new MuseumExhibitLoader
+  /** MuseumExhibit ファイルの格納先 */
+  var storage: Option[MuseumExhibitStorage] = None
   
   /** 現在実行中のタスク */
   private var currentLoadTask: Option[LoadTask] = None
@@ -78,6 +84,52 @@ class MuseumExhibitLoadManager extends Publisher {
     }
   }
   
+  @throws(classOf[IOException])
+  protected def loadMuseumExhibit(entity: MuseumExhibit, source: URL) = {
+    val file = copyToTempFile(source)
+    
+    val succeed = loader.makeMuseumExhibit(entity, file) match {
+      // ファイル保管が有効の時は、保管を試みる。
+      case true => storage match {
+        case None => true
+        case Some(storage) => storage.save(file, entity) match {
+          case Some(url) =>
+            // 保管先を entity に設定する
+            entity.filePath = url.toString
+            true
+          case None => false
+        }
+      }
+      case false => false
+    }
+    true
+  }
+  
+  /** 一時ファイルにコピーする */
+  private[controller] def copyToTempFile(source: URL): File = {
+    val file = File.createTempFile("LoadingTmp", "txt")
+    
+    using(new FileOutputStream(file)) { out =>
+      val dest = new BufferedOutputStream(out)
+      
+      using(source.openStream) { inst =>
+        val buf = new Array[Byte](8196)
+        val source = new BufferedInputStream(inst, buf.length)
+        
+        Iterator.continually(source.read(buf)).takeWhile(_ != -1)
+          .foreach(dest.write(buf, 0, _))
+      }
+      
+      dest.flush
+    }
+    file
+  }
+  
+  
+  private def using[A <% java.io.Closeable, B](s: A)(f: A => B) = {
+    try f(s) finally s.close()
+  }
+  
   /**
    * タスクの実行を行う。現在実行中のタスクはキャンセルされる。
    */
@@ -98,7 +150,7 @@ class MuseumExhibitLoadManager extends Publisher {
   /**
    * 読み込みを行う Swing タスクを作成
    */
-  private def createLoadTask() = new LoadTask(loader) {
+  private def createLoadTask() = new LoadTask(loader, storage) {
     import LoadTask.FailToLoad
     
     /**
@@ -129,6 +181,13 @@ class MuseumExhibitLoadManager extends Publisher {
       causes: List[File]) {
     // TODO
   }
+  
+  /**
+   * 取り込み中に起きた例外を通知する。
+   */
+  protected[controller] def alertFailToTransfer(cause: Exception) {
+    // TODO
+  }
 }
 
 object MuseumExhibitLoadManager {
@@ -141,7 +200,8 @@ object MuseumExhibitLoadManager {
 /**
  * データ読み込み Swing タスク
  */
-abstract class LoadTask(loader: MuseumExhibitLoader) extends SwingWorker[Unit, LoadTask.Chunk] {
+abstract class LoadTask(loader: MuseumExhibitLoader,
+    storage: Option[MuseumExhibitStorage]) extends SwingWorker[Unit, LoadTask.Chunk] {
   import LoadTask._
   import collection.mutable.Queue
   
@@ -172,12 +232,24 @@ abstract class LoadTask(loader: MuseumExhibitLoader) extends SwingWorker[Unit, L
       firePropertyChange("target", null, file)
       
       // 読み込み処理
-      loader.makeMuseumExhibit(entity, file) match {
-        case false =>
-          tableModel.removeElement(entity)
-          publish(FailToLoad(file))
-        case true =>
-          tableModel.updateElement(entity)
+      val succeed = loader.makeMuseumExhibit(entity, file) match {
+        case true => storage match {
+          case None => true
+          case Some(storage) => storage.save(file, entity) match {
+            case Some(url) =>
+              entity.filePath = url.toString
+              true
+            case None => false
+          }
+        }
+        case false => false
+      }
+      if (succeed) {
+        tableModel.updateElement(entity)
+      }
+      else {
+        tableModel.removeElement(entity)
+        publish(FailToLoad(file))
       }
       // 処理完了数の増加
       finishedCount += 1
