@@ -10,6 +10,9 @@ import org.squeryl.PrimitiveTypeMode._
  * GenomeMuseum データソースの Squeryl 実装
  */
 class MuseumSchema extends Schema with IMuseumSchema {
+  // 文字列格納長
+  override def defaultLengthOfString = Integer.MAX_VALUE
+  
   /** UserExhibitRoom のテーブルオブジェクト */
   private[squeryl] val userExhibitRoom = table[UserExhibitRoom]("user_exhibit_room")
   
