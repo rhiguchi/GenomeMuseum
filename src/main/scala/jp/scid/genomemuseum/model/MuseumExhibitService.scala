@@ -21,5 +21,5 @@ trait RoomExhibitService extends MuseumExhibitService {
   /**
    * 部屋に項目を追加する
    */
-  def add(element: MuseumExhibit)
+  def add(element: ElementClass)
 }

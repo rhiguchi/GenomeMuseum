@@ -24,14 +24,17 @@ class MuseumSchema extends Schema with IMuseumSchema {
   /** MuseumExhibit のテーブルオブジェクト */
   private[squeryl] val museumExhibit = table[MuseumExhibit]("museum_exhibit")
   
+  /** 永続化されていない展示物 */
+  val nonPersistedExhibits = new SortedSetMuseumExhibitService
+  
   /** Squeryl で実装した『展示物』データのサービス */
-  val museumExhibitService = new MuseumExhibitService(museumExhibit)
+  val museumExhibitService = new MuseumExhibitService(museumExhibit, nonPersistedExhibits)
   
   /** 部屋の展示物の関連づけを保持するテーブル */
   private[squeryl] val roomExhibit = table[RoomExhibit]
   
   /** 部屋の中身と部屋の関連 */
-  private val roomToRoomExhibitRelation = oneToManyRelation(userExhibitRoom, roomExhibit)
+  private[squeryl] val roomToRoomExhibitRelation = oneToManyRelation(userExhibitRoom, roomExhibit)
     .via((room, content) => room.id === content.roomId)
   roomToRoomExhibitRelation.foreignKeyDeclaration.constrainReference(onDelete cascade)
     
@@ -42,7 +45,7 @@ class MuseumSchema extends Schema with IMuseumSchema {
     
   /** Squeryl で実装した部屋の展示物データのサービス */
   def roomExhibitService(room: IUserExhibitRoom) =
-    new RoomExhibitService(roomExhibit, userExhibitRoom, museumExhibit, room)
+    new RoomExhibitService(room.asInstanceOf[UserExhibitRoom], exhibitToRoomExhibitRelation, nonPersistedExhibits)
 }
 
 object MuseumSchema {

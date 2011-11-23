@@ -3,6 +3,7 @@ package jp.scid.genomemuseum.model.squeryl
 import org.squeryl.Table
 
 import org.squeryl.PrimitiveTypeMode._
+import org.squeryl.dsl.OneToManyRelation
 
 import jp.scid.genomemuseum.model.{RoomExhibitService => IRoomExhibitService,
   UserExhibitRoom => IUserExhibitRoom, MuseumExhibit => IMuseumExhibit}
@@ -12,49 +13,56 @@ import IUserExhibitRoom.RoomType._
  * {@link jp.scid.genomemuseum.model.UserExhibitRoom} 中の
  * {@link jp.scid.genomemuseum.model.MuseumExhibit} データサービス。
  */
-private[squeryl] class RoomExhibitService(table: Table[RoomExhibit], roomTable: Table[UserExhibitRoom],
-    exhibitTable: Table[MuseumExhibit], val room: IUserExhibitRoom)
-    extends MuseumExhibitService(exhibitTable) with IRoomExhibitService {
-  import RoomExhibitService._
+private[squeryl] class RoomExhibitService(val room: UserExhibitRoom,
+    roomToRoomExhibit: OneToManyRelation[MuseumExhibit, RoomExhibit],
+    nonPersistedExhibits: SortedSetMuseumExhibitService)
+    extends MuseumExhibitService(roomToRoomExhibit.leftTable, nonPersistedExhibits)
+    with IRoomExhibitService {
   
-  def add(element: IMuseumExhibit) = inTransaction {
-    // BasicBox 以外は例外送出。
-    if (room.roomType != BasicRoom)
-        throw new IllegalArgumentException("room must be a BasicRoom")
-    
-    table.insert(RoomExhibit(room.id, element.id))
+  def table = roomToRoomExhibit.rightTable
+  def exhibitTable = roomToRoomExhibit.leftTable
+  
+  override def create = {
+    val e = super.create
+    nonPersistedExhibits.addRoomContent(room, e)
+    e
+  }
+  
+  override def allElements = inTransaction {
+    val notPersisted = nonPersistedExhibits.roomContent(room).toList
+    val contents = exhibitTable.where(e =>
+      e.id in from(table)(e =>
+        where(e.roomId === room.id) select(e.exhibitId)))
+    .toList
+    notPersisted ::: contents
+  }
+  
+  def add(element: MuseumExhibit) = element.isPersisted match {
+    case true => inTransaction {
+      table.insert(RoomExhibit(room, element))
+    }
+    case false => nonPersistedExhibits.addRoomContent(room, element)
   }
   
   override def remove(exhibit: MuseumExhibit) = inTransaction {
-    val c = table.deleteWhere(e =>
-      (e.roomId === room.id) and (e.exhibitId === exhibit.id))
-    c > 0
-  }
-  
-  override def allElements: List[MuseumExhibit] = inTransaction {
-    room.roomType match {
-      case BasicRoom | SmartRoom => getContentsOf(room.id, table, exhibitTable)
-      case GroupRoom =>
-        val contents = getAllContents(room.id, table, roomTable)
-        getExhibitsOf(contents, exhibitTable)
+    table.deleteWhere(e =>
+        (e.roomId === room.id) and (e.exhibitId === exhibit.id)) match {
+      case 0 => nonPersistedExhibits.removeRoomContent(room, exhibit)
+      case _ => true
     }
   }
   
-  override def indexOf(element: MuseumExhibit) = inTransaction {
-    allElements.indexOf(element)
-  }
-  
-  /**
-   * 要素を新しく作成し、この部屋に追加する。
-   */
-  override def create() = inTransaction {
-    // BasicBox 以外は例外送出。
-    if (room.roomType != BasicRoom)
-        throw new IllegalArgumentException("room must be a BasicRoom")
-    
-    val newElement = super.create()
-    add(newElement)
-    newElement
+  override def indexOf(exhibit: MuseumExhibit) = inTransaction {
+    val index = from(table)(e => where((e.roomId === room.id) and
+        (e.exhibitId === exhibit.id)) select(e.id)).headOption match {
+      case Some(index) =>
+        from(table)(e => where(e.id lte index) compute(count)).toInt - 1
+      case None => -1
+    }
+    index match {
+      case -1 => nonPersistedExhibits.roomContent(room).indexOf(exhibit)
+      case index => nonPersistedExhibits.roomContent(room).size + index
+    }
   }
 }
 

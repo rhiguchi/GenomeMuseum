@@ -16,17 +16,17 @@ class MuseumExhibitServiceSpec extends Specification with SquerylConnection {
     "要素の順序取得" ^ canGetIndex(serviceSomeElements) ^ bt ^
     end
   
-  val schema = new Schema
+  def schema = new Schema
   
   def emptyService = {
     setUpSchema()
-    new MuseumExhibitService(schema.museumExhibit)
+    new MuseumExhibitService(schema.museumExhibit, schema.nonPersistedExhibits)
   }
   
   def serviceSomeElements = {
-    setUpSchema()
+    val service = emptyService
     0 to 2 map (i => MuseumExhibit("item" + i)) foreach schema.museumExhibit.insert
-    new MuseumExhibitService(schema.museumExhibit)
+    service
   }
   
   def isEmpty(service: => MuseumExhibitService) =
@@ -158,6 +158,9 @@ private[squeryl] object MuseumExhibitServiceSpec {
    * スキーマ
    */
   private[squeryl] class Schema extends org.squeryl.Schema {
+    /** 永続化されていない要素 */
+    val nonPersistedExhibits = new SortedSetMuseumExhibitService
+  
     val museumExhibit = table[MuseumExhibit]("ListDataServiceSpec")
   }
 }
