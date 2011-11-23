@@ -25,7 +25,7 @@ private[squeryl] class RoomExhibitService(table: Table[RoomExhibit], roomTable: 
     table.insert(RoomExhibit(room.id, element.id))
   }
   
-  override def remove(exhibit: IMuseumExhibit) = inTransaction {
+  override def remove(exhibit: MuseumExhibit) = inTransaction {
     val c = table.deleteWhere(e =>
       (e.roomId === room.id) and (e.exhibitId === exhibit.id))
     c > 0
@@ -40,7 +40,7 @@ private[squeryl] class RoomExhibitService(table: Table[RoomExhibit], roomTable: 
     }
   }
   
-  override def indexOf(element: IMuseumExhibit) = inTransaction {
+  override def indexOf(element: MuseumExhibit) = inTransaction {
     allElements.indexOf(element)
   }
   

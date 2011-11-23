@@ -60,3 +60,35 @@ private object DatabaseConnectable {
   private var cpOp: Option[JdbcConnectionPool] = None
   
 }
+
+
+trait SquerylConnection {
+  private val adapter = new adapters.H2Adapter
+  
+  /**
+   * スキーマ
+   */
+  protected def schema: Schema
+  
+  /**
+   * {@code createSession} で作成されるセッションでスキーマを構築する。
+   * @return 使用したスキーマ
+   */
+  protected def setUpSchema() = {
+    val session = createSession
+    session.bindToCurrentThread
+    schema.create
+    session
+  }
+  
+  /**
+   * H2 データベースの匿名データベースコネクションを作成し、セッションを構築する。
+   */
+  protected def createSession = {
+    val h2cp = JdbcConnectionPool.create("jdbc:h2:mem:", "", "")
+    h2cp setMaxConnections 1
+    h2cp setLoginTimeout 10
+    Session.create(h2cp.getConnection, adapter)
+  }
+}
+

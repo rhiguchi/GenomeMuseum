@@ -7,8 +7,8 @@ import actors.{Futures}
 
 import java.io.File
 
-import jp.scid.genomemuseum.model.{MuseumExhibit, MuseumExhibitLoader}
-import jp.scid.genomemuseum.gui.ListDataServiceSource
+import jp.scid.genomemuseum.model.{MuseumExhibit, MuseumExhibitLoader, MuseumExhibitService}
+import jp.scid.genomemuseum.gui.ExhibitTableModel
 
 class MuseumExhibitLoadManagerSpec extends Specification with Mockito {
   def is = "MuseumExhibitLoadManager" ^
@@ -24,7 +24,7 @@ class MuseumExhibitLoadManagerSpec extends Specification with Mockito {
       "ファイル形式が不明のアラート" ^ doShoIAEAlert(iaeManager) ^ bt
     end
   
-  private type TableModel = ListDataServiceSource[MuseumExhibit]
+  private type TableModel = ExhibitTableModel
   
   def rightManager = new RightMuseumExhibitLoadManager
   
@@ -43,7 +43,9 @@ class MuseumExhibitLoadManagerSpec extends Specification with Mockito {
   
   def tableModelMock(returnEntity: MuseumExhibit) = {
     val model = mock[TableModel]
-    model.createElement returns returnEntity
+    val service = mock[MuseumExhibitService]
+    service.create returns returnEntity.asInstanceOf[service.ElementClass]
+    model.dataService = service
     model
   }
   
@@ -126,8 +128,11 @@ class MuseumExhibitLoadManagerSpec extends Specification with Mockito {
     
     def callUpdateElement2 = {
       val files = Range(0, 5) map (num => new File("dummyfile" + num))
-      val e1, e2, e3, e4, e5 = museumExhibitMock
+      
+      val service = model.dataService
+      val e1, e2, e3, e4, e5 = museumExhibitMock.asInstanceOf[service.ElementClass]
       model.createElement returns (e1, e2, e3, e4, e5)
+      
       manager.loadExhibits(model, files).apply
       there was one(model).updateElement(e1) then
       one(model).updateElement(e2) then
@@ -137,7 +142,8 @@ class MuseumExhibitLoadManagerSpec extends Specification with Mockito {
     }
     
     def twice = {
-      val e1, e2 = museumExhibitMock
+      val service = model.dataService
+      val e1, e2 = museumExhibitMock.asInstanceOf[service.ElementClass]
       model.createElement returns (e1, e2)
       manager.loadExhibits(model, singletonDummyFile)
       Thread.sleep(200)

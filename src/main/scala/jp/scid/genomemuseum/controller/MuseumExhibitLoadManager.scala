@@ -14,7 +14,7 @@ import util.control.Exception.catching
 
 import jp.scid.genomemuseum.model.{MuseumExhibit, MuseumExhibitLoader,
   MuseumExhibitStorage}
-import jp.scid.genomemuseum.gui.ListDataServiceSource
+import jp.scid.genomemuseum.gui.ExhibitTableModel
 
 /**
  * ファイルから展示物を作成するマネージャ
@@ -53,7 +53,7 @@ class MuseumExhibitLoadManager extends Publisher {
    * @return ファイルの読み込みに失敗したときは原因を含んだ Left 値。
    *         読み込みに成功し、サービスに正常に追加されたときはエンティティの Right 値。
    */
-  def loadExhibits(tableModel: ListDataServiceSource[MuseumExhibit],
+  def loadExhibits(tableModel: ExhibitTableModel,
       files: Seq[File]): Future[Option[_]] = {
     import util.control.Exception.catching
     
@@ -272,7 +272,7 @@ abstract class LoadTask(loader: MuseumExhibitLoader,
   /**
    * 読み込むファイルを追加する。このタスクが終了処理に入った時はファイルは追加されない。
    */
-  def tryQueue(tableModel: ListDataServiceSource[MuseumExhibit], files: Seq[File]) = {
+  def tryQueue(tableModel: ExhibitTableModel, files: Seq[File]) = {
     fileQueue.synchronized {
       // タスクが終了していなければ追加
       if (!shutdown) {
@@ -290,7 +290,7 @@ abstract class LoadTask(loader: MuseumExhibitLoader,
   
   /** クエリ情報オブジェクト */
   private case class Query(entity: MuseumExhibit,
-    tableModel: ListDataServiceSource[MuseumExhibit], file: File)
+    tableModel: ExhibitTableModel, file: File)
 }
 
 private[controller] object LoadTask {

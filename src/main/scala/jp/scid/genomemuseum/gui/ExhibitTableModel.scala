@@ -15,6 +15,27 @@ class ExhibitTableModel(tableFormat: TableFormat[MuseumExhibit])
   
   def this() = this(new ExhibitTableFormat)
   
+  /** 現在設定されているサービス */
+  private var currentService: Option[MuseumExhibitService] = None
+  
+  /** 現在の {@code TableDataService} を取得する */
+  def dataService = currentService.get
+  
+  /** このモデルの {@code TableDataService} ソースを設定する */
+  def dataService_=(newDataService: MuseumExhibitService) {
+    currentService = Option(newDataService)
+    reloadSource()
+  }
+  
+  /**
+   * 新しい要素を追加する。
+   */
+  def createElement() = {
+    val newElement = dataService.create()
+    sourceListWithWriteLock { list => list add newElement }
+    newElement
+  }
+  
   protected def getFilterString(base: java.util.List[String], e: MuseumExhibit) {
     base add e.name
     base add e.source

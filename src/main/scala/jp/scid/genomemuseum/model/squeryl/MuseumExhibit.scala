@@ -28,10 +28,17 @@ case class MuseumExhibit(
   var fileType: FileType.Value = FileType.Unknown
 ) extends IMuseumExhibit with KeyedEntity[Long] {
   def this() = this("", version = Some(0))
-  var id: Long = 0
+  var id: Long = - MuseumExhibit.newId
   
   def filePathAsURI = URI.create(filePath)
   def filePathAsURI_=(uri: URI) {
     filePath = uri.toString
   }
+}
+
+object MuseumExhibit {
+  import java.util.concurrent.atomic.AtomicLong
+  
+  private val elmentCount = new AtomicLong
+  private def newId = elmentCount.incrementAndGet
 }

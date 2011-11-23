@@ -8,7 +8,7 @@ import jp.scid.gui.event.{ValueChange, DataListSelectionChanged}
 import jp.scid.gui.table.DataTableModel
 import jp.scid.genomemuseum.{view, model, gui}
 import gui.{ExhibitTableModel, WebSearchManager, WebServiceResultsModel}
-import model.{TableDataService, MuseumExhibit, MuseumExhibitService}
+import model.{MuseumExhibit, MuseumExhibitService}
 import view.FileContentView
 
 /**
