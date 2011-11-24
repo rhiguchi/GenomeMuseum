@@ -61,7 +61,7 @@ class TogoWebServiceAgentSpec extends Specification {
   def getFieldValues(agent: TogoWebServiceAgent) = new Object {
     def singleQuery = {
       val identifier = Identifier("308206734")
-      agent.getFieldValues(Seq(identifier)) must
+      agent.getFieldValues(Seq(identifier)).toList must
         contain(EntryValues(identifier, "HM367685", 401262,
           "Vigna radiata mitochondrion, complete genome.")).only
     }

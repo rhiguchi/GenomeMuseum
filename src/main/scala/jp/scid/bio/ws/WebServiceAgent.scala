@@ -30,7 +30,7 @@ trait WebServiceAgent {
    * @return 識別子から取得できるデータの属性値
    * @throws IOException 検索中に障害が発生した時
    */
-  def getFieldValues(identifiers: Seq[Identifier]): IndexedSeq[EntryValues]
+  def getFieldValues(identifiers: Seq[Identifier]): Iterator[EntryValues]
   
   /**
    * 識別子のデータにアクセスするための URL を取得する。

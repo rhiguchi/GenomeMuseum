@@ -49,8 +49,17 @@ class DataListModel[A] extends DataModel with swing.Publisher {
   def source_=(newSource: Seq[A]) {
     import scala.collection.JavaConverters._
     val javaSource = newSource.asJava
-    sourceListWithWriteLock { tableSource =>
-      GlazedLists.replaceAll(tableSource.asInstanceOf[EventList[A]], javaSource, true)
+    withWriteLock(tableSource) { tableSource =>
+      GlazedLists.replaceAll(tableSource, javaSource, true)
+    }
+  }
+  
+  /**
+   * データの更新を通知
+   */
+  def itemUpdated(index: Int) {
+    sourceListWithWriteLock { list =>
+      list.set(index, list.get(index))
     }
   }
   

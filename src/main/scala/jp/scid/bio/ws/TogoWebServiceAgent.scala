@@ -91,9 +91,9 @@ protected class TogoWebServiceAgent extends WebServiceAgent {
   /**
    * エントリの値を取得する。通信中の処理をブロックする。
    */
-  def getFieldValues(identifiers: Seq[Identifier]): IndexedSeq[EntryValues] = {
-    if (identifiers.isEmpty) IndexedSeq.empty
-    else getFieldValuesFromWeb(identifiers)
+  def getFieldValues(identifiers: Seq[Identifier]): Iterator[EntryValues] = {
+    if (identifiers.isEmpty) Iterator.empty
+    else new EntryValueRetriever(identifiers)
   }
   
   /**
@@ -105,7 +105,7 @@ protected class TogoWebServiceAgent extends WebServiceAgent {
   /**
    * ウェブからエントリの値を取得する。通信中の処理をブロックする。
    */
-  private def getFieldValuesFromWeb(identifiers: Seq[Identifier]) = {
+  private def getFieldValuesFromWeb(identifiers: Seq[Identifier]) = if (identifiers.nonEmpty) {
     val accessionUrl = entryUrl(identifiers, "accession")
     val lengthUrl = entryUrl(identifiers, "length")
     val definitionUrl = entryUrl(identifiers, "definition")
@@ -131,6 +131,30 @@ protected class TogoWebServiceAgent extends WebServiceAgent {
     }
     
     valuesList.toIndexedSeq
+  }
+  else {
+    IndexedSeq.empty
+  }
+  
+  class EntryValueRetriever(identifiers: Seq[Identifier], unitCount: Int = 5) extends Iterator[EntryValues] {
+    import collection.mutable.Queue
+    
+    val identifier = Queue(identifiers: _*)
+    
+    val dataStock = Queue.empty[EntryValues]
+    
+    def hasNext = identifier.nonEmpty || dataStock.nonEmpty
+    
+    def next = {
+      if (dataStock.isEmpty) {
+        dataStock ++= retrieveNext
+      }
+      dataStock.dequeue
+    }
+    
+    private def retrieveNext = {
+      getFieldValuesFromWeb(identifier.take(unitCount))
+    }
   }
 
   /**

@@ -68,8 +68,15 @@ class WebSearchManager(val listModel: DataListModel[SearchResult],
     val elements = ids map (id => toSearchingResult(id.value))
     setSource(elements)
     
-    elements zip agent.getFieldValues(ids) foreach { _ => makeSearchingResult _ }
-    setSource(elements)
+    val evIte = agent.getFieldValues(ids)
+    
+    elements.zipWithIndex.toIterator.foreach { case (element, index) =>
+      if (!isCanceled && evIte.hasNext) {
+        makeSearchingResult(element, evIte.next)
+        listModel.itemUpdated(index)
+      }
+    }
+    
     elements
   }
   

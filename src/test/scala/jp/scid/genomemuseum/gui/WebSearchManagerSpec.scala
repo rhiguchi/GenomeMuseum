@@ -50,7 +50,7 @@ class WebSearchManagerSpec extends Specification with Mockito {
     }
     agent.getFieldValues(any) answers { query => 
       Thread.sleep(waitTime)
-      values.toIndexedSeq
+      values.toIterator
     }
   }
   
@@ -143,7 +143,10 @@ class WebSearchManagerSpec extends Specification with Mockito {
       m.agent = agentFor(evs)
       val results = m.search("q").apply.resultTask.get.apply
       
-      there was two(m.listModel).source_=(results)
+      there was one(m.listModel).source_=(results) then
+        one(m.listModel).itemUpdated(0) then
+        one(m.listModel).itemUpdated(1) then
+        one(m.listModel).itemUpdated(2)
     }
   }
 }
