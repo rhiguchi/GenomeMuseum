@@ -8,15 +8,6 @@ case class SearchResult(
   var accession: String = "",
   var definition: String = "",
   var length: Int = 0,
-  var status: SearchResult.Status.Value = SearchResult.Status.Pending
+  var done: Boolean = false,
+  var sourceUrl: Option[java.net.URL] = None
 )
-
-object SearchResult {
-  object Status extends Enumeration {
-    type Status = Value
-    val Pending = Value(0)
-    val Searching = Value(1)
-    val Failed = Value(2)
-    val Succeed = Value(3)
-  }
-}

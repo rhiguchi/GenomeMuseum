@@ -44,8 +44,7 @@ class MuseumExhibitLoadManagerSpec extends Specification with Mockito {
   def tableModelMock(returnEntity: MuseumExhibit) = {
     val model = mock[TableModel]
     val service = mock[MuseumExhibitService]
-    service.create returns returnEntity.asInstanceOf[service.ElementClass]
-    model.dataService = service
+    model.createElement returns returnEntity.asInstanceOf[service.ElementClass]
     model
   }
   

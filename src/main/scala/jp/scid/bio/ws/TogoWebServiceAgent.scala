@@ -12,7 +12,7 @@ import client.HttpClient
 import client.methods.HttpGet
 import impl.client.DefaultHttpClient
 
-import WebServiceAgent.{Identifier, EntryValues}
+import WebServiceAgent.{Query, Identifier, EntryValues}
 
 /**
  * TogoWS を利用した Web サービスアクセス
@@ -51,50 +51,41 @@ protected class TogoWebServiceAgent extends WebServiceAgent {
     entryURL + idsValue + "/" + key
   }
   
-  /**
-   * 要素数を取得する。通信中の処理をブロックする。
-   */
-  def countHeavy(query: String) = {
-    if (query.trim.isEmpty) 0
-    else getCountFromWeb(query)
+  /** エントリ取得 URL の取得 */
+  private def entryUrl(identifier: Identifier) = {
+    // ブランクではエラーになるため、文字を置き換える
+    def getValidIdVal(e: Identifier) = e.value match {
+      case "" => "_"
+      case value => value
+    }
+    entryURL + identifier.value
   }
   
   /**
-   * ウェブから要素数を取得する。通信中の処理をブロックする。
+   * 要素数を取得する。通信中の処理をブロックする。
    */
-  private def getCountFromWeb(query: String) = {
-    val url = countUrl(query)
-    val count = using(new BufferedReader(
-        new InputStreamReader(contentGet(url)))) { reader =>
-      reader.readLine match {
-        case null =>
-          throw new IllegalStateException("Content is null")
-        case str => str.toInt
-      }
+  def getCount(query: String) = {
+    val count = query.trim.nonEmpty match {
+      case true => getContent(countUrl(query.trim)).getLines.next.toInt
+      case false => 0
     }
-    
-    count
+    Query(query, count)
   }
   
   /**
    * 識別子を取得する。通信中の処理をブロックする。
    */
-  def searchIdentifiersHeavy(query: String, offset: Int, limit: Int): IndexedSeq[Identifier] = {
-    if (query.trim.isEmpty) IndexedSeq.empty
-    else getIdentifiersFromWeb(query, offset, limit)
-  }
-  
-  /**
-   * ウェブから識別子を取得する。通信中の処理をブロックする。
-   */
-  private def getIdentifiersFromWeb(query: String, offset: Int, limit: Int) = {
-    val url = searchUrl(query, offset, limit)
-    val identifiers = using(contentGet(url)) { inst =>
-      Source.fromInputStream(inst).getLines.toIndexedSeq map { identifier: String =>
-        Identifier(identifier)
+  def searchIdentifiers(query: Query): IndexedSeq[Identifier] = {
+    import util.control.Exception.catching
+    if (query.count <= 0) IndexedSeq.empty
+    else {
+      val url = searchUrl(query.text, 0, query.count)
+      val lop = catching(classOf[IllegalArgumentException]) opt {
+        getContent(url).getLines
       }
+      lop.getOrElse(Nil).toIndexedSeq.map
+        { identifier: String => Identifier(identifier)}
     }
-    identifiers
   }
   
   /**
@@ -106,6 +97,12 @@ protected class TogoWebServiceAgent extends WebServiceAgent {
   }
   
   /**
+   * バイオデータを取得できる URL
+   */
+  def getSource(identifier: Identifier): java.net.URL =
+    new java.net.URL(entryUrl(identifier))
+  
+  /**
    * ウェブからエントリの値を取得する。通信中の処理をブロックする。
    */
   private def getFieldValuesFromWeb(identifiers: Seq[Identifier]) = {
@@ -113,15 +110,9 @@ protected class TogoWebServiceAgent extends WebServiceAgent {
     val lengthUrl = entryUrl(identifiers, "length")
     val definitionUrl = entryUrl(identifiers, "definition")
     
-    val accessions = using(contentGet(accessionUrl)) { inst =>
-      Source.fromInputStream(inst).getLines.toIndexedSeq
-    }
-    val lengths = using(contentGet(lengthUrl)) { inst =>
-      Source.fromInputStream(inst).getLines.toIndexedSeq
-    }
-    val definitions = using(contentGet(definitionUrl)) { inst =>
-      Source.fromInputStream(inst).getLines.toIndexedSeq
-    }
+    val accessions = getContent(accessionUrl).getLines.toIndexedSeq
+    val lengths = getContent(lengthUrl).getLines.toIndexedSeq
+    val definitions = getContent(definitionUrl).getLines.toIndexedSeq
     
     if (identifiers.size != accessions.size || identifiers.size != lengths.size ||
          identifiers.size != definitions.size) {
@@ -141,51 +132,28 @@ protected class TogoWebServiceAgent extends WebServiceAgent {
     
     valuesList.toIndexedSeq
   }
-  
-  
-  // インターフェイスの実装
-  def count(query: String) = Futures.future {
-    countHeavy(query)
-  }
 
-  def searchIdentifiers(query: String, offset: Int, limit: Int) = Futures.future {
-    searchIdentifiersHeavy(query, offset, limit)
-  }
-
-  def getFieldValuesFor(identifiers: Seq[Identifier]) = Futures.future {
-    getFieldValues(identifiers)
-  }
-  
   /**
-   * URL のコンテンツの InputStream を GET メソッドで取得する
+   * URL のコンテンツを Source として取得する
    * @throws IllegalArgumentException この URL が 404 を返す時
+   * @throws IllegalStateException この URL が 200 もしくは 404 ではない返答コードを返す時
    */
   @throws(classOf[IllegalStateException])
-  private def contentGet(url: String): InputStream = {
-    println("contentGet: " + url)
+  private[ws] def getContent(url: String): io.Source = {
     val method = new HttpGet(url)
     val response: HttpResponse = client.execute(method)
     
-    val entity = response.getStatusLine.getStatusCode match {
-      case 200 =>
-        response.getEntity()
+    lazy val content = Source.fromInputStream(response.getEntity.getContent)
+    
+    response.getStatusLine.getStatusCode match {
+      case 200 => content
       case 404 =>
         throw new IllegalArgumentException(
           "404 Not found. Maybe URL '%s' was invalid.".format(url))
       case code =>
-        val content = using(response.getEntity().getContent()) { inst =>
-          val source = Source.fromInputStream(inst)
-          source.getLines.mkString("\n")
-        }
         throw new IllegalStateException(
           "The response %d is recieved from '%s'. The reason: %s"
-              .format(code, url, content))
+              .format(code, url, content.mkString))
     }
-    
-    entity.getContent
-  }
-  
-  private def using[A <% java.io.Closeable, B](s: A)(f: A => B) = {
-    try f(s) finally s.close()
   }
 }

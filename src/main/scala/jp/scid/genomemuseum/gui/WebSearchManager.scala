@@ -1,153 +1,115 @@
 package jp.scid.genomemuseum.gui
 
-import actors.{Actor, Futures}
+import actors.{Actor, Futures, Future}
 
-import jp.scid.bio.ws.{WebServiceAgent, WebSourceIterator}
-import WebServiceAgent.{Identifier, EntryValues}
+import jp.scid.bio.ws.{WebServiceAgent}
+import WebServiceAgent.{Query, Identifier, EntryValues}
 import jp.scid.gui.DataListModel
-import jp.scid.genomemuseum.model.{SearchResult, SearchResultRetrievingActor}
+import jp.scid.genomemuseum.model.{SearchResult}
 
 /**
- * ウェブ検索結果をリストモデルに適用する管理クラス。
+ * ウェブ検索結果をリストモデルに適用するクラス。
  */
-class WebSearchManager(val listModel: DataListModel[SearchResult], var agent: WebServiceAgent)
-    extends swing.Publisher {
+class WebSearchManager(val listModel: DataListModel[SearchResult],
+    var agent: WebServiceAgent) {
   import WebSearchManager._
-  import Actor._
-  
-  def this(agent: WebServiceAgent) = this(new DataListModel[SearchResult], agent)
   
   // パラメータ
-  /** 項目数取得のタイムアウト */
-  var timeoutTime = 10000L
   /** リストに表示する最大項目数 */
   var resultMaximumCount = 200
   
-  /** 検索アクター */
-  private var searchingActor: Option[SearchingActor] = None
+  /** 実行が取り消されたかどうか */
+  private var canceled = false
   
+  /** 実行が終了したかどうか */
+  private var finished = false
+    
   /**
    * 指定の文字列で検索処理を行う
    * 現在実行中の検索は中断される。
    */
-  def search(query: String) {
-    cancel()
-    clearListModel()
-    
-    if (query.nonEmpty) {
-      publish(Started())
-      val r = new SearchingActor(query)
-      r.start()
-      searchingActor = Some(r)
+  def search(queryText: String) = {
+    if (canceled) throw new IllegalStateException("already terminated")
+    Futures.future {
+      val result = countTask(queryText)
+      finished = true
+      result
     }
   }
   
   /**
-   * 現在実行中の検索を中断する。
+   * 現在実行中の検索を停止する。
    */
-  def cancel() = searchingActor match {
-    case Some(actor) =>
-      actor.stop
-      canceled()
-      done()
-      true
-    case None =>
-      false
+  def cancel() = canceled = true
+  
+  def isCanceled = canceled
+  
+  def isDone = finished
+  
+  private[gui] def toResult(entryValues: EntryValues) = {
+    val element = SearchResult(entryValues.identifier.value)
+    makeSearchingResult(element, entryValues)
+    element
   }
   
-  /** リストモデルの内容を消去 */
-  private def clearListModel() {
-    listModel.source = Nil
+  private[gui] def toSearchingResult(identifier: String) =
+    SearchResult(identifier)
+  
+  private[gui] def makeSearchingResult(element: SearchResult, entryValues: EntryValues) {
+    element.accession = entryValues.accession
+    element.definition = entryValues.definition
+    element.length = entryValues.length
+    element.done = true
+    element.sourceUrl = Option(agent.getSource(entryValues.identifier))
   }
   
-  /** 検索結果数を取得。処理をタイムアウト時間まで待つ。 */
-  private def tryRetrievingCount(query: String, timeOut: Long): Option[Int] = {
-    val countFut = agent.count(query)
-    val result = Futures.awaitAll(timeOut, countFut).head.map(_.asInstanceOf[Int])
-    result
+  /** 属性値取得とテーブル適用処理 */
+  private def fieldValuesTask(ids: IndexedSeq[Identifier]) = {
+    val elements = ids map (id => toSearchingResult(id.value))
+    setSource(elements)
+    
+    elements zip agent.getFieldValues(ids) foreach { _ => makeSearchingResult _ }
+    setSource(elements)
+    elements
   }
   
-  /** 項目数の取得完了 */
-  protected def countRetrieved(count: Int) {
-    publish(CountRetrieved(count))
-  }
-  
-  /** 取得完了後の処理 */
-  protected def succeed() {
-    publish(Succeed())
-  }
-  
-  /** ユーザーによる中断命令後の処理 */
-  protected def canceled() {
-    publish(Canceled())
-  }
-  
-  // 失敗処理
-  /** 検索の適合数の取得がタイムアウトした後の処理 */
-  protected def countRetrivingTimeOut() {
-    publish(CountRetrivingTimeOut())
-  }
-  
-  // 終了処理
-  /** 成功、中断、失敗などの処理後に呼ばれる処理 */
-  protected def done() {
-    searchingActor = None
-    publish(Done())
-  }
-  
-  /**
-   * 取得
-   */
-  private class RetrievingActor()
-      extends SearchResultRetrievingActor(listModel) {
-    override protected def done() {
-      succeed()
-      WebSearchManager.this.done()
+  /** 識別子取得とテーブル適用処理 */
+  private def identifierTask(query: Query) = {
+    val ids = agent.searchIdentifiers(query)
+    canceled match {
+      case false => fieldValuesTask(ids)
+      case true => IndexedSeq.empty
     }
   }
   
-  /**
-   * 検索
-   */
-  private class SearchingActor(query: String) extends Actor {
-    val dataRetrievingActor = new RetrievingActor
-    var cancelSearching = false
+  /** 該当数取得とテーブル適用処理 */
+  private def countTask(queryString: String) = {
+    setSource(Nil)
     
-    def act() {
-      val count = tryRetrievingCount(query, timeoutTime)
-      
-      if (!cancelSearching) count match {
-        case Some(count) =>
-          countRetrieved(count)
-          
-          if (count <= resultMaximumCount) {
-            val resultSet = new WebSourceIterator(agent, query, count)
-            resultSet foreach dataRetrievingActor.add
-            dataRetrievingActor.start()
+    val query = agent.getCount(queryString)
+    
+    val resultTask = 0 < query.count && query.count < resultMaximumCount match {
+      case true =>
+        val fut = Futures.future {
+          canceled match {
+            case false => identifierTask(query)
+            case true => IndexedSeq.empty
           }
-          else {
-            done()
-          }
-        case None =>
-          countRetrivingTimeOut()
-          done()
-      }
+        }
+        Some(fut)
+      case false => None
     }
     
-    def stop() {
-      cancelSearching = true
-      dataRetrievingActor.stop()
-    }
+    SearchingQuery(query.count, resultTask)
   }
+  
+  private def setSource(newSource: Seq[SearchResult]) =
+    if (!canceled) listModel.source = newSource
 }
 
 object WebSearchManager {
-  import swing.event.Event
-  
-  case class Started() extends Event
-  case class CountRetrieved(count: Int) extends Event
-  case class CountRetrivingTimeOut() extends Event
-  case class Canceled() extends Event
-  case class Succeed() extends Event
-  case class Done() extends Event
+  case class SearchingQuery(
+    count: Int,
+    resultTask: Option[Future[IndexedSeq[SearchResult]]]
+  )
 }

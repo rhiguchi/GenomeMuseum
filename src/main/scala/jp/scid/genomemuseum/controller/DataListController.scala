@@ -6,9 +6,6 @@ import jp.scid.gui.ValueHolder
 import jp.scid.gui.table.DataTableModel
 import jp.scid.gui.event.ValueChange
 
-import jp.scid.genomemuseum.{view, model, gui}
-import gui.{ExhibitTableModel, WebSearchManager, WebServiceResultsModel}
-
 abstract class DataListController(
   dataTable: JTable,
   quickSearchField: JTextField,
@@ -44,47 +41,3 @@ abstract class DataListController(
   }
 }
 
-
-class WebServiceResultController(
-  dataTable: JTable,
-  quickSearchField: JTextField,
-  statusField: JLabel,
-  progressView: JComponent
-) extends DataListController(dataTable, quickSearchField, statusField) {
-  import WebSearchManager._
-  // モデル
-  /** タスクが実行中であるかの状態を保持 */
-  val isProgress = new ValueHolder(false)
-  /** テーブルモデル */
-  private[controller] val tableModel = new WebServiceResultsModel
-  
-  // モデルバインド
-  /** Web 検索文字列の変更 */
-  statusTextModel.reactions += {
-    case ValueChange(_, _, newValue) =>
-      println("searching query: " + newValue)
-      tableModel.searchQuery = newValue.asInstanceOf[String]
-  }
-  /** 検索状態の更新 */
-  tableModel.reactions += {
-    case Started() =>
-      isProgress := true
-    case CountRetrivingTimeOut() =>
-      statusTextModel := "取得に失敗しました。"
-    case CountRetrieved(count) =>
-      statusTextModel := "%d 件".format(count)
-    case Canceled() =>
-    
-    case Succeed() =>
-    
-    case Done() =>
-      isProgress := false
-  }
-  
-  override def bind() = {
-    val connList = super.bind()
-    val progConn = ValueHolder.connectVisible(isProgress, progressView)
-    
-    List(progConn) ::: connList
-  }
-}

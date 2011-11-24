@@ -1,170 +1,149 @@
 package jp.scid.genomemuseum.gui
 
 import org.specs2._
-
-import actors.{Futures, Future}
+import mock._
 
 import jp.scid.gui.DataListModel
-import jp.scid.bio.ws.{WebServiceAgent, WebSourceIterator}
-import WebServiceAgent.{Identifier, EntryValues}
+import jp.scid.bio.ws.{WebServiceAgent}
+import WebServiceAgent.{Query, Identifier, EntryValues}
 import jp.scid.genomemuseum.model.SearchResult
 
-class WebSearchManagerSpec extends Specification {
-  import WebSearchManager._
-  
+class WebSearchManagerSpec extends Specification with Mockito {
   def is = "WebSearchManager" ^
-    "search" ^
-      "Succeed イベント取得" ! search.s1 ^
-      "項目数の増加" ! search.s2 ^
-      "再検索時にリストモデルを消去" ! search.s3 ^
-    bt ^ "cancel" ^ 
-      "開始前に読んでも false" ! cancel.s1 ^
-      "検索中には true を返す" ! cancel.s2 ^
-      "Cancel イベントコール" ! cancel.s3 ^
-      "項目は追加されない" ! cancel.s4 ^
-    bt ^ "項目数取得のタイムアウト" ^ 
-      "CountRetrivingTimeOut イベントコール" ! to.s1 ^
-      "項目は追加されない" ! to.s2 ^
-    bt ^ "多い項目数の時はデータ取得をしない" ^ 
-      "CountRetrieved イベントコール" ! tmi.s1 ^
-      "項目は追加されない" ! tmi.s2 
+    "検索結果が空" ^ notFound(managetWith(emptyAgent)) ^ bt ^
+    "検索結果が存在する" ^ resultsExist(managetWith(findableAgent)) ^ bt ^
+    "検索結果が非常に多い" ^ tooManyResults(managetWith(agentWithMuchCount)) ^ bt ^
+    "検索反応" ^ response(managetWith(findableAgent)) ^ bt ^
+    "検索" ^ canSearch(managetWith(emptyAgent)) ^ bt ^
+    end
   
-  val agent = new WebServiceAgent {
-    val id1 = Identifier("id1")
-    val id2 = Identifier("id2")
-    val id3 = Identifier("id3")
-    val id4 = Identifier("id4")
-    
-    val ev1 = EntryValues(id1, "acc1")
-    val ev2 = EntryValues(id2, "acc2")
-    val ev3 = EntryValues(id3, "acc3")
-    val ev4 = EntryValues(id4, "acc4")
-    
-    val query1Items = IndexedSeq(id1, id2, id3)
-    
-    val itemsMap = Map(
-      id1 -> EntryValues(id1, "acc1"),
-      id2 -> EntryValues(id2, "acc2"),
-      id3 -> EntryValues(id3, "acc3"),
-      id4 -> EntryValues(id4, "acc4")
-    )
-    
-    def count(query: String) = Futures.future { 
-      query match {
-        case "query" => query1Items.size
-        case "query2" =>
-          Thread.sleep(500)
-          query1Items.size
-        case "query3" => 0
-        case "query4" =>
-          Thread.sleep(5000)
-          0
-      }
-    }
-      
-    def searchIdentifiers(query: String, offset: Int, limit: Int) = Futures.future {
-      query match {
-        case "query" =>
-          query1Items.slice(offset, limit)
-        case "query2" =>
-          Thread.sleep(500)
-          query1Items.slice(offset, limit)
-      }
-    }
-    
-    def getFieldValuesFor(identifiers: Seq[Identifier]) = Futures.future {
-      identifiers.map(itemsMap.apply).toIndexedSeq
+  def managetWith(agent: => WebServiceAgent) = {
+    val listModel = mock[DataListModel[SearchResult]]
+    new WebSearchManager(listModel, agent)
+  }
+  
+  /** 空結果を返すエージェント */
+  def emptyAgent = agentFor(500, 0, 500)
+  
+  /** いくつかの結果を返すエージェント */
+  def findableAgent = agentFor(500, 4, 500)
+  
+  /** 多量の該当数を返すエージェント */
+  def agentWithMuchCount = {
+    val agent = mock[WebServiceAgent]
+    makeAgentMockCount(agent, 500, 100000)
+    agent
+  }
+  
+  def makeAgentMockCount(agent: WebServiceAgent, waitTime: Long, count: Int) {
+    agent.getCount(any) answers { query =>
+      Thread.sleep(waitTime)
+      Query(query.asInstanceOf[String], count)
     }
   }
   
-  abstract class TestBase {
-    val manager = new WebSearchManager(agent)
+  def makeAgentMockEntryValues(agent: WebServiceAgent, waitTime: Long, values: Seq[EntryValues]) {
+    val ids = values map (r => r.identifier)
+    agent.searchIdentifiers(any) answers { query => 
+      Thread.sleep(waitTime)
+      ids.toIndexedSeq
+    }
+    agent.getFieldValues(any) answers { query => 
+      Thread.sleep(waitTime)
+      values.toIndexedSeq
+    }
+  }
+  
+  def agentFor(countTime: Long, count: Int, identifiersTime: Long) = {
+    val agent = mock[WebServiceAgent]
+    val results = 0 until count map (i => WebServiceAgent.EntryValues(
+      WebServiceAgent.Identifier("id" + i)))
     
+    makeAgentMockCount(agent, countTime, count)
+    makeAgentMockEntryValues(agent, identifiersTime, results)
+    agent
+  }
+  
+  def agentFor(results: Seq[EntryValues]) = {
+    val agent = mock[WebServiceAgent]
+    makeAgentMockCount(agent, 0, results.size)
+    makeAgentMockEntryValues(agent, 0, results)
+    agent
+  }
+  
+  def identifiersOf(values: String*) =
+    values.map(new WebServiceAgent.Identifier(_))
+  
+  def notFound(m: => WebSearchManager) =
+    "モデルが空に設定される" ! listModel(m).sourceIsEmpty ^
+    "該当数が 0" ! searchQuery(m).countZero
+  
+  def resultsExist(m: => WebSearchManager) =
+    "モデルに要素が設定される" ! listModel(m).sourceIsNotEmpty ^
+    "該当数が 0 より多い" ! searchQuery(m).countGtZero ^
+    "識別子を取得する" ! searchQuery(m).haveResult ^
+    "識別子リストが空ではない" ! searchQuery(m).getSomeResults
+  
+  def response(m: => WebSearchManager) =
+    "制御がすぐ戻る" ! searching(m).backImmediately ^
+    "該当数の取得には結果の取得を待たない" ! searching(m).notWaitResultToGetCount
+  
+  def tooManyResults(m: => WebSearchManager) =
+    "モデルが空に設定される" ! listModel(m).sourceIsEmpty ^
+    "識別子を取得しない" ! searchQuery(m).haveNoResult
+  
+  def canSearch(m: => WebSearchManager) =
+    "エージェントから返された結果が設定される" ! searching(m).appliedEntryValues
+  
+  class TestBase(val manager: WebSearchManager) {
     def listModel = manager.listModel
   }
   
-  val search = new TestBase {
-    var succeedPublished = false
-    
-    manager.reactions += {
-      case Succeed() => succeedPublished = true
+  def listModel(m: WebSearchManager) = new TestBase(m) {
+    def sourceIsEmpty = {
+      manager.search("q").apply.resultTask.map(_.apply)
+      there was one(listModel).source_=(Nil)
     }
     
-    assert(!succeedPublished)
-    assert(listModel.sourceSize == 0)
-    
-    manager.search("query")
-    
-    Thread.sleep(500)
-    
-    
-    val s1 = succeedPublished must beTrue
-    
-    val s2 = todo //listModel.sourceSize must_== 3
-    
-    manager.search("query3")
-    
-    val s3 = listModel.sourceSize must_== 0
+    def sourceIsNotEmpty = {
+      val result = manager.search("q").apply.resultTask.map(_.apply).get
+      there was atLeastOne(listModel).source_=(result)
+    }
   }
   
-  val cancel = new TestBase {
-    var canceledPublished = false
+  def searchQuery(m: WebSearchManager) = new TestBase(m) {
+    def countZero = manager.search("q").apply.count must_== 0
     
-    manager.reactions += {
-      case Canceled() => canceledPublished = true
-    }
+    def countGtZero = manager.search("q").apply.count must be_>(0)
     
-    assert(!canceledPublished)
-    assert(listModel.sourceSize == 0)
+    def haveResult = manager.search("q").apply.resultTask must beSome
     
-    val s1 = manager.cancel must beFalse
+    def haveNoResult = manager.search("q").apply.resultTask must beNone
     
-    manager.search("query2")
-    
-    val cancelResult = manager.cancel
-    
-    val s2 = cancelResult must beTrue
-    
-    val s3 = canceledPublished must beTrue
-    
-    val s4 = listModel.sourceSize must_== 0
+    def getSomeResults = manager.search("q").apply.resultTask
+      .map(_.apply).getOrElse(Nil) must not beEmpty
   }
   
-  val to = new TestBase {
-    var timeOutPublished = false
-    
-    manager.reactions += {
-      case CountRetrivingTimeOut() => timeOutPublished = true
+  def searching(m: WebSearchManager) = new TestBase(m) {
+    def backImmediately = {
+      val startTime = System.currentTimeMillis
+      m.search("q")
+      System.currentTimeMillis - startTime must be_<(200L)
     }
     
-    assert(!timeOutPublished)
-    
-    manager.timeoutTime = 0L
-    manager.search("query4")
-    
-    def s1 = timeOutPublished must beTrue
-    
-    Thread.sleep(300)
-    
-    val s2 = listModel.sourceSize must_== 0
-  }
-  
-  val tmi = new TestBase {
-    var tmrfPublished = false
-    
-    manager.reactions += {
-      case CountRetrieved(count) => tmrfPublished = true
+    def notWaitResultToGetCount = {
+      m.agent = agentFor(500, 1, 3000)
+      val startTime = System.currentTimeMillis
+      val result = m.search("q").apply
+      System.currentTimeMillis - startTime must be_<(700L)
     }
     
-    assert(!tmrfPublished)
-    
-    manager.resultMaximumCount = 1
-    manager.search("query")
-    
-    def s1 = tmrfPublished must beTrue
-    
-    Thread.sleep(300)
-    
-    val s2 = listModel.sourceSize must_== 0
+    def appliedEntryValues = {
+      val evs = 0 until 3 map (i => EntryValues(Identifier("id" + i), "acc" + i)) toList;
+      m.agent = agentFor(evs)
+      val results = m.search("q").apply.resultTask.get.apply
+      
+      there was two(m.listModel).source_=(results)
+    }
   }
 }

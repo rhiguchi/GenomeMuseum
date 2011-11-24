@@ -44,10 +44,11 @@ class ExhibitTableModel(tableFormat: TableFormat[MuseumExhibit])
    * 選択中の要素を削除する
    */
   def removeSelections() {
-    val service = dataService
     sourceListWithWriteLock { list => 
       selections foreach { selection =>
-        service remove selection.asInstanceOf[service.ElementClass]
+        currentService foreach { service =>
+          service remove selection.asInstanceOf[service.ElementClass]
+        }
         list remove selection
       }
     }
@@ -57,9 +58,10 @@ class ExhibitTableModel(tableFormat: TableFormat[MuseumExhibit])
    * 要素の削除を行う
    */
   def removeElement(element: MuseumExhibit) {
-    val service = dataService
     sourceListWithWriteLock { list => 
-      service remove element.asInstanceOf[service.ElementClass]
+      currentService foreach { service =>
+        service remove element.asInstanceOf[service.ElementClass]
+      }
       list remove element
     }
   }
