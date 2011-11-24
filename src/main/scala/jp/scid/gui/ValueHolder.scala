@@ -1,5 +1,7 @@
 package jp.scid.gui
 
+import java.beans.{PropertyChangeListener, PropertyChangeEvent}
+
 import swing.Publisher
 import event.ValueChange
 
@@ -15,6 +17,15 @@ class ValueHolder[T: ClassManifest](initialValue: T) extends DataModel with Publ
   
   /** binding 用内部実装 */
   private val jgoodiesDelegate = new bv.ValueHolder(initialValue, false)
+  jgoodiesDelegate.addPropertyChangeListener(new PropertyChangeListener() {
+    def propertyChange(evt: PropertyChangeEvent) {
+      val newVal = evt.getNewValue match {
+        case null => initialValue
+        case value => value.asInstanceOf[T]
+      }
+      :=(newVal)
+    }
+  })
   
   /** 値の取得 */
   def apply(): T = currentValue
