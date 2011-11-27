@@ -49,7 +49,8 @@ class MainViewControllerSpec extends Specification with Mockito {
   
   def mainViewSpec(ctrl: => MainViewController) =
     "ツリーにモデルの設定" ! views(ctrl).appliedTreeModel ^
-    "テーブルに展示物リストモデルの設定" ! views(ctrl).appliedExhibitTableModel
+    "テーブルに展示物リストモデルの設定" ! views(ctrl).appliedExhibitTableModel ^
+    "LocalSource が選択されている" ! views(ctrl).loadlSourceSelected
   
   def webSourceModeSpec(ctrl: => MainViewController) =
     "テーブルモデルが webServiceResultCtrl#tableModel" ! views(ctrl).appliedWebSourceTableModel
@@ -82,11 +83,14 @@ class MainViewControllerSpec extends Specification with Mockito {
     
     def appliedWebSourceTableModel =
       mainView.dataTable.getModel must_== ctrl.webServiceResultCtrl.tableModel.tableModel
+    
+    def loadlSourceSelected =
+      ctrl.selectedRoom() must_== ctrl.sourceListCtrl.sourceStructure.localSource
   }
   
   def properteis(ctrl: MainViewController) = new TestBase(ctrl) {
     def loadManager = {
-      val manager = mock[MuseumExhibitLoadManager]
+      val manager = new MuseumExhibitLoadManager(None)
       ctrl.loadManager = manager
       ctrl.museumExhibitListCtrl.loadManager must_== manager
     }

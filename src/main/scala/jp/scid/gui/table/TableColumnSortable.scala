@@ -89,7 +89,7 @@ import javax.swing.table.JTableHeader
 import jp.scid.gui.DataModel.Connector
 
 object TableColumnSortable {
-  def connect[A](model: TableColumnSortable[A], tableHeader: JTableHeader) = {
+  def connect(model: TableColumnSortable[_], tableHeader: JTableHeader) = {
     new SortableTableHeaderHandler(model, tableHeader)
   }
 }

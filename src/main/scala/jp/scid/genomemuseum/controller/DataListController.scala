@@ -3,7 +3,7 @@ package jp.scid.genomemuseum.controller
 import javax.swing.{JTable, JTextField, JLabel, JComponent, TransferHandler}
 
 import jp.scid.gui.ValueHolder
-import jp.scid.gui.table.DataTableModel
+import jp.scid.gui.table.{DataTableModel, TableColumnSortable}
 import jp.scid.gui.event.ValueChange
 
 abstract class DataListController(
@@ -12,7 +12,7 @@ abstract class DataListController(
   statusField: JLabel
 ) {
   /** テーブルモデル */
-  private[controller] def tableModel: DataTableModel[_]
+  private[controller] def tableModel: DataTableModel[_] with TableColumnSortable[_]
   /** 検索文字列モデル */
   private[controller] val searchTextModel: ValueHolder[String] = new ValueHolder("")
   /** 状態文字列モデル */
@@ -33,11 +33,13 @@ abstract class DataListController(
   def bind() = {
     DataTableModel.connect(tableModel, dataTable)
     dataTable setTransferHandler tableTransferHandler
+    dataTable.getParent().asInstanceOf[JComponent] setTransferHandler tableTransferHandler
     dataTable.getActionMap.put("delete", removeSelectionAction.peer)
     
+    val headerConn = TableColumnSortable.connect(tableModel, dataTable.getTableHeader)
     val searchConn = ValueHolder.connect(searchTextModel, quickSearchField)
     val statConn = ValueHolder.connect(statusTextModel, statusField, "text")
-    List(searchConn, statConn)
+    List(headerConn, searchConn, statConn)
   }
 }
 

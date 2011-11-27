@@ -6,6 +6,7 @@ import mock._
 import actors.{Futures}
 
 import java.io.File
+import java.net.URL
 
 import jp.scid.genomemuseum.model.{MuseumExhibit, MuseumExhibitLoader, MuseumExhibitService}
 import jp.scid.genomemuseum.gui.ExhibitTableModel
@@ -21,17 +22,19 @@ class MuseumExhibitLoadManagerSpec extends Specification with Mockito {
       "ファイルの読み込みに失敗する時" ^ canPublishEvent(iaeManager) ^ bt ^
       "ファイル読み込み後" ^ canPublishEvent(queuedOneceManager) ^ bt ^
     bt ^ "アラート表示" ^
-      "ファイル形式が不明のアラート" ^ doShoIAEAlert(iaeManager) ^ bt
+      "ファイル形式が不明のアラート" ^ doShoIAEAlert(failManager) ^ bt
     end
   
   private type TableModel = ExhibitTableModel
   
-  def rightManager = new RightMuseumExhibitLoadManager
+  def rightManager = new MuseumExhibitLoadManager(loadableLoader)
   
-  def iaeManager = new IAEMuseumExhibitLoadManager
+  def iaeManager = new MuseumExhibitLoadManager(unloadableLoader)
+  
+  def failManager = new MuseumExhibitLoadManager(throwableLoader)
   
   def queuedOneceManager = {
-    val manager = new RightMuseumExhibitLoadManager
+    val manager = rightManager
     manager.loadExhibits(tableModelMock(museumExhibitMock),
       singletonDummyFile).apply
     manager
@@ -50,23 +53,25 @@ class MuseumExhibitLoadManagerSpec extends Specification with Mockito {
   
   def singletonDummyFile = List(new File("dummy"))
   
-  val illegalArgumentException = new IllegalArgumentException
+  val ioException = new java.io.IOException
   
-  class RightMuseumExhibitLoadManager extends MuseumExhibitLoadManager {
-    override val loader = new MuseumExhibitLoader {
-      override def makeMuseumExhibit(e: MuseumExhibit, f: File) = {
-        Thread.sleep(200)
-        true
-      }
+  def loadableLoader = new MuseumExhibitLoader() {
+    override def makeMuseumExhibit(e: MuseumExhibit, f: URL) = {
+      Thread.sleep(200)
+      true
     }
   }
-    
-  class IAEMuseumExhibitLoadManager extends MuseumExhibitLoadManager {
-    override val loader = new MuseumExhibitLoader {
-      override def makeMuseumExhibit(e: MuseumExhibit, f: File) = {
-        Thread.sleep(200)
-        false
-      }
+  
+  def unloadableLoader = new MuseumExhibitLoader() {
+    override def makeMuseumExhibit(e: MuseumExhibit, f: URL) = {
+      Thread.sleep(200)
+      false
+    }
+  }
+  
+  def throwableLoader = new MuseumExhibitLoader() {
+    override def makeMuseumExhibit(e: MuseumExhibit, f: URL) = {
+      throw ioException
     }
   }
   

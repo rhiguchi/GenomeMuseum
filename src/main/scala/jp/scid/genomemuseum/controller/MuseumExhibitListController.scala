@@ -81,16 +81,19 @@ class MuseumExhibitListController(
     removeSelectionAction.enabled = tableSelection.nonEmpty
     
     // ビューワー表示
-    val source = tableSelection.headOption match {
-      case Some(exhibit) => exhibit.filePath match {
-        case "" | null => Iterator.empty
-        case filePath => io.Source.fromFile(filePath).getLines
+    val source = (tableSelection.headOption, museumExhibitStorage) match {
+      case (Some(exhibit), Some(storage)) => storage.getSource(exhibit) match {
+        case None => Iterator.empty
+        case Some(source) => io.Source.fromURL(source).getLines
       }
-      case None => Iterator.empty
+      case _ => Iterator.empty
     }
 //    if (mainView.isContentViewerClosed)
 //      mainView.openContentViewer(200)
   }
+  
+  private def museumExhibitStorage = tableTransferHandler.loadManager
+    .flatMap(_.museumExhibitStorage)
   
   /** テーブルモデル作成メソッド */
   private[controller] def createTableModel = new ExhibitTableModel

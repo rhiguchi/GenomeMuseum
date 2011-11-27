@@ -1,6 +1,6 @@
 package jp.scid.genomemuseum.controller
 
-import javax.swing.{JFrame, JTree, JTextField}
+import javax.swing.{JFrame, JTree, JTextField, JComponent, JProgressBar, JLabel}
 
 import jp.scid.gui.event.ValueChange
 import jp.scid.gui.DataModel.Connector
@@ -22,6 +22,8 @@ class MainViewController(
   private def progressView = mainView.loadingIconLabel
   private def fileContentView = mainView.fileContentView
   
+  private def loadingView = mainView.fileLoadingActivityPane
+  
   // コントローラ
   /** ソースリスト用 */
   val sourceListCtrl = new ExhibitRoomListController(mainView.sourceList)
@@ -33,6 +35,9 @@ class MainViewController(
   /** WebService 表示用 */
   private[controller] val webServiceResultCtrl = new WebServiceResultController(dataTable,
     quickSearchField, statusField, progressView)
+  /** ファイル読み込み表示 */
+  private[controller] val fileLoadingProgressHandler = new FileLoadingProgressViewHandler(loadingView,
+      mainView.fileLoadingProgress, mainView.fileLoadingStatus)
   
   // モデル
   /** 現在のスキーマ */
@@ -41,10 +46,12 @@ class MainViewController(
   private var currentTableSource: TableSource = LocalSource
   /** データリストテーブルの結合 */
   private var currentConnectors: List[Connector] = Nil
+  /** ソースリストの選択項目 */
+  private[controller] def selectedRoom = sourceListCtrl.selectedRoom
   
   // モデルバインド
   /** ソースリスト項目選択 */
-  sourceListCtrl.selectedRoom.reactions += {
+  selectedRoom.reactions += {
     case ValueChange(_, _, newRoom: ExhibitRoom) =>
       setRoomContentsTo(newRoom)
   }
@@ -79,7 +86,56 @@ class MainViewController(
   
   /** 読み込み管理オブジェクトを設定 */
   def loadManager_=(newManager: MuseumExhibitLoadManager) {
+    fileLoadingProgressHandler.listenTo(newManager)
+    fileLoadingProgressHandler.updateViews()
     museumExhibitListCtrl.loadManager = newManager
+  }
+
+  class FileLoadingProgressViewHandler(contentPane: JComponent, progressBar: JProgressBar, statusLabel: JLabel) extends swing.Reactor {
+    import MuseumExhibitLoadManager._
+    import swing.Reactions.Reaction
+    import swing.event.Event
+    import java.io.File
+    
+    private var currentLoader: Option[MuseumExhibitLoadManager] = None
+    
+    private var inProgress = false
+    private var currentFile: Option[File] = None
+    private var finishedCount = 0
+    private var totalCount = 0
+    
+    reactions += {
+      case Started() =>
+        inProgress = true
+        updateViews()
+      case ProgressChange(file, finished, total) =>
+        currentFile = Option(file)
+        finishedCount = finished
+        totalCount = total
+        updateViews()
+      case Done() =>
+        currentFile = None
+        inProgress = false
+        updateViews()
+    }
+    
+    def updateViews() {
+      contentPane.setVisible(inProgress)
+      statusLabel.setText(statusLabelText)
+      
+      progressBar.setMaximum(totalCount)
+      progressBar.setValue(finishedCount)
+      progressBar.setIndeterminate(isIndeterminate)
+    }
+    
+    protected def statusLabelText = {
+      val fileNameLabel = currentFile.map(_.getName + " を").getOrElse("")
+      "%s読み込み中... [%d / %d]".format(fileNameLabel, finishedCount, totalCount)
+    }
+    
+    protected def isIndeterminate = {
+      inProgress && totalCount <= finishedCount
+    }
   }
   
   /** 表示モードを取得 */

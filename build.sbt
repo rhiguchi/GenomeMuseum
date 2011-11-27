@@ -19,7 +19,7 @@ libraryDependencies ++= Seq(
   "com.jgoodies" % "binding" % "2.5.0" from "http://www.sci-d.co.jp/jar-files/jgoodies-common-1.2.1.jar",
   "com.jgoodies" % "common" % "1.2.1" from "http://www.sci-d.co.jp/jar-files/jgoodies-binding-2.5.0.jar",
   "org.slf4j" % "slf4j-api" % "1.6.4",
-  "com.weiglewilczek.slf4s" %% "slf4s" % "1.0.7",
+  "org.slf4j" % "slf4j-jdk14" % "1.6.4",
   "org.specs2" %% "specs2" % "1.6.1" % "test",
   "org.mockito" % "mockito-all" % "1.8.5" % "test",
   "junit" % "junit" % "4.9" % "test",
@@ -43,12 +43,20 @@ proguardOptions ++= Seq(
 
 maxErrors := 20
 
+pollInterval := 500
+
 parallelExecution := true
 
 testOptions in Test += Tests.Argument("console", "junitxml")
 
-scalacOptions += "-unchecked"
+scalacOptions ++= Seq("-unchecked", "-deprecation")
 
 mainClass in (Compile, packageBin) := Some("jp.scid.genomemuseum.GenomeMuseum")
 
 mainClass in (Compile, run) := Some("jp.scid.genomemuseum.GenomeMuseum")
+
+fork := true
+
+javaOptions += "-Xmx512m -Djava.util.logging.config.file=logging.properties -Dfile.encoding=UTF-8"
+
+

@@ -5,8 +5,8 @@ import java.io.{File, FileInputStream, IOException}
 import java.text.ParseException
 import org.jdesktop.application.{Application, Action, ProxyActions}
 import view.{MainView, MainViewMenuBar, ColumnVisibilitySetting}
-import controller.{MainViewController, ViewSettingDialogController}
-import model.{MuseumSchema, LibraryFileManager}
+import controller.{MainViewController, ViewSettingDialogController, MuseumExhibitLoadManager}
+import model.{MuseumSchema, LibraryFileManager, MuseumExhibitLoader}
 import scala.swing.{Frame, Dialog, Panel}
 
 @ProxyActions(Array("selectAll"))
@@ -29,11 +29,27 @@ class GenomeMuseumGUI extends Application {
   lazy val selectAllAction = actionFor("selectAll")
   
   // Model
-  private var genomemuseumHome = new File(".", "GenomeMuseum")
-  private var libFiles: Option[LibraryFileManager] = None
+  /** データ保管のディレクトリ */
+  private var genomemuseumHome = {
+    def getTempDir(trying: Int): File = {
+      if (trying <= 0) throw new IllegalStateException("could not create temp dir.")
+      
+      val file = File.createTempFile("GenomeMuseum", "")
+      if (file.delete && file.mkdir)
+        file
+      else
+        getTempDir(trying - 1)
+    }
+    
+    getTempDir(20)
+  }
+  /** データベースの構築をメモリー内で行うか */
+  private var useInMemoryDatabase = false
   
   override protected def initialize(args: Array[String]) {
-    genomemuseumHome = getContext.getLocalStorage.getDirectory
+    if (args.contains("-production")) {
+      genomemuseumHome = getContext.getLocalStorage.getDirectory
+    }
   }
   
   override def startup() {
@@ -45,7 +61,7 @@ class GenomeMuseumGUI extends Application {
     
 //    loadSampleDataTo(this)
     
-    
+    logger.debug("startup")
     
     // ビュー構築
     val mainViewFrame = new javax.swing.JFrame
@@ -56,18 +72,33 @@ class GenomeMuseumGUI extends Application {
     bindApplicationActionsTo(mainController.mainMenu)
     
     // スキーマ構築
-    println("LibraryDir: " + genomemuseumHome)
-    val dataSchema = MuseumSchema.fromMemory
-    val libFiles = Some(new LibraryFileManager(new File(genomemuseumHome, "BioFiles")))
+    logger.info("LibraryDir: {}", genomemuseumHome)
+    logger.debug("useInMemoryDatabase: {}", useInMemoryDatabase)
+    
+    val dataSchema = useInMemoryDatabase match {
+      case true => MuseumSchema.onMemory
+      case false =>
+        val databaseFile = new File(genomemuseumHome, "Library/lib")
+        MuseumSchema.onFile(databaseFile)
+    }
+    val fileStorage = useInMemoryDatabase match {
+      case true => None
+      case false => Some(new LibraryFileManager(new File(genomemuseumHome, "BioFiles")))
+    }
+    
+    // 読み込み処理操作
+    val loadManager = new MuseumExhibitLoadManager(fileStorage)
     
     // スキーマ適用
     mainController.dataSchema = dataSchema
+    mainController.mainCtrl.loadManager = loadManager
     
     // 表示
     mainController.show()
   }
   
   override protected def ready() {
+    logger.info("ready")
   }
   
   /** アプリケーションの持つアクションをメニューバーに設定 */
@@ -104,10 +135,10 @@ class GenomeMuseumGUI extends Application {
 //      scheme.exhibitsService.remove(exhibit)
       
       // URI が妥当であればファイルを削除
-      libFiles foreach { lib =>
-        if (lib.isLibraryURI(uri))
-          lib.delete(uri) 
-      }
+//      libFiles foreach { lib =>
+//        if (lib.isLibraryURI(uri))
+//          lib.delete(uri) 
+//      }
     }
   }
   
@@ -116,7 +147,7 @@ class GenomeMuseumGUI extends Application {
     exhibit.filePathAsURI match {
       case uri if uri.toString == "" => None
       case uri if uri.getScheme == "file" => Some(new File(uri))
-      case uri => libFiles.map(_.getFile(uri))
+//      case uri => libFiles.map(_.getFile(uri))
     }
   }
 }
@@ -127,6 +158,8 @@ object GenomeMuseumGUI {
   import scala.swing.Action
   import model.MuseumExhibit
   import jp.scid.bio.GenBank
+  
+  private val logger = org.slf4j.LoggerFactory.getLogger(classOf[GenomeMuseumGUI])
   
   def actionFor(actionMap: ApplicationActionMap)(key: String) = {
     val swingAction = actionMap.get(key) match {

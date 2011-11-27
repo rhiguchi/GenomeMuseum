@@ -5,13 +5,13 @@ import javax.swing.SwingWorker
 
 import actors.{Actor, Future, Futures, TIMEOUT}
 
-import jp.scid.gui.table.DataTableModel
+import jp.scid.gui.table.{DataTableModel, TableColumnSortable}
 import jp.scid.genomemuseum.model.SearchResult
 import jp.scid.bio.ws.{WebServiceAgent}
 import WebServiceAgent.{Identifier, EntryValues}
 
 class WebServiceResultsModel(format: WebServiceResultTableFormat)
-    extends DataTableModel[SearchResult](format) {
+    extends DataTableModel[SearchResult](format) with TableColumnSortable[SearchResult] {
   import WebSearchManager.SearchingQuery
   import WebServiceResultsModel._
   

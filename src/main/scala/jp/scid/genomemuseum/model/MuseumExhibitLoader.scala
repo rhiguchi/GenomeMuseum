@@ -1,37 +1,21 @@
 package jp.scid.genomemuseum.model
 
 import java.net.URL
-import java.io.{File, IOException, FileReader}
+import java.io.{File, IOException, InputStreamReader}
 import java.text.ParseException
 
 import collection.mutable.{Buffer, ListBuffer}
 
 import jp.scid.bio.{BioFileParser, GenBankParser, FastaParser, BioData,
   GenBank, Fasta}
+import MuseumExhibit.FileType
 
-class MuseumExhibitLoader {
-  // 対応するファイル形式の構文解析オブジェクト
-  private val parsers = List(GenBnakSource, FastaSource)
-  
-  /**
-   * ファイルからデータを読み込み、そのデータをサービスへ格納する。
-   */
-  def makeMuseumExhibit(exhibit: MuseumExhibit, file: File): Boolean = {
-    def source = io.Source.fromFile(file).getLines
-    
-    val headString = readHeadFrom(file)
-    
-    def headSource = io.Source.fromString(headString).getLines
-    
-    parsers.find(_.canParse(headSource)).map(
-      _.makeExhibitFromFile(exhibit, source).isRight).getOrElse(false)
-  }
-  
+private[model] object MuseumExhibitLoader {
   /**
    * BioData のファイルから MuseumExhibit を構成する抽象オブジェクト。
    * 継承クラスは {@code makeExhibit} を実装する。
    */
-  private[model] abstract class ExhibitFileLoader[A <: BioData] {
+  abstract private[model] class ExhibitFileLoader[A <: BioData] {
     /** パーサー */
     def parser: BioFileParser[A]
     
@@ -45,15 +29,75 @@ class MuseumExhibitLoader {
      */
     def canParse(source: Iterator[String]): Boolean
     
-    def makeExhibitFromFile(target: MuseumExhibit, source: Iterator[String])
-        : Either[Throwable, MuseumExhibit] = {
-      import util.control.Exception.catching
+    /**
+     * 文字列ソースから展示物データを構成する。
+     * @throws ParseException ソースに解析不能な文字列が含まれていた時
+     */
+    @throws(classOf[ParseException])
+    def makeExhibitFromFile(target: MuseumExhibit, source: Iterator[String]) {
       
-      catching(classOf[ParseException]) either {
-        val data = loadSections(ListBuffer.empty[A], source, parser).toList
-        makeExhibit(target, data)
-        target
+      /** ソースから全てのセクションを読み込む */
+      def loadSections(sections: Buffer[A]): Buffer[A] = {
+        source.hasNext match {
+          case true =>
+            sections += parser.parseFrom(source)
+            loadSections(sections)
+          case false =>
+            sections
+        }
       }
+      
+      makeExhibit(target, loadSections(ListBuffer.empty[A]).toList)
+    }
+  }
+  
+  /** 指定したバイト数分、ストリームの先頭を読み込む */
+  @throws(classOf[IOException])
+  private def readHeadFrom(source: URL, length: Int = 2048) = {
+    val cbuf = new Array[Char](length)
+    val read = using(source.openStream) { inst =>
+      val reader = new InputStreamReader(inst)
+      reader.read(cbuf)
+    }
+    read match {
+      case -1 => ""
+      case read => new String(cbuf, 0, read)
+    }
+  }
+ 
+  private def using[A <% java.io.Closeable, B](s: A)(f: A => B) = {
+    try f(s) finally s.close()
+  }
+}
+
+/**
+ * BioData のファイルから MuseumExhibit を構成するクラス。
+ */
+class MuseumExhibitLoader {
+  import MuseumExhibitLoader._
+  
+  // 対応するファイル形式の構文解析オブジェクト
+  private val parsers = List(GenBnakSource, FastaSource)
+  
+  /**
+   * ファイルからデータを読み込み、そのデータをオブジェクトへ格納する。
+   * @return 展示物が構成された時は {@code true} 。対応するファイルパーサーが無かったときは {@code false} 。
+   * @throws IOException ファイルのアクセスに不正状態が発生した時。
+   * @throws ParseException ファイル内を解析中に不正な文字列が含まれていた時。
+   */
+  def makeMuseumExhibit(exhibit: MuseumExhibit, source: URL): Boolean = {
+    // ファイルの先頭部分の一部の文字列
+    val headString = readHeadFrom(source)
+    
+    /** ファイルの先頭部分の文字列から Source オブジェクトを作成 */
+    def headSource = io.Source.fromString(headString).getLines
+    
+    parsers.find(_.canParse(headSource)) match {
+      case Some(parser) =>
+        parser.makeExhibitFromFile(exhibit, io.Source.fromURL(source).getLines)
+        true
+      case None =>
+        false
     }
   }
   
@@ -81,6 +125,7 @@ class MuseumExhibitLoader {
       e.source = data.source.value
       e.organism = data.source.taxonomy :+ data.source.organism mkString "\n"
       e.date = data.locus.date
+      e.fileType = FileType.GenBank
     }
   }
   
@@ -105,39 +150,11 @@ class MuseumExhibitLoader {
       e.namespace = data.header.namespace
       e.version = getVersionNumber(data.header.version)
       e.definition = data.header.description
+      e.fileType = FileType.FASTA
     }
   }
   
   /** バージョン値 */
   private def getVersionNumber(value: Int) =
     if (value == 0) None else Some(value)
-    
-  /** ソースから全てのセクションを読み込む */
-  private def loadSections[A <: BioData](sections: Buffer[A],
-      source: Iterator[String], parser: BioFileParser[A]): Buffer[A] = {
-    source.hasNext match {
-      case true =>
-        sections += parser.parseFrom(source)
-        loadSections(sections, source, parser)
-      case false =>
-        sections
-    }
-  }
-  
-  /** 指定したバイト数分、ストリームの先頭を読み込む */
-  @throws(classOf[IOException])
-  private def readHeadFrom(file: File, length: Int = 2048) = {
-    val cbuf = new Array[Char](length)
-    val read = using(new FileReader(file)) { reader =>
-      reader.read(cbuf)
-    }
-    read match {
-      case -1 => ""
-      case read => new String(cbuf, 0, read)
-    }
-  }
- 
-  private def using[A <% java.io.Closeable, B](s: A)(f: A => B) = {
-    try f(s) finally s.close()
-  }
 }

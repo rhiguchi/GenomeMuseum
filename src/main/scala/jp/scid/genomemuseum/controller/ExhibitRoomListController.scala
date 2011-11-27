@@ -26,6 +26,8 @@ private[controller] class ExhibitRoomListController(
   
   /** 現在選択されているパスモデル */
   val selectedRoom = new ValueHolder(defaultSelectionPath.last) {
+    selectLocalLibraryNode()
+    
     // 選択状態を更新するリアクション
     sourceListModel.reactions += {
       case DataTreePathsSelectionChanged(_, newPaths, _) =>
@@ -36,6 +38,10 @@ private[controller] class ExhibitRoomListController(
           updateActionAvailability()
       }
     }
+  
+    /** ローカルライブラリを選択状態にする。 */
+    private def selectLocalLibraryNode() =
+      sourceListModel.selectPath(defaultSelectionPath)
   }
   
   // ドロップターゲット
@@ -94,10 +100,6 @@ private[controller] class ExhibitRoomListController(
     val path = sourceStructure.pathToRoot(room)
     view.startEditingAtPath(convertPathToTreePath(path))
   }
-  
-  /** ローカルライブラリを選択状態にする。 */
-  private def selectLocalLibraryNode() =
-    sourceListModel.selectPath(defaultSelectionPath)
   
   // モデル結合
   ExhibitRoomListController.bind(view, this)

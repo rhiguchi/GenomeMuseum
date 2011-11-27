@@ -1,145 +1,119 @@
 package jp.scid.genomemuseum.model
 
 import org.specs2._
-import java.io.{File, IOException}
-import java.net.URI
+import mock._
+
+import java.io.File
 import MuseumExhibit.FileType._
 
-class LibraryFileManagerSpec extends Specification {
-  def is = if (tryCreateTempDir.isEmpty) "LibraryFileManager" ^
-    "To create temporary directory was not allowed." ^ skipped
-  else "LibraryFileManager" ^
-    "getDefaultStorePathFor" ^
-      "MuseumExhibit.name が含まれる" ! pathFor.s1 ^
-      "name が空白の時は identifier を使用" ! pathFor.s2 ^
-      "name と identifier が空白の時は untitled" ! pathFor.s3 ^
-      "fileType が GenBank の拡張子は .gbk" ! pathFor.s4 ^
-      "fileType が FASTA の拡張子は .fasta" ! pathFor.s5 ^
-      "fileType が Unknown の拡張子は .txt" ! pathFor.s6 ^
-    bt ^ "isLibraryURI" ^
-      "ライブラリスキーマで true" ! isLibraryURI.s1 ^
-      "ライブラリスキーマでないと false" ! isLibraryURI.s2 ^
-    bt ^ "getFile" ^
-      "URI のパス部分と File の絶対パスの終端が一致" ! getFile.s1 ^
-      "ライブラリのパスから開始されている" ! getFile.s2 ^
-      "ライブラリスキーマでない URI は例外" ! getFile.s3 ^
-      "file スキーマは、File に変換される" ! getFile.s4 ^
-    bt ^ "store" ^
-      "MuseumExhibit にパスが適用される" ! store.s1 ^
-      "ライブラリ内にファイルがコピーされる" ! store.s2 ^
-      "標準の保存先にすでにファイルがある時は、拡張子前に連番でリネームされる" ! store.s3 ^
-    bt ^ "delete" ^
-      "URI を渡すと削除される" ! delete.s1 ^
-      "ライブラリスキーマでない URI は例外" ! delete.s2
+class LibraryFileManagerSpec extends Specification with Mockito {
+  def is = "LibraryFileManager" ^
+    "ソースの適用" ^ canSaveSource(manager) ^ bt ^
+    "exhibit から格納先名の作成" ^ canGetDefaultStorePath(manager) ^ bt ^
+    "格納先 URL の取得" ^ canGetSource(manager) ^ bt ^
+    end
   
-  trait TestBase {
-    val baseDir = tryCreateTempDir.get
-    val manager = new LibraryFileManager(baseDir)
-    
-    protected def pathFor(e: MuseumExhibit) = manager.getDefaultStorePathFor(e)
+  def createTempFile = File.createTempFile("LibraryFileManagerSpec", "")
+  
+  def manager = {
+    val tempfile = createTempFile
+    val tempDir = new File(tempfile.getPath + ".d")
+    tempDir.mkdirs
+    new LibraryFileManager(tempDir)
   }
   
-  def pathFor = new TestBase {
-    
-    def s1 = pathFor(MuseumExhibit("exhibit")).getPath must contain("exhibit")
-    
-    def s2 = pathFor(MuseumExhibit("", identifier = "1234")).getPath must contain("1234")
-    
-    def s3 = pathFor(MuseumExhibit("")).getPath must contain("untitled")
-    
-    def s4 = pathFor(MuseumExhibit("a", fileType = GenBank))
-      .getPath must endWith("/a.gbk")
-    
-    def s5 = pathFor(MuseumExhibit("b", fileType = FASTA))
-      .getPath must endWith("/b.fasta")
-    
-    def s6 = pathFor(MuseumExhibit("c", fileType = Unknown))
-      .getPath must endWith("/c.txt")
+  def canSaveSource(m: => LibraryFileManager) =
+    "exhibit にパス適用" ! saveSource(m).appliesPathToExhibit ^
+    "ファイルの URI が返される" ! saveSource(m).returnsUriOfFile ^
+    "ファイルが移動する" ! saveSource(m).movesFile
+  
+  def canGetDefaultStorePath(m: => LibraryFileManager) =
+    "name 属性から作成" ! getDefaultStorePath(m).fromName ^
+    "name が空の時は identifier 属性から作成" ! getDefaultStorePath(m).fromIdentifier ^
+    "name と identifier が空の時は unidentifiable" ! getDefaultStorePath(m).unidentifiable ^
+    "fileType が GenBank の時は拡張子が gbk" ! getDefaultStorePath(m).gbkType ^
+    "fileType が FASTA の時は拡張子が fasta" ! getDefaultStorePath(m).fastaType
+  
+  def canGetSource(m: => LibraryFileManager) =
+    "filePath から取得" ! getSource(m).returnsUrl ^
+    "filePath が直接ファイルを参照するときはそのまま返す" ! getSource(m).returnsFileUrl
+  
+  def exhibitMockOf(fileType: FileType, name: String = "", identifier: String = "",
+      filePath: String = "") = {
+    val exhibit = mock[MuseumExhibit]
+    exhibit.name returns name
+    exhibit.identifier returns identifier
+    exhibit.fileType returns fileType
+    exhibit
   }
   
-  def isLibraryURI = new TestBase {
-    val uri = new URI(manager.uriScheme, "/path/to/file", null)
-    val invalidSchemeURI = new URI(manager.uriScheme + "x", "/path/to/file", null)
-    
-    def s1 = manager.isLibraryURI(uri) must beTrue
-    
-    def s2 = manager.isLibraryURI(invalidSchemeURI) must beFalse
-  }
-  
-  def getFile = new TestBase {
-    val uri = new URI(manager.uriScheme, "/path/to/file", null)
-    val invalidSchemeURI = new URI(manager.uriScheme + "x", "/path/to/file", null)
-    val fileSchema = new URI("file", "/path/to/file", null)
-    
-    def s1 = manager.getFile(uri).getAbsolutePath must endWith("/path/to/file")
-    
-    def s2 = manager.getFile(uri).getAbsolutePath must
-      startWith(baseDir.getAbsolutePath)
-    
-    def s3 = manager.getFile(invalidSchemeURI) must throwA[IllegalArgumentException]
-    
-    def s4 = manager.getFile(fileSchema).getAbsolutePath must_== "/path/to/file"
-  }
-  
-  def store = new TestBase {
-    val e = MuseumExhibit("exhibit", fileType = GenBank)
-    val file = File.createTempFile("testTemp", ".gbk")
-    
-    val e2 = MuseumExhibit("exhibit", fileType = GenBank)
-    val e3 = MuseumExhibit("exhibit", fileType = GenBank)
-    
-    assert(e.filePath == "")
-    manager.store(e, file)
-    manager.store(e2, file)
-    manager.store(e3, file)
-    
-    val libraryFile = manager.getFile(e.filePathAsURI)
-    
-    val e2File = manager.getFile(e2.filePathAsURI)
-    val e3File = manager.getFile(e3.filePathAsURI)
-    
-    def s1 = e.filePath must_!= ""
-    
-    def s2 = libraryFile must beAFile
-    
-    def s3_2 = e3File.getPath must endWith("/exhibit 2.gbk")
-    def s3 = e2File.getPath must be_!=(libraryFile.getPath) and
-      endWith("/exhibit 1.gbk") and s3_2
-  }
-  
-  def delete = new TestBase {
-    val e = MuseumExhibit("exhibit", fileType = GenBank)
-    val testFile = File.createTempFile("testTemp", ".gbk")
-    manager.store(e, testFile)
-    
-    val invalidSchemeURI = new URI(manager.uriScheme + "x", e.filePathAsURI.getPath, null)
-    
-    val file = manager.getFile(e.filePathAsURI)
-    
-    assert(file.exists)
-    
-    val result = manager.delete(e.filePathAsURI)
-    
-    def s1 = result must beTrue and (file must not be exist)
-    
-    def s2 = manager.delete(invalidSchemeURI) must throwA[IllegalArgumentException]
-  }
-  
-  @throws(classOf[IOException])
-  def tryCreateTempDir: Option[File] = {
-    try {
-      Some(createTempDir)
+  def saveSource(m: LibraryFileManager) = new Object {
+    def appliesPathToExhibit = {
+      val exhibit = exhibitMockOf(GenBank, "XX_NNNNNNN")
+      m.saveSource(exhibit, createTempFile)
+      
+      there was one(exhibit).filePath_=("gmlib:XX_NNNNNNN.gbk")
     }
-    catch {
-      case e: SecurityException => None
+    
+    def returnsUriOfFile = {
+      val exhibit = exhibitMockOf(FASTA, "ABCDEFG")
+      
+      m.saveSource(exhibit, createTempFile).toString must
+        startWith("file:" + m.baseDir.toString) and
+        endWith("ABCDEFG.fasta")
+    }
+    
+    def movesFile = {
+      val exhibit = exhibitMockOf(FASTA, "A")
+      val file = createTempFile
+      
+      val dest = m.saveSource(exhibit, file)
+      val destFile = new File(dest.toURI)
+      
+      (file.exists, destFile.exists) must_== (false, true)
     }
   }
   
-  @throws(classOf[IOException])
-  def createTempDir = {
-    val tempFile = File.createTempFile("LibraryFileManagerSpec", "")
-    tempFile.delete
-    tempFile.mkdir
-    tempFile
+  def getDefaultStorePath(m: LibraryFileManager) = new Object {
+    def fromName = {
+      val exhibit = exhibitMockOf(Unknown, "NAME")
+      m.getDefaultStorePath(exhibit).getName must_== "NAME.txt"
+    }
+    
+    def fromIdentifier = {
+      val exhibit = exhibitMockOf(Unknown, "", "IDENTIFIER")
+      m.getDefaultStorePath(exhibit).getName must_== "IDENTIFIER.txt"
+    }
+    
+    def unidentifiable = {
+      val exhibit = exhibitMockOf(Unknown, "", "")
+      m.getDefaultStorePath(exhibit).getName must_== "unidentifiable.txt"
+    }
+    
+    def gbkType = {
+      val exhibit = exhibitMockOf(GenBank, "GenBank")
+      m.getDefaultStorePath(exhibit).getName must_== "GenBank.gbk"
+    }
+    
+    def fastaType = {
+      val exhibit = exhibitMockOf(FASTA, "FASTA")
+      m.getDefaultStorePath(exhibit).getName must_== "FASTA.fasta"
+    }
+  }
+  
+  def getSource(m: LibraryFileManager) = new Object {
+    def returnsUrl = {
+      val exhibit = mock[MuseumExhibit]
+      exhibit.filePath returns "gmlib:XX_NNNNNNN.gbk"
+      
+      m.getSource(exhibit).get.toString must_== 
+        ("file:" + m.baseDir.toString + "/XX_NNNNNNN.gbk")
+    }
+    
+    def returnsFileUrl = {
+      val exhibit = mock[MuseumExhibit]
+      exhibit.filePath returns "file:/some.file"
+      m.getSource(exhibit).get.toString must_== "file:/some.file"
+    }
   }
 }

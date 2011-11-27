@@ -17,7 +17,11 @@ trait MuseumSchema {
 }
 
 object MuseumSchema {
-  def fromMemory = {
-    squeryl.MuseumSchema.makeMemoryConnection("GenomeMuseum")
+  def onMemory = {
+    squeryl.MuseumSchema.onMemory("GenomeMuseum")
+  }
+  
+  def onFile(file: java.io.File) = {
+    squeryl.MuseumSchema.onFile(file)
   }
 }

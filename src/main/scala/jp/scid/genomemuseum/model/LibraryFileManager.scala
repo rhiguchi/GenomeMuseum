@@ -2,91 +2,65 @@ package jp.scid.genomemuseum.model
 
 import java.io.{File, FileInputStream, FileOutputStream, IOException,
   BufferedInputStream, BufferedOutputStream}
-import java.net.URI
+import java.net.{URL, URI}
 
-class LibraryFileManager(baseDir: File) {
+class LibraryFileManager(val baseDir: File) extends MuseumExhibitStorage {
   import LibraryFileManager._
   
-  if (!baseDir.exists) baseDir.mkdirs
-  
-  private[model] val uriScheme = "gmlib"
+  /** このライブラリ内であることを示す URI スキーマ名 */
+  private val libraryScheme = "gmlib"
+  /** ライブラリディレクトリの URI 表現 */
+  private val libraryURI = baseDir.getAbsoluteFile.toURI.normalize
   
   /**
-   * ファイルをライブラリにコピーして保存
-   * {@code exhibit.filePath} に保管場所が適用される
+   * ファイルを展示物に合った格納先パスへ移動する。
+   * @return 格納先を表す URL
+   * @throws IOException 入出力エラー
    */
-  @throws(classOf[IOException])
-  def store(exhibit: MuseumExhibit, source: File) {
-    val dest = getFile(getDefaultStorePathFor(exhibit)) match {
-      case file if file.exists =>
-        findOtherDest(file)
-      case file =>
-        file
+  def saveSource(exhibit: MuseumExhibit, data: File) = {
+    // 出力先の探索
+    val destCandidate = getDefaultStorePath(exhibit)
+    if (!destCandidate.getParentFile.exists) destCandidate.getParentFile.mkdirs
+  
+    val dest = destCandidate.createNewFile match {
+      case true => destCandidate
+      case false => findOtherDest(destCandidate)
     }
-    
-    fileCopy(source, dest)
-    
-    val libURI = toLibraryURI(dest)
-    exhibit.filePathAsURI = libURI
+    // ファイルの移動
+    val uri = data.renameTo(dest) match {
+      case true => toLibraryURI(dest)
+      case false => throw new IOException(
+        "cannot rename from '%s' to '%s'.".format(data,dest))
+    }
+    // 保存先の適用
+    exhibit.filePath = uri.toString
+    dest.toURI.toURL
   }
   
   /**
-   * ファイルをライブラリにコピーして保存
-   * {@code exhibit.filePath} に保管場所が適用される
+   * MuseumExhibit に適用された filePath から URL を取得
    */
-  @throws(classOf[IOException])
-  def store(exhibit: MuseumExhibit, source: java.net.URL) {
-    val dest = getFile(getDefaultStorePathFor(exhibit)) match {
-      case file if file.exists =>
-        findOtherDest(file)
-      case file =>
-        file
-    }
-    
-    using(new BufferedInputStream(source.openStream)) { inst =>
-      using(new BufferedOutputStream(new FileOutputStream(dest))) { outst =>
-        val buf = new Array[Byte](8192)
-        Stream.continually(inst.read(buf)).takeWhile(_ != -1) foreach { read: Int =>
-          outst.write(buf, 0, read)
-          outst.flush
+  def getSource(exhibit: MuseumExhibit) = {
+    URI.create(exhibit.filePath) match {
+      case null => None
+      case uri => 
+        val resolvedUri = uri.getScheme match {
+          case `libraryScheme` => libraryURI.resolve(uri.getSchemeSpecificPart)
+          case _ => uri
         }
-      }
+        Some(resolvedUri.toURL)
     }
-    
-    val libURI = toLibraryURI(dest)
-    exhibit.filePathAsURI = libURI
-  }
-  
-  private def using[A <% java.io.Closeable, B](s: A)(f: A => B) = {
-    try f(s) finally s.close()
   }
   
   /**
-   * URI がこのライブラリ内ファイルを表すものか
+   * バイオファイルの標準の格納先
    */
-  def isLibraryURI(uri: URI): Boolean = {
-    uri.getScheme == uriScheme
-  }
-  
-  /**
-   * ライブラリ相対パスから、実際のファイルパスを得る。
-   */
-  def getFile(uri: URI): File = uri.getScheme match {
-    case "file" => new File(uri)
-    case `uriScheme` => new File(baseDir, uri.getPath)
-    case _ => throw new IllegalArgumentException(
-      "Scheme of the uri must be 'file' or '%s' but '%s'".format(uriScheme, uri))
-  }
-  
-  /**
-   * バイオファイルが保存される、標準のファイル名
-   */
-  def getDefaultStorePathFor(exhibit: MuseumExhibit): URI = {
+  def getDefaultStorePath(exhibit: MuseumExhibit) = {
     import MuseumExhibit.FileType._
     
     val namePrefix = exhibit.name match {
       case "" => exhibit.identifier match {
-        case "" => "untitled"
+        case "" => "unidentifiable"
         case identifier => identifier
       }
       case name => name
@@ -99,16 +73,7 @@ class LibraryFileManager(baseDir: File) {
     }
     
     val fileName = namePrefix + "." + suffix
-    
-    createLibraryURI(fileName)
-  }
-  
-  /**
-   * ライブラリのファイルを削除
-   */
-  def delete(uri: URI): Boolean = {
-    val file = getFile(uri)
-    file.delete
+    new File(baseDir, fileName)
   }
   
   /**
@@ -116,48 +81,21 @@ class LibraryFileManager(baseDir: File) {
    * @throws IllegalArgumentException {@code file} がライブラリディレクトリで開始されていない時
    */
   private def toLibraryURI(file: File): URI = {
-    file.getAbsolutePath.startsWith(baseDir.getAbsolutePath) match {
+    val base = file.getAbsoluteFile.toURI.normalize
+    base.toString.startsWith(libraryURI.toString) match {
       case true =>
-        val path = file.getAbsolutePath.substring(baseDir.getAbsolutePath.length)
-        createLibraryURI(path)
+        val relURI = libraryURI.relativize(base)
+        new URI(libraryScheme, relURI.getSchemeSpecificPart, null)
       case false => throw new IllegalArgumentException(
         "File '%s' cannot convert to library URI.".format(file))
     }
-  }
-  
-  /**
-   * ライブラリ内パスを表す URI を作成
-   */
-  private def createLibraryURI(path: String): URI = {
-    val pathx = path.dropWhile(File.separatorChar.==)
-    new URI(uriScheme, "/" + pathx, null)
   }
 }
 
 object LibraryFileManager {
   /**
-   * ファイルのコピー
-   */
-  @throws(classOf[IOException])
-  private def fileCopy(src: File, dest: File) {
-    import java.nio.channels.FileChannel
-    val srcChannel = new FileInputStream(src).getChannel()
-    val destChannel = new FileOutputStream(dest).getChannel()
-    try {
-      srcChannel.transferTo(0, srcChannel.size(), destChannel)
-    }
-    finally {
-      try {
-        srcChannel.close()
-      }
-      finally {
-        destChannel.close()
-      }
-    }
-  }
-  
-  /**
    * 連番付けのファイル名探し
+   * @throws IOException 入出力エラー
    */
   private def findOtherDest(base: File): File = {
     def splitBasename(name: String) = {

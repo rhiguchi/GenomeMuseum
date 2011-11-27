@@ -17,7 +17,7 @@ class MuseumExhibitLoaderSpec extends Specification with Mockito {
     "FASTA ファイル" ^ canParseFastaFile(defaultParsers) ^ bt ^
     end
   
-  def defaultParsers = new MuseumExhibitLoader
+  def defaultParsers = new MuseumExhibitLoader()
   
   val gbkResource = getClass.getResource("sample-file1.gbk")
   val fastaResource = getClass.getResource("sample-file2.fna")
@@ -57,10 +57,10 @@ class MuseumExhibitLoaderSpec extends Specification with Mockito {
     lazy val exhibit = mock[MuseumExhibit]
     
     def makeFromGenBankFile =
-      loader.makeMuseumExhibit(exhibit, genBankFile)
+      loader.makeMuseumExhibit(exhibit, gbkResource)
     
     def makeFromFastaFile =
-      loader.makeMuseumExhibit(exhibit, fastaFile)
+      loader.makeMuseumExhibit(exhibit, fastaResource)
   }
   
   def findParserForSpec(parsers: MuseumExhibitLoader) = new TestBase(parsers) {
@@ -69,10 +69,10 @@ class MuseumExhibitLoaderSpec extends Specification with Mockito {
     def fromFasta =  makeFromFastaFile must beTrue
     
     def fromEmpty = {
-      parsers.makeMuseumExhibit(exhibit, emptyFile) must beFalse
+      parsers.makeMuseumExhibit(exhibit, emptyFile.toURI.toURL) must beFalse
     }
     def fromINvalid = {
-      parsers.makeMuseumExhibit(exhibit, invalidFile) must beFalse
+      parsers.makeMuseumExhibit(exhibit, invalidResourceResource) must beFalse
     }
   }
   

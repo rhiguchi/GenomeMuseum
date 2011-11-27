@@ -3,7 +3,7 @@ package jp.scid.genomemuseum.model.squeryl
 import jp.scid.genomemuseum.model.{MuseumSchema => IMuseumSchema,
   UserExhibitRoom => IUserExhibitRoom}
 
-import org.squeryl.Schema
+import org.squeryl.{Schema, Session}
 import org.squeryl.PrimitiveTypeMode._
 
 /**
@@ -12,6 +12,30 @@ import org.squeryl.PrimitiveTypeMode._
 class MuseumSchema extends Schema with IMuseumSchema {
   // 文字列格納長
   override def defaultLengthOfString = Integer.MAX_VALUE
+  
+  /** スキーマ内のテーブル名を取得する SQL */
+  private def tableNameSelectSql(schemaName: String) =
+    """select TABLE_NAME from INFORMATION_SCHEMA.TABLES where TABLE_SCHEMA = '%s'"""
+      .format(schemaName.toUpperCase)
+  
+  /** スキーマを作成する SQL */
+  private def schemaCreationSql(schemaName: String) =
+    """create schema if not exists %s""".format(schemaName)
+  
+  /** スキーマ名 */
+  override val name = Some("genomemuseum_09a2")
+  
+  private[squeryl] def exists = {
+    val conn = Session.currentSession.connection
+    val rs = conn.createStatement.executeQuery(tableNameSelectSql(name.get))
+    rs.next
+  }
+  
+  override def create = {
+    val conn = Session.currentSession.connection
+    conn.createStatement.execute(schemaCreationSql(name.get))
+    super.create
+  }
   
   /** UserExhibitRoom のテーブルオブジェクト */
   private[squeryl] val userExhibitRoom = table[UserExhibitRoom]("user_exhibit_room")
@@ -34,7 +58,7 @@ class MuseumSchema extends Schema with IMuseumSchema {
   val museumExhibitService = new MuseumExhibitService(museumExhibit, nonPersistedExhibits)
   
   /** 部屋の展示物の関連づけを保持するテーブル */
-  private[squeryl] val roomExhibit = table[RoomExhibit]
+  private[squeryl] val roomExhibit = table[RoomExhibit]("room_exhibit")
   
   /** 部屋の中身と部屋の関連 */
   private[squeryl] val roomToRoomExhibitRelation = oneToManyRelation(userExhibitRoom, roomExhibit)
@@ -60,23 +84,20 @@ object MuseumSchema {
   /** コネクションプール */
   private var connectionPool: Option[JdbcConnectionPool] = None
   
-  def makeMemoryConnection(name: String) = {
+  def onMemory(name: String) = {
     makeH2SquerylConnection("jdbc:h2:mem:" + name)
-    
-    // スキーマ構築
-    val schema = new MuseumSchema
-    transaction {
-      schema.create
-    }
-    schema
+    craeteSchema()
   }
   
-  def makeFileConnection(file: java.io.File) = {
+  def onFile(file: java.io.File) = {
     makeH2SquerylConnection("jdbc:h2:" + file.getPath)
-    // スキーマ構築
-    // TODO ファイルが既に存在している時はスキーマを構築しない
+    craeteSchema()
+  }
+  
+  /** スキーマを構築する */
+  private def craeteSchema() = {
     val schema = new MuseumSchema
-    transaction {
+    if (!schema.exists) transaction {
       schema.create
     }
     schema
@@ -94,12 +115,17 @@ object MuseumSchema {
       SessionFactory.concreteFactory = Some( () =>
         Session.create(h2cp.getConnection, new adapters.H2Adapter)
       )
+      SessionFactory.newSession.bindToCurrentThread
       Some(h2cp)
     }
   }
   
   def closeConnection {
-    connectionPool.foreach(_.dispose())
-    connectionPool = None
+    connectionLock.synchronized {
+      Session.currentSessionOption.foreach(_.close)
+      SessionFactory.concreteFactory = None
+      connectionPool.foreach(_.dispose())
+      connectionPool = None
+    }
   }
 }

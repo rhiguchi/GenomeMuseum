@@ -4,5 +4,6 @@ import java.net.URL
 import java.io.File
 
 trait MuseumExhibitStorage {
-  def save(data: File, exhibit: MuseumExhibit): Option[URL]
+  def saveSource(exhibit: MuseumExhibit, data: File): URL
+  def getSource(exhibit: MuseumExhibit): Option[URL]
 }
