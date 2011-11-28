@@ -27,7 +27,6 @@ class ExhibitTableModelSpec extends Specification with Mockito {
     val e1, e2, e3, e4, e5 = mock[MuseumExhibit]
     service.allElements returns List(e1, e2, e3, e4, e5).map(_.asInstanceOf[service.ElementClass])
     model.reloadSource
-    Thread.sleep(10)
     model.select(e2, e3)
     model
   }

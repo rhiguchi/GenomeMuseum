@@ -87,9 +87,11 @@ class DataListModel[A] extends DataModel with swing.Publisher {
   def selections_=(items: Seq[A]) {
     import scala.collection.JavaConverters._
     val jItems = items.asJava
-    withWriteLock(selectedItems) { list =>
-      list.clear()
-      list addAll jItems
+    sourceListWithWriteLock { _ =>
+      withWriteLock(selectedItems) { list =>
+        list.clear()
+        list addAll jItems
+      }
     }
   }
   
