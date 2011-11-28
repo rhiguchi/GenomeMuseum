@@ -52,8 +52,7 @@ class MainViewController(
   // モデルバインド
   /** ソースリスト項目選択 */
   selectedRoom.reactions += {
-    case ValueChange(_, _, newRoom: ExhibitRoom) =>
-      setRoomContentsTo(newRoom)
+    case ValueChange(_, _, _) => updateRoomContents()
   }
   // データリストコントローラと結合
   updateTableSource()
@@ -78,6 +77,8 @@ class MainViewController(
     currentSchema foreach { dataSchema =>
       // ソースリスト
       sourceListCtrl.userExhibitRoomService = dataSchema.userExhibitRoomService
+      // データテーブル
+      updateRoomContents()
     }
   }
   
@@ -164,13 +165,13 @@ class MainViewController(
    * データテーブル領域に表示するコンテンツを設定する
    * 通常は、ソースリストの選択項目となる
    */
-  private def setRoomContentsTo(newRoom: ExhibitRoom) {
-    if (newRoom == sourceListCtrl.sourceStructure.webSource) {
+  private def updateRoomContents() {
+    if (selectedRoom() == sourceListCtrl.sourceStructure.webSource) {
       tableSource = WebSource
     }
     else {
       // データテーブルに指定
-      museumExhibitListCtrl.dataService = newRoom match {
+      museumExhibitListCtrl.dataService = selectedRoom() match {
         case newRoom: UserExhibitRoom => dataSchema.roomExhibitService(newRoom)
         case _ => dataSchema.museumExhibitService
       }

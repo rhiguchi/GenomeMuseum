@@ -10,7 +10,35 @@ import java.text.ParseException
 
 import jp.scid.bio.BioData
 
+object MuseumExhibitLoaderSpec {
+  def download(source: URL) = {
+    val file = File.createTempFile("bioFile", ".txt")
+    
+    using(new FileOutputStream(file)) { out =>
+      val dest = new BufferedOutputStream(out)
+      
+      using(source.openStream) { inst =>
+        val buf = new Array[Byte](8196)
+        val source = new BufferedInputStream(inst, buf.length)
+        
+        Iterator.continually(source.read(buf)).takeWhile(_ != -1)
+          .foreach(dest.write(buf, 0, _))
+      }
+      
+      dest.flush
+    }
+    
+    file
+  }
+  
+  private def using[A <% java.io.Closeable, B](s: A)(f: A => B) = {
+    try f(s) finally s.close()
+  }
+}
+
 class MuseumExhibitLoaderSpec extends Specification with Mockito {
+  import MuseumExhibitLoaderSpec._
+  
   def is = "MuseumExhibitLoader" ^
     "makeMuseumExhibit" ^ canMakeExhibit(defaultParsers) ^ bt ^
     "genbank ファイル" ^ canParseGenBankFile(defaultParsers) ^ bt ^
@@ -115,29 +143,5 @@ class MuseumExhibitLoaderSpec extends Specification with Mockito {
     
     def definition = there was one(exhibit).definition_=(
       "Acidiphilium cryptum JF-5 plasmid pACRY07, complete sequence")
-  }
-  
-  def download(source: URL) = {
-    val file = File.createTempFile("bioFile", ".txt")
-    
-    using(new FileOutputStream(file)) { out =>
-      val dest = new BufferedOutputStream(out)
-      
-      using(source.openStream) { inst =>
-        val buf = new Array[Byte](8196)
-        val source = new BufferedInputStream(inst, buf.length)
-        
-        Iterator.continually(source.read(buf)).takeWhile(_ != -1)
-          .foreach(dest.write(buf, 0, _))
-      }
-      
-      dest.flush
-    }
-    
-    file
-  }
-  
-  private def using[A <% java.io.Closeable, B](s: A)(f: A => B) = {
-    try f(s) finally s.close()
   }
 }

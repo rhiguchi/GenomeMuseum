@@ -17,7 +17,7 @@ class LibraryFileManagerSpec extends Specification with Mockito {
   
   def manager = {
     val tempfile = createTempFile
-    val tempDir = new File(tempfile.getPath + ".d")
+    val tempDir = new File(tempfile.getPath + ".d", "BioFiles")
     tempDir.mkdirs
     new LibraryFileManager(tempDir)
   }
@@ -25,7 +25,8 @@ class LibraryFileManagerSpec extends Specification with Mockito {
   def canSaveSource(m: => LibraryFileManager) =
     "exhibit にパス適用" ! saveSource(m).appliesPathToExhibit ^
     "ファイルの URI が返される" ! saveSource(m).returnsUriOfFile ^
-    "ファイルが移動する" ! saveSource(m).movesFile
+    "ファイルが移動する" ! saveSource(m).movesFile ^
+    "exhibit.name に空白文字" ! saveSource(m).spaceChar
   
   def canGetDefaultStorePath(m: => LibraryFileManager) =
     "name 属性から作成" ! getDefaultStorePath(m).fromName ^
@@ -72,6 +73,13 @@ class LibraryFileManagerSpec extends Specification with Mockito {
       
       (file.exists, destFile.exists) must_== (false, true)
     }
+    
+    def spaceChar = {
+      val exhibit = exhibitMockOf(GenBank, "XX_NNNNNNN 1")
+      m.saveSource(exhibit, createTempFile)
+      
+      there was one(exhibit).filePath_=("gmlib:XX_NNNNNNN%201.gbk")
+    }
   }
   
   def getDefaultStorePath(m: LibraryFileManager) = new Object {
@@ -104,10 +112,10 @@ class LibraryFileManagerSpec extends Specification with Mockito {
   def getSource(m: LibraryFileManager) = new Object {
     def returnsUrl = {
       val exhibit = mock[MuseumExhibit]
-      exhibit.filePath returns "gmlib:XX_NNNNNNN.gbk"
+      exhibit.filePath returns "gmlib:XX_NNNNNNN%201.gbk"
       
       m.getSource(exhibit).get.toString must_== 
-        ("file:" + m.baseDir.toString + "/XX_NNNNNNN.gbk")
+        ("file:" + m.baseDir.toString + "/XX_NNNNNNN%201.gbk")
     }
     
     def returnsFileUrl = {

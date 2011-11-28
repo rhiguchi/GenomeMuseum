@@ -36,13 +36,15 @@ private[controller] class MuseumExhibitListTransferHandler(
     logger.debug("読み込み応答")
     
     if (t.isDataFlavorSupported(exhibitDataFlavor)) {
+      logger.trace("ExhibitData フレーバー読み込み")
       // TODO 展示物転送処理
       false
     }
     else if (t.isDataFlavorSupported(javaFileListFlavor) && loadManager.nonEmpty) {
-      // ファイル読み込み
       import collection.JavaConverters._
       import util.control.Exception.catching
+      
+      logger.trace("ファイルフレーバー読み込み")
       
       try {
         val files = t.getTransferData(javaFileListFlavor) match {
@@ -58,7 +60,7 @@ private[controller] class MuseumExhibitListTransferHandler(
         }
       }
       catch {
-        case e: IOException =>
+        case e: Exception =>
           scala.swing.Swing.onEDT {
             loadManager.get.alertFailToTransfer(e)
           }
@@ -66,6 +68,7 @@ private[controller] class MuseumExhibitListTransferHandler(
       }
     }
     else {
+      logger.trace("対応するフレーバー無し")
       false
     }
   }
@@ -74,7 +77,7 @@ private[controller] class MuseumExhibitListTransferHandler(
    * 転送許可
    */
   override def getSourceActions(c: JComponent) =
-    TransferHandler.COPY_OR_MOVE
+    TransferHandler.COPY
   
   override def createTransferable(c: JComponent) = {
     tableModel.selections match {
@@ -146,7 +149,13 @@ private[controller] case class MuseumExhibitTransferData(
   }
   
   def getTransferDataFlavors(): Array[DataFlavor] = {
-    return Array(exhibitDataFlavor)
+    import collection.mutable.Buffer
+    val flavors = Buffer.empty[DataFlavor]
+    flavors += exhibitDataFlavor
+    if (transferFiles.nonEmpty)
+      flavors += javaFileListFlavor
+    
+    return flavors.toArray
   }
   
   def getTransferData(flavor: DataFlavor) = {

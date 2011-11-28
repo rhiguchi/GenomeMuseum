@@ -13,7 +13,23 @@ import jp.scid.genomemuseum.model.MuseumExhibit
 import MuseumExhibitTransferData.{dataFlavor => exhibitDataFlavor}
 import DataFlavor.javaFileListFlavor
 
+object MuseumExhibitListTransferHandlerSpec extends Mockito {
+  def fileTransferObject(files: File*) = {
+    val fileList = new java.util.ArrayList[File]()
+    files foreach fileList.add
+    
+    val t = mock[Transferable]
+    t.getTransferData(javaFileListFlavor) returns fileList
+    t.getTransferDataFlavors returns Array(javaFileListFlavor)
+    t.isDataFlavorSupported(javaFileListFlavor) returns true
+    
+    t
+  }
+}
+
 class MuseumExhibitListTransferHandlerSpec extends Specification with Mockito {
+  import MuseumExhibitListTransferHandlerSpec._
+  
   def is = "MuseumExhibitListTransferHandler" ^
     "項目が選択されていない状態" ^ cannotTransfer(defaultHandler) ^ bt ^
     "項目が選択されている状態" ^ canTransfer(itemSelectedHandler) ^ bt ^
@@ -104,23 +120,12 @@ class MuseumExhibitListTransferHandlerSpec extends Specification with Mockito {
     }
     
     def callsLoadExhibits = {
-      val file = File.createTempFile("test", ".dat")
-      val t = fileTransferObject(file)
+      val file1, file2, file3 = File.createTempFile("test", ".dat")
+      val t = fileTransferObject(file1, file2, file3)
+      handler.importData(null, t)
       
-      there was one(handler.loadManager.get).loadExhibits(handler.tableModel, Seq(file))
-      handler.importData(null, t) must beTrue
-    }
-    
-    def fileTransferObject(files: File*) = {
-      val fileList = new java.util.ArrayList[File]()
-      files foreach fileList.add
-      
-      val t = mock[Transferable]
-      t.getTransferData(javaFileListFlavor) returns fileList
-      t.getTransferDataFlavors returns Array(javaFileListFlavor)
-      t.isDataFlavorSupported(javaFileListFlavor) returns true
-      
-      t
+      there was one(handler.loadManager.get).loadExhibits(
+        handler.tableModel, Seq(file1, file2, file3))
     }
   }
 }

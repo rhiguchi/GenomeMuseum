@@ -18,6 +18,7 @@ class LibraryFileManager(val baseDir: File) extends MuseumExhibitStorage {
    * @throws IOException 入出力エラー
    */
   def saveSource(exhibit: MuseumExhibit, data: File) = {
+    logger.debug("ソース保存 {}", data)
     // 出力先の探索
     val destCandidate = getDefaultStorePath(exhibit)
     if (!destCandidate.getParentFile.exists) destCandidate.getParentFile.mkdirs
@@ -32,6 +33,7 @@ class LibraryFileManager(val baseDir: File) extends MuseumExhibitStorage {
       case false => throw new IOException(
         "cannot rename from '%s' to '%s'.".format(data,dest))
     }
+    logger.debug("ソース保存先 {}", dest)
     // 保存先の適用
     exhibit.filePath = uri.toString
     dest.toURI.toURL
@@ -41,13 +43,17 @@ class LibraryFileManager(val baseDir: File) extends MuseumExhibitStorage {
    * MuseumExhibit に適用された filePath から URL を取得
    */
   def getSource(exhibit: MuseumExhibit) = {
+    logger.trace("ソース取得 {}", exhibit.filePath)
+    
     URI.create(exhibit.filePath) match {
       case null => None
       case uri => 
         val resolvedUri = uri.getScheme match {
-          case `libraryScheme` => libraryURI.resolve(uri.getSchemeSpecificPart)
+          case `libraryScheme` =>
+            new File(baseDir, uri.getSchemeSpecificPart).toURI
           case _ => uri
         }
+        logger.trace("ソース取得解決 URI {}", resolvedUri)
         Some(resolvedUri.toURL)
     }
   }
@@ -93,6 +99,8 @@ class LibraryFileManager(val baseDir: File) extends MuseumExhibitStorage {
 }
 
 object LibraryFileManager {
+  private val logger = org.slf4j.LoggerFactory.getLogger(classOf[LibraryFileManager])
+  
   /**
    * 連番付けのファイル名探し
    * @throws IOException 入出力エラー

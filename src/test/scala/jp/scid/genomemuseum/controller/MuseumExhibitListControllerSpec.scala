@@ -7,7 +7,7 @@ import javax.swing.{JTable, JTextField, JLabel, TransferHandler}
 
 import jp.scid.gui.event.DataListSelectionChanged
 import jp.scid.genomemuseum.{model, gui, view}
-import model.{MuseumExhibitService, MuseumExhibit}
+import model.{MuseumExhibitService, MuseumExhibit, MuseumExhibitLoaderSpec}
 import gui.ExhibitTableModel
 import view.FileContentView
 
@@ -17,6 +17,7 @@ class MuseumExhibitListControllerSpec extends Specification with Mockito {
     "データテーブル" ^ dataTableSpec(controller) ^ bt ^
     "検索フィールド" ^ searchFieldSpec(controller) ^ bt ^
     "削除アクション" ^ removingActionSpec(controller) ^ bt ^
+    "ドラッグ＆ドロップ" ^ dragAndDropSpec(controller) ^ bt ^
     "プロパティ" ^ propertiesSpec(controller) ^ bt ^
     end
   
@@ -51,6 +52,9 @@ class MuseumExhibitListControllerSpec extends Specification with Mockito {
     "選択時に有効" ! removingAction(ctrl).availableToSelect ^
     "無選択時には無効" ! removingAction(ctrl).unavailableToSelect ^
     "tableModel#removeSelections コール" ! removingAction(ctrl).callsTableMethod
+  
+  def dragAndDropSpec(ctrl: => MuseumExhibitListController) =
+    "テーブルにファイルをドロップできる" ! dragAndDrop(ctrl).dropBioFile
   
   def propertiesSpec(ctrl: => MuseumExhibitListController) =
     "dataService 適用" ! properties(ctrl).applyDataService ^
@@ -137,6 +141,18 @@ class MuseumExhibitListControllerSpec extends Specification with Mockito {
       val mgr = mock[MuseumExhibitLoadManager]
       ctrl.loadManager = mgr
       ctrl.tableTransferHandler.loadManager must beSome(mgr)
+    }
+  }
+  
+  def dragAndDrop(ctrl: MuseumExhibitListController) = new TestBase(ctrl) {
+    import MuseumExhibitListTransferHandlerSpec.fileTransferObject
+    
+    val loaderSpec = new MuseumExhibitLoaderSpec
+    
+    def dropBioFile = {
+      ctrl.loadManager = mock[MuseumExhibitLoadManager]
+      val t = fileTransferObject(loaderSpec.genBankFile)
+      ctrl.dataTable.getTransferHandler.importData(ctrl.dataTable, t) must beTrue
     }
   }
   

@@ -67,10 +67,11 @@ class MuseumExhibitLoadManager(
     val task = currentLoadTask.filter(_.getState != StateValue.DONE)
       .getOrElse(createLoadTask())
     
+    logger.debug("task {}", task)
     // クエリを追加する
     task.tryQueue(tableModel, files) match {
       case true =>
-        logger.trace("クエリの追加")
+        logger.trace("クエリの追加 State {}", task.getState)
         // タスクを実行状態にする。
         if (task.getState == StateValue.PENDING)
           execute(task)
@@ -181,6 +182,7 @@ class MuseumExhibitLoadManager(
    * 取り込み中に起きた例外を通知する。
    */
   protected[controller] def alertFailToTransfer(cause: Exception) {
+    cause.printStackTrace
     // TODO
   }
 }
@@ -304,9 +306,8 @@ abstract class LoadTask extends SwingWorker[Unit, LoadTask.Chunk] {
    * 読み込むファイルを追加する。このタスクが終了処理に入った時はファイルは追加されない。
    */
   def tryQueue(tableModel: ExhibitTableModel, files: Seq[File]) = {
-    logger.debug("クエリの追加")
-    
     fileQueue.synchronized {
+      logger.debug("クエリの追加 isShutdonw: {}", shutdown)
       // タスクが終了していなければ追加
       if (!shutdown) {
         val queries = files.map(file =>
