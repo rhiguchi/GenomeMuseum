@@ -7,7 +7,7 @@ import javax.swing.event.{ListSelectionListener, ListSelectionEvent}
 import ca.odell.glazedlists.{swing => glswing, matchers, EventList,
   GlazedLists, FilterList, SortedList, BasicEventList}
 import glswing.EventSelectionModel
-import matchers.{Matcher, MatcherEditor}
+import matchers.{Matcher, MatcherEditor, Matchers}
 
 import event.DataListSelectionChanged
 
@@ -26,6 +26,9 @@ class DataListModel[A] extends DataModel with swing.Publisher {
   
   /** 変換やフィルタリングを行った後の EventList */
   protected[gui] def viewEventList: EventList[A] = sortedSource
+  
+  /** 選択されている項目の EventList */
+  private[gui] def selectedItems = eventSelectionModel.getTogglingSelected
   
   /** 変換やフィルタリングを行った後のソース */
   def viewSource = {
@@ -50,7 +53,14 @@ class DataListModel[A] extends DataModel with swing.Publisher {
     import scala.collection.JavaConverters._
     val javaSource = newSource.asJava
     withWriteLock(tableSource) { tableSource =>
-      GlazedLists.replaceAll(tableSource, javaSource, true)
+      if (javaSource.size >= 10000) {
+        // パフォーマンスのため
+        tableSource.clear()
+        tableSource.addAll(javaSource)
+      }
+      else {
+        GlazedLists.replaceAll(tableSource, javaSource, true)
+      }
     }
   }
   
@@ -90,19 +100,18 @@ class DataListModel[A] extends DataModel with swing.Publisher {
     selections = item :: items.toList
   }
   
-  /**
-   * 要素の選択状態を解除する。
-   */
-  
-  
-  /** 選択されている項目を取得 */
-  def selectedItems = eventSelectionModel.getTogglingSelected
-  
   /** ソート用の Comparator を設定 */
   def sortWith(c: Comparator[_ >: A]) {
     logger.debug("比較 {}", c)
     withWriteLock(sortedSource) { _ =>
       sortedSource setComparator c
+    }
+  }
+  
+  /** ソート解除 */
+  def clearSorting() {
+    withWriteLock(sortedSource) { _ =>
+      sortedSource setComparator null
     }
   }
   
@@ -116,6 +125,11 @@ class DataListModel[A] extends DataModel with swing.Publisher {
   def filterWith(matcher: MatcherEditor[_ >: A]) {
     logger.debug("MatcherEditor {}", matcher)
     filteredSource setMatcherEditor matcher
+  }
+  
+  /** フィルタリング解除 */
+  def clearFiltering() {
+    filteredSource setMatcher null
   }
   
   /**

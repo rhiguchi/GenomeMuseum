@@ -70,7 +70,7 @@ class DataTableModelSpec extends Specification with Mockito {
     def byProperty = {
       model.visibledColumns = List("addr", "age")
       
-      Range(0, columnModel.getColumnCount) map columnModel.getColumn map
+      Range(0, model.visibledColumns.size) map columnModel.getColumn map
         (_.getIdentifier.toString) toList
     }
     

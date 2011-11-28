@@ -58,7 +58,7 @@ class DataTableModel[A](val tableFormat: TableFormat[A]) extends DataListModel[A
     import collection.JavaConverters._
     val jIdentifiers = newIdentifiers.asJava
     
-    withReadLock(visibledColumnList) { list =>
+    withWriteLock(visibledColumnList) { list =>
       GlazedLists.replaceAll(list, jIdentifiers, true)
     }
   }

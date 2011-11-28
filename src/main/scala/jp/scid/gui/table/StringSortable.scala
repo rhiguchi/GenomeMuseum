@@ -26,7 +26,7 @@ trait StringSortable[A] extends jp.scid.gui.StringSortable[A] {
    * @return {@code tableFormat} に基づいた比較器。
    */
   protected def comparatorFor(orderStatement: String) = {
-    logger.debug("比較器の取得 {}", identifier)
+    logger.debug("比較器の取得 {}", orderStatement)
     val comps = orderStatement split sortTokenSepalator map (_.trim) map
       SortModel.fromStatement map comparatorFor collect { case Some(c) => c }
     GlazedLists.chainComparators(comps: _*)

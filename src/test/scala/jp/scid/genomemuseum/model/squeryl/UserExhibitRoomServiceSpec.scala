@@ -11,7 +11,7 @@ import IUserExhibitRoom.RoomType._
 
 class UserExhibitRoomServiceSpec extends Specification with DatabaseConnectable {
   
-  def is = "UserExhibitRoomService" ^ Step(openDatabase) ^
+  def is = "UserExhibitRoomService" ! pending // ^ Step(openDatabase) ^
     p ^ "addRoom GroupRoom 親" ^
       "BasicRoom" ^ isTableInserted(roomAddingOf(BasicRoom)) ^ bt ^
       "GroupRoom" ^ isTableInserted(roomAddingOf(GroupRoom)) ^ bt ^

@@ -57,6 +57,6 @@ mainClass in (Compile, run) := Some("jp.scid.genomemuseum.GenomeMuseum")
 
 fork := true
 
-javaOptions += "-Xmx512m -Djava.util.logging.config.file=logging.properties -Dfile.encoding=UTF-8"
+javaOptions += "-Xmx1024m -Djava.util.logging.config.file=logging.properties -Dfile.encoding=UTF-8"
 
 

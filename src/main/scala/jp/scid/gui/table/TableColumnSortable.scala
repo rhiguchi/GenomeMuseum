@@ -171,7 +171,6 @@ private[table] class SortableTableHeaderHandler(model: TableColumnSortable[_],
   
   // ハンドラのインストール
   tableHeader setReorderingAllowed true
-  tableHeader.getTable.setRowSorter(null)
   tableHeader addMouseListener clickHandler
   // レンダラのインストール
   tableHeader.setDefaultRenderer(sortableRenderer)
