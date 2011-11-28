@@ -100,18 +100,21 @@ class DataListModel[A] extends DataModel with swing.Publisher {
   
   /** ソート用の Comparator を設定 */
   def sortWith(c: Comparator[_ >: A]) {
-    withReadLock(sortedSource) { _ =>
+    logger.debug("比較 {}", c)
+    withWriteLock(sortedSource) { _ =>
       sortedSource setComparator c
     }
   }
   
   /** フィルタリング用 Matcher 設定 */
   def filterWith(matcher: Matcher[_ >: A]) {
+    logger.debug("Matcher {}", matcher)
     filteredSource setMatcher matcher
   }
   
   /** フィルタリング用 MatcherEditor 設定 */
   def filterWith(matcher: MatcherEditor[_ >: A]) {
+    logger.debug("MatcherEditor {}", matcher)
     filteredSource setMatcherEditor matcher
   }
   
@@ -134,6 +137,8 @@ class DataListModel[A] extends DataModel with swing.Publisher {
 }
 
 protected[gui] object DataListModel {
+  private val logger = org.slf4j.LoggerFactory.getLogger(classOf[DataListModel[_]])
+  
   /**
    * EventList の書き込みロックをして処理を行う
    */

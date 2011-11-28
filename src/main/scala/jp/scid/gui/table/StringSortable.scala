@@ -26,6 +26,7 @@ trait StringSortable[A] extends jp.scid.gui.StringSortable[A] {
    * @return {@code tableFormat} に基づいた比較器。
    */
   protected def comparatorFor(orderStatement: String) = {
+    logger.debug("比較器の取得 {}", identifier)
     val comps = orderStatement split sortTokenSepalator map (_.trim) map
       SortModel.fromStatement map comparatorFor collect { case Some(c) => c }
     GlazedLists.chainComparators(comps: _*)
@@ -90,6 +91,8 @@ trait StringSortable[A] extends jp.scid.gui.StringSortable[A] {
 }
 
 private[table] object StringSortable {
+  private val logger = org.slf4j.LoggerFactory.getLogger(classOf[StringSortable[_]])
+  
   object SortOrder extends Enumeration {
     type SortOrder = Value
     val Ascending = Value

@@ -1,6 +1,7 @@
 package jp.scid.genomemuseum.model.squeryl
 
 import org.specs2._
+import specification.Step
 
 import java.io.File
 
@@ -9,12 +10,13 @@ import org.squeryl.PrimitiveTypeMode._
 
 
 class MuseumSchemaSpec extends Specification with SquerylConnection {
-  def is = "MuseumSchema" ^ sequential ^
+  def is = "MuseumSchema" ^ sequential ^ Step(closeDatabase) ^
     "スキーマ未作成" ^ emptySchemaSpec(emptySchema) ^ bt ^
     "スキーマ作成" ^ existenceSchemaSpec(anonMemSchema) ^ bt ^
     "onMemory 作成" ^ existenceSchemaSpec(onMemorySchema) ^ bt ^
     "onFile 作成" ^ existenceSchemaSpec(onFileSchema) ^ bt ^
     "DB 上にスキーマが存在する" ^ craeteionSpec ^ bt ^
+    Step(closeDatabase) ^
     end
   
   def schema = new MuseumSchema
@@ -26,6 +28,10 @@ class MuseumSchemaSpec extends Specification with SquerylConnection {
     val schema = new MuseumSchema
     schema.create
     schema
+  }
+  
+  def closeDatabase {
+    MuseumSchema.closeConnection
   }
   
   def onMemorySchema = {

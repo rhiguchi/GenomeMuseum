@@ -14,10 +14,15 @@ import impl.client.DefaultHttpClient
 
 import WebServiceAgent.{Query, Identifier, EntryValues}
 
+private[ws] object TogoWebServiceAgent {
+  private val logger = org.slf4j.LoggerFactory.getLogger(classOf[TogoWebServiceAgent])
+}
+
 /**
  * TogoWS を利用した Web サービスアクセス
  */
 protected class TogoWebServiceAgent extends WebServiceAgent {
+  import TogoWebServiceAgent._
   /** Web アクセスクライアント */
   def client = new DefaultHttpClient
   
@@ -153,7 +158,8 @@ protected class TogoWebServiceAgent extends WebServiceAgent {
     }
     
     private def retrieveNext = {
-      getFieldValuesFromWeb(identifier.take(unitCount))
+      val ids = Stream.range(0, unitCount).takeWhile(_ => identifier.nonEmpty).map(_ => identifier.dequeue)
+      getFieldValuesFromWeb(ids)
     }
   }
 
@@ -164,6 +170,7 @@ protected class TogoWebServiceAgent extends WebServiceAgent {
    */
   @throws(classOf[IllegalStateException])
   private[ws] def getContent(url: String): io.Source = {
+    logger.debug("getContent: {}", url)
     val method = new HttpGet(url)
     val response: HttpResponse = client.execute(method)
     

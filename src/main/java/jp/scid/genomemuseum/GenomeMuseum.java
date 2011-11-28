@@ -23,9 +23,15 @@ public class GenomeMuseum {
             catch (UnsupportedEncodingException e) {
                 throw new IllegalStateException(e);
             }
+            
             logger.addHandler(h);
             logger.setLevel(Level.FINEST);
             logger.setUseParentHandlers(false);
+            
+            Logger guilogger = Logger.getLogger("jp.scid.gui");
+            guilogger.addHandler(h);
+            guilogger.setLevel(Level.FINEST);
+            guilogger.fine("GUI logger is prepared.");
         }
         
         logger.info("Welcome to GenomeMuseum.");

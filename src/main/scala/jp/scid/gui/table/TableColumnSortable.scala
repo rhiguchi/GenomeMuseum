@@ -8,6 +8,7 @@ import javax.swing.table.{TableColumnModel, TableColumn}
 trait TableColumnSortable[A] extends StringSortable[A] {
   this: DataTableModel[A] =>
   import collection.mutable
+  import TableColumnSortable._
   
   /** 列整列情報が列オブジェクトに保存できない時の情報格納場所 */
   private val currentOrderMap = mutable.Map.empty[String, String]
@@ -19,6 +20,7 @@ trait TableColumnSortable[A] extends StringSortable[A] {
    * 列が持つ現在の比較記述の取得する。
    */
   def orderStatement(identifier: String): String = {
+    logger.debug("並び替え記述の取得 {}", identifier)
     currentOrderMap.getOrElse(identifier,
       columnOrderStatementsFor(identifier).headOption.getOrElse(""))
   }
@@ -39,6 +41,7 @@ trait TableColumnSortable[A] extends StringSortable[A] {
    * 並び替えを行う列を指定する。
    */
   def sortColumn_=(identifier: String) {
+    logger.debug("並び替え {}", identifier)
     currentSortColumn = identifier
     updateColumnSorting()
   }
@@ -89,6 +92,8 @@ import javax.swing.table.JTableHeader
 import jp.scid.gui.DataModel.Connector
 
 object TableColumnSortable {
+  private val logger = org.slf4j.LoggerFactory.getLogger(classOf[TableColumnSortable[_]])
+  
   def connect(model: TableColumnSortable[_], tableHeader: JTableHeader) = {
     new SortableTableHeaderHandler(model, tableHeader)
   }
@@ -104,6 +109,8 @@ private[table] class SortableTableHeaderHandler(model: TableColumnSortable[_],
   import javax.swing.table.TableCellRenderer
   import ca.odell.glazedlists.impl.SortIconFactory
   
+  private val logger = org.slf4j.LoggerFactory.getLogger(classOf[SortableTableHeaderHandler])
+  
   private val icons = SortIconFactory.loadIcons
   /** 順方向を示すアイコン */
   def ascendingIcon = icons(1)
@@ -113,22 +120,27 @@ private[table] class SortableTableHeaderHandler(model: TableColumnSortable[_],
   /** ヘッダーのクリックを認識するハンドラ */
   private val clickHandler = new MouseAdapter {
     override def mouseClicked(e: MouseEvent) {
+      logger.debug("TableHeader クリック")
       e.getComponent match {
         case tableHeader: JTableHeader => 
           if (!isResizing(tableHeader)) {
             val clickecColumn = model.columnModel.getColumnIndexAtX(e.getX)
             headerClick(clickecColumn)
           }
+          tableHeader.resizeAndRepaint()
         case _ =>
       }
-      tableHeader.resizeAndRepaint()
     }
   }
+  
+  /** ヘッダーレンダラ */
+  private val sortableRenderer = new ProxySortableRenderer(tableHeader.getDefaultRenderer)
   
   /**
    * カラムヘッダをクリックした動作を実行する
    */
   def headerClick(columnIndex: Int) {
+    logger.debug("列ヘッダークリック {}", columnIndex)
     val identifier = getIdentifierFrom(model.columnModel, columnIndex)
     
     // 同じ列をクリックした時はその列の並び替え記述を更新
@@ -158,9 +170,10 @@ private[table] class SortableTableHeaderHandler(model: TableColumnSortable[_],
     header.getCursor == Cursor.getPredefinedCursor(Cursor.E_RESIZE_CURSOR)
   
   // ハンドラのインストール
+  tableHeader setReorderingAllowed true
+  tableHeader.getTable.setRowSorter(null)
   tableHeader addMouseListener clickHandler
   // レンダラのインストール
-  private val sortableRenderer = new ProxySortableRenderer(tableHeader.getDefaultRenderer)
   tableHeader.setDefaultRenderer(sortableRenderer)
   
   /**
