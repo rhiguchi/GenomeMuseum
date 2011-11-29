@@ -15,3 +15,10 @@ case class DataListSelectionChanged[A](
   selections: List[A] = Nil
 ) extends DataListModelEvent[A] {
 }
+
+import jp.scid.gui.StringSortable
+
+case class OrderStatementChanged[A](
+  source: DataListModel[A] with StringSortable[A],
+  newValue: String
+) extends DataListModelEvent[A]

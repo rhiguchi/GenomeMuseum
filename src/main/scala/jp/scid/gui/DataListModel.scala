@@ -22,7 +22,7 @@ class DataListModel[A] extends DataModel with swing.Publisher {
   private[gui] val sortedSource = new SortedList(filteredSource, null)
   
   /** リスト選択モデル */
-  protected val eventSelectionModel = new EventSelectionModel[A](viewEventList)
+  private[gui] val eventSelectionModel = new EventSelectionModel[A](viewEventList)
   
   /** 変換やフィルタリングを行った後の EventList */
   protected[gui] def viewEventList: EventList[A] = sortedSource
@@ -87,11 +87,9 @@ class DataListModel[A] extends DataModel with swing.Publisher {
   def selections_=(items: Seq[A]) {
     import scala.collection.JavaConverters._
     val jItems = items.asJava
-    sourceListWithWriteLock { _ =>
-      withWriteLock(selectedItems) { list =>
-        list.clear()
-        list addAll jItems
-      }
+    withWriteLock(selectedItems) { list =>
+      list.clear()
+      list addAll jItems
     }
   }
   
@@ -148,12 +146,23 @@ class DataListModel[A] extends DataModel with swing.Publisher {
     withWriteLock(tableSource)(function)
   }
   
-  // イベント結合
-  bindListSelectionEventPublisher(this)
+  /** Swing イベントと scala.swing.Publisher を接続 */
+  private val eventAdapter = new ListSelectionEventHandler(this)
+  eventSelectionModel.addListSelectionListener(eventAdapter)
 }
 
-protected[gui] object DataListModel {
+object DataListModel {
   private val logger = org.slf4j.LoggerFactory.getLogger(classOf[DataListModel[_]])
+  
+  /** EventList の処理を待機する */
+  def waitEventListProcessing() {
+    import java.awt.EventQueue
+    if (!EventQueue.isDispatchThread) {
+      EventQueue.invokeAndWait(new Runnable {
+        def run {}
+      })
+    }
+  }
   
   /**
    * EventList の書き込みロックをして処理を行う
@@ -179,14 +188,6 @@ protected[gui] object DataListModel {
     finally {
       el.getReadWriteLock().readLock().unlock()
     }
-  }
-  
-  /**
-   * Swing イベントと scala.swing.Publisher を接続する
-   */
-  private def bindListSelectionEventPublisher[A](source: DataListModel[A]) {
-    val handler = new ListSelectionEventHandler(source)
-    source.eventSelectionModel addListSelectionListener handler
   }
   
   /**

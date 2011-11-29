@@ -1,6 +1,7 @@
 package jp.scid.gui
 
 import java.util.Comparator
+import jp.scid.gui.event.OrderStatementChanged
 
 /**
  * 文字列で並び替えをする機能を持たせるモジュールトレイト。
@@ -8,12 +9,30 @@ import java.util.Comparator
 trait StringSortable[A] {
   this: DataListModel[A] =>
   
+  private var currentOrderStatement = ""
+  
   /**
    * 文字列で並び替え。
    * @param orderStatement 並び替えの記述
    */
-  def sortWith(orderStatement: String) {
-    sortWith(comparatorFor(orderStatement))
+  @deprecated("use orderStatement")
+  def sortWith(newValue: String) {
+    orderStatement = newValue
+  }
+  
+  /**
+   * 文字列で並び替え記述の取得
+   */
+  def orderStatement = currentOrderStatement
+  
+  /**
+   * 文字列で並び替え。
+   * @param orderStatement 並び替えの記述
+   */
+  def orderStatement_=(newValue: String) {
+    currentOrderStatement = newValue
+    sortWith(comparatorFor(newValue))
+    publish(OrderStatementChanged(this, newValue))
   }
   
   /**

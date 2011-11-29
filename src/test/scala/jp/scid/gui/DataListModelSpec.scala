@@ -8,6 +8,8 @@ import ca.odell.glazedlists.GlazedLists
 import ca.odell.glazedlists.matchers.{Matcher, MatcherEditor, CompositeMatcherEditor}
 import event.DataListSelectionChanged
 
+import DataListModel.waitEventListProcessing
+
 private[gui] object DataListModelSpec {
   private[gui] case class TestElement(
     name: String,
@@ -26,12 +28,21 @@ class DataListModelSpec extends Specification with Mockito {
     "要素数の取得" ^ sourceSizeSpec(emptyModel, createElement _) ^ bt ^
     "並び替え" ^ canSorting ^ bt ^
     "抽出" ^ canFilter ^ bt ^
-    "要素が選択されている状態" ^ someElementsSelectedSpec(emptyModel) ^ bt ^
-    "選択モデル" ^ selectionsSpec ^ bt ^
-    "イベント発行" ^ canPublishEvent ^ bt ^
+    "項目選択" ^ selectionsSpec(emptyModel, createElement _) ^ bt ^
+    "要素が選択されている状態" ^ notEmptySelectionSpec(itemsSelected) ^ bt ^
+    "イベント発行" ^ canPublishEvent(emptyModel, createElement _) ^ bt ^
     end
   
   def emptyModel = new DataListModel[Symbol]
+  
+  def itemsSelected = {
+    val model = emptyModel
+    val items = 0 until 10 map createElement
+    model.source = items
+    waitEventListProcessing()
+    model.selections = items.drop(2).take(4)
+    model
+  }
   
   def createElement(param: Int) = Symbol("element" + param)
   
@@ -71,18 +82,22 @@ class DataListModelSpec extends Specification with Mockito {
     "MatcherEditor 解除" ! filtering.clearMatcherEditor ^
     "平行設定 [100]" ! sorting.parallel(100)
   
-  def someElementsSelectedSpec(m: => DataListModel[_]) =
-    "選択中項目配列は空ではない" ! todo ^
-    "選択モデルから行数を取得" ! todo ^
-    "無選択にできる" ! todo
+  def notEmptySelectionSpec(m: => DataListModel[_]) =
+    "選択中項目配列は空ではない" ! nonEmptySelections(m).notEmpty ^
+    "無選択にできる" ! nonEmptySelections(m).makeNoSelection
   
-  def selectionsSpec =
-    "選択要素の設定と取得" ! todo ^
-    "選択モデルが更新される" ! todo ^
-    "選択モデルに適用" ! todo
+  def selectionsSpec[A](m: => DataListModel[A], factory: Int => A) =
+    "選択要素の設定と取得" ! selections(m, factory).setAndGet ^
+    "選択モデルが更新される" ! selections(m, factory).selectionModelSelections
   
-  def canPublishEvent =
-    "選択イベント" ! todo
+  def canPublishEvent[A](m: => DataListModel[A], factory: Int => A) =
+    "選択イベント" ^ canPublishSelectionEvent(m, factory) ^ bt
+  
+  def canPublishSelectionEvent[A](m: => DataListModel[A], factory: Int => A) =
+    "ソースオブジェクト" ! selectionEvent(m, factory).sourceObj ^
+    "調節中値 true" ! selectionEvent(m, factory).adjust(true) ^
+    "調節中値 false" ! selectionEvent(m, factory).adjust(false) ^
+    "選択項目" ! selectionEvent(m, factory).selectionList
   
   def empty(m: DataListModel[_]) = new Object {
     def s1 = m.source must beEmpty
@@ -227,6 +242,64 @@ class DataListModelSpec extends Specification with Mockito {
         model.viewSource
       }
       success
+    }
+  }
+  
+  private[gui] class SelectionBase[A](m: DataListModel[A], factory: Int => A) {
+    val elements = 0 until 10 map factory
+    val selection = elements.drop(3).take(3)
+    m.source = elements
+    waitEventListProcessing()
+  }
+  
+  def selections[A](m: DataListModel[A], factory: Int => A) = new SelectionBase(m, factory) {
+    m.selections = selection
+    
+    def setAndGet = {
+      m.selections must_== selection
+    }
+    
+    def selectionModelSelections = {
+      (m.selectionModel.getMinSelectionIndex must_== 3) and
+      (m.selectionModel.getMaxSelectionIndex must_== 5)
+    }
+  }
+  
+  def nonEmptySelections(m: DataListModel[_]) = new Object {
+    def notEmpty = m.selections must not beEmpty
+    
+    def makeNoSelection = {
+      m.selections = Nil
+      m.selections must beEmpty
+    }
+  }
+  
+  def selectionEvent[A](m: DataListModel[A], factory: Int => A) = new SelectionBase(m, factory) {
+    var eventSource: Option[DataListModel[_]] = None
+    var eventAdjusting: Option[Boolean] = None
+    var eventSelections: Option[List[A]] = None
+    
+    m.reactions += {
+      case DataListSelectionChanged(source, adj, sel) =>
+        eventSource = Some(source)
+        eventAdjusting = Some(adj)
+        eventSelections = Some(sel.asInstanceOf[List[A]])
+    }
+    
+    def sourceObj = {
+      m.selections = selection
+      eventSource must beSome(m)
+    }
+    
+    def adjust(value: Boolean) = {
+      m.selectionModel.setValueIsAdjusting(value)
+      m.selections = selection
+      eventAdjusting must beSome(value)
+    }
+    
+    def selectionList = {
+      m.selections = selection
+      eventSelections must beSome(selection)
     }
   }
 }

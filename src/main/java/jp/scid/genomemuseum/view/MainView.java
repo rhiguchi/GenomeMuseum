@@ -11,8 +11,13 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
+import java.text.DecimalFormat;
+import java.util.ArrayList;
+import java.util.List;
 
+import javax.swing.AbstractAction;
 import javax.swing.AbstractButton;
+import javax.swing.Action;
 import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
 import javax.swing.Icon;
@@ -33,11 +38,17 @@ import javax.swing.JToggleButton;
 import javax.swing.JTree;
 import javax.swing.SpringLayout;
 import javax.swing.SwingConstants;
+import javax.swing.SwingWorker;
+import javax.swing.SwingWorker.StateValue;
 import javax.swing.UIManager;
 import javax.swing.event.PopupMenuEvent;
 import javax.swing.event.PopupMenuListener;
+import javax.swing.table.AbstractTableModel;
+import javax.swing.table.TableCellRenderer;
 import javax.swing.tree.DefaultTreeCellEditor;
 
+import jp.scid.genomemuseum.model.TaskProgressModel;
+import jp.scid.gui.MessageFormatTableCell;
 import jp.scid.gui.plaf.SourceListTreeUI;
 
 import com.explodingpixels.macwidgets.ComponentBottomBar;
@@ -45,6 +56,7 @@ import com.explodingpixels.macwidgets.MacButtonFactory;
 import com.explodingpixels.macwidgets.MacIcons;
 import com.explodingpixels.macwidgets.MacWidgetFactory;
 import com.explodingpixels.macwidgets.UnifiedToolBar;
+import com.explodingpixels.macwidgets.plaf.ITunesTableUI;
 
 public class MainView implements GenomeMuseumView {
     private static final Color COLOR_ACTIVITY_FOREGROUND = new Color(0f, 0f, 0f, 0.8f);
@@ -53,7 +65,24 @@ public class MainView implements GenomeMuseumView {
     private final static Icon loadingIcon = new ImageIcon(MainView.class.getResource("loading.gif"));
     
     // Data table
-    public final JTable dataTable = MacWidgetFactory.createITunesTable(null);
+    public final JTable dataTable = new JTable(); {
+        dataTable.setUI(new ITunesTableUI());
+        TableCellRenderer defaultRenderer = dataTable.getDefaultRenderer(Object.class);
+        
+        // Taskable
+        TaskProgressTableCell remoteResourceCell = new TaskProgressTableCell(defaultRenderer);
+        Action dlAction = createSampleDownloadingAction(remoteResourceCell);
+        remoteResourceCell.setExecuteButtonAction(dlAction);
+        dataTable.setDefaultRenderer(TaskProgressModel.class, remoteResourceCell);
+        dataTable.setDefaultEditor(TaskProgressModel.class, remoteResourceCell);
+        
+        // Integer
+        MessageFormatTableCell intValueCell = new MessageFormatTableCell(new DecimalFormat("#,##0"), defaultRenderer);
+        intValueCell.getRendererView().setHorizontalAlignment(SwingConstants.RIGHT);
+        dataTable.setDefaultRenderer(Integer.class, intValueCell);
+        
+        dataTable.setModel(new SampleTableModel());
+    }
     public final JScrollPane dataTableScroll = new JScrollPane(dataTable,
             JScrollPane.VERTICAL_SCROLLBAR_ALWAYS,
             JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
@@ -344,5 +373,137 @@ public class MainView implements GenomeMuseumView {
     // view test
     public static void main(String[] args) {
         GUICheckApp.launch(args, MainView.class);
+    }
+    
+    private static class SampleTableModel extends AbstractTableModel {
+        private static enum Column {
+            STRING_VALUE(String.class) {
+                @Override Object getValue(int row) {
+                    return "String Value " + row;
+                }
+            },
+            INTEGER_VALUE(Integer.class) {
+                @Override Object getValue(int row) {
+                    return 1000 + row;
+                }
+            },
+            REMOTE_SOURCE(TaskProgressModel.class) {
+                List<RemoteSourceImpl> sources = new ArrayList<RemoteSourceImpl>(); {
+                    for (int i = 0; i < 10; i++) {
+                        RemoteSourceImpl data = new RemoteSourceImpl();
+                        sources.add(data);
+                    }
+                }
+                
+                @Override Object getValue(int row) {
+                    return sources.get(row);
+                }
+            },
+            ;
+            
+            final Class<?> columnClass;
+
+            abstract Object getValue(int row);
+            
+            private Column(Class<?> columnClass) {
+                this.columnClass = columnClass;
+            }
+        }
+        
+        public int getRowCount() {
+            return 10;
+        }
+
+        public int getColumnCount() {
+            return Column.values().length;
+        }
+
+        @Override
+        public Object getValueAt(int row, int column) {
+            return Column.values()[column].getValue(row);
+        }
+        
+        @Override
+        public Class<?> getColumnClass(int column) {
+            return Column.values()[column].columnClass;
+        }
+        
+        @Override
+        public String getColumnName(int column) {
+            return Column.values()[column].name();
+        }
+        
+        @Override
+        public boolean isCellEditable(int rowIndex, int columnIndex) {
+            return true;
+        }
+    }
+    
+    private Action createSampleDownloadingAction(final TaskProgressTableCell editor) {
+        return new AbstractAction("Download") {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                RemoteSourceImpl remoteSource = (RemoteSourceImpl) editor.getCellEditorValue();
+                new RemoteSourceDownloadTask(remoteSource).execute();
+            }
+        };
+    }
+
+    static class RemoteSourceDownloadTask extends SwingWorker<Void, Void> {
+        final RemoteSourceImpl remoteSource;
+        AbstractTableModel model;
+        
+        public RemoteSourceDownloadTask(RemoteSourceImpl remoteSource) {
+            this.remoteSource = remoteSource;
+        }
+        
+        @Override
+        protected Void doInBackground() throws Exception {
+            remoteSource.state = StateValue.STARTED;
+            
+            int count = 0;
+            
+            while (count < 500) {
+                Thread.sleep(10);
+                count++;
+                remoteSource.progress = count / 5.0f;
+                System.out.println("progress: " + remoteSource.progress);
+                publish();
+            }
+            remoteSource.progress = 100;
+            Thread.sleep(1000);
+            
+            remoteSource.state = StateValue.DONE;
+            
+            return null;
+        }
+        
+        @Override
+        protected void process(List<Void> chunks) {
+        }
+    };
+    
+    static class RemoteSourceImpl implements TaskProgressModel {
+        boolean available = true;
+        float progress = 1;
+        String message = "";
+        StateValue state = StateValue.PENDING;
+        
+        @Override
+        public StateValue getState() {
+            return state;
+        }
+        
+        public float getProgress() {
+            return progress;
+        }
+        
+        public String getLabel() {
+            return message;
+        }
+        
+        public boolean isAvailable() {
+            return available;
+        }
     }
 }

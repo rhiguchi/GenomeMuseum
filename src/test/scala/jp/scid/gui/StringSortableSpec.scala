@@ -3,53 +3,71 @@ package jp.scid.gui
 import org.specs2._
 
 import java.util.Comparator
+import java.util.Collections
+
+import ca.odell.glazedlists.GlazedLists
+
+import jp.scid.gui.event.OrderStatementChanged
 
 class StringSortableSpec extends Specification {
   def is = "StringSortable" ^
-    "初期状態" ! s1 ^
-    "並び替え記述指定1" ! s2 ^
-    "並び替え記述指定2" ! s3
+    "並び替え記述指定" ^ orderStatementSpec ^ bt ^
+    "イベント発行" ^ canPublishOrderChangedEvent(emptyModel) ^ bt ^
+    end
   
-  class TestBase {
-    val stringComparator = new Comparator[String] {
-      def compare(o1: String, o2: String) = {
-        o1.compareToIgnoreCase(o2)
-      }
-    }
-    
-    val reverseStringComparator = new Comparator[String] {
-      def compare(o1: String, o2: String) = {
-        o2.compareToIgnoreCase(o1)
-      }
-    }
-    
-    val model = new DataListModel[String] with StringSortable[String] {
-      def comparatorFor(orderStatement: String) = orderStatement match {
-        case "reverse" => reverseStringComparator
-        case _ => stringComparator
-      }
-    }
-    
-    model.source = List("apple", "SAMPLE", "bread")
-    
-    def viewSource = model.viewSource
-  }
+  def canPublishOrderChangedEvent[A](m: => DataListModel[A] with StringSortable[A]) =
+    "イベントオブジェクト" ! publishOrderChangedEvent(m).s1 ^
+    "記述文字列" ! publishOrderChangedEvent(m).s2
   
-  def base = new TestBase {
-    def sort = {
-      model sortWith "any"
-      viewSource
-    }
-    
-    def reverse = {
-      model sortWith "reverse"
-      viewSource
+  def orderStatementSpec =
+    "設定と取得" ! orderStatement.s1 ^
+    "並び替えが行われる" ! orderStatement.s2 ^
+    "comparatorFor から取得" ! orderStatement.s3
+  
+  def emptyModel = new DataListModel[String] with StringSortable[String] {
+    val c = GlazedLists.comparableComparator[String]
+    def comparatorFor(orderStatement: String) = orderStatement match {
+      case "order" => c
+      case "reverse" => Collections.reverseOrder(c)
+      case _ => null
     }
   }
   
-  def s1 = base.viewSource must contain("apple", "SAMPLE", "bread").only.inOrder
+  def publishOrderChangedEvent[A](m: DataListModel[A] with StringSortable[A]) = new Object {
+    var eventSource: Option[DataListModel[_] with StringSortable[_]] = None
+    var eventValue: Option[String] = None
+    
+    m.reactions += {
+      case OrderStatementChanged(source, newValue) =>
+        eventSource = Some(source)
+        eventValue = Some(newValue)
+    }
+    
+    m.orderStatement = "stmt"
+      
+    def s1 = eventSource must beSome(m)
+    
+    def s2 = eventValue must beSome("stmt")
+  }
   
-  def s2 = base.sort must contain("apple", "bread", "SAMPLE").only.inOrder
-  
-  def s3 = base.reverse must contain("SAMPLE", "bread", "apple").only.inOrder
+  def orderStatement = new Object {
+    val model = emptyModel
+    val items = List("b", "a", "c")
+    model.source = items
+    
+    def s1 = {
+      model.orderStatement = "order"
+      model.orderStatement must_== "order"
+    }
+    
+    def s2 = {
+      model.orderStatement = "order"
+      model.viewSource must contain("a", "b", "c").only.inOrder
+    }
+    
+    def s3 = {
+      model.orderStatement = "reverse"
+      model.viewSource must contain("c", "b", "a").only.inOrder
+    }
+  }
 }
