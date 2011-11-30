@@ -5,6 +5,7 @@ import javax.swing.RootPaneContainer
 import org.jdesktop.application
 
 
+import jp.scid.gui.event.ValueChange
 import jp.scid.genomemuseum.{view, model}
 import view.{MainView, MainViewMenuBar, ColumnVisibilitySetting}
 import model.MuseumSchema
@@ -51,7 +52,16 @@ class MuseumFrameViewController(
   }
   
   // モデル
+  /** 現在のスキーマ */
   var currentSchema: Option[MuseumSchema] = None
+  /** 現在のメインビューのタイトル */
+  def mainCtrlTitle = mainCtrl.title
+  
+  // モデルバインド
+  // タイトルの設定
+  mainCtrlTitle.reactions += {
+    case _: ValueChange[_] => updateFrameTitle()
+  }
   
   // アクション
   @application.Action(name = "show")
@@ -95,6 +105,17 @@ class MuseumFrameViewController(
       case window: java.awt.Window =>
         window.pack
         window.setLocationRelativeTo(null)
+      case _ =>
+    }
+    
+    updateFrameTitle()
+  }
+  
+  /** ルートペインのタイトルを更新する */
+  private[controller] def updateFrameTitle() {
+    val title = "GenomeMuseum - " + mainCtrlTitle()
+    rootPaneContainer match {
+      case frame: java.awt.Frame => frame.setTitle(title)
       case _ =>
     }
   }

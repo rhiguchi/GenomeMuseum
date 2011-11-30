@@ -74,6 +74,13 @@ object ValueHolder {
   }
   
   /**
+   * モデル同士を結合する。
+   */
+  def connect[A](subject: ValueHolder[A], target: ValueHolder[A]): Connector = {
+    new ValueHoldersConnector(subject, target)
+  }
+  
+  /**
    * Boolean 型 モデルと JComponent の isVisible のプロパティを結合する。
    */
   def connectVisible(subject: ValueHolder[Boolean], component: JComponent): Connector = {
@@ -86,5 +93,28 @@ object ValueHolder {
   
   private class ConnectorPropertyImpl(base: PropertyConnector) extends Connector {
     def release() = base.release()
+  }
+  
+  private class ValueHoldersConnector[A](subject: ValueHolder[A],
+      target: ValueHolder[A]) extends Connector {
+    import swing.{Reactor, Reactions}
+    import Reactions.Reaction
+    
+    val sbjToTrg: Reaction = {
+      case ValueChange(_, _, newValue) => target := newValue.asInstanceOf[A]
+    }
+    val trgToSbj: Reaction = {
+      case ValueChange(_, _, newValue) if newValue != subject() =>
+        subject := newValue.asInstanceOf[A]
+    }
+    
+    subject.reactions += sbjToTrg
+    target.reactions += trgToSbj
+    target := subject()
+      
+    def release() {
+      subject.reactions -= sbjToTrg
+      target.reactions -= trgToSbj
+    }
   }
 }

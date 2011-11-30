@@ -2,6 +2,7 @@ package jp.scid.genomemuseum.controller
 
 import javax.swing.{JFrame, JTree, JTextField, JComponent, JProgressBar, JLabel}
 
+import jp.scid.gui.ValueHolder
 import jp.scid.gui.event.ValueChange
 import jp.scid.gui.DataModel.Connector
 import jp.scid.genomemuseum.{view, model, gui, GenomeMuseumGUI}
@@ -48,6 +49,8 @@ class MainViewController(
   private var currentConnectors: List[Connector] = Nil
   /** ソースリストの選択項目 */
   private[controller] def selectedRoom = sourceListCtrl.selectedRoom
+  /** このコントローラを表すタイトル */
+  val title = new ValueHolder("")
   
   // モデルバインド
   /** ソースリスト項目選択 */
@@ -156,8 +159,12 @@ class MainViewController(
     currentConnectors.foreach(_.release())
     
     currentConnectors = tableSource match {
-      case LocalSource => museumExhibitListCtrl.bind()
-      case WebSource => webServiceResultCtrl.bind()
+      case LocalSource =>
+        ValueHolder.connect(museumExhibitListCtrl.statusTextModel, title) ::
+        museumExhibitListCtrl.bind()
+      case WebSource =>
+        ValueHolder.connect(webServiceResultCtrl.statusTextModel, title) ::
+        webServiceResultCtrl.bind()
     }
   }
   
