@@ -7,7 +7,7 @@ import javax.swing.{JTree, DefaultCellEditor, JTextField}
 
 import com.explodingpixels.widgets.TextProvider
 
-import jp.scid.genomemuseum.model.ExhibitListBox
+import jp.scid.genomemuseum.model.UserExhibitRoom
 
 class SourceListCellEditor(field: JTextField) extends DefaultCellEditor(field) {
   def this() = this(new JTextField)
@@ -27,19 +27,15 @@ class SourceListCellEditor(field: JTextField) extends DefaultCellEditor(field) {
   }
   
   override def isCellEditable(event: EventObject) = {
-    (event, event.getSource) match {
-      case (e: MouseEvent, tree: JTree) =>
-        tree.getPathForLocation(e.getX, e.getY) match {
-          case null => false
-          case path => path.getLastPathComponent match {
-            case listBox: ExhibitListBox =>
-              true
-            case _ =>
-              false
-          }
+    event match {
+      case e: MouseEvent => event.getSource.asInstanceOf[JTree].getPathForLocation(e.getX, e.getY) match {
+        case null => false
+        case path => path.getLastPathComponent match {
+          case room: UserExhibitRoom => true
+          case _ => false
         }
-      case _ =>
-        super.isCellEditable(event)
+      }
+      case _ => super.isCellEditable(event)
     }
   }
 }
