@@ -3,6 +3,8 @@ package jp.scid.genomemuseum.gui
 import org.specs2._
 import mock._
 
+import jp.scid.gui.DataListModel.waitEventListProcessing
+
 import jp.scid.genomemuseum.model.{MuseumExhibitService, MuseumExhibit,
   MuseumExhibitServiceSpec}
 
@@ -27,6 +29,7 @@ class ExhibitTableModelSpec extends Specification with Mockito {
     val e1, e2, e3, e4, e5 = mock[MuseumExhibit]
     service.allElements returns List(e1, e2, e3, e4, e5).map(_.asInstanceOf[service.ElementClass])
     model.reloadSource
+    waitEventListProcessing()
     model.select(e2, e3)
     model
   }

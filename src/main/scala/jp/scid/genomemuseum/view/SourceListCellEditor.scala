@@ -18,8 +18,8 @@ class SourceListCellEditor(field: JTextField) extends DefaultCellEditor(field) {
       tree, value, isSelected, expanded, leaf, row)
     
     value match {
-      case node: TextProvider =>
-        delegate setValue node.getText
+      case room: UserExhibitRoom =>
+        delegate setValue room.name
       case _ =>
     }
     
