@@ -5,7 +5,8 @@ import java.io.{File, FileInputStream, IOException}
 import java.text.ParseException
 import org.jdesktop.application.{Application, Action, ProxyActions}
 import view.{MainView, MainViewMenuBar, ColumnVisibilitySetting}
-import controller.{MainViewController, ViewSettingDialogController, MuseumExhibitLoadManager}
+import controller.{GenomeMuseumController, MainViewController, ViewSettingDialogController,
+  MuseumExhibitLoadManager}
 import model.{MuseumSchema, LibraryFileManager, MuseumExhibitLoader}
 import scala.swing.{Frame, Dialog, Panel}
 
@@ -19,14 +20,13 @@ class GenomeMuseumGUI extends Application {
   
   lazy val openDialog = new FileDialog(null.asInstanceOf[java.awt.Frame], "", FileDialog.LOAD)
   // Actions
-  private lazy val actionFor = GenomeMuseumGUI.actionFor(getContext.getActionMap(this))_
-  lazy val openAction = actionFor("openFile")
-  lazy val quitAction = actionFor("quit")
-  lazy val cutAction = actionFor("cut")
-  lazy val copyAction = actionFor("copy")
-  lazy val pasteAction = actionFor("paste")
-  lazy val deleteAction = actionFor("delete")
-  lazy val selectAllAction = actionFor("selectAll")
+  lazy val openAction = getAction("openFile")
+  lazy val quitAction = getAction("quit")
+  lazy val cutAction = getAction("cut")
+  lazy val copyAction = getAction("copy")
+  lazy val pasteAction = getAction("paste")
+  lazy val deleteAction = getAction("delete")
+  lazy val selectAllAction = getAction("selectAll")
   
   // Model
   /** データ保管のディレクトリ */
@@ -112,7 +112,8 @@ class GenomeMuseumGUI extends Application {
     menu.delete.action = deleteAction
     menu.selectAll.action = selectAllAction
     
-    menu.reloadResources()
+    applicationContext.getResourceManager.getResourceMap(menu.getClass, classOf[Object])
+      .injectComponents(menu.container.peer)
   }
   
   @Action
@@ -161,16 +162,50 @@ object GenomeMuseumGUI {
   
   private val logger = org.slf4j.LoggerFactory.getLogger(classOf[GenomeMuseumGUI])
   
-  def actionFor(actionMap: ApplicationActionMap)(key: String) = {
-    val swingAction = actionMap.get(key) match {
-      case null => throw new IllegalStateException(
-        "Action '%s' is not defined on '%s'.".format(key, actionMap.getActionsClass))
-      case action => action
+  /**
+   * アプリケーションのコンテキストオブジェクトを取得
+   */
+  lazy val applicationContext = {
+    import util.control.Exception.catching
+    
+    def getInstance = Application.getInstance(classOf[GenomeMuseumGUI])
+    
+    val application = catching(classOf[IllegalStateException]).opt
+        {getInstance}.getOrElse {
+      java.beans.Beans.setDesignTime(true)
+      getInstance
     }
-    convertToScalaSwingAction(swingAction)
+    application.getContext()
   }
   
-  implicit def convertToScalaSwingAction(swingAction: javax.swing.Action) = new Action("") {
+  /**
+   * リソースマップを取得
+   * 指定したコントローラのオブジェクトから、GenomeMuseumController までの
+   * 階層内のマップを返す。
+   */
+  def resourceMapOf(obj: AnyRef) = applicationContext
+    .getResourceManager.getResourceMap(obj.getClass, classOf[Object])
+  
+  /**
+   * アプリケーションのアクションを取得する
+   */
+  def getAction(key: String) = {
+    val action = applicationContext.getActionManager.getActionMap(classOf[GenomeMuseumGUI],
+        Application.getInstance).get(key)
+    
+    if (action == null)
+      logger.warn("Action '%s' is not defined on GenomeMuseumGUI.".format(key))
+    
+    convertToScalaSwingAction(action)
+  }
+  
+  /**
+   * Swing のアクションを scala.swing のアクションに変換する
+   */
+  implicit def convertToScalaSwingAction(swingAction: javax.swing.Action)
+      = new scala.swing.Action("") {
+    import java.awt.event.ActionEvent
+    
     override lazy val peer = swingAction
     override def apply() {
       val e = new ActionEvent(this, ActionEvent.ACTION_PERFORMED, "apply")
@@ -185,12 +220,6 @@ object GenomeMuseumGUI {
   def resourceMap(c: Class[_]) =
     Application.getInstance().getContext().getResourceMap(c)
   
-  /**
-   * アクションの取得
-   */
-  def actionFor(controller: AnyRef, key: String): Action =
-    actionFor(Application.getInstance().getContext().getActionMap(controller))(key)
-    
     
   /**
    * サンプルデータを 10 件作成する

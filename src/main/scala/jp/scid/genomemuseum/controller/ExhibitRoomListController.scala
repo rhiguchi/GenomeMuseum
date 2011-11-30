@@ -2,6 +2,8 @@ package jp.scid.genomemuseum.controller
 
 import javax.swing.JTree
 
+import org.jdesktop.application.Action
+
 import jp.scid.gui.{ValueHolder, tree, event}
 import tree.DataTreeModel
 import DataTreeModel.Path
@@ -13,7 +15,7 @@ import UserExhibitRoom.RoomType._
 
 private[controller] class ExhibitRoomListController(
   view: JTree
-) {
+) extends GenomeMuseumController {
   // ビュー
   
   /** 標準での選択部屋 */
@@ -23,6 +25,9 @@ private[controller] class ExhibitRoomListController(
   val sourceStructure = new MuseumStructure()
   /** ソースリストのモデル */
   private[controller] val sourceListModel = new MuseumSourceModel(sourceStructure)
+  sourceListModel.basicRoomDefaultName = getResourceString("basicRoom.defaultName")
+  sourceListModel.groupRoomDefaultName = getResourceString("groupRoom.defaultName")
+  sourceListModel.smartRoomDefaultName = getResourceString("smartRoom.defaultName")
   
   /** 現在選択されているパスモデル */
   val selectedRoom = new ValueHolder(defaultSelectionPath.last) {
@@ -54,26 +59,39 @@ private[controller] class ExhibitRoomListController(
   private val transferHandler = new ExhibitRoomListTransferHandler(this)
   
   // アクション
-  /** BasicRoom 型の部屋を追加し、部屋名を編集開始状態にするアクション */
-  val addBasicRoomAction = swing.Action("addBasicRoom") {
+  /** {@link addBasicRoom} のアクション */
+  val addBasicRoomAction = getAction("addBasicRoom")
+  /** {@link addGroupRoom} のアクション */
+  val addGroupRoomAction = getAction("addGroupRoom")
+  /** {@link addSmartRoom} のアクション */
+  val addSamrtRoomAction = getAction("addSmartRoom")
+  /** {@link deleteSelectedRoom} のアクション */
+  val removeSelectedUserRoomAction = getAction("deleteSelectedRoom")
+  
+  /** BasicRoom 型の部屋を追加し、部屋名を編集開始状態にする */
+  @Action(name="addBasicRoom")
+  def addBasicRoom {
     val newRoom = sourceListModel.addUserRoomToSelectedPath(BasicRoom)
     startEditingRoom(newRoom)
   }
   
-  /** GroupRoom 型の部屋を追加し、部屋名を編集開始状態にするアクション */
-  val addGroupRoomAction = swing.Action("addGroupRoom") {
+  /** GroupRoom 型の部屋を追加し、部屋名を編集開始状態にする */
+  @Action(name="addGroupRoom")
+  def addGroupRoom {
     val newRoom = sourceListModel.addUserRoomToSelectedPath(GroupRoom)
     startEditingRoom(newRoom)
   }
   
-  /** SmartRoom 型の部屋を追加し、部屋名を編集開始状態にするアクション */
-  val addSamrtRoomAction = swing.Action("addSmartRoom") {
+  /** SmartRoom 型の部屋を追加し、部屋名を編集開始状態にする */
+  @Action(name="addSmartRoom")
+  def addSmartRoom {
     val newRoom = sourceListModel.addUserRoomToSelectedPath(SmartRoom)
     startEditingRoom(newRoom)
   }
   
-  /** 選択中の UserExhibitRoom ノードを除去し、ローカルライブラリを選択するアクション */
-  val removeSelectedUserRoomAction = swing.Action("deleteSelectedBox") {
+  /** 選択中の UserExhibitRoom ノードを除去し、ローカルライブラリを選択する */
+  @Action(name="deleteSelectedRoom")
+  def deleteSelectedRoom {
     sourceListModel.removeSelectedUserRoom()
     sourceListModel.selectPath(sourceListModel.pathForLocalLibrary)
   }

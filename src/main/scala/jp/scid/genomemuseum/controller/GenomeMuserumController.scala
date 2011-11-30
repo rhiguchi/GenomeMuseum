@@ -7,30 +7,27 @@ import jp.scid.genomemuseum.GenomeMuseumGUI
 private[controller] object GenomeMuseumController {
   private val logger = org.slf4j.LoggerFactory.getLogger(classOf[GenomeMuseumController])
   
-  implicit def convertToScalaSwingAction(swingAction: javax.swing.Action)
-      = new scala.swing.Action("") {
-    import java.awt.event.ActionEvent
-    
-    override lazy val peer = swingAction
-    override def apply() {
-      val e = new ActionEvent(this, ActionEvent.ACTION_PERFORMED, "apply")
-      apply(e)
-    }
-    def apply(event: ActionEvent) = peer.actionPerformed(event)
+  private def applicationContext = GenomeMuseumGUI.applicationContext
+  
+  private def setActionTo(binds: (javax.swing.AbstractButton, swing.Action)*) {
+    binds foreach { pair => pair._1 setAction pair._2.peer }
   }
   
-  lazy val applicationContext = {
-    import util.control.Exception.catching
-    
-    def getInstance = Application.getInstance(classOf[GenomeMuseumGUI])
-    
-    val application = catching(classOf[IllegalStateException]).opt
-        {getInstance}.getOrElse {
-      java.beans.Beans.setDesignTime(true)
-      getInstance
-    }
-    application.getContext()
-  }
+  /**
+   * アクションマップを取得
+   * 指定したコントローラのオブジェクトから、GenomeMuseumController までの
+   * 階層内のマップを返す。
+   */
+  protected[controller] def actionMapOf(controller: GenomeMuseumController) = applicationContext
+    .getActionManager.getActionMap(classOf[GenomeMuseumController], controller)
+  
+  /**
+   * リソースマップを取得
+   * 指定したコントローラのオブジェクトから、GenomeMuseumController までの
+   * 階層内のマップを返す。
+   */
+  protected[controller] def resourceMapOf(obj: AnyRef) = applicationContext
+    .getResourceManager.getResourceMap(obj.getClass, classOf[Object])
 }
 
 /**
@@ -38,14 +35,7 @@ private[controller] object GenomeMuseumController {
  */
 private[controller] abstract class GenomeMuseumController {
   import GenomeMuseumController._
-  
-  /**
-   * アクションマップを取得
-   * 指定したコントローラのオブジェクトから、GenomeMuseumController までの
-   * 階層内のマップを返す。
-   */
-  private def actionMapOf(controller: GenomeMuseumController) = applicationContext
-    .getActionManager.getActionMap(classOf[GenomeMuseumController], controller)
+  import GenomeMuseumGUI.convertToScalaSwingAction
   
   /**
    * このコントローラのアクションを取得する。
@@ -61,5 +51,22 @@ private[controller] abstract class GenomeMuseumController {
           .format(name, actionMap.getActionsClass))
     
     convertToScalaSwingAction(action)
+  }
+  
+  /**
+   * このコントローラのリソースマップを取得する。
+   */
+  protected[controller] def resourceMap = resourceMapOf(this)
+  
+  /**
+   * リソースマップから文字列を取得する。
+   * キーが存在しない時は警告ログが出力される。
+   */
+  protected[controller] def getResourceString(key: String, params: AnyRef*) = {
+    if (!resourceMap.containsKey(key))
+      logger.warn("Resource '%s' is not defined on '%s'."
+        .format(key, resourceMap.getBundleNames))
+      
+    resourceMap.getString(key, params)
   }
 }

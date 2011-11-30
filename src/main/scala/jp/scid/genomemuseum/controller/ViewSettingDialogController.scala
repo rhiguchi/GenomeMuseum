@@ -1,22 +1,23 @@
 package jp.scid.genomemuseum.controller
 
+import javax.swing.{JCheckBox, RootPaneContainer}
+import scala.swing.Window
+
 import jp.scid.genomemuseum.view
 import view.ColumnVisibilitySetting
-import javax.swing.JCheckBox
-import scala.swing.Window
 import org.jdesktop.application.Action
 
 class ViewSettingDialogController(
   view: ColumnVisibilitySetting,
-  dialog: Window
-) extends ApplicationController {
+  rootPaneContainer: RootPaneContainer
+) extends GenomeMuseumController {
   // Actions
-  val showAction = actionFor("show")
-  val finishSettingAction = actionFor("finishSetting")
-  val cancelSettingAction = actionFor("cancelSetting")
+  val showAction = getAction("show")
+  val finishSettingAction = getAction("finishSetting")
+  val cancelSettingAction = getAction("cancelSetting")
   
-  view.okButton setAction finishSettingAction
-  view.cancelButton setAction cancelSettingAction
+  view.okButton setAction finishSettingAction.peer
+  view.cancelButton setAction cancelSettingAction.peer
   
   // Model
   /** 設定完了後に実行する処理 */
@@ -24,18 +25,25 @@ class ViewSettingDialogController(
   /** チェックボックスにチェックを入れる列名リスト */
   var columnNameList: List[String] = Nil
   
+  private def dialog = rootPaneContainer match {
+    case window: java.awt.Window => Some(window)
+    case _ => None
+  }
+  
   /** チェックボックスの状態を直して表示 */
-  @Action
+  @Action(name="show")
   def show() {
     println("viewOption.show")
     reloadView()
-    dialog.peer setLocationRelativeTo null
-    dialog.pack()
-    dialog.visible = true
+    dialog.foreach { dialog =>
+      dialog setLocationRelativeTo null
+      dialog.pack()
+      dialog setVisible true
+    }
   }
   
   /** ダイアログを閉じて、コールバックを実行 */
-  @Action
+  @Action(name="finishSetting")
   def finishSetting() {
     println("viewOption.finishSetting")
     val checked = checkedColumns
@@ -45,7 +53,7 @@ class ViewSettingDialogController(
   }
   
   /** ダイアログを閉じる */
-  @Action
+  @Action(name="cancelSetting")
   def cancelSetting() {
     println("viewOption.cancelSetting")
     close()
@@ -53,7 +61,7 @@ class ViewSettingDialogController(
   
   /** ダイアログを閉じる */
   protected def close() {
-    dialog.visible = false
+    dialog.foreach(_.setVisible(false))
   }
   
   /** モデルからチェックボックスの状態などを読み込み直す */
@@ -79,19 +87,4 @@ class ViewSettingDialogController(
     collectCheckColumns(ListBuffer.empty[String],
       view.getAllCheckBoxes.asScala.toList).toList
   }
-}
-
-import org.jdesktop.application.{Application, ApplicationActionMap}
-
-trait ApplicationController {
-  import javax.swing.Action
-  
-  private lazy val myActionMap = Application.getInstance.getContext.getActionMap(this)
-  
-  protected def actionFor(key: String, actionMap: ApplicationActionMap = myActionMap): Action =
-    actionMap.get(key) match {
-      case null => throw new IllegalStateException(
-        "Action '%s' is not defined on '%s'.".format(key, actionMap.getActionsClass))
-      case action => action
-    }
 }

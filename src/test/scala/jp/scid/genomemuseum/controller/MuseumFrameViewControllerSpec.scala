@@ -11,7 +11,7 @@ class MuseumFrameViewControllerSpec extends Specification with Mockito {
   private type Controller = MuseumFrameViewController
   
   def is = "MuseumFrameViewController" ^
-    "ビュー表示" ^ canShow ^ bt ^
+//    "ビュー表示" ^ canShow ^ bt ^
     "コンテンツ設定" ^ rootPaneSpec ^ bt ^
 //    "メニューバーアクション設定" ^ menuBarSpec(defaultMenuBar) ^ bt ^
     end

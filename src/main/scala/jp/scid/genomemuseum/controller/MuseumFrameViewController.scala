@@ -9,7 +9,6 @@ import jp.scid.gui.event.ValueChange
 import jp.scid.genomemuseum.{view, model}
 import view.{MainView, MainViewMenuBar, ColumnVisibilitySetting}
 import model.MuseumSchema
-import GenomeMuseumController.{convertToScalaSwingAction}
 
 object MuseumFrameViewController {
   private val logger = org.slf4j.LoggerFactory.getLogger(classOf[MuseumFrameViewController])
@@ -20,7 +19,7 @@ object MuseumFrameViewController {
  */
 class MuseumFrameViewController(
   rootPaneContainer: RootPaneContainer
-) {
+) extends GenomeMuseumController {
   import MuseumFrameViewController._
   // ビュー
   /** メインビュー */
@@ -48,10 +47,8 @@ class MuseumFrameViewController(
   /** メインビュー用コントローラ */
   val mainCtrl = new MainViewController(mainView)
   /** 列設定用コントローラ */
-  lazy val viewSettingDialogCtrl = new ViewSettingDialogController(
-      columnConfigPane, columnConfigDialog) {
-    mainMenu.columnVisibility.action = showAction
-  }
+  val viewSettingDialogCtrl = new ViewSettingDialogController(
+      columnConfigPane, columnConfigDialog.peer)
   
   // モデル
   /** 現在のスキーマ */
@@ -66,6 +63,9 @@ class MuseumFrameViewController(
   }
   
   // アクション
+  val showAction = getAction("show")
+  
+  // アクションメソッド
   @application.Action(name = "show")
   def show() {
     logger.debug("show")
@@ -88,14 +88,12 @@ class MuseumFrameViewController(
   
   private def bindActionsTo(menu: MainViewMenuBar) {
     // 列設定メニュー
-//    menu.columnVisibility.action = viewSettingDialogCtrl.showAction
+    menu.columnVisibility.action = viewSettingDialogCtrl.showAction
     // 部屋追加ボタン
     val sourceListCtrl = mainCtrl.sourceListCtrl
     menu.newListBox.action = sourceListCtrl.addBasicRoomAction
     menu.newSmartBox.action = sourceListCtrl.addSamrtRoomAction
     menu.newGroupBox.action = sourceListCtrl.addGroupRoomAction
-    
-    menu.reloadResources()
   }
   
   /** ルートペインにこのコントローラのビューを適用する */
@@ -123,5 +121,6 @@ class MuseumFrameViewController(
   }
   
   // ビューの構築
+  bindActionsTo(mainMenu)
   makeRootPaneContainer(rootPaneContainer)
 }

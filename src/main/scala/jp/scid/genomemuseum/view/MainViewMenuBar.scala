@@ -36,15 +36,6 @@ class MainViewMenuBar {
     cut, copy, paste, delete, selectAll)
   viewMenu.contents += (columnVisibility)
   
-  // リソース読み込み
-  reloadResources()
-  
-  def reloadResources() {
-//    Application.getInstance().getContext().getResourceMap(getClass())
-//      .injectComponents(container.peer)
-    //reloadResources(ResourceBundle.getBundle(classOf[MainViewMenuBar].getName))
-  }
-  
   private def createMenuItem(name: String) = {
     val menu = new MenuItem(name)
     menu.name = name
