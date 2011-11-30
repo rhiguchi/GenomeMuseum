@@ -3,150 +3,221 @@ package jp.scid.genomemuseum.gui
 import org.specs2._
 import mock._
 
+import java.net.URL
+
+import actors.{Futures, Future}
+
 import jp.scid.gui.DataListModel
 import jp.scid.bio.ws.{WebServiceAgent}
 import WebServiceAgent.{Query, Identifier, EntryValues}
 import jp.scid.genomemuseum.model.SearchResult
+import WebSearchManager._
 
 class WebSearchManagerSpec extends Specification with Mockito {
   def is = "WebSearchManager" ^
-    "検索結果が空" ^ notFound(managetWith(emptyAgent)) ^ bt ^
-    "検索結果が存在する" ^ resultsExist(managetWith(findableAgent)) ^ bt ^
-    "検索結果が非常に多い" ^ tooManyResults(managetWith(agentWithMuchCount)) ^ bt ^
-    "検索反応" ^ response(managetWith(findableAgent)) ^ bt ^
-    "検索" ^ canSearch(managetWith(emptyAgent)) ^ bt ^
+    "SearchResult オブジェクト作成" ^ searchResultCreationSpec(simpleManager) ^ bt ^
+    "SearchResult オブジェクト構築" ^ canMakeSearchingResult(simpleManager) ^ bt ^
+    "該当数取得イベント発行" ^ canPublishCountRetrieved ^ bt ^
+    "識別子取得イベント発行" ^ canPublishIdentifiersRetrieved ^ bt ^
+    "サービスのデータから検索" ^ canRetrieve ^ bt ^
     end
   
-  def managetWith(agent: => WebServiceAgent) = {
-    val listModel = mock[DataListModel[SearchResult]]
-    new WebSearchManager(listModel, agent)
-  }
+  def searchResultCreationSpec(m: => WebSearchManager) =
+    "identifier 値適用" ! searchResultOf(m).identifier ^
+    "sourceUrl は agent からの値を適用" ! searchManager.applySourceURL
   
-  /** 空結果を返すエージェント */
-  def emptyAgent = agentFor(500, 0, 500)
+  def canMakeSearchingResult(m: => WebSearchManager) =
+    "accession 値の適用" ! makeSearchingResult(m).accession ^
+    "definition 値の適用" ! makeSearchingResult(m).definition ^
+    "length 値の適用" ! makeSearchingResult(m).length ^
+    "done 値の更新" ! makeSearchingResult(m).done
   
-  /** いくつかの結果を返すエージェント */
-  def findableAgent = agentFor(500, 4, 500)
+  def canPublishCountRetrieved =
+    "発行" ! publishCountRetrieved.publish ^
+    "キャンセルで発行しない" ! publishCountRetrieved.notPublishIfCanceled
   
-  /** 多量の該当数を返すエージェント */
-  def agentWithMuchCount = {
+  def canPublishIdentifiersRetrieved =
+    "発行" ! publishIdentifiersRetrieved.publish ^
+    "キャンセルで発行しない" ! publishIdentifiersRetrieved.notPublishIfCanceled
+  
+  def canRetrieve =
+    "リストモデルに適用" ! searchManager.setsSource ^
+    "行更新" ! searchManager.callsItemUpdate
+  
+  /** 識別子リスト作成 */
+  def identifiersFor(count: Int) =
+    0 until count map (i => Identifier(i.toString)) toIndexedSeq
+  
+  /** カウントを返す重量処理をするエージェント */
+  def countAgent(queryText: String, count: Int, waitTime: Long = 0) = {
     val agent = mock[WebServiceAgent]
-    makeAgentMockCount(agent, 500, 100000)
+    val query = Query(queryText, count)
+    agent.getCount(queryText) answers { arg =>
+      Thread.sleep(waitTime)
+      query
+    }
+    agent.searchIdentifiers(any) returns IndexedSeq.empty
+    agent.getFieldValues(any) returns Iterator.empty
     agent
   }
   
-  def makeAgentMockCount(agent: WebServiceAgent, waitTime: Long, count: Int) {
-    agent.getCount(any) answers { query =>
+  /** 識別子を返す重量処理をするエージェント */
+  def identifierAgent(queryText: String, identifiers: Seq[Identifier],
+      waitTime: Long = 0) = {
+    val agent = countAgent(queryText, identifiers.size, 0)
+    agent.searchIdentifiers(agent.getCount(queryText)) answers { arg =>
       Thread.sleep(waitTime)
-      Query(query.asInstanceOf[String], count)
+      identifiers.toIndexedSeq
     }
-  }
-  
-  def makeAgentMockEntryValues(agent: WebServiceAgent, waitTime: Long, values: Seq[EntryValues]) {
-    val ids = values map (r => r.identifier)
-    agent.searchIdentifiers(any) answers { query => 
-      Thread.sleep(waitTime)
-      ids.toIndexedSeq
-    }
-    agent.getFieldValues(any) answers { query => 
-      Thread.sleep(waitTime)
-      values.toIterator
-    }
-  }
-  
-  def agentFor(countTime: Long, count: Int, identifiersTime: Long) = {
-    val agent = mock[WebServiceAgent]
-    val results = 0 until count map (i => WebServiceAgent.EntryValues(
-      WebServiceAgent.Identifier("id" + i)))
-    
-    makeAgentMockCount(agent, countTime, count)
-    makeAgentMockEntryValues(agent, identifiersTime, results)
     agent
   }
   
-  def agentFor(results: Seq[EntryValues]) = {
-    val agent = mock[WebServiceAgent]
-    makeAgentMockCount(agent, 0, results.size)
-    makeAgentMockEntryValues(agent, 0, results)
+  /** 属性値返す重量処理をするエージェント */
+  def entryValuesAgent(queryText: String, evs: Seq[EntryValues], waitTime: Long = 0) = {
+    val identifiers = evs map (_.identifier)
+    val agent = identifierAgent(queryText, identifiers, 0)
+    agent.getFieldValues(identifiers) answers { arg =>
+      Thread.sleep(waitTime)
+      evs.iterator
+    }
     agent
   }
   
-  def identifiersOf(values: String*) =
-    values.map(new WebServiceAgent.Identifier(_))
-  
-  def notFound(m: => WebSearchManager) =
-    "モデルが空に設定される" ! listModel(m).sourceIsEmpty ^
-    "該当数が 0" ! searchQuery(m).countZero
-  
-  def resultsExist(m: => WebSearchManager) =
-    "モデルに要素が設定される" ! listModel(m).sourceIsNotEmpty ^
-    "該当数が 0 より多い" ! searchQuery(m).countGtZero ^
-    "識別子を取得する" ! searchQuery(m).haveResult ^
-    "識別子リストが空ではない" ! searchQuery(m).getSomeResults
-  
-  def response(m: => WebSearchManager) =
-    "制御がすぐ戻る" ! searching(m).backImmediately ^
-    "該当数の取得には結果の取得を待たない" ! searching(m).notWaitResultToGetCount
-  
-  def tooManyResults(m: => WebSearchManager) =
-    "モデルが空に設定される" ! listModel(m).sourceIsEmpty ^
-    "識別子を取得しない" ! searchQuery(m).haveNoResult
-  
-  def canSearch(m: => WebSearchManager) =
-    "エージェントから返された結果が設定される" ! searching(m).appliedEntryValues
-  
-  class TestBase(val manager: WebSearchManager) {
-    def listModel = manager.listModel
+  def managerOf(query: String, agent: WebServiceAgent) = {
+    val model = mock[DataListModel[SearchResult]]
+    new WebSearchManager(model, agent, "q")
   }
   
-  def listModel(m: WebSearchManager) = new TestBase(m) {
-    def sourceIsEmpty = {
-      manager.search("q").apply.resultTask.map(_.apply)
-      there was one(listModel).source_=(Nil)
-    }
-    
-    def sourceIsNotEmpty = {
-      val result = manager.search("q").apply.resultTask.map(_.apply).get
-      there was atLeastOne(listModel).source_=(result)
-    }
+  def simpleManager = managerOf("", countAgent("", 0))
+  
+  def searchResultOf(m: WebSearchManager) = new Object {
+    def identifier =
+      m.searchResultOf(Identifier("id")).identifier must_== "id"
   }
   
-  def searchQuery(m: WebSearchManager) = new TestBase(m) {
-    def countZero = manager.search("q").apply.count must_== 0
+  def makeSearchingResult(m: WebSearchManager) = new Object {
+    val identifier = Identifier("id")
     
-    def countGtZero = manager.search("q").apply.count must be_>(0)
+    def makedSearchingResultMock(ev: EntryValues) = {
+      val resultMock = mock[SearchResult]
+      m.makeSearchingResult(resultMock, ev)
+      resultMock
+    }
     
-    def haveResult = manager.search("q").apply.resultTask must beSome
+    def accession = there was one(makedSearchingResultMock(
+        EntryValues(identifier, accession = "accession"))).accession_=("accession")
     
-    def haveNoResult = manager.search("q").apply.resultTask must beNone
+    def definition = there was one(makedSearchingResultMock(
+        EntryValues(identifier, definition = "definition"))).definition_=("definition")
     
-    def getSomeResults = manager.search("q").apply.resultTask
-      .map(_.apply).getOrElse(Nil) must not beEmpty
+    def length = there was one(makedSearchingResultMock(
+        EntryValues(identifier, length = 12345))).length_=(12345)
+    
+    def done = there was one(makedSearchingResultMock(
+        EntryValues(identifier))).done_=(true)
   }
   
-  def searching(m: WebSearchManager) = new TestBase(m) {
-    def backImmediately = {
-      val startTime = System.currentTimeMillis
-      m.search("q")
-      System.currentTimeMillis - startTime must be_<(200L)
+  def actAndCancel(manager: WebSearchManager, after: Long = 100) = {
+    val future = Futures.future(manager.run)
+    Thread.sleep(after)
+    manager.cancel
+    future
+  }
+  
+  def publishCountRetrieved = new Object {
+    var event: Option[CountRetrieved] = None
+    
+    def setReactionsTo(manager: WebSearchManager) = manager.reactions += {
+      case e: CountRetrieved => event = Some(e)
     }
     
-    def notWaitResultToGetCount = {
-      m.agent = agentFor(500, 1, 3000)
-      val startTime = System.currentTimeMillis
-      val result = m.search("q").apply
-      System.currentTimeMillis - startTime must be_<(700L)
-    }
-    
-    def appliedEntryValues = {
-      val evs = 0 until 3 map (i => EntryValues(Identifier("id" + i), "acc" + i)) toList;
-      m.agent = agentFor(evs)
-      val results = m.search("q").apply.resultTask.get.apply
+    def publish = {
+      val manager = managerOf("q", countAgent("q", 100, 0))
+      setReactionsTo(manager)
+      manager.run()
       
-      there was one(m.listModel).source_=(results) then
-        one(m.listModel).itemUpdated(0) then
-        one(m.listModel).itemUpdated(1) then
-        one(m.listModel).itemUpdated(2)
+      event must beSome(CountRetrieved(100))
+    }
+    
+    def notPublishIfCanceled = {
+      val manager = managerOf("q", countAgent("q", 3, 500))
+      setReactionsTo(manager)
+      actAndCancel(manager).apply
+      
+      event must beNone
+    }
+  }
+  
+  def publishIdentifiersRetrieved = new Object {
+    val identifiers = identifiersFor(3)
+    
+    var event: Option[IdentifiersRetrieved] = None
+    
+    def setReactionsTo(manager: WebSearchManager) = manager.reactions += {
+      case e: IdentifiersRetrieved => event = Some(e)
+    }
+    
+    def publish = {
+      val manager = managerOf("q", identifierAgent("q", identifiers))
+      setReactionsTo(manager)
+      
+      manager.run()
+      
+      event must beSome(IdentifiersRetrieved(identifiers))
+    }
+    
+    def notPublishIfCanceled = {
+      val manager = managerOf("q", identifierAgent("q", identifiers, 500))
+      setReactionsTo(manager)
+      actAndCancel(manager).apply
+      
+      event must beNone
+    }
+  }
+  
+  def searchManager() = new Object {
+    def setsSource = {
+      val model = mock[DataListModel[SearchResult]]
+      val entryValuesList = identifiersFor(3) map (i =>
+        EntryValues(i, i.value + "-acc", 123, i.value + "-def"))
+      val manager = new WebSearchManager(model, entryValuesAgent("q", entryValuesList), "q")
+      
+      manager.run()
+      
+      val results = entryValuesList map { e => 
+        val result = manager.searchResultOf(e.identifier)
+        manager.makeSearchingResult(result, e)
+        result
+      }
+      
+      there was one(model).source_=(results)
+    }
+    
+    def callsItemUpdate = {
+      val model = mock[DataListModel[SearchResult]]
+      val entryValuesList = identifiersFor(3) map (i =>
+        EntryValues(i, i.value + "-acc", 123, i.value + "-def"))
+      val manager = new WebSearchManager(model, entryValuesAgent("q", entryValuesList), "q")
+      
+      manager.run()
+      
+      there was one(model).itemUpdated(0) then
+        one(model).itemUpdated(1) then
+        one(model).itemUpdated(2) then
+        no(model).itemUpdated(3)
+    }
+    
+    def applySourceURL = {
+      val model = mock[DataListModel[SearchResult]]
+      
+      val identifier = Identifier("sample")
+      val url = new URL("http://example.com")
+      val agent = mock[WebServiceAgent]
+      agent.getSource(identifier) returns url
+      
+      val manager = new WebSearchManager(model, agent, "")
+      
+      manager.searchResultOf(identifier).sourceUrl must beSome(url)
     }
   }
 }

@@ -36,6 +36,11 @@ class DataListModel[A] extends DataModel with swing.Publisher {
     withReadLock(viewEventList) { list => list.asScala.toIndexedSeq }
   }
   
+  /** 順番目の表示項目を取得 */
+  def viewItem(index: Int) = {
+    withReadLock(viewEventList) { list => list.get(index) }
+  }
+  
   /** 行選択モデルの取得 */
   def selectionModel: ListSelectionModel = eventSelectionModel
   
@@ -70,6 +75,21 @@ class DataListModel[A] extends DataModel with swing.Publisher {
   def itemUpdated(index: Int) {
     sourceListWithWriteLock { list =>
       list.set(index, list.get(index))
+    }
+  }
+  
+  /**
+   * データの更新を通知
+   * @todo testing
+   */
+  def updated(item: A) = {
+    sourceListWithWriteLock { list =>
+      list.indexOf(item) match {
+        case -1 => false
+        case index =>
+          list.set(index, list.get(index))
+          true
+      }
     }
   }
   

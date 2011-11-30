@@ -5,6 +5,7 @@ import static javax.swing.SpringLayout.*;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.event.ActionEvent;
@@ -71,7 +72,8 @@ public class MainView implements GenomeMuseumView {
         
         // Taskable
         TaskProgressTableCell remoteResourceCell = new TaskProgressTableCell(defaultRenderer);
-        Action dlAction = createSampleDownloadingAction(remoteResourceCell);
+//        Action dlAction = createSampleDownloadingAction(remoteResourceCell);
+        Action dlAction = createSampleDownloadingAction2(dataTable);
         remoteResourceCell.setExecuteButtonAction(dlAction);
         dataTable.setDefaultRenderer(TaskProgressModel.class, remoteResourceCell);
         dataTable.setDefaultEditor(TaskProgressModel.class, remoteResourceCell);
@@ -445,6 +447,17 @@ public class MainView implements GenomeMuseumView {
             public void actionPerformed(ActionEvent e) {
                 RemoteSourceImpl remoteSource = (RemoteSourceImpl) editor.getCellEditorValue();
                 new RemoteSourceDownloadTask(remoteSource).execute();
+            }
+        };
+    }
+    
+    private Action createSampleDownloadingAction2(final JTable table) {
+        return new AbstractAction("Download") {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                int editingRow = table.getEditingRow();
+                Component editor = table.getEditorComponent();
+                System.out.println("row: " + editingRow + " editor: " + editor);
             }
         };
     }

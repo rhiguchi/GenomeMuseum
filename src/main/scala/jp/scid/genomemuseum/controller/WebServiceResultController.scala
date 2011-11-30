@@ -4,9 +4,15 @@ import javax.swing.{JTable, JTextField, JLabel, JComponent, SwingWorker}
 
 import jp.scid.gui.ValueHolder
 import jp.scid.gui.event.ValueChange
-import jp.scid.genomemuseum.{gui}
+import jp.scid.genomemuseum.{gui, view, model}
 import gui.{ExhibitTableModel, WebSearchManager, WebServiceResultsModel}
-import WebServiceResultsModel._
+import view.TaskProgressTableCell
+import model.{SearchResult, HttpDownloader, TaskProgressModel}
+import WebSearchManager._
+
+object WebServiceResultController {
+  private val logger = org.slf4j.LoggerFactory.getLogger(classOf[WebServiceResultController])
+}
 
 class WebServiceResultController(
   dataTable: JTable,
@@ -14,25 +20,101 @@ class WebServiceResultController(
   statusField: JLabel,
   progressView: JComponent
 ) extends DataListController(dataTable, quickSearchField, statusField) {
+  import WebServiceResultController._
+  
   // モデル
   /** タスクが実行中であるかの状態を保持 */
   val isProgress = new ValueHolder(false)
   /** テーブルモデル */
   private[controller] val tableModel = new WebServiceResultsModel
-  
+  /** 現在の検索の該当数 */
   private var currentCount = 0
+  /** 現在の検索している文字列 */
+  private var currentQuery = ""
+  /** 検索実行 Actor ID */
+  private val searchingId = new java.util.concurrent.atomic.AtomicInteger
+  
+  /** ダウンロードボタンアクション */
+  val downloadAction = swing.Action("Download") {
+    downloadBioDataOnEditingRow()
+  }
   
   // モデルバインド
   /** Web 検索文字列の変更 */
   searchTextModel.reactions += {
     case ValueChange(_, _, newValue) =>
-      println("searching query: " + newValue)
-      tableModel searchWith newValue.asInstanceOf[String]
+      val myId = searchingId.incrementAndGet()
+      actors.Actor.actor {
+        Thread.sleep(1000)
+        if (searchingId.get == myId)
+          researching()
+      }
   }
   
-  class SearchingTask extends SwingWorker[Void, Void] {
-    def doInBackground() = {
-      null
+  /**
+   * クリックされたダウンロードボタンに対応するデータをダウンロードする。
+   */
+  def downloadBioDataOnEditingRow() {
+    logger.debug("ダウンロード")
+    
+    val item = tableModel.viewItem(dataTable.getEditingRow)
+    val task = createDownloadTask(item)
+    
+    DownloadTask.propertyBind(task) { (prop, value) =>
+      import SwingWorker.StateValue._
+      import util.control.Exception.catching
+      // 値の更新
+      item.state = task.getState match {
+        case DONE => task.isCancelled match {
+          case true => PENDING
+          case false =>
+            catching(classOf[Exception]).opt(task.get) match {
+              case Some(_) => DONE
+              case None => PENDING
+            }
+        }
+        case state => state
+      }
+      item.progress = task.getProgress
+      item.label = item.state match {
+        case STARTED => item.identifier + " is downloaing..."
+        case _ => item.identifier
+      }
+      // 更新通知
+      tableModel.updated(item)
+    }
+    
+    task.execute
+  }
+  
+  private def researching() {
+    val searchQuery = searchTextModel().trim.split("\\s+").mkString(" ")
+    if (searchQuery.length >= 3 && currentQuery != searchQuery) {
+      logger.debug("Search query: {}", searchQuery)
+      currentQuery = searchQuery
+      tableModel searchWith searchQuery
+    }
+  }
+  
+  def createDownloadTask(item: SearchResult) = {
+    new DownloadTask(item.sourceUrl.get.toString) {
+      override def done() {
+        if (!isCancelled) {
+          logger.trace("ダウンロード完了 {}", item.sourceUrl.get.toString)
+          val file = get()
+          // TODO import file
+        }
+        else {
+          logger.trace("ダウンロードキャンセル {}", item.sourceUrl.get.toString)
+        }
+      }
+    }
+  }
+  
+  def downloadingTableCell: Option[TaskProgressTableCell] = {
+    dataTable.getDefaultRenderer(classOf[TaskProgressModel]) match {
+      case renderer: TaskProgressTableCell => Some(renderer)
+      case _ => None
     }
   }
   
@@ -41,20 +123,21 @@ class WebServiceResultController(
     case Started() =>
       currentCount = 0
       isProgress := true
-      statusTextModel := "該当数を取得中..."
-    case CountRetrivingTimeOut() =>
-      currentCount = -1
-      statusTextModel := "Web サービスへの接続に失敗しました。"
+      statusTextModel := "%s - 検索中...".format(searchTextModel())
     case CountRetrieved(count) =>
       currentCount = count
-      statusTextModel := "%d 件のデータを取得中...".format(currentCount)
-    case DataRetrivingTimeOut() =>
-      currentCount = -1
-      statusTextModel := "データを取得できませんでした。"
+      statusTextModel := "%s - %d 件該当...".format(searchTextModel(), currentCount)
+    case IdentifiersRetrieved(_) =>
+      statusTextModel := "%s - %d 件の識別を取得...".format(searchTextModel(), currentCount)
+    case EntryValuesRetrieving() =>
+      statusTextModel := "%s - %d 件の情報を取得中...".format(searchTextModel(), currentCount)
+    case RetrievingTimeOut() =>
+      statusTextModel := "%s - %d 件（Web サービスから応答が無いため切断しました）".format(searchTextModel(), currentCount)
+    case Canceled() =>
+      statusTextModel := "%s - %d 件".format(searchTextModel(), currentCount)
+    case Success() =>
+      statusTextModel := "%s - %d 件".format(searchTextModel(), currentCount)
     case Done() =>
-      if (currentCount >= 0) {
-        statusTextModel := "%d 件".format(currentCount)
-      }
       isProgress := false
   }
   
@@ -62,6 +145,65 @@ class WebServiceResultController(
     val connList = super.bind()
     val progConn = ValueHolder.connectVisible(isProgress, progressView)
     
+    downloadingTableCell.map(_.setExecuteButtonAction(downloadAction.peer))
+    
     List(progConn) ::: connList
   }
 }
+
+import java.net.URL
+import actors.Actor
+import java.io.File
+
+object DownloadTask {
+  def propertyBind(task: DownloadTask)(changeTask: (String, AnyRef) => Unit) {
+    import java.beans.{PropertyChangeListener, PropertyChangeEvent}
+    
+    task addPropertyChangeListener new PropertyChangeListener {
+      def propertyChange(evt: PropertyChangeEvent) {
+        changeTask(evt.getPropertyName, evt.getNewValue)
+      }
+    }
+  }
+}
+
+class DownloadTask(url: String) extends SwingWorker[File, Unit] {
+  import HttpDownloader._
+  
+  private lazy val downloader = new HttpDownloader(url)
+  
+  @volatile var size = 0L
+  @volatile var downloaded = 0L
+  
+  private object Publisher extends Actor {
+    def act() {
+      react {
+        case Start(_, length) =>
+          size = length
+          publish()
+          act()
+        case InProgress(_, progress) =>
+          downloaded = progress
+          publish()
+          act()
+        case Done(_) =>
+          exit
+        }
+    }
+  }
+  
+  def doInBackground = {
+    downloader.outputChannel = Some(Publisher)
+    
+    try {
+      downloader.call()
+    }
+    catch {
+      case e: Throwable => 
+        e.printStackTrace
+        Publisher ! Done(downloader)
+        throw e
+    }
+  }
+}
+

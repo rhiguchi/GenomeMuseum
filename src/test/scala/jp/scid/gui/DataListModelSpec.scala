@@ -26,6 +26,7 @@ class DataListModelSpec extends Specification with Mockito {
     "初期状態のモデル" ^ isEmpty(emptyModel) ^ bt ^
     "元要素の設定" ^ sourceSpec(emptyModel, createElement _) ^ bt ^
     "要素数の取得" ^ sourceSizeSpec(emptyModel, createElement _) ^ bt ^
+    "表示要素の取得" ^ canGetViewItem(emptyModel, createElement _) ^ bt ^
     "並び替え" ^ canSorting ^ bt ^
     "抽出" ^ canFilter ^ bt ^
     "項目選択" ^ selectionsSpec(emptyModel, createElement _) ^ bt ^
@@ -67,6 +68,13 @@ class DataListModelSpec extends Specification with Mockito {
     "要素数の取得 [10]" ! sourceSize(m, factory).getSourceSize(10) ^
     "要素数の取得 [10000]" ! sourceSize(m, factory).getSourceSize(10000) ^
     "平行取得 [10]" ! sourceSize(m, factory).parallelGet(10)
+  
+  def canGetViewItem[A](m: => DataListModel[A], factory: Int => A) =
+    "最初の要素取得" ! viewItem(m, factory).getFirst ^
+    "最後の要素取得" ! viewItem(m, factory).getLast ^
+    "負の数で例外" ! viewItem(m, factory).negativeThrowsException ^
+    "要素数超えで例外" ! viewItem(m, factory).overIndexThrowsException ^
+    "平行取得 [10]" ! viewItem(m, factory).parallelGet(10)
   
   def canSorting =
     "表示側要素が並びかわる" ! sorting.comparator ^
@@ -133,7 +141,7 @@ class DataListModelSpec extends Specification with Mockito {
     def elms(i: Int) = 0 until i map factory
     
     def getSourceSize(count: Int) = {
-      val newSource = 0 until count map factory
+      val newSource = elms(count)
       m.source = newSource
       m.sourceSize must_== newSource.size
     }
@@ -142,6 +150,40 @@ class DataListModelSpec extends Specification with Mockito {
       (0 until count).map(i => elms(i)).par.foreach{ e =>
         m.source = e
         m.sourceSize
+      }
+      success
+    }
+  }
+  
+  def viewItem[A](m: DataListModel[A], factory: Int => A) = new Object {
+    def elms(i: Int) = 0 until i map factory
+    
+    def getFirst = {
+      val newSource = elms(10)
+      m.source = newSource
+      m.viewItem(0) must_== newSource.head
+    }
+    
+    def getLast = {
+      val newSource = elms(5)
+      m.source = newSource
+      m.viewItem(4) must_== newSource.last
+    }
+    
+    def negativeThrowsException = {
+      m.source = elms(3)
+      m.viewItem(-1) must throwA[IndexOutOfBoundsException]
+    }
+    
+    def overIndexThrowsException = {
+      m.source = elms(1)
+      m.viewItem(1) must throwA[IndexOutOfBoundsException]
+    }
+    
+    def parallelGet(count: Int) = {
+      (1 to count).map(i => elms(i)).par.foreach{ e =>
+        m.source = e
+        m.viewItem(0)
       }
       success
     }
