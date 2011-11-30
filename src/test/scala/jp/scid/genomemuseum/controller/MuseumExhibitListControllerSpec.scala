@@ -26,8 +26,7 @@ class MuseumExhibitListControllerSpec extends Specification with Mockito {
     val spiedQuickSearchField = spy(new JTextField)
     val spiedContentViewer = spy(new FileContentView)
     
-    val ctrl = new MuseumExhibitListController(spiedTable, spiedQuickSearchField,
-        spiedContentViewer) {
+    val ctrl = new MuseumExhibitListController(spiedTable, spiedQuickSearchField) {
       override def createTableModel = spy(new ExhibitTableModel2)
     }
     ctrl.bind()

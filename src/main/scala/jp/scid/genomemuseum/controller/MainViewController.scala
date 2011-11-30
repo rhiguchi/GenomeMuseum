@@ -32,7 +32,7 @@ class MainViewController(
   // データリスト用
   /** MuseumExhibit 表示用 */
   private[controller] val museumExhibitListCtrl = new MuseumExhibitListController(dataTable,
-    quickSearchField, fileContentView)
+    quickSearchField)
   /** WebService 表示用 */
   private[controller] val webServiceResultCtrl = new WebServiceResultController(dataTable,
     quickSearchField)

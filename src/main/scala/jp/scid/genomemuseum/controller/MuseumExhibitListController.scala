@@ -1,15 +1,13 @@
 package jp.scid.genomemuseum.controller
 
-import java.awt.datatransfer.{Transferable, DataFlavor}
-import javax.swing.{JTable, JTextField, JLabel, JComponent, TransferHandler}
+import javax.swing.{JTable, JTextField, JComponent, TransferHandler}
 
 import jp.scid.gui.ValueHolder
 import jp.scid.gui.event.{ValueChange, DataListSelectionChanged}
 import jp.scid.gui.table.DataTableModel
 import jp.scid.genomemuseum.{view, model, gui}
-import gui.{ExhibitTableModel, WebSearchManager, WebServiceResultsModel}
+import gui.ExhibitTableModel
 import model.{MuseumExhibit, MuseumExhibitService}
-import view.FileContentView
 
 /**
  * 展示物のテーブル表示と、フィルタリング、テーブルに表示されている項目の
@@ -17,8 +15,7 @@ import view.FileContentView
  */
 class MuseumExhibitListController(
   private[controller] val dataTable: JTable,
-  private[controller] val quickSearchField: JTextField,
-  private[controller] val contentView: FileContentView  
+  private[controller] val quickSearchField: JTextField
 ) extends DataListController(dataTable, quickSearchField) {
   // モデル
   /** テーブルの選択項目 */
@@ -40,14 +37,8 @@ class MuseumExhibitListController(
     }
     model
   }
-  /** コンテントビューワーの表示状態モデル */
-  val contentViewerVisibilityModel = new ValueHolder(true)
-  
-  // モデルバインド
   
   // コントローラ
-  /** コンテントビューワー */
-  private val contentViewer = new FileContentViewer(contentView)
   /** 転送ハンドラ */
   override private[controller] val tableTransferHandler =
     new MuseumExhibitListTransferHandler(tableModel)
