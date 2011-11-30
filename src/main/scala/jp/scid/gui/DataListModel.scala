@@ -74,7 +74,8 @@ class DataListModel[A] extends DataModel with swing.Publisher {
    */
   def itemUpdated(index: Int) {
     sourceListWithWriteLock { list =>
-      list.set(index, list.get(index))
+      if (0 <= index && index < list.size)
+        list.set(index, list.get(index))
     }
   }
   

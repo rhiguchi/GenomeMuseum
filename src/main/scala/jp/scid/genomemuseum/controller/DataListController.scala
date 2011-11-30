@@ -8,8 +8,7 @@ import jp.scid.gui.event.ValueChange
 
 abstract class DataListController(
   dataTable: JTable,
-  quickSearchField: JTextField,
-  statusField: JLabel
+  quickSearchField: JTextField
 ) {
   /** テーブルモデル */
   private[controller] def tableModel: DataTableModel[_] with TableColumnSortable[_]
@@ -43,8 +42,7 @@ abstract class DataListController(
     
     val headerConn = TableColumnSortable.connect(tableModel, dataTable.getTableHeader)
     val searchConn = ValueHolder.connect(searchTextModel, quickSearchField)
-    val statConn = ValueHolder.connect(statusTextModel, statusField, "text")
-    List(headerConn, searchConn, statConn)
+    List(headerConn, searchConn)
   }
 }
 

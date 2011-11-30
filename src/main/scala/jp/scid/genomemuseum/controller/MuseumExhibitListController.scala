@@ -18,9 +18,8 @@ import view.FileContentView
 class MuseumExhibitListController(
   private[controller] val dataTable: JTable,
   private[controller] val quickSearchField: JTextField,
-  private[controller] val statusField: JLabel,
   private[controller] val contentView: FileContentView  
-) extends DataListController(dataTable, quickSearchField, statusField) {
+) extends DataListController(dataTable, quickSearchField) {
   // モデル
   /** テーブルの選択項目 */
   private[controller] var tableSelection = List.empty[MuseumExhibit]

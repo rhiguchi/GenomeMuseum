@@ -32,10 +32,10 @@ class MainViewController(
   // データリスト用
   /** MuseumExhibit 表示用 */
   private[controller] val museumExhibitListCtrl = new MuseumExhibitListController(dataTable,
-    quickSearchField, statusField, fileContentView)
+    quickSearchField, fileContentView)
   /** WebService 表示用 */
   private[controller] val webServiceResultCtrl = new WebServiceResultController(dataTable,
-    quickSearchField, statusField, progressView)
+    quickSearchField)
   /** ファイル読み込み表示 */
   private[controller] val fileLoadingProgressHandler = new FileLoadingProgressViewHandler(loadingView,
       mainView.fileLoadingProgress, mainView.fileLoadingStatus)

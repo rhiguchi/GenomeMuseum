@@ -16,10 +16,8 @@ object WebServiceResultController {
 
 class WebServiceResultController(
   dataTable: JTable,
-  quickSearchField: JTextField,
-  statusField: JLabel,
-  progressView: JComponent
-) extends DataListController(dataTable, quickSearchField, statusField) {
+  quickSearchField: JTextField
+) extends DataListController(dataTable, quickSearchField) {
   import WebServiceResultController._
   
   // モデル
@@ -43,6 +41,7 @@ class WebServiceResultController(
   /** Web 検索文字列の変更 */
   searchTextModel.reactions += {
     case ValueChange(_, _, newValue) =>
+      // 実行遅延
       val myId = searchingId.incrementAndGet()
       actors.Actor.actor {
         Thread.sleep(1000)
@@ -143,11 +142,10 @@ class WebServiceResultController(
   
   override def bind() = {
     val connList = super.bind()
-    val progConn = ValueHolder.connectVisible(isProgress, progressView)
     
     downloadingTableCell.map(_.setExecuteButtonAction(downloadAction.peer))
     
-    List(progConn) ::: connList
+    connList
   }
 }
 
