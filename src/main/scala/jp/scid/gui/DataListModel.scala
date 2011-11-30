@@ -157,14 +157,14 @@ class DataListModel[A] extends DataModel with swing.Publisher {
    * tableSource の読み込みロックをしながら処理行う
    */
   protected[gui] def sourceListWithReadLock[B](function: (java.util.List[A]) => B): B = {
-    withReadLock(tableSource)(function)
+    withReadLock[A, B](tableSource)(function)
   }
   
   /**
    * tableSource の書き込みロックをしながら処理行う
    */
   protected[gui] def sourceListWithWriteLock[B](function: (java.util.List[A]) => B): B = {
-    withWriteLock(tableSource)(function)
+    withWriteLock[A, B](tableSource)(function)
   }
   
   /** Swing イベントと scala.swing.Publisher を接続 */
