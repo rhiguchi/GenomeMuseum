@@ -9,7 +9,11 @@ import jp.scid.gui.event.ValueChange
 import jp.scid.genomemuseum.{view, model}
 import view.{MainView, MainViewMenuBar, ColumnVisibilitySetting}
 import model.MuseumSchema
-import GenomeMuseumController.{Logger, convertToScalaSwingAction}
+import GenomeMuseumController.{convertToScalaSwingAction}
+
+object MuseumFrameViewController {
+  private val logger = org.slf4j.LoggerFactory.getLogger(classOf[MuseumFrameViewController])
+}
 
 /**
  * フレームビューコントローラ
@@ -18,8 +22,6 @@ class MuseumFrameViewController(
   rootPaneContainer: RootPaneContainer
 ) {
   import MuseumFrameViewController._
-  
-  lazy val logger = Logger[MuseumFrameViewController]
   // ビュー
   /** メインビュー */
   val mainView = new MainView
@@ -122,7 +124,4 @@ class MuseumFrameViewController(
   
   // ビューの構築
   makeRootPaneContainer(rootPaneContainer)
-}
-
-object MuseumFrameViewController {
 }

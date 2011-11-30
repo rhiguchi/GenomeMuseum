@@ -9,7 +9,7 @@ import jp.scid.gui.event.ValueChange
 abstract class DataListController(
   dataTable: JTable,
   quickSearchField: JTextField
-) {
+) extends GenomeMuseumController {
   /** テーブルモデル */
   private[controller] def tableModel: DataTableModel[_] with TableColumnSortable[_]
   /** 検索文字列モデル */

@@ -2,6 +2,8 @@ package jp.scid.genomemuseum.controller
 
 import javax.swing.{JTable, JTextField, JComponent, TransferHandler}
 
+import org.jdesktop.application.Action
+
 import jp.scid.gui.ValueHolder
 import jp.scid.gui.event.{ValueChange, DataListSelectionChanged}
 import jp.scid.gui.table.DataTableModel
@@ -43,10 +45,13 @@ class MuseumExhibitListController(
   override private[controller] val tableTransferHandler =
     new MuseumExhibitListTransferHandler(tableModel)
   /** ローカルソースの選択項目を除去するアクション */
-  override val removeSelectionAction = swing.Action("Remove") {
+  override val removeSelectionAction = getAction("removeSelections")
+  removeSelectionAction.enabled = false
+  
+  @Action(name="removeSelections")
+  def removeSelections() {
     tableModel.removeSelections()
   }
-  removeSelectionAction.enabled = false
   
   // プロパティ
   /** 現在のデータサービスを取得 */

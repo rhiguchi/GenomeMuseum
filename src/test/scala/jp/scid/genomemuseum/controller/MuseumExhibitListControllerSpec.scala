@@ -11,6 +11,7 @@ import model.{MuseumExhibitService, MuseumExhibit, MuseumExhibitLoaderSpec}
 import gui.ExhibitTableModel
 import view.FileContentView
 
+@org.junit.runner.RunWith(classOf[runner.JUnitRunner])
 class MuseumExhibitListControllerSpec extends Specification with Mockito {
   def is = "MuseumExhibitListController" ^
     "初期状態" ^ initialSpec(controller) ^ bt ^
