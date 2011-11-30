@@ -66,7 +66,7 @@ class MuseumExhibitListControllerSpec extends Specification with Mockito {
   }
   
   def controller(ctrl: MuseumExhibitListController) = new TestBase(ctrl) {
-    def notSelected = ctrl.tableSelection must beEmpty
+    def notSelected = ctrl.tableSelection() must beEmpty
     
     def removingActionUnabled = ctrl.removeSelectionAction.enabled must beFalse
   }

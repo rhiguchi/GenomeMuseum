@@ -22,14 +22,14 @@ class MuseumExhibitListController(
 ) extends DataListController(dataTable, quickSearchField) {
   // モデル
   /** テーブルの選択項目 */
-  private[controller] var tableSelection = List.empty[MuseumExhibit]
+  val tableSelection = new ValueHolder(List.empty[MuseumExhibit])
   /** ローカルデータのテーブルモデル */
   private[controller] val tableModel = {
     val model = createTableModel
     model.reactions += {
+      // 選択項目変化
       case DataListSelectionChanged(_, false, selections) =>
-        // 選択項目変化
-        tableSelection = selections.map(_.asInstanceOf[MuseumExhibit])
+        tableSelection := selections.collect { case e: MuseumExhibit => e }
         tableSelectionChanged()
     }
     
@@ -77,18 +77,7 @@ class MuseumExhibitListController(
   /** 選択項目が変化した際の処理 */
   private def tableSelectionChanged() {
     // 行が選択されているときのみ削除アクションが有効化
-    removeSelectionAction.enabled = tableSelection.nonEmpty
-    
-    // ビューワー表示
-    val source = (tableSelection.headOption, museumExhibitStorage) match {
-      case (Some(exhibit), Some(storage)) => storage.getSource(exhibit) match {
-        case None => Iterator.empty
-        case Some(source) => io.Source.fromURL(source).getLines
-      }
-      case _ => Iterator.empty
-    }
-//    if (mainView.isContentViewerClosed)
-//      mainView.openContentViewer(200)
+    removeSelectionAction.enabled = tableSelection().nonEmpty
   }
   
   private def museumExhibitStorage = tableTransferHandler.loadManager

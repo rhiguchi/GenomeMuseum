@@ -196,8 +196,6 @@ public class MainView implements GenomeMuseumView {
     // Top
     private final UnifiedToolBar toolBarView = new UnifiedToolBar();
     public final JComponent toolBarPane = toolBarView.getComponent(); {
-        toolBarView.addComponentToRight(statusLabel);
-        toolBarView.addComponentToRight(loadingIconLabel);
         toolBarView.addComponentToRight(quickSearchField);
     }
     

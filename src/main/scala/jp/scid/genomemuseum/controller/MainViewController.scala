@@ -39,16 +39,22 @@ class MainViewController(
   /** ファイル読み込み表示 */
   private[controller] val fileLoadingProgressHandler = new FileLoadingProgressViewHandler(loadingView,
       mainView.fileLoadingProgress, mainView.fileLoadingStatus)
+  /** コンテントビューワー */
+  private val contentViewer = new FileContentViewer(fileContentView)
   
   // モデル
   /** 現在のスキーマ */
   private var currentSchema: Option[MuseumSchema] = None
+  /** 現在の読み込みマネージャ */
+  private var currentLoadManager: Option[MuseumExhibitLoadManager] = None
   /** データテーブルの現在の表示モード */
   private var currentTableSource: TableSource = LocalSource
   /** データリストテーブルの結合 */
   private var currentConnectors: List[Connector] = Nil
   /** ソースリストの選択項目 */
   private[controller] def selectedRoom = sourceListCtrl.selectedRoom
+  /** データテーブルの選択項目 */
+  private var contentViewItem: Option[MuseumExhibit] = None
   /** このコントローラを表すタイトル */
   val title = new ValueHolder("")
   
@@ -56,6 +62,12 @@ class MainViewController(
   /** ソースリスト項目選択 */
   selectedRoom.reactions += {
     case ValueChange(_, _, _) => updateRoomContents()
+  }
+  /** ファイルソース表示 */
+  museumExhibitListCtrl.tableSelection.reactions += {
+    case ValueChange(_, _, newValue: Seq[_]) =>
+      contentViewItem = newValue.headOption.collect { case e: MuseumExhibit => e }
+      updateContentView()
   }
   // データリストコントローラと結合
   updateTableSource()
@@ -86,15 +98,19 @@ class MainViewController(
   }
   
   /** 読み込み管理オブジェクトを取得 */
-  def loadManager = museumExhibitListCtrl.loadManager
+  def loadManager = currentLoadManager.get
   
   /** 読み込み管理オブジェクトを設定 */
   def loadManager_=(newManager: MuseumExhibitLoadManager) {
+    currentLoadManager = Option(newManager)
     fileLoadingProgressHandler.listenTo(newManager)
     fileLoadingProgressHandler.updateViews()
     museumExhibitListCtrl.loadManager = newManager
   }
-
+  
+  /** ファイルストレージ取得 */
+  private def exhibitStorage = currentLoadManager.flatMap(_.museumExhibitStorage)
+  
   class FileLoadingProgressViewHandler(contentPane: JComponent, progressBar: JProgressBar, statusLabel: JLabel) extends swing.Reactor {
     import MuseumExhibitLoadManager._
     import swing.Reactions.Reaction
@@ -184,6 +200,24 @@ class MainViewController(
       }
       tableSource = LocalSource
     }
+  }
+  
+  /**
+   * コンテンツビューのモデルを変更する。
+   */
+  private def updateContentView() {
+    // ビューワー表示
+    val source = (contentViewItem, exhibitStorage) match {
+      case (Some(exhibit), Some(storage)) => storage.getSource(exhibit) match {
+        case None => Iterator.empty
+        case Some(source) => io.Source.fromURL(source).getLines
+      }
+      case _ => Iterator.empty
+    }
+    
+    contentViewer.source = source
+    if (mainView.isContentViewerClosed)
+      mainView.openContentViewer(200)
   }
 }
 
