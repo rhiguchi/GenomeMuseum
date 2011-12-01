@@ -1,6 +1,8 @@
 package jp.scid.genomemuseum.gui
 
 import ca.odell.glazedlists.gui.{AdvancedTableFormat, WritableTableFormat}
+
+import jp.scid.gui.StringSortable.ElementPropertyComparator
 import jp.scid.genomemuseum.model.{SearchResult, TaskProgressModel}
 
 /**
@@ -35,7 +37,13 @@ class WebServiceResultTableFormat extends AdvancedTableFormat[SearchResult]
     obj
   } 
   
-  def getColumnComparator(column: Int) = null
+  def getColumnComparator(column: Int) = column match {
+    case 0 => ElementPropertyComparator{e: SearchResult => e.identifier}
+    case 1 => ElementPropertyComparator{e: SearchResult => e.identifier}
+    case 2 => ElementPropertyComparator{e: SearchResult => e.accession}
+    case 3 => ElementPropertyComparator{e: SearchResult => e.definition}
+    case 4 => ElementPropertyComparator{e: SearchResult => Integer.valueOf(e.length)}
+  }
 }
 
 object WebServiceResultTableFormat {

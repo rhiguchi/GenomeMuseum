@@ -143,9 +143,11 @@ import java.awt.datatransfer.{Transferable, DataFlavor}
  */
 private class ExhibitRoomListTransferHandler(ctrl: ExhibitRoomListController) extends TransferHandler {
   import ExhibitRoomTransferData.{dataFlavor => exhibitRoomDataFlavor}
+  import MuseumExhibitTransferData.{dataFlavor => exhibitDataFlavor}
   
   override def canImport(comp: JComponent, transferFlavors: Array[DataFlavor]) = {
-    transferFlavors.contains(exhibitRoomDataFlavor)
+    transferFlavors.contains(exhibitRoomDataFlavor) ||
+      transferFlavors.contains(exhibitDataFlavor)
   }
   
   override def importData(comp: JComponent, t: Transferable) = {
@@ -162,6 +164,9 @@ private class ExhibitRoomListTransferHandler(ctrl: ExhibitRoomListController) ex
         case _ =>
           false
       }
+    }
+    else if (t.isDataFlavorSupported(exhibitDataFlavor)) {
+      true
     }
     else {
       false

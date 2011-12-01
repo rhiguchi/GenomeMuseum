@@ -91,6 +91,7 @@ trait StringSortable[A] extends jp.scid.gui.StringSortable[A] {
 }
 
 private[table] object StringSortable {
+  import ca.odell.glazedlists.gui.TableFormat
   private val logger = org.slf4j.LoggerFactory.getLogger(classOf[StringSortable[_]])
   
   object SortOrder extends Enumeration {
