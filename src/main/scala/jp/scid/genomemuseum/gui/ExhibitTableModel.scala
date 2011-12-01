@@ -73,9 +73,7 @@ class ExhibitTableModel(tableFormat: TableFormat[MuseumExhibit])
     val service = dataService
     val serviceElement = element.asInstanceOf[service.ElementClass]
     service.save(serviceElement)
-    val index = service.indexOf(serviceElement)
-    if (index >= 0)
-      sourceListWithReadLock { _.set(index, element) }
+    updated(element)
   }
   
   protected def getFilterString(base: java.util.List[String], e: MuseumExhibit) {

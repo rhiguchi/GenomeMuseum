@@ -87,7 +87,7 @@ class GenomeMuseumGUI extends Application {
     }
     
     // 読み込み処理操作
-    val loadManager = new MuseumExhibitLoadManager(fileStorage)
+    val loadManager = new MuseumExhibitLoadManager(dataSchema.museumExhibitService, fileStorage)
     
     // スキーマ適用
     mainController.dataSchema = dataSchema
@@ -220,7 +220,6 @@ object GenomeMuseumGUI {
   def resourceMap(c: Class[_]) =
     Application.getInstance().getContext().getResourceMap(c)
   
-    
   /**
    * サンプルデータを 10 件作成する
    */

@@ -95,7 +95,8 @@ public class TaskProgressTableCell extends AbstractTableCellComponent implements
     }
     
     public boolean stopCellEditing() {
-        return baseEditor.stopCellEditing();
+        baseEditor.cancelCellEditing();
+        return true;
     }
     
     public void cancelCellEditing() {

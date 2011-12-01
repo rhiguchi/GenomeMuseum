@@ -106,6 +106,7 @@ class MainViewController(
     fileLoadingProgressHandler.listenTo(newManager)
     fileLoadingProgressHandler.updateViews()
     museumExhibitListCtrl.loadManager = newManager
+    webServiceResultCtrl.loadManager = currentLoadManager
   }
   
   /** ファイルストレージ取得 */

@@ -25,6 +25,8 @@ class WebServiceResultController(
   val isProgress = new ValueHolder(false)
   /** テーブルモデル */
   private[controller] val tableModel = new WebServiceResultsModel
+  /** 読み込みマネージャ */
+  var loadManager: Option[MuseumExhibitLoadManager] = None
   /** 現在の検索の該当数 */
   private var currentCount = 0
   /** 現在の検索している文字列 */
@@ -35,6 +37,8 @@ class WebServiceResultController(
   /** ダウンロードボタンアクション */
   val downloadAction = swing.Action("Download") {
     downloadBioDataOnEditingRow()
+    // プログレスバー表示の有効化と、ソース変更時にエディタが残るのを防ぐため。
+    dataTable.removeEditor()
   }
   
   // モデルバインド
@@ -101,7 +105,7 @@ class WebServiceResultController(
         if (!isCancelled) {
           logger.trace("ダウンロード完了 {}", item.sourceUrl.get.toString)
           val file = get()
-          // TODO import file
+          loadManager.map(_.loadExhibits(List(file)))
         }
         else {
           logger.trace("ダウンロードキャンセル {}", item.sourceUrl.get.toString)

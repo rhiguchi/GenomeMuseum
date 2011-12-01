@@ -12,7 +12,8 @@ import actors.{Future, Futures}
 import swing.Publisher
 import util.control.Exception.catching
 
-import jp.scid.genomemuseum.model.{MuseumExhibit, MuseumExhibitLoader, MuseumExhibitStorage}
+import jp.scid.genomemuseum.model.{MuseumExhibit, MuseumExhibitLoader, MuseumExhibitStorage,
+  MuseumExhibitService}
 import jp.scid.genomemuseum.gui.ExhibitTableModel
 
 /**
@@ -21,13 +22,14 @@ import jp.scid.genomemuseum.gui.ExhibitTableModel
  * @param museumExhibitStorage ファイル格納管理オブジェクト
  */
 class MuseumExhibitLoadManager(
+  val dataService: MuseumExhibitService,
   val loader: MuseumExhibitLoader,
   var museumExhibitStorage: Option[MuseumExhibitStorage] = None
 ) extends Publisher {
   import MuseumExhibitLoadManager._
   
-  def this(storage: Option[MuseumExhibitStorage]) {
-    this(new MuseumExhibitLoader, storage)
+  def this(dataService: MuseumExhibitService, storage: Option[MuseumExhibitStorage]) {
+    this(dataService, new MuseumExhibitLoader, storage)
   }
   
   /** 現在実行中のタスク */
@@ -49,6 +51,10 @@ class MuseumExhibitLoadManager(
     }
   }
   
+  def loadExhibits(files: Seq[File]): Future[Option[_]] = {
+    loadExhibits(None, files)
+  }
+  
   /**
    * ファイルから展示物の読み込みを非同期で行う
    * @param tableModel 追加先のテーブルモデル。
@@ -56,7 +62,7 @@ class MuseumExhibitLoadManager(
    * @return ファイルの読み込みに失敗したときは原因を含んだ Left 値。
    *         読み込みに成功し、サービスに正常に追加されたときはエンティティの Right 値。
    */
-  def loadExhibits(tableModel: ExhibitTableModel,
+  def loadExhibits(tableModel: Option[ExhibitTableModel],
       files: Seq[File]): Future[Option[_]] = {
     import util.control.Exception.catching
     
@@ -143,7 +149,7 @@ class MuseumExhibitLoadManager(
   /**
    * 読み込みを行う Swing タスクを作成
    */
-  private def createLoadTask() = new LoadTask {
+  private def createLoadTask() = new LoadTask(dataService) {
     import LoadTask.FailToLoad
     
     def loadExhibitFromFile(entity: MuseumExhibit, file: File) = loadExhibit(entity, file)
@@ -225,7 +231,7 @@ object MuseumExhibitLoadManager {
 /**
  * データ読み込み Swing タスク
  */
-abstract class LoadTask extends SwingWorker[Unit, LoadTask.Chunk] {
+abstract class LoadTask(dataService: MuseumExhibitService) extends SwingWorker[Unit, LoadTask.Chunk] {
   import LoadTask._
   import collection.mutable.Queue
   import java.text.ParseException
@@ -263,13 +269,17 @@ abstract class LoadTask extends SwingWorker[Unit, LoadTask.Chunk] {
         loadExhibitFromFile(entity, file)
       } match {
         case Right(true) =>
-          tableModel.updateElement(entity)
+          dataService.save(entity)
+          tableModel.map(_.reloadSource())
+          tableModel.map(_.updateElement(entity))
         case Right(false) =>
           // 形式未対応
-          tableModel.removeElement(entity)
+          dataService.remove(entity)
+          tableModel.map(_.removeElement(entity))
         case Left(thrown) =>
           // 例外
-          tableModel.removeElement(entity)
+          dataService.remove(entity)
+          tableModel.map(_.removeElement(entity))
           publish(FailToLoad(file))
       }
       // 処理完了数の増加
@@ -305,13 +315,13 @@ abstract class LoadTask extends SwingWorker[Unit, LoadTask.Chunk] {
   /**
    * 読み込むファイルを追加する。このタスクが終了処理に入った時はファイルは追加されない。
    */
-  def tryQueue(tableModel: ExhibitTableModel, files: Seq[File]) = {
+  def tryQueue(tableModel: Option[ExhibitTableModel], files: Seq[File]) = {
     fileQueue.synchronized {
       logger.debug("クエリの追加 isShutdonw: {}", shutdown)
       // タスクが終了していなければ追加
       if (!shutdown) {
         val queries = files.map(file =>
-          Query(tableModel.createElement(), tableModel, file))
+          Query(dataService.create(), tableModel, file))
         fileQueue.enqueue(queries: _*)
         queuedCount += queries.size
         
@@ -324,8 +334,8 @@ abstract class LoadTask extends SwingWorker[Unit, LoadTask.Chunk] {
   }
   
   /** クエリ情報オブジェクト */
-  private case class Query(entity: MuseumExhibit,
-    tableModel: ExhibitTableModel, file: File)
+  private case class Query(entity: dataService.ElementClass,
+    tableModel: Option[ExhibitTableModel], file: File)
 }
 
 private[controller] object LoadTask {

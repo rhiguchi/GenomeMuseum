@@ -6,7 +6,7 @@ import mock._
 import jp.scid.gui.event.ValueChange
 import jp.scid.genomemuseum.{view, gui, model}
 import model.{ExhibitRoom, UserExhibitRoom, MuseumSchema,
-  MuseumSchemaSpec}
+  MuseumSchemaSpec, MuseumExhibitService}
 import view.MainView
 import gui.ExhibitTableModel
 
@@ -90,7 +90,8 @@ class MainViewControllerSpec extends Specification with Mockito {
   
   def properteis(ctrl: MainViewController) = new TestBase(ctrl) {
     def loadManager = {
-      val manager = new MuseumExhibitLoadManager(None)
+      val service = mock[MuseumExhibitService]
+      val manager = new MuseumExhibitLoadManager(service, None)
       ctrl.loadManager = manager
       ctrl.museumExhibitListCtrl.loadManager must_== manager
     }

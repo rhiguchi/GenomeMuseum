@@ -125,7 +125,7 @@ class MuseumExhibitListTransferHandlerSpec extends Specification with Mockito {
       handler.importData(null, t)
       
       there was one(handler.loadManager.get).loadExhibits(
-        handler.tableModel, Seq(file1, file2, file3))
+        Some(handler.tableModel), Seq(file1, file2, file3))
     }
   }
 }
