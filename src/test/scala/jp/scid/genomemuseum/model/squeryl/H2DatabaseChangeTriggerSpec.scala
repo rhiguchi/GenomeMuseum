@@ -4,15 +4,37 @@ import org.specs2._
 
 import java.sql.Connection
 
-import org.squeryl.Schema
+import org.squeryl.{Schema, Table}
 import org.squeryl.PrimitiveTypeMode._
 
 import H2DatabaseChangeTrigger._
 
 object H2DatabaseChangeTriggerSpec {
-  class TestSchema extends Schema {
+  trait TestSchema {
+    this: Schema =>
+    
+    def museumExhibit: Table[MuseumExhibit]
+    def userExhibitRoom: Table[UserExhibitRoom]
+    def roomExhibit: Table[RoomExhibit]
+    
+    def name: Option[String]
+  }
+  
+  class TestSchemaImpl(schemaSuffix: String = "") extends Schema with TestSchema {
+    override val name = Some("H2DatabaseChangeTriggerSpec_" + schemaSuffix)
+    
     val museumExhibit = table[MuseumExhibit]
     val userExhibitRoom = table[UserExhibitRoom]
+    
+    val roomExhibit = table[RoomExhibit]
+  
+    val roomToRoomExhibitRelation = oneToManyRelation(userExhibitRoom, roomExhibit)
+      .via((room, content) => room.id === content.roomId)
+    roomToRoomExhibitRelation.foreignKeyDeclaration.constrainReference(onDelete cascade)
+    
+    val exhibitToRoomExhibitRelation = oneToManyRelation(museumExhibit, roomExhibit)
+      .via((exhibit, content) => exhibit.id === content.exhibitId)
+    exhibitToRoomExhibitRelation.foreignKeyDeclaration.constrainReference(onDelete cascade)
   }
 }
 
@@ -21,121 +43,131 @@ class H2DatabaseChangeTriggerSpec extends Specification with SquerylConnection {
   
   def is = "H2DatabaseChangeTrigger" ^
     "トリガー作成" ^ canCreateTrigger ^ bt ^
-    "テーブル行挿入通知" ^ canPublishInserting ^ bt ^
-    "テーブル行更新通知" ^ canPublishUpdating ^ bt ^
-    "テーブル行削除通知" ^ canPublishDeleting ^ bt ^
+    "テーブル行挿入通知" ^ canPublishInserting(triggeredSchema) ^ bt ^
+    "テーブル行更新通知" ^ canPublishUpdating(triggeredSchema) ^ bt ^
+    "テーブル行削除通知" ^ canPublishDeleting(triggeredSchema) ^ bt ^
     end
   
-  val schema = new TestSchema
+  @deprecated("dont use", "2011-12-03")
+  val schema = new TestSchemaImpl
   
   def canCreateTrigger =
     "SQL 発行" ! trigger.executeSql
   
-  def canPublishInserting =
-    "通知の受け取り" ! inserting.reaction ^
-    "テーブル名取得" ! inserting.tableName ^
-    "行データ取得" ! inserting.rowData
+  def canPublishInserting(s: => TestSchema) =
+    "通知の受け取り" ! inserting(s).reaction ^
+    "テーブル名取得" ! inserting(s).tableName ^
+    "行データ取得" ! inserting(s).rowData
   
-  def canPublishUpdating =
-    "通知の受け取り" ! updating.reaction ^
-    "テーブル名取得" ! updating.tableName ^
-    "古いデータの取得" ! updating.oldData ^
-    "新しいデータの取得" ! updating.newData
+  def canPublishUpdating(s: => TestSchema) =
+    "通知の受け取り" ! updating(s).reaction ^
+    "テーブル名取得" ! updating(s).tableName ^
+    "古いデータの取得" ! updating(s).oldData ^
+    "新しいデータの取得" ! updating(s).newData
   
-  def canPublishDeleting =
-    "通知の受け取り" ! deleting.reaction ^
-    "テーブル名取得" ! deleting.tableName ^
-    "行データ取得" ! deleting.rowData
+  def canPublishDeleting(s: => TestSchema) =
+    "通知の受け取り" ! deleting(s).reaction ^
+    "テーブル名取得" ! deleting(s).tableName ^
+    "行データ取得" ! deleting(s).rowData
   
-  def setUpTrigger() {
-    val session = setUpSchema()
-    H2DatabaseChangeTrigger.createTriggers(session.connection, "MuseumExhibit")
-    H2DatabaseChangeTrigger.createTriggers(session.connection, "UserExhibitRoom")
+  def triggeredSchema(): TestSchema = {
+    val schema = new TestSchemaImpl(util.Random.alphanumeric.take(5).mkString)
+    
+    val session = setUpSchema(schema)
+    createTriggers(session.connection, schema.museumExhibit.name,
+      schema.name.get)
+    createTriggers(session.connection, schema.userExhibitRoom.name,
+      schema.name.get)
+    
+    schema
   }
   
   def trigger = new Object {
     def executeSql = {
-      setUpTrigger()
+      triggeredSchema()
       success
     }
   }
   
-  def inserting = new Object {
-    import H2DatabaseChangeTrigger.Publisher
+  abstract class EventTestBase(val schema: TestSchema) {
+    import scala.concurrent.ops.spawn
+    import scala.collection.mutable.{Buffer, ArrayBuffer, SynchronizedBuffer}
+
+    private val operations: Buffer[Operation] =
+      new ArrayBuffer[Operation] with SynchronizedBuffer[Operation]
     
-    def insertAndGetEvent() = {
-      setUpTrigger()
-      
-      var events: List[Inserted] = Nil
-      H2DatabaseChangeTrigger.Publisher.watch {
-        case e: Inserted => events = e :: events
+    protected def accept(op: Operation): Boolean
+    
+    Publisher.subscribe( new Publisher.Sub {
+      def notify(pub: Publisher.Pub, e: Operation) {
+        if (accept(e)) spawn {
+          operations += e
+        }
       }
-      schema.museumExhibit.insert(MuseumExhibit("exhibit"))
-      schema.userExhibitRoom.insert(UserExhibitRoom("room"))
-      
-      events
+    }, schema.name.get.toUpperCase)
+    
+    def events(): List[Operation] = events(1)
+    
+    def events(count: Int) = {
+      val end = System.currentTimeMillis + 1000
+      while(operations.size < count && System.currentTimeMillis < end)
+        Thread.sleep(10)
+      operations.toList
     }
     
-    def reaction = insertAndGetEvent must not beEmpty
+    def eventsOf[E <: Operation](implicit c: ClassManifest[E]): List[E] =
+      events.filter(_.getClass == c.erasure).map(_.asInstanceOf[E])
+  }
+  
+  def inserting(schema: TestSchema) = new EventTestBase(schema) {
+    def accept(op: Operation) = op.isInstanceOf[Inserted]
     
-    def tableName = insertAndGetEvent.map(_.tableName) must
-      contain("MUSEUMEXHIBIT", "USEREXHIBITROOM")
+    schema.museumExhibit.insert(MuseumExhibit("exhibit"))
+    schema.userExhibitRoom.insert(UserExhibitRoom("room"))
     
-    def rowData = insertAndGetEvent.flatMap(e => Option(e.rowData))
+    def reaction = events must not beEmpty
+    
+    def tableName = events.map(_.tableName) must
+      contain("MUSEUMEXHIBIT", "USEREXHIBITROOM").only
+    
+    def rowData = eventsOf[Inserted].flatMap(e => Option(e.rowData))
       .flatMap(e => e) must not beEmpty
   }
   
-  def updating = new Object {
+  def updating(s: TestSchema) = new EventTestBase(s) {
+    def accept(op: Operation) = op.isInstanceOf[Updated]
     
-    def updateAndGetEvent() = {
-      setUpTrigger()
-      
-      var events: List[Updated] = Nil
-      H2DatabaseChangeTrigger.Publisher.watch {
-        case e: Updated => events = e :: events
-      }
-      val e1 = schema.museumExhibit.insert(MuseumExhibit("exhibit"))
-      val e2 = schema.userExhibitRoom.insert(UserExhibitRoom("room"))
-      schema.museumExhibit.update(e1)
-      schema.userExhibitRoom.update(e2)
-      
-      events
-    }
+    val e1 = schema.museumExhibit.insert(MuseumExhibit("exhibit"))
+    val e2 = schema.userExhibitRoom.insert(UserExhibitRoom("room"))
+    schema.museumExhibit.update(e1)
+    schema.userExhibitRoom.update(e2)
+
+    def reaction = events must not beEmpty
     
-    def reaction = updateAndGetEvent must not beEmpty
+    def tableName = events.map(_.tableName) must
+      contain("MUSEUMEXHIBIT", "USEREXHIBITROOM").only
     
-    def tableName = updateAndGetEvent.map(_.tableName) must
-      contain("MUSEUMEXHIBIT", "USEREXHIBITROOM")
-    
-    def oldData = updateAndGetEvent.flatMap(e => Option(e.oldData))
+    def oldData = eventsOf[Updated].flatMap(e => Option(e.oldData))
       .flatMap(e => e) must not beEmpty
     
-    def newData = updateAndGetEvent.flatMap(e => Option(e.newData))
+    def newData = eventsOf[Updated].flatMap(e => Option(e.newData))
       .flatMap(e => e) must not beEmpty
   }
   
-  def deleting = new Object {
-    def deleteAndGetEvent() = {
-      setUpTrigger()
-      
-      var events: List[Deleted] = Nil
-      H2DatabaseChangeTrigger.Publisher.watch {
-        case e: Deleted => events = e :: events
-      }
-      val e1 = schema.museumExhibit.insert(MuseumExhibit("exhibit"))
-      val e2 = schema.userExhibitRoom.insert(UserExhibitRoom("room"))
-      schema.museumExhibit.deleteWhere(t => t.id === e1.id)
-      schema.userExhibitRoom.deleteWhere(t => t.id === e2.id)
-      
-      events
-    }
+  def deleting(s: TestSchema) = new EventTestBase(s) {
+    def accept(op: Operation) = op.isInstanceOf[Deleted]
     
-    def reaction = deleteAndGetEvent must not beEmpty
+    val e1 = schema.museumExhibit.insert(MuseumExhibit("exhibit"))
+    val e2 = schema.userExhibitRoom.insert(UserExhibitRoom("room"))
+    schema.museumExhibit.delete(e1.id)
+    schema.userExhibitRoom.delete(e2.id)
     
-    def tableName = deleteAndGetEvent.map(_.tableName) must
-      contain("MUSEUMEXHIBIT", "USEREXHIBITROOM")
+    def reaction = events must not beEmpty
     
-    def rowData = deleteAndGetEvent.flatMap(e => Option(e.rowData))
+    def tableName = events.map(_.tableName) must
+      contain("MUSEUMEXHIBIT", "USEREXHIBITROOM").only
+    
+    def rowData = eventsOf[Deleted].flatMap(e => Option(e.rowData))
       .flatMap(e => e) must not beEmpty
   }
 }

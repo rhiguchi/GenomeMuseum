@@ -68,15 +68,25 @@ trait SquerylConnection {
   /**
    * スキーマ
    */
+  @deprecated("dont use")
   protected def schema: Schema
   
   /**
    * {@code createSession} で作成されるセッションでスキーマを構築する。
    * @return 使用したスキーマ
    */
-  protected def setUpSchema() = {
+  @deprecated("use setUpSchema(Schema)")
+  protected def setUpSchema(): Session =
+    setUpSchema(schema)
+  
+  protected def setUpSchema(schema: Schema): Session = {
     val session = createSession
     session.bindToCurrentThread
+    schema.name.foreach { schemaName =>
+      val conn = Session.currentSession.connection
+      val sql = """create schema %s""".format(schemaName)
+      conn.createStatement.execute(sql)
+    }
     schema.create
     session
   }
