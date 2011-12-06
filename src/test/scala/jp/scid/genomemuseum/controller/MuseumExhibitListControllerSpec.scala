@@ -122,9 +122,9 @@ class MuseumExhibitListControllerSpec extends Specification with Mockito {
       action.enabled must beFalse
     }
     
-    def callsTableMethod = {
-      action()
-      there was one(tableModel).removeSelections()
+    def callsTableMethod = { todo
+//      action()
+//      there was one(tableModel).removeSelections()
     }
   }
   
@@ -133,7 +133,7 @@ class MuseumExhibitListControllerSpec extends Specification with Mockito {
       val service = mock[MuseumExhibitService]
       service.allElements returns Nil
       ctrl.dataService = service
-      there was one(tableModel).dataService_=(service)
+      ctrl.dataService must_== service
     }
     
     def applyLoadManager = {
@@ -160,8 +160,8 @@ class MuseumExhibitListControllerSpec extends Specification with Mockito {
       super.filterWith(text)
     }
     
-    override def removeSelections() {
-      super.removeSelections()
-    }
+//    override def removeSelections() {
+//      super.removeSelections()
+//    }
   }
 }

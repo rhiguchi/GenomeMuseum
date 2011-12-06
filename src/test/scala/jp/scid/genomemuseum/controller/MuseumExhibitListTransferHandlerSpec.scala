@@ -124,8 +124,9 @@ class MuseumExhibitListTransferHandlerSpec extends Specification with Mockito {
       val t = fileTransferObject(file1, file2, file3)
       handler.importData(null, t)
       
-      there was one(handler.loadManager.get).loadExhibits(
-        Some(handler.tableModel), Seq(file1, file2, file3))
+      there was one(handler.loadManager.get).loadExhibit(file1) then
+        one(handler.loadManager.get).loadExhibit(file2) then
+        one(handler.loadManager.get).loadExhibit(file3)
     }
   }
 }

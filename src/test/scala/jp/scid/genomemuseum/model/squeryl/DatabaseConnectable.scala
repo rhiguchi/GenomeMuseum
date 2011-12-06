@@ -61,25 +61,10 @@ private object DatabaseConnectable {
   
 }
 
-
-trait SquerylConnection {
+object SquerylConnection {
   private val adapter = new adapters.H2Adapter
   
-  /**
-   * スキーマ
-   */
-  @deprecated("dont use")
-  protected def schema: Schema
-  
-  /**
-   * {@code createSession} で作成されるセッションでスキーマを構築する。
-   * @return 使用したスキーマ
-   */
-  @deprecated("use setUpSchema(Schema)")
-  protected def setUpSchema(): Session =
-    setUpSchema(schema)
-  
-  protected def setUpSchema(schema: Schema): Session = {
+  def setUpSchema(schema: Schema): Session = {
     val session = createSession
     session.bindToCurrentThread
     schema.name.foreach { schemaName =>
@@ -94,11 +79,35 @@ trait SquerylConnection {
   /**
    * H2 データベースの匿名データベースコネクションを作成し、セッションを構築する。
    */
-  protected def createSession = {
+  def createSession = {
     val h2cp = JdbcConnectionPool.create("jdbc:h2:mem:", "", "")
     h2cp setMaxConnections 1
     h2cp setLoginTimeout 10
     Session.create(h2cp.getConnection, adapter)
   }
+}
+
+trait SquerylConnection {
+  /**
+   * スキーマ
+   */
+  @deprecated("dont use", "2011/12/04")
+  protected def schema: Schema
+  
+  /**
+   * {@code createSession} で作成されるセッションでスキーマを構築する。
+   * @return 使用したスキーマ
+   */
+  @deprecated("use setUpSchema(Schema)", "2011/12/04")
+  protected def setUpSchema(): Session =
+    setUpSchema(schema)
+  
+  protected def setUpSchema(schema: Schema) =
+    SquerylConnection.setUpSchema(schema)
+  
+  /**
+   * H2 データベースの匿名データベースコネクションを作成し、セッションを構築する。
+   */
+  protected def createSession = SquerylConnection.createSession
 }
 

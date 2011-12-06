@@ -11,9 +11,6 @@ trait MuseumSchema {
   
   /** 『展示物』データのテーブルデータサービス */
   def museumExhibitService: MuseumExhibitService
-  
-  /** 『部屋』の『展示物』のテーブルデータサービス */
-  def roomExhibitService(room: UserExhibitRoom): RoomExhibitService
 }
 
 object MuseumSchema {

@@ -5,251 +5,245 @@ import mock._
 
 import actors.{Futures}
 
-import java.io.File
+import java.io.{File, IOException}
 import java.net.URL
 
 import jp.scid.genomemuseum.model.{MuseumExhibit, MuseumExhibitLoader, MuseumExhibitService}
 import jp.scid.genomemuseum.gui.ExhibitTableModel
+import MuseumExhibitLoadManager._
 
 class MuseumExhibitLoadManagerSpec extends Specification with Mockito {
+  private type Manager = MuseumExhibitLoadManager
   def is = "MuseumExhibitLoadManager" ^
-    "loadExhibits" ^ 
-      "ファイルの読み込みに成功する時" ^ canLoadExhibits(rightManager) ^ bt ^
-      "ファイルの読み込みに失敗する時" ^ failLoadExhibits(iaeManager) ^ bt ^
-      "ファイル読み込み後" ^ canLoadExhibits(queuedOneceManager) ^ bt ^
+    "loadExhibit" ^ 
+      "ファイルの読み込みに成功する時" ^ successLoadingSpec(simpleManager) ^ bt ^
+      "ファイルの読み込みに失敗する時" ^ failLoadingSpec(faliLoaderManager) ^ bt ^
     bt ^ "イベント" ^ 
-      "ファイルの読み込みに成功する時" ^ canPublishEvent(rightManager) ^ bt ^
-      "ファイルの読み込みに失敗する時" ^ canPublishEvent(iaeManager) ^ bt ^
-      "ファイル読み込み後" ^ canPublishEvent(queuedOneceManager) ^ bt ^
+      "Start" ^ canPublishStartEvent(simpleManager) ^ bt ^
+      "ProgressChange" ^ canPublishProgressEvent(simpleManager) ^ bt ^
+      "MessageChange" ^ canPublishMessageEvent(simpleManager) ^ bt ^
+      "Done" ^ canPublishDoneEvent(simpleManager) ^ bt ^
     bt ^ "アラート表示" ^
-      "ファイル形式が不明のアラート" ^ doShoIAEAlert(failManager) ^ bt
+      "形式不対応アラート" ^ canAlertInvalidFormat(faliLoaderManager) ^ bt ^
+      "IOE 例外アラート" ^ canAlertFail(ioeLoaderManager) ^ bt ^
+      "ParseExceptin 例外アラート" ^ canAlertFail(parseExpLoaderManager) ^ bt ^
     end
-  
-  private type TableModel = ExhibitTableModel
-  
-  def rightManager = new MuseumExhibitLoadManager(serviceMock(), loadableLoader)
-  
-  def iaeManager = new MuseumExhibitLoadManager(serviceMock(), unloadableLoader)
-  
-  def failManager = new MuseumExhibitLoadManager(serviceMock(), throwableLoader)
-  
-  def queuedOneceManager = {
-    val manager = rightManager
-    manager.loadExhibits(Some(tableModelMock(museumExhibitMock)),
-      singletonDummyFile).apply
-    manager
-  }
   
   def museumExhibitMock = {
     mock[MuseumExhibit]
   }
   
-  def serviceMock(returnEntity: MuseumExhibit = exhibit) = {
-      val service = mock[MuseumExhibitService]
-      service.create returns returnEntity.asInstanceOf[service.ElementClass]
-      service
+  /** 読み込みモック */
+  def loaderOf(value: Boolean) = {
+    val loader = mock[MuseumExhibitLoader]
+    loader.makeMuseumExhibit(any, any) returns value
+    loader
   }
   
-  def tableModelMock(returnEntity: MuseumExhibit) = {
-    val model = mock[TableModel]
-    val service = serviceMock(returnEntity)
-    model
+  /** 例外を発生する読み込みモック */
+  def loaderThrows(exepction: Exception) = {
+    val loader = mock[MuseumExhibitLoader]
+    loader.makeMuseumExhibit(any, any) throws exepction
+    loader
   }
   
-  def singletonDummyFile = List(new File("dummy"))
+  /** サービスモック */
+  def serviceMock = {
+    val service = mock[MuseumExhibitService]
+    service.create returns mock[MuseumExhibit].asInstanceOf[service.ElementClass]
+    service
+  }
+  
+  // マネージャーオブジェクト
+  /** 読み込みが成功するマネージャ */
+  def simpleManager = {
+    new MuseumExhibitLoadManager(serviceMock, loaderOf(true))
+  }
+  /** 読み込みが失敗するマネージャ */
+  def faliLoaderManager = {
+    new MuseumExhibitLoadManager(serviceMock, loaderOf(false))
+  }
+  /** 読み込み中例外を送出するマネージャ */
+  def ioeLoaderManager = {
+    new MuseumExhibitLoadManager(serviceMock,
+      loaderThrows(new IOException("exception")))
+  }
+  
+  def parseExpLoaderManager = {
+    new MuseumExhibitLoadManager(serviceMock,
+      loaderThrows(new java.text.ParseException("exception", 0)))
+  }
+  
+  def waitEDTProcessing() {
+    import java.awt.EventQueue
+    if (!EventQueue.isDispatchThread) {
+      EventQueue.invokeAndWait(new Runnable {
+        def run {}
+      })
+    }
+  }
+  
+  lazy val dummyFile = File.createTempFile("MuseumExhibitLoadManagerSpec", "temp")
+  lazy val dummyUrl = dummyFile.toURI.toURL
   
   val ioException = new java.io.IOException
   
-  def loadableLoader = new MuseumExhibitLoader() {
-    override def makeMuseumExhibit(e: MuseumExhibit, f: URL) = {
-      Thread.sleep(200)
-      true
-    }
-  }
-  
-  def unloadableLoader = new MuseumExhibitLoader() {
-    override def makeMuseumExhibit(e: MuseumExhibit, f: URL) = {
-      Thread.sleep(200)
-      false
-    }
-  }
-  
-  def throwableLoader = new MuseumExhibitLoader() {
-    override def makeMuseumExhibit(e: MuseumExhibit, f: URL) = {
-      throw ioException
-    }
-  }
-  
-  def canLoadExhibits(manager: => MuseumExhibitLoadManager) =
-    "テーブルの createElement コール" ! todo ^
-    "テーブルの updateElement コール" ! loadExhibits(manager).callUpdateElement ^
-    "createElement はファイル数通りコール" ! loadExhibits(manager).callCreateElement2.pendingUntilFixed ^
-    "updateElement は順序通りコール" ! loadExhibits(manager).callUpdateElement2.pendingUntilFixed ^
-    "時間差呼び出し" ! loadExhibits(manager).twice.pendingUntilFixed
+  def successLoadingSpec(m: => Manager) =
+    "ファイルから Some 値の Future 作成" ! loadExhibit(m).returnsFutureFromFile ^
+    "URL から Some 値の Future 作成" ! loadExhibit(m).returnsFutureFromUrl ^
+    "複数回の作成" ! loadExhibit(m).returnsTrueManyTimes
     
-  def failLoadExhibits(manager: => MuseumExhibitLoadManager) =
-    "テーブルの createElement コール" ! todo ^
-    "テーブルの removeElement コール" ! loadExhibits(manager).callsRemoveElement
+  def failLoadingSpec(m: => Manager) =
+    "ファイルから None 値の Future 作成" ! loadExhibit(m).returnsNoneFutFromFile ^
+    "URL から None 値の Future 作成" ! loadExhibit(m).returnsNoneFutFromUrl
   
-  def canPublishEvent(manager: => MuseumExhibitLoadManager) =
-    "Started イベント" ! event(manager).publishStarted ^
-    "ProgressChange イベント" ! event(manager).publishProgressChange ^
-    "Done イベント" ! event(manager).publishDone
+  def canPublishStartEvent(m: => Manager) =
+    "発行" ! eventStart(m).publish ^
+    "ソースオブジェクト" ! eventStart(m).source
   
-  def canPublishEventWithoutProgress(manager: => MuseumExhibitLoadManager) =
-    "Started イベント" ! event(manager).publishStarted ^
-    "ProgressChange イベントは呼ばない" ! event(manager).notPublishProgressChange ^
-    "Done イベント" ! event(manager).publishDone
+  def canPublishProgressEvent(m: => Manager) =
+    "発行" ! eventProgress(m).publish ^
+    "ソースオブジェクト" ! eventProgress(m).source ^
+    "max 値" ! eventProgress(m).max ^
+    "value 値" ! eventProgress(m).value
   
-  def doShoIAEAlert(manager: => MuseumExhibitLoadManager) =
-    "表示" ! alertSpec(manager).display ^
-    "複数ファイルの時は複数表示" ! alertSpec(manager).displayMany
+  def canPublishMessageEvent(m: => Manager) =
+    "発行" ! eventMessage(m).publish ^
+    "ソースオブジェクト" ! eventMessage(m).source ^
+    "message 値" ! eventMessage(m).message
   
-    val exhibit = museumExhibitMock
+  def canPublishDoneEvent(m: => Manager) =
+    "発行" ! eventDone(m).publish ^
+    "ソースオブジェクト" ! eventDone(m).source
+  
+  def canAlertInvalidFormat(m: => Manager) = todo
+//    "表示" ! invalidFormatAlert(m).display ^
+//    "複数ファイルの時は複数表示" ! invalidFormatAlert(m).diaplayMany
+  
+  def canAlertFail(m: => Manager) = todo
+//    "表示" ! alertFail(m).display ^
+//    "複数ファイルの時は複数表示" ! alertFail(m).diaplayMany
+  
     
-  class TestBase {
+  class TestBase(val manager: Manager)
+  
+  def loadExhibit(m: Manager) = new TestBase(m) {
+    def returnsFutureFromFile = {
+      manager.loadExhibit(dummyFile).get must beSome
+    }
+    
+    def returnsFutureFromUrl = {
+      manager.loadExhibit(dummyUrl).get must beSome
+    }
+    
+    def returnsNoneFutFromFile = {
+      manager.loadExhibit(dummyFile).get must beNone
+    }
+    
+    def returnsNoneFutFromUrl = {
+      manager.loadExhibit(dummyUrl).get must beNone
+    }
+    
+    def returnsTrueManyTimes = {
+      manager.loadExhibit(dummyUrl)
+      manager.currentLoadTask.get
+      manager.loadExhibit(dummyUrl).get must beSome
+    }
+  }
+  
+  abstract class EventTestBase[E <: TaskEvent: ClassManifest](m: Manager) extends TestBase(m) {
     import scala.collection.mutable.ListBuffer
+    val eventBuffer = ListBuffer.empty[E]
     
-    
-    
-    lazy val model = tableModelMock(exhibit)
-  }
-  
-  def loadExhibits(manager: MuseumExhibitLoadManager) = new TestBase {
-    def callUpdateElement = {
-      manager.loadExhibits(Some(model), singletonDummyFile).apply
-      there was one(model).updateElement(exhibit)
+    manager.reactions += {
+      case e if implicitly[ClassManifest[E]].erasure.isInstance(e) =>
+        eventBuffer += e.asInstanceOf[E]
     }
     
-    def callsRemoveElement = {
-      manager.loadExhibits(Some(model), singletonDummyFile).apply
-      there was one(model).removeElement(exhibit)
+    def publish = {
+      manager.loadExhibit(dummyFile)
+      manager.currentLoadTask.get
+      Thread.sleep(100)
+      eventBuffer must not beEmpty
     }
     
-    def callCreateElement2 = {
-      val files = Range(0, 10) map (num => new File("dummyfile" + num))
-      manager.loadExhibits(Some(model), files)
-      there was 10.times(model).createElement
-    }
-    
-    def callUpdateElement2 = {
-      val files = Range(0, 5) map (num => new File("dummyfile" + num))
-      
-      val service = model.dataService
-      val e1, e2, e3, e4, e5 = museumExhibitMock.asInstanceOf[service.ElementClass]
-      model.createElement returns (e1, e2, e3, e4, e5)
-      
-      manager.loadExhibits(Some(model), files).apply
-      there was one(model).updateElement(e1) then
-      one(model).updateElement(e2) then
-      one(model).updateElement(e3) then
-      one(model).updateElement(e4) then
-      one(model).updateElement(e5)
-    }
-    
-    def twice = {
-      val service = model.dataService
-      val e1, e2 = museumExhibitMock.asInstanceOf[service.ElementClass]
-      model.createElement returns (e1, e2)
-      manager.loadExhibits(Some(model), singletonDummyFile)
-      Thread.sleep(200)
-      manager.loadExhibits(Some(model), singletonDummyFile).apply
-      there was one(model).updateElement(e1) then
-      one(model).updateElement(e2)
+    def source = {
+      manager.loadExhibit(dummyFile)
+      manager.currentLoadTask.get
+      Thread.sleep(100)
+      eventBuffer.map(_.task).distinct must haveSize(1)
     }
   }
   
-  def event(manager: MuseumExhibitLoadManager) = new TestBase {
-    import MuseumExhibitLoadManager._
-    
-    def publishStarted = {
-      var published = false
-      manager.reactions += {
-        case Started() => published = true
-      }
-      manager.loadExhibits(None, singletonDummyFile)
-      
-      // 待機
-      val resultFut = Futures.future {
-        while(!published) Thread.sleep(50)
-      }
-      Futures.awaitAll(3000, resultFut)
-      
-      published must beTrue
+  def eventStart(m: Manager) = new EventTestBase[Started](m) {
+  }
+  
+  def eventProgress(m: Manager) = new EventTestBase[ProgressChange](m) {
+    def max = {
+      manager.loadExhibit(dummyFile)
+      manager.currentLoadTask.get
+      eventBuffer.map(_.max).headOption must beSome(1)
     }
     
-    def publishDone = {
-      var published = false
-      manager.reactions += {
-        case Done() => published = true
-      }
-      manager.loadExhibits(None, singletonDummyFile)
-      // 待機
-      val resultFut = Futures.future {
-        while(!published) Thread.sleep(50)
-      }
-      Futures.awaitAll(3000, resultFut)
-      
-      published must beTrue
-    }
-    
-    def publishProgressChange = {
-      import scala.collection.mutable.ListBuffer
-      
-      var published = ListBuffer.empty[ProgressChange]
-      manager.reactions += {
-        case e @ ProgressChange(_, _, _) =>
-          published += e
-      }
-      
-      val Seq(e1, e2, e3, e4, e5) = Range(0, 5) map (n => new File("f" + n))
-      manager.loadExhibits(None, List(e1, e2, e3, e4, e5)).apply
-      
-      published.toList.map(e => (e.next, e.finishedCount, e.queuedCount)) must
-        contain((e1, 0, 5), (e2, 1, 5), (e3, 2, 5), (e4, 3, 5), (e5, 4, 5)).only.inOrder 
-    }
-    
-    def notPublishProgressChange = {
-      import scala.collection.mutable.ListBuffer
-      
-      var published = ListBuffer.empty[ProgressChange]
-      manager.reactions += {
-        case e @ ProgressChange(_, _, _) =>
-          published += e
-      }
-      
-      val Seq(e1, e2, e3, e4, e5) = Range(0, 5) map (n => new File("f" + n))
-      manager.loadExhibits(None, List(e1, e2, e3, e4, e5)).apply
-      
-      published must beEmpty
+    def value = {
+      manager.loadExhibit(dummyFile)
+      manager.currentLoadTask.get
+      eventBuffer.map(_.value).headOption must beSome(1)
     }
   }
   
-  def alertSpec(manager: MuseumExhibitLoadManager) = new TestBase {
+  def eventMessage(m: Manager) = new EventTestBase[MessageChange](m) {
+    def message = {
+      manager.loadExhibit(dummyFile)
+      manager.currentLoadTask.get
+      eventBuffer.map(_.message).headOption.getOrElse("") must not beEmpty
+    }
+  }
+  
+  def eventDone(m: Manager) = new EventTestBase[Done](m) {
+  }
+  
+  def invalidFormatAlert(m: Manager) = new TestBase(spy(m)) {
+    var tasks: Seq[manager.LoadTask] = Nil
+    manager.alertInvalidFormat(any) answers { arg =>
+      println("alertInvalidFormat")
+      tasks = arg.asInstanceOf[Seq[manager.LoadTask]]
+    }
+    
     def display = {
-      val spyManager = spy(manager)
-      val files = singletonDummyFile
-      spyManager.loadExhibits(None, files).apply
-      Thread.sleep(100)
+      manager.loadExhibit(dummyUrl)
+      manager.currentLoadTask.get
       
-      there was one(spyManager).alertFailToLoad(files)
+      tasks.nonEmpty must beTrue
     }
       
-    def displayMany = {
-      import scala.collection.mutable.ListBuffer
+    def diaplayMany = {
+      1 until 10 map (i => manager.loadExhibit(dummyUrl))
+      manager.currentLoadTask.get
       
-      var displayed = ListBuffer.empty[File]
-        
-      val spyManager = spy(manager)
-      spyManager.alertFailToLoad(any) answers { arg =>
-        displayed ++= arg.asInstanceOf[List[File]]
-      }
+      tasks.size must_== 10
+    }
+  }
+  
+  def alertFail(m: Manager) = new TestBase(spy(m)) {
+    var tasks: Seq[(manager.LoadTask, Exception)] = Nil
+    manager.alertFailToLoad(any) answers { arg =>
+      println("alertInvalidFormat")
+      tasks = arg.asInstanceOf[Seq[(manager.LoadTask, Exception)]]
+    }
+    
+    def display = {
+      manager.loadExhibit(dummyUrl)
+      manager.currentLoadTask.get
       
-      val files = Range(0, 5).toList map (n => new File("f" + n))
-      spyManager.loadExhibits(None, files).apply
-      Thread.sleep(100)
+      tasks.nonEmpty must beTrue
+    }
       
-      displayed must haveTheSameElementsAs(files)
+    def diaplayMany = {
+      1 until 10 map (i => manager.loadExhibit(dummyUrl))
+      manager.currentLoadTask.get
+      
+      tasks.size must_== 10
     }
   }
 }

@@ -105,7 +105,7 @@ class WebServiceResultController(
         if (!isCancelled) {
           logger.trace("ダウンロード完了 {}", item.sourceUrl.get.toString)
           val file = get()
-          loadManager.map(_.loadExhibits(List(file)))
+          loadManager.map(_.loadExhibit(file))
         }
         else {
           logger.trace("ダウンロードキャンセル {}", item.sourceUrl.get.toString)

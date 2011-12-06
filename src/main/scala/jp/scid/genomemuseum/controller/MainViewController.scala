@@ -93,8 +93,9 @@ class MainViewController(
       // ソースリスト
       sourceListCtrl.userExhibitRoomService = dataSchema.userExhibitRoomService
       // データテーブル
-      updateRoomContents()
+      museumExhibitListCtrl.dataService = dataSchema.museumExhibitService
     }
+    updateRoomContents()
   }
   
   /** 読み込み管理オブジェクトを取得 */
@@ -118,45 +119,45 @@ class MainViewController(
     import swing.event.Event
     import java.io.File
     
-    private var currentLoader: Option[MuseumExhibitLoadManager] = None
-    
     private var inProgress = false
-    private var currentFile: Option[File] = None
-    private var finishedCount = 0
-    private var totalCount = 0
+    private var progressMax = 0
+    private var progressValue = 0
+    private var subject = ""
+    private var message = ""
     
     reactions += {
-      case Started() =>
+      case Started(task) =>
+        progressMax = 0
+        progressValue = 0
+        subject = ""
+        message = ""
         inProgress = true
         updateViews()
-      case ProgressChange(file, finished, total) =>
-        currentFile = Option(file)
-        finishedCount = finished
-        totalCount = total
+      case ProgressChange(task, max, value) =>
+        progressMax = max
+        progressValue = value
         updateViews()
-      case Done() =>
-        currentFile = None
+      case MessageChange(task, message) =>
+        this.message = message
+        updateViews()
+      case SubjectChange(task, subject) =>
+        this.subject = subject
+        updateViews()
+      case Done(task) =>
         inProgress = false
         updateViews()
     }
     
     def updateViews() {
       contentPane.setVisible(inProgress)
-      statusLabel.setText(statusLabelText)
+      statusLabel.setText(message)
       
-      progressBar.setMaximum(totalCount)
-      progressBar.setValue(finishedCount)
+      progressBar.setMaximum(progressMax)
+      progressBar.setValue(progressValue)
       progressBar.setIndeterminate(isIndeterminate)
     }
     
-    protected def statusLabelText = {
-      val fileNameLabel = currentFile.map(_.getName + " を").getOrElse("")
-      "%s読み込み中... [%d / %d]".format(fileNameLabel, finishedCount, totalCount)
-    }
-    
-    protected def isIndeterminate = {
-      inProgress && totalCount <= finishedCount
-    }
+    protected def isIndeterminate =  inProgress && progressMax <= progressValue
   }
   
   /** 表示モードを取得 */
@@ -194,10 +195,9 @@ class MainViewController(
       tableSource = WebSource
     }
     else {
-      // データテーブルに指定
-      museumExhibitListCtrl.dataService = selectedRoom() match {
-        case newRoom: UserExhibitRoom => dataSchema.roomExhibitService(newRoom)
-        case _ => dataSchema.museumExhibitService
+      museumExhibitListCtrl.userExhibitRoom = selectedRoom() match {
+        case newRoom: UserExhibitRoom => Some(newRoom)
+        case _ =>  None
       }
       tableSource = LocalSource
     }

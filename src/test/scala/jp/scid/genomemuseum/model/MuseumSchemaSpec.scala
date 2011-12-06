@@ -8,8 +8,6 @@ object MuseumSchemaSpec extends Mockito {
       UserExhibitRoomServiceSpec.makeMock(mock[UserExhibitRoomService])
     schema.museumExhibitService returns
       MuseumExhibitServiceSpec.makeMock(mock[MuseumExhibitService])
-    schema.roomExhibitService(any) returns
-      RoomExhibitServiceSpec.makeMock(mock[RoomExhibitService])
     schema
   }
 }

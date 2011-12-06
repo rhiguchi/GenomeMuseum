@@ -8,7 +8,6 @@ import java.io.File
 import org.squeryl.SessionFactory
 import org.squeryl.PrimitiveTypeMode._
 
-
 class MuseumSchemaSpec extends Specification with SquerylConnection {
   def is = "MuseumSchema" ^ sequential ^ Step(closeDatabase) ^
     "スキーマ未作成" ^ emptySchemaSpec(emptySchema) ^ bt ^

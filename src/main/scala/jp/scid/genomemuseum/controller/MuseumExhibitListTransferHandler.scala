@@ -55,7 +55,7 @@ private[controller] class MuseumExhibitListTransferHandler(
           case Nil => false
           case files =>
             // 読み込みマネージャへ処理を委譲
-            loadManager.get.loadExhibits(Some(tableModel), files)
+            files foreach loadManager.get.loadExhibit
             true
         }
       }

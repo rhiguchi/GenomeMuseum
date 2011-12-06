@@ -9,7 +9,7 @@ import jp.scid.gui.event.{ValueChange, DataListSelectionChanged}
 import jp.scid.gui.table.DataTableModel
 import jp.scid.genomemuseum.{view, model, gui}
 import gui.ExhibitTableModel
-import model.{MuseumExhibit, MuseumExhibitService}
+import model.{UserExhibitRoom, MuseumExhibit, MuseumExhibitService}
 
 /**
  * 展示物のテーブル表示と、フィルタリング、テーブルに表示されている項目の
@@ -20,6 +20,10 @@ class MuseumExhibitListController(
   private[controller] val quickSearchField: JTextField
 ) extends DataListController(dataTable, quickSearchField) {
   // モデル
+  /** 現在設定されている部屋 */
+  var currentUserExhibitRoom: Option[UserExhibitRoom] = None
+  /** 展示物データサービス */
+  private var currentService: Option[MuseumExhibitService] = None
   /** テーブルの選択項目 */
   val tableSelection = new ValueHolder(List.empty[MuseumExhibit])
   /** ローカルデータのテーブルモデル */
@@ -50,16 +54,25 @@ class MuseumExhibitListController(
   
   @Action(name="removeSelections")
   def removeSelections() {
-    tableModel.removeSelections()
+//    tableModel.selections foreach dataService.remove
   }
   
   // プロパティ
   /** 現在のデータサービスを取得 */
-  def dataService = tableModel.dataService
+  def dataService = currentService.get
   
   /** テーブルのデータサービスを設定 */
   def dataService_=(newService: MuseumExhibitService) {
-    tableModel.dataService = newService
+    currentService = Option(newService)
+  }
+  
+  def userExhibitRoom = currentUserExhibitRoom
+  
+  def userExhibitRoom_=(room: Option[UserExhibitRoom]) {
+    tableModel.source = room match {
+      case Some(room) => dataService.getExhibits(room)
+      case None => dataService.allElements
+    }
   }
   
   /** 現在の読み込み管理オブジェクトを取得 */

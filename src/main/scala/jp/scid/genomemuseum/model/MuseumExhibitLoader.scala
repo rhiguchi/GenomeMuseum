@@ -85,6 +85,8 @@ class MuseumExhibitLoader {
    * @throws IOException ファイルのアクセスに不正状態が発生した時。
    * @throws ParseException ファイル内を解析中に不正な文字列が含まれていた時。
    */
+  @throws(classOf[ParseException])
+  @throws(classOf[IOException])
   def makeMuseumExhibit(exhibit: MuseumExhibit, source: URL): Boolean = {
     // ファイルの先頭部分の一部の文字列
     val headString = readHeadFrom(source)

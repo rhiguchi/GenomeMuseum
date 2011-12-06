@@ -51,11 +51,8 @@ class MuseumSchema extends Schema with IMuseumSchema {
   /** MuseumExhibit のテーブルオブジェクト */
   private[squeryl] val museumExhibit = table[MuseumExhibit]("museum_exhibit")
   
-  /** 永続化されていない展示物 */
-  val nonPersistedExhibits = new SortedSetMuseumExhibitService
-  
   /** Squeryl で実装した『展示物』データのサービス */
-  val museumExhibitService = new MuseumExhibitService(museumExhibit, nonPersistedExhibits)
+  val museumExhibitService = new MuseumExhibitService(exhibitToRoomExhibitRelation, userExhibitRoom)
   
   /** 部屋の展示物の関連づけを保持するテーブル */
   private[squeryl] val roomExhibit = table[RoomExhibit]("room_exhibit")
@@ -69,10 +66,6 @@ class MuseumSchema extends Schema with IMuseumSchema {
   private val exhibitToRoomExhibitRelation = oneToManyRelation(museumExhibit, roomExhibit)
     .via((exhibit, content) => exhibit.id === content.exhibitId)
   exhibitToRoomExhibitRelation.foreignKeyDeclaration.constrainReference(onDelete cascade)
-    
-  /** Squeryl で実装した部屋の展示物データのサービス */
-  def roomExhibitService(room: IUserExhibitRoom) =
-    new RoomExhibitService(room.asInstanceOf[UserExhibitRoom], exhibitToRoomExhibitRelation, nonPersistedExhibits)
 }
 
 object MuseumSchema {
@@ -100,6 +93,14 @@ object MuseumSchema {
     if (!schema.exists) transaction {
       schema.create
     }
+    
+    // トリガー作成
+    import H2DatabaseChangeTrigger.{createTriggers, Publisher}
+    val conn = Session.currentSession.connection
+    createTriggers(conn, schema.userExhibitRoom.name)
+    createTriggers(conn, schema.museumExhibit.name)
+    createTriggers(conn, schema.roomExhibit.name)
+    
     schema
   }
   
