@@ -4,237 +4,236 @@ import org.specs2._
 import specification.Step
 import execute.Result
 
+import org.squeryl.Table
 import org.squeryl.PrimitiveTypeMode._
 
 import jp.scid.genomemuseum.model.{UserExhibitRoom => IUserExhibitRoom}
 import IUserExhibitRoom.RoomType._
+import SquerylConnection._
 
-class UserExhibitRoomServiceSpec extends Specification with DatabaseConnectable {
+object UserExhibitRoomServiceSpec {
+  import org.squeryl.Schema
   
-  def is = "UserExhibitRoomService" ! pending // ^ Step(openDatabase) ^
-    p ^ "addRoom GroupRoom 親" ^
-      "BasicRoom" ^ isTableInserted(roomAddingOf(BasicRoom)) ^ bt ^
-      "GroupRoom" ^ isTableInserted(roomAddingOf(GroupRoom)) ^ bt ^
-      "SmartRoom" ^ isTableInserted(roomAddingOf(SmartRoom)) ^ bt ^
-      "BasicRoom 親では例外送出" ! roomAddingWithParentOf(BasicRoom).throwsIAException ^ bt ^
-      "SmartRoom 親では例外送出" ! roomAddingWithParentOf(SmartRoom).throwsIAException ^ bt ^
-    p ^ "remove" ^
-      "要素の削除" ! remove.simple ^
-      "親要素の削除で子要素も削除" ! remove.treeDeletion ^
-    bt ^ "setParent" ^ canSetParent(roomAddingOf()) ^
-    bt ^ "名前検索" ^ isNameSearchable ^
-    bt ^ "保存" ^ isPersisted(savedEntity) ^
-    bt ^ "親の取得" ^ canGetParent ^
-    bt ^ "子の取得" ^ canGetChildren ^
-    Step(closeDatabase) ^ end
+  private[squeryl] class TestSchema extends Schema {
+    private val schemaName = "UserExhibitRoomServiceSpec" + util.Random.alphanumeric.take(5).mkString
+    override def name = Some(schemaName)
+    
+    val userExhibitRoom = table[UserExhibitRoom]
   
-  /** ショートカット */
-  val table = schema.userExhibitRoom
-  /** ショートカット */
-  val service = new UserExhibitRoomService(table)
+    /** 親子関係 */
+    val roomTree = oneToManyRelation(userExhibitRoom, userExhibitRoom)
+        .via((c, p) => c.parentId === p.id)
+    roomTree.foreignKeyDeclaration.constrainReference(onDelete cascade)
+  }
+}
+
+class UserExhibitRoomServiceSpec extends Specification {
+  import UserExhibitRoomServiceSpec._
   
-  /** テーブルに要素を挿入 */
-  def insertRoom(roomType: RoomType = BasicRoom, name: String = "room",
-      parentId: Option[Long] = None) = inTransaction {
-    table.insert(UserExhibitRoom(name, roomType, parentId))
+  private type Factory = Table[UserExhibitRoom] => UserExhibitRoomService
+  
+  def is = "UserExhibitRoomService" ^
+    "部屋の追加" ^ canAddRoom(serviceOf) ^
+    "親の取得" ^ canGetParent(serviceOf) ^
+    "親の設定" ^ canSetParent(serviceOf) ^
+    "子の取得" ^ canGetChildren(serviceOf) ^
+    "部屋の除去" ^ canRemove(serviceOf) ^
+    "部屋の更新" ^ canSave(serviceOf) ^
+    end
+  
+  def emptySchema = {
+    val schema = new TestSchema
+    setUpSchema(schema)
+    schema
   }
   
-  /** テーブルに親要素を挿入 */
-  def insertParent(name: String = "room", parentId: Option[Long] = None) =
-    insertRoom(GroupRoom, name, parentId)
-  
-  /** 要素を指定した数分挿入 */
-  def insertRooms(count: Int, parent: Option[UserExhibitRoom] = None) = inTransaction {
-    val pid = parent.map(_.id)
-    Range(0, count).map
-      { index => insertRoom(BasicRoom, "child" + index, pid) }.toList
+  def serviceOf(table: Table[UserExhibitRoom]) = {
+    new UserExhibitRoomService(table)
   }
   
-  class TestBase {
-    def findBy(roomId: Long) = inTransaction { table.lookup(roomId) }
+  def canAddRoom(f: Factory) =
+    "ID の付与" ! addRoom(f).idPersists ^
+    "名前 の付与" ! addRoom(f).namePersists ^
+    "BasicRoom 作成" ! addRoom(f).basic ^
+    "GroupRoom 作成" ! addRoom(f).group ^
+    "SmartRoom 作成" ! addRoom(f).smart ^
+    "親 の付与" ! addRoom(f).parentPersists ^
+    "BasicRoom を親にすると例外" ! addRoom(f).throwsExceptionWithBasicRoomParent ^
+    "SmartRoom を親にすると例外" ! addRoom(f).throwsExceptionWithSmartRoomParent ^
+    bt
+  
+  def canGetParent(f: Factory) =
+    "親を取得" ! getParent(f).returnsParent ^
+    "親が無い時は None" ! getParent(f).returnsNoParent ^
+    bt
+  
+  def canSetParent(f: Factory) =
+    "親 ID の永続化" ! setParent(f).persistsParentId ^
+    "親 ID の解除" ! setParent(f).persistsNoParentId ^
+    "BasicRoom を親にすると例外" ! setParent(f).throwsExceptionWithBasicRoom ^
+    "SmartRoom を親にすると例外" ! setParent(f).throwsExceptionWithSmartRoom ^
+    bt
+  
+  def canGetChildren(f: Factory) =
+    "ルート項目の取得" ! getChildren(f).returnsItemsForRoot ^
+    "子項目の取得" ! getChildren(f).returnsItemsForParent ^
+    "子が無い親は空を返す" ! getChildren(f).returnsNoItemsForNoChildren ^
+    bt
+  
+  def canRemove(f: Factory) =
+    "テーブルから除去" ! remove(f).removesFromTable ^
+    "除去されると true" ! remove(f).returnsTrueToRemove ^
+    "部屋が存在しないと false" ! remove(f).returnsTrueNotToRemove ^
+    "親を消すと子孫も消える" ! remove(f).removesDescendant ^
+    bt
+  
+  def canSave(f: Factory) =
+    "名前変更の永続化" ! save(f).tableParsists ^
+    bt
+  
+  class TestBase(f: Factory) {
+    val table = emptySchema.userExhibitRoom
+    val service = f(table)
     
-    def addParent(name: String = "parent") =
-      addRoom(GroupRoom, "parent")
-      
-    def addRoom(roomType: RoomType = BasicRoom, name: String = "room") =
-      service.addRoom(roomType, name, None)
+    def insertRoom(roomType: RoomType) =
+      table.insert(UserExhibitRoom("name", roomType, None))
     
-    def parentIdFor(room: UserExhibitRoom) = inTransaction {
-      from(table)(e => where(e.id === room.id) select(e.parentId)).head
-    }
+    def insertRoom(roomType: RoomType, parent: UserExhibitRoom) =
+      table.insert(UserExhibitRoom("name", roomType, Some(parent.id)))
   }
   
-  def remove = new TestBase {
-    def simple = {
-      val room = addRoom()
-      val roomId = room.id
-      service.remove(room)
-      
-      findBy(roomId) must beNone
+  def addRoom(f: Factory) = new TestBase(f) {
+    def idPersists = {
+      val room1, room2, room3 = service.addRoom(BasicRoom, "name", None)
+      List(room1, room2, room3).map(_.id) must_== List(1, 2, 3)
     }
     
-    def treeDeletion = {
-      val parent = addParent()
-      val child = service.addRoom(BasicRoom, "child", Some(parent))
-      val childId = child.id
-      service.remove(parent)
-      
-      findBy(childId) must beNone
-    }
-  }
-  def setParent(roomType: RoomType = GroupRoom) = new TestBase {
-    def parentIdAttached = {
-      val parent = addRoom(roomType)
-      parentIdFor(entityWithParentAttached(parent)) must beSome(parent.id)
+    def namePersists = {
+      val rooms = List("nameA", "nameB", "nameC") map
+        (name => service.addRoom(BasicRoom, name, None))
+      table.where(e => e.id in rooms.map(_.id)).map(_.name) must
+        contain("nameA", "nameB", "nameC").only
     }
     
-    def isValid = parentIdAttached
-    
-    def entityWithParentAttached(parent: UserExhibitRoom) = {
-      val parentId = parent.id
-      val room = addRoom()
-      service.setParent(room, Some(parent))
-      room
-    }
-  }
-  
-  def roomAddingOf(roomType: RoomType = BasicRoom, name: String = "room",
-      parent: Option[UserExhibitRoom] = None) = 
-    service.addRoom(roomType, name, parent)
-  
-  def roomAddingWithParentOf(roomType: RoomType) = new TestBase {
-    def throwsIAException = {
-      val parent = roomAddingOf(name = "child")
-      service.addRoom(roomType, "parent", Some(parent)) must throwA[IllegalArgumentException]
-    }
-  }
-  
-  def roomTree = {
-    val roomA = service.addRoom(GroupRoom, "roomA", None)
-    val roomB = service.addRoom(GroupRoom, "roomB", Some(roomA))
-    val roomC = service.addRoom(GroupRoom, "roomC", Some(roomB))
-    IndexedSeq(roomA, roomB, roomC)
-  }
-  
-  def roomEntity(room: UserExhibitRoom) = new TestBase {
-    def hasId = room.id must_!= 0
-    
-    def rowCreated = findBy(room.id) must beSome
-    
-    def roomTypePersisted = {
-      val roomTypeOp = inTransaction {
-        from(table)(e => where(e.id === room.id) select(e.roomType)).headOption
-      }
-      roomTypeOp must beSome(room.roomType)
+    def basic = {
+      val room = service.addRoom(BasicRoom, "name", None)
+      table.lookup(room.id).map(_.roomType) must beSome(BasicRoom)
     }
     
-    def namePersistence = {
-      val roomNameOp = inTransaction {
-        from(table)(e => where(e.id === room.id) select(e.name)).headOption
-      }
-      roomNameOp must beSome(room.name)
+    def group = {
+      val room = service.addRoom(GroupRoom, "name", None)
+      table.lookup(room.id).map(_.roomType) must beSome(GroupRoom)
     }
     
-    def notExist = findBy(room.id) must beNone
-    
-    def cannotSetParent(roomType: RoomType) = {
-      val parent = addRoom(roomType)
-      service.setParent(room, Some(parent)) must
-        throwA[IllegalArgumentException] 
+    def smart = {
+      val room = service.addRoom(SmartRoom, "name", None)
+      table.lookup(room.id).map(_.roomType) must beSome(SmartRoom)
     }
     
-    def canSetParent = {
-      val parent = addParent()
-      service.setParent(room, Some(parent))
-      // 永続化検証
-      parentIdFor(room) must beSome(parent.id)
+    def parentPersists = {
+      val parent1, parent2 = service.addRoom(GroupRoom, "parent", None)
+      val children = List(parent1, parent2, parent2, parent1).map
+        {p => service.addRoom(BasicRoom, "child", Some(p))}
+      table.where(e => e.id in children.map(_.id)).flatMap(_.parentId) must_==
+        List(parent1.id, parent2.id, parent2.id, parent1.id)
     }
     
-    def canUnsetParent = {
-      service.setParent(room, None)
-      // 永続化検証
-      parentIdFor(room) must beNone
+    def throwsExceptionWithBasicRoomParent = {
+      val parent = service.addRoom(BasicRoom, "parent", None)
+      service.addRoom(BasicRoom, "child", Some(parent)) must
+        throwA[IllegalArgumentException]
+    }
+    
+    def throwsExceptionWithSmartRoomParent = {
+      val parent = service.addRoom(SmartRoom, "parent", None)
+      service.addRoom(BasicRoom, "child", Some(parent)) must
+        throwA[IllegalArgumentException]
     }
   }
   
-  def tableDataOf(roomId: Long) = new TestBase {
-    def hasParentId(expected: Long) = {
-      val pIdOp = inTransaction {
-        from(table)(e => where(e.id === roomId) select(e.parentId)).headOption
-      }
-      pIdOp must beSome(expected)
-    }
-  }
-  
-  def nameExists(names: String*) = new TestBase {
-    names.foreach(name => addRoom(name = name))
+  def getParent(f: Factory) = new TestBase(f) {
+    val parent = insertRoom(GroupRoom)
     
-    def existsRoomFor(name: String) = service.nameExists(name) must beTrue
-    
-    def notExistsRoomFor(name: String) = service.nameExists(name) must beFalse
-  }
-  
-  def getParentSpec = new TestBase {
     def returnsParent = {
-      val parent = insertParent("parent")
-      val child = insertRoom(parentId = Some(parent.id))
+      val child = insertRoom(BasicRoom, parent)
       service.getParent(child) must beSome(parent)
     }
     
-    def returnsNone =
-      service.getParent(insertRoom()) must beNone
+    def returnsNoParent = service.getParent(parent) must beNone
   }
   
-  def getChildrenSpec = new TestBase {
-    def returnsChildren = {
-      val parent = Some(insertParent())
-      val children = insertRooms(5, parent)
-      service.getChildren(parent) must haveTheSameElementsAs(children)
+  def setParent(f: Factory) = new TestBase(f) {
+    def persistsParentId = {
+      val parent = insertRoom(GroupRoom)
+      val child = insertRoom(BasicRoom)
+      service.setParent(child, Some(parent))
+      table.lookup(child.id).flatMap(_.parentId) must beSome(parent.id)
     }
     
-    def rootChildren = {
-      val List(c1, c2) = insertRooms(2)
-      service.getChildren(None) must contain(c1, c2)
+    def persistsNoParentId = {
+      val child = insertRoom(BasicRoom, insertRoom(GroupRoom))
+      service.setParent(child, None)
+      table.lookup(child.id).get.parentId must beNone
     }
     
-    def noChild = {
-      val parent = Some(insertParent())
-      service.getChildren(parent) must beEmpty
+    def throwsExceptionWithBasicRoom = {
+      val parent = insertRoom(BasicRoom)
+      val child = insertRoom(BasicRoom)
+      service.setParent(child, Some(parent)) must
+        throwA[IllegalArgumentException]
+    }
+    
+    def throwsExceptionWithSmartRoom = {
+      val parent = insertRoom(SmartRoom)
+      val child = insertRoom(BasicRoom)
+      service.setParent(child, Some(parent)) must
+        throwA[IllegalArgumentException]
     }
   }
   
-  def savedEntity = {
-    val room = insertRoom(BasicRoom, "0")
-    room.name = "aaaaaa"
-    service.save(room)
-    room
+  def getChildren(f: Factory) = new TestBase(f) {
+    val p = insertRoom(GroupRoom)
+    val c1, c2 = insertRoom(BasicRoom)
+    val c3, c4 = insertRoom(BasicRoom, p)
+    val c5 = insertRoom(GroupRoom, p)
+    
+    def returnsItemsForRoot =
+      service.getChildren(None) must contain(p, c1, c2).only
+    
+    def returnsItemsForParent =
+      service.getChildren(Some(p)) must contain(c3, c4, c5).only
+    
+    def returnsNoItemsForNoChildren =
+      service.getChildren(Some(c5)) must beEmpty
   }
   
-  def isTableInserted(room: => UserExhibitRoom) =
-    "ID が付与" ! roomEntity(room).hasId ^
-    "行が永続化" ! roomEntity(room).rowCreated ^
-    "roomType が設定" ! roomEntity(room).roomTypePersisted ^
-    "名前 が永続化" ! roomEntity(room).namePersistence
-  
-  def canSetParent(room: => UserExhibitRoom) =
-    "GroupRoom を設定できる" ! roomEntity(room).canSetParent ^
-    "BasicRoom では例外送出" ! roomEntity(room).cannotSetParent(BasicRoom) ^
-    "SmartRoom では例外送出" ! roomEntity(room).cannotSetParent(SmartRoom) ^
-    "親の設定を解除できる" ! roomEntity(room).canUnsetParent
-  
-  def isNameSearchable =
-    "存在する部屋名には true" ! nameExists("a", "b").existsRoomFor("b") ^
-    "存在しない部屋名には false" ! nameExists("c", "d").notExistsRoomFor("x")
+  def remove(f: Factory) = new TestBase(f) {
+    val r1 = insertRoom(GroupRoom)
+    val r2 = insertRoom(GroupRoom, r1)
+    val r3 = insertRoom(BasicRoom, r2)
     
-  def isPersisted(room: => UserExhibitRoom) =
-    "名前が永続化" ! roomEntity(room).namePersistence
+    assert(table.lookup(r3.id).nonEmpty)
+    val result = service.remove(r1)
+    
+    def removesFromTable = table.lookup(r1.id) must beNone
+    
+    def returnsTrueToRemove = result must beTrue
+    
+    def returnsTrueNotToRemove = service.remove(r1) must beFalse
+    
+    def removesDescendant =  table.lookup(r3.id) must beNone
+  }
   
-  def canGetParent =
-    "親が存在する要素には親要素" ! getParentSpec.returnsParent ^
-    "親が存在しない要素は None" ! getParentSpec.returnsNone
-  
-  def canGetChildren =
-    "要素の子を取得" ! getChildrenSpec.returnsChildren ^
-    "ルート（親が存在しない）要素を取得" ! getChildrenSpec.rootChildren ^
-    "子が存在しない時は Nil"! getChildrenSpec.noChild
+  def save(f: Factory) = new TestBase(f) {
+    val r1, r2, r3 = insertRoom(BasicRoom)
+    r1.name = "a"
+    r2.name = "b"
+    r3.name = "c"
+    List(r1, r2, r3) foreach (service.save)
+    
+    def tableParsists = {
+      List(r1, r2, r3) flatMap (r => table.lookup(r.id)) map (_.name) must
+        contain("a", "b", "c").only
+    }
+  }
 }

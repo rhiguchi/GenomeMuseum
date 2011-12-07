@@ -1,6 +1,8 @@
 package jp.scid.genomemuseum.controller
 
+import java.io.File
 import javax.swing.JTree
+import javax.swing.TransferHandler.TransferSupport
 
 import org.jdesktop.application.Action
 
@@ -51,6 +53,8 @@ private[controller] class ExhibitRoomListController(
   
   // ドロップターゲット
   private[controller] var dropTarget: Option[ExhibitRoom] = None
+  /** 転送元オブジェクト */
+  private[controller] var transferSource: Option[ExhibitRoom] = None
   
   // コントローラ
   /** ツリーの展開を管理するハンドラ */
@@ -119,6 +123,32 @@ private[controller] class ExhibitRoomListController(
     view.startEditingAtPath(convertPathToTreePath(path))
   }
   
+  private type RoomPath = IndexedSeq[ExhibitRoom]
+  
+  /** 転入先となるパスを取得する */
+  protected[controller] def getImportingTargetPath(ts: TransferSupport): RoomPath = {
+    IndexedSeq.empty
+  }
+  
+  /** パスが移動可能であるか */
+  protected[controller] def canMove(source: RoomPath, dest: RoomPath) = {
+      // GroupRoom で転送元が自身もしくは祖先ではない、もしくはルートに移動なら許可
+    false
+  }
+  
+  /** パスを移動 */
+  protected[controller] def movePath(source: RoomPath, dest: RoomPath): Option[RoomPath] = {
+      // GroupRoom で転送元が自身もしくは祖先ではない、もしくはルートに移動なら許可
+    None
+  }
+  
+  /** 展示物をファイルから読み込み */
+  protected[controller] def importExhibitFilesTo(room: UserExhibitRoom, files: List[File]) {
+    // TODO
+  }
+  
+  
+  
   // モデル結合
   ExhibitRoomListController.bind(view, this)
   sourceListModel.sourceListSelectionMode = true
@@ -137,36 +167,86 @@ private object ExhibitRoomListController {
 
 import javax.swing.{TransferHandler, JComponent}
 import java.awt.datatransfer.{Transferable, DataFlavor}
+import TransferHandler.TransferSupport
+import DataFlavor.javaFileListFlavor
 
 /**
  * ExhibitRoomListController 用転送ハンドラ
  */
-private class ExhibitRoomListTransferHandler(ctrl: ExhibitRoomListController) extends TransferHandler {
+private[controller] class ExhibitRoomListTransferHandler(ctrl: ExhibitRoomListController) extends TransferHandler {
   import ExhibitRoomTransferData.{dataFlavor => exhibitRoomDataFlavor}
-  import MuseumExhibitTransferData.{dataFlavor => exhibitDataFlavor}
+  import MuseumExhibitTransferData.{dataFlavor => exhibitListDataFlavor}
   
-  override def canImport(comp: JComponent, transferFlavors: Array[DataFlavor]) = {
-    transferFlavors.contains(exhibitRoomDataFlavor) ||
-      transferFlavors.contains(exhibitDataFlavor)
+  override def canImport(ts: TransferSupport) = {
+    val destPath = ctrl.getImportingTargetPath(ts)
+    lazy val localLibNode = ctrl.sourceStructure.localSource
+    
+    // ノードの転送
+    var transferred = ts.isDataFlavorSupported(exhibitRoomDataFlavor) match {
+      case true =>
+        val sourcePath = ts.getTransferable.getTransferData(exhibitRoomDataFlavor)
+          .asInstanceOf[ExhibitRoomTransferData].transferPath
+      
+        destPath.isEmpty match {
+          case true => sourcePath.lastOption.map(_.isInstanceOf[UserExhibitRoom]).getOrElse(false)
+          case false => ctrl.canMove(sourcePath, destPath)
+        }
+      case false => false
+    }
+    // 展示物の転送
+    transferred = if (transferred) true
+    else ts.isDataFlavorSupported(exhibitListDataFlavor) match {
+      case true => destPath.lastOption match {
+        case Some(UserExhibitRoom.RoomType(BasicRoom)) => true
+        case _ => false
+      }
+      case false => false
+    }
+    // ファイルの転送
+    transferred = if (transferred) true
+    else ts.isDataFlavorSupported(javaFileListFlavor) match {
+      case true => destPath.lastOption match {
+        case Some(UserExhibitRoom.RoomType(BasicRoom)) => true
+        case Some(`localLibNode`) => true
+        case _ => false
+      }
+      case false => false
+    }
+    
+    transferred
   }
   
-  override def importData(comp: JComponent, t: Transferable) = {
-    if (t.isDataFlavorSupported(exhibitRoomDataFlavor)) {
-      ctrl.dropTarget match {
-        case Some(target @ UserExhibitRoom.RoomType(GroupRoom)) =>
-          val data = t.getTransferData(exhibitRoomDataFlavor).asInstanceOf[ExhibitRoomTransferData]
-          ctrl.sourceListModel.moveRoom(data.room, Some(target))
+  override def importData(ts: TransferSupport) = {
+    val destPath = ctrl.getImportingTargetPath(ts)
+    lazy val localLibNode = ctrl.sourceStructure.localSource
+    
+    if (ts.isDataFlavorSupported(exhibitRoomDataFlavor)) {
+      val sourcePath = ts.getTransferable.getTransferData(exhibitRoomDataFlavor)
+        .asInstanceOf[ExhibitRoomTransferData].transferPath
+      val newPath = destPath.isEmpty match {
+        case true => ctrl.movePath(sourcePath, ctrl.sourceStructure.pathToRoot(ctrl.sourceStructure.localSource))
+        case false => ctrl.movePath(sourcePath, destPath)
+      }
+      newPath.nonEmpty
+    }
+    else if (ts.isDataFlavorSupported(exhibitListDataFlavor)) {
+      destPath.lastOption match {
+        case Some(room @ UserExhibitRoom.RoomType(BasicRoom)) =>
+//          val exhibits = ts.getTransferable.getTransferData(exhibitListDataFlavor)
+//            .asInstanceOf[ExhibitRoomTransferData].exhibits
+//          ctrl.addExhibitsTo(room.asInstanceOf[UserExhibitRoom], exhibits)
           true
-        case None =>
-          val data = t.getTransferData(exhibitRoomDataFlavor).asInstanceOf[ExhibitRoomTransferData]
-          ctrl.sourceListModel.moveRoom(data.room, None)
-          true
-        case _ =>
-          false
+        case _ => false
       }
     }
-    else if (t.isDataFlavorSupported(exhibitDataFlavor)) {
-      true
+    else if (ts.isDataFlavorSupported(javaFileListFlavor)) {
+      // TODO
+//      destPath.lastOption match {
+//        case Some(room @ UserExhibitRoom.RoomType(BasicRoom)) =>
+//          ctrl.importExhibitFilesTo()
+//        case Some(`localLibNode`) =>
+//        case _ => false
+      false
     }
     else {
       false
@@ -179,7 +259,7 @@ private class ExhibitRoomListTransferHandler(ctrl: ExhibitRoomListController) ex
   override def createTransferable(c: JComponent) = {
     ctrl.sourceListModel.selectedPath match {
       case Some(PathLastNode(room: UserExhibitRoom)) =>
-        ExhibitRoomTransferData(room)
+        ExhibitRoomTransferDataImpl(room)
       case _ => null
     }
   }
@@ -190,10 +270,19 @@ private class ExhibitRoomListTransferHandler(ctrl: ExhibitRoomListController) ex
   }
 }
 
+object ExhibitRoomTransferData {
+  val dataFlavor = new DataFlavor(ExhibitRoomTransferData.getClass,
+    "ExhibitRoomTransferData")
+}
+
+trait ExhibitRoomTransferData {
+  def transferPath: IndexedSeq[ExhibitRoom]
+}
+
 /**
  * 転送オブジェクト
  */
-case class ExhibitRoomTransferData(
+case class ExhibitRoomTransferDataImpl(
   room: UserExhibitRoom
 ) extends Transferable {
   import ExhibitRoomTransferData.{dataFlavor => exhibitRoomDataFlavor}
@@ -214,9 +303,6 @@ case class ExhibitRoomTransferData(
     case `exhibitRoomDataFlavor` => true
     case _ => false
   }
-}
-
-object ExhibitRoomTransferData {
-  val dataFlavor = new DataFlavor(ExhibitRoomTransferData.getClass,
-    "ExhibitRoomTransferData")
+  
+  def transferPath: IndexedSeq[ExhibitRoom] = IndexedSeq.empty
 }

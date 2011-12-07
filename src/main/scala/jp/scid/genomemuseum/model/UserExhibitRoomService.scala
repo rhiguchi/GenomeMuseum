@@ -28,7 +28,7 @@ trait UserExhibitRoomService extends TreeDataService[UserExhibitRoom] {
    * @param element 削除する要素。
    * @return 削除された要素数。
    */
-  def remove(element: UserExhibitRoom): Int
+  def remove(element: UserExhibitRoom): Boolean
   
   /**
    * 親要素を変更する

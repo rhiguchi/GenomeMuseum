@@ -14,6 +14,12 @@ import scala.swing.{Frame, Dialog, Panel}
 class GenomeMuseumGUI extends Application {
   import jp.scid.genomemuseum.model.MuseumExhibit
   import GenomeMuseumGUI._
+  import RunMode._
+  
+  def this(runMode: GenomeMuseumGUI.RunMode.Value) {
+    this()
+    GenomeMuseumGUI.runMode = runMode
+  }
   
   // リソースのネームスペースを無しに設定
   getContext.getResourceManager.setResourceFolder("")
@@ -46,7 +52,7 @@ class GenomeMuseumGUI extends Application {
   /** データベースの構築をメモリー内で行うか */
   private var useInMemoryDatabase = false
   
-  override protected def initialize(args: Array[String]) {
+  override protected[genomemuseum] def initialize(args: Array[String]) {
     if (args.contains("-production")) {
       genomemuseumHome = getContext.getLocalStorage.getDirectory
     }
@@ -94,7 +100,12 @@ class GenomeMuseumGUI extends Application {
     mainController.mainCtrl.loadManager = loadManager
     
     // 表示
-    mainController.show()
+    show(mainController)
+  }
+  
+  private[genomemuseum] def show(ctrl: controller.MuseumFrameViewController) {
+    if (runMode != Testing)
+      ctrl.show()
   }
   
   override protected def ready() {
@@ -159,6 +170,15 @@ object GenomeMuseumGUI {
   import scala.swing.Action
   import model.MuseumExhibit
   import jp.scid.bio.GenBank
+  
+  /** アプリケーションの実行モードを表す列挙型 */
+  protected[genomemuseum] object RunMode extends Enumeration {
+    type RunMode = Value
+    val Testing, Development, Production = Value
+  }
+  
+  /** 現在のアプリケーションの実行モード */
+  protected[genomemuseum] var runMode: RunMode.Value = RunMode.Development
   
   private val logger = org.slf4j.LoggerFactory.getLogger(classOf[GenomeMuseumGUI])
   

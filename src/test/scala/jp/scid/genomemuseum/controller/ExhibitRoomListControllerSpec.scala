@@ -128,7 +128,7 @@ class ExhibitRoomListControllerSpec extends Specification with Mockito {
     dndObj.getTransferDataFlavors returns Array(ExhibitRoomTransferData.dataFlavor)
     dndObj.isDataFlavorSupported(ExhibitRoomTransferData.dataFlavor) returns true
     dndObj.getTransferData(ExhibitRoomTransferData.dataFlavor) returns
-      ExhibitRoomTransferData(testRoom)
+      ExhibitRoomTransferDataImpl(testRoom)
     
     // ドロップ先設定
     ctrl.dropTarget = Some(room1_2)
@@ -144,7 +144,7 @@ class ExhibitRoomListControllerSpec extends Specification with Mockito {
     ctrl.dropTarget = None
     service.getChildren(None) returns List(testRoom, room1_2_1, room1)
     dndObj.getTransferData(ExhibitRoomTransferData.dataFlavor) returns
-      ExhibitRoomTransferData(room1_2_1)
+      ExhibitRoomTransferDataImpl(room1_2_1)
     val importResult2 = transferHandler.importData(view, dndObj)
     val event2 = lastInsertedEvent
     

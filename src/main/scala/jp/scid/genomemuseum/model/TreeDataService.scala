@@ -4,6 +4,8 @@ package jp.scid.genomemuseum.model
  * ツリー構造のデータを扱うためのトレイト
  */
 trait TreeDataService[A] {
+  type Node <: A
+  
   /**
    * 子要素を返す。
    * @param parent 親要素。{@code None} で、ルート要素（どの親にも属さない要素）を返す。

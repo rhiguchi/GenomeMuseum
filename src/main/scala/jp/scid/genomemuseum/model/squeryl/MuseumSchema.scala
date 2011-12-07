@@ -1,7 +1,6 @@
 package jp.scid.genomemuseum.model.squeryl
 
-import jp.scid.genomemuseum.model.{MuseumSchema => IMuseumSchema,
-  UserExhibitRoom => IUserExhibitRoom}
+import jp.scid.genomemuseum.model.{MuseumSchema => IMuseumSchema}
 
 import org.squeryl.{Schema, Session}
 import org.squeryl.PrimitiveTypeMode._
@@ -37,6 +36,8 @@ class MuseumSchema extends Schema with IMuseumSchema {
     super.create
   }
   
+  
+  // user_exhibit_room
   /** UserExhibitRoom のテーブルオブジェクト */
   private[squeryl] val userExhibitRoom = table[UserExhibitRoom]("user_exhibit_room")
   
@@ -45,15 +46,11 @@ class MuseumSchema extends Schema with IMuseumSchema {
       .via((c, p) => c.parentId === p.id)
   roomTree.foreignKeyDeclaration.constrainReference(onDelete cascade)
   
-  /** Squeryl で実装した『部屋』データのサービス */
-  val userExhibitRoomService = new UserExhibitRoomService(userExhibitRoom)
-  
+  // museum_exhibit
   /** MuseumExhibit のテーブルオブジェクト */
   private[squeryl] val museumExhibit = table[MuseumExhibit]("museum_exhibit")
   
-  /** Squeryl で実装した『展示物』データのサービス */
-  val museumExhibitService = new MuseumExhibitService(exhibitToRoomExhibitRelation, userExhibitRoom)
-  
+  // room_exhibit
   /** 部屋の展示物の関連づけを保持するテーブル */
   private[squeryl] val roomExhibit = table[RoomExhibit]("room_exhibit")
   
@@ -66,6 +63,12 @@ class MuseumSchema extends Schema with IMuseumSchema {
   private val exhibitToRoomExhibitRelation = oneToManyRelation(museumExhibit, roomExhibit)
     .via((exhibit, content) => exhibit.id === content.exhibitId)
   exhibitToRoomExhibitRelation.foreignKeyDeclaration.constrainReference(onDelete cascade)
+  
+  /** Squeryl で実装した『部屋』データのサービス */
+  val userExhibitRoomService = new UserExhibitRoomService(userExhibitRoom)
+  
+  /** Squeryl で実装した『展示物』データのサービス */
+  val museumExhibitService = new MuseumExhibitService(exhibitToRoomExhibitRelation, userExhibitRoom)
 }
 
 object MuseumSchema {
@@ -76,6 +79,8 @@ object MuseumSchema {
   private object connectionLock
   /** コネクションプール */
   private var connectionPool: Option[JdbcConnectionPool] = None
+  /** 接続アダプタ */
+  val adapter = new adapters.H2Adapter
   
   def onMemory(name: String) = {
     makeH2SquerylConnection("jdbc:h2:mem:" + name)
@@ -89,36 +94,28 @@ object MuseumSchema {
   
   /** スキーマを構築する */
   private def craeteSchema() = {
+    SessionFactory.newSession.bindToCurrentThread
     val schema = new MuseumSchema
-    if (!schema.exists) transaction {
+    if (!schema.exists)
       schema.create
-    }
     
     // トリガー作成
     import H2DatabaseChangeTrigger.{createTriggers, Publisher}
     val conn = Session.currentSession.connection
-    createTriggers(conn, schema.userExhibitRoom.name)
-    createTriggers(conn, schema.museumExhibit.name)
-    createTriggers(conn, schema.roomExhibit.name)
+    createTriggers(conn, schema.userExhibitRoom.name, schema.name.get)
+    createTriggers(conn, schema.museumExhibit.name, schema.name.get)
+    createTriggers(conn, schema.roomExhibit.name, schema.name.get)
     
     schema
   }
   
   private def makeH2SquerylConnection(connectionString: String) {
-    connectionPool = connectionLock.synchronized {
-      Class.forName("org.h2.Driver")
-      
-      // Squeryl セッションが他によって作られている時はデータベースを作成しない
-      if (SessionFactory.concreteFactory.nonEmpty)
-        throw new IllegalStateException("SessionFactory is already used by others")
-      
-      val h2cp = JdbcConnectionPool.create(connectionString, "", "")
-      SessionFactory.concreteFactory = Some( () =>
-        Session.create(h2cp.getConnection, new adapters.H2Adapter)
-      )
-      SessionFactory.newSession.bindToCurrentThread
-      Some(h2cp)
-    }
+    Class.forName("org.h2.Driver")
+    
+    val h2cp = JdbcConnectionPool.create(connectionString, "", "")
+    SessionFactory.concreteFactory = Some( () =>
+      Session.create(h2cp.getConnection, adapter)
+    )
   }
   
   def closeConnection {

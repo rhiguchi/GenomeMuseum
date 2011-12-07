@@ -14,6 +14,7 @@ import IUserExhibitRoom.RoomType._
  */
 private[squeryl] class UserExhibitRoomService(table: Table[UserExhibitRoom])
     extends IUserExhibitRoomService {
+  type Node = UserExhibitRoom
   
   def addRoom(roomType: RoomType, name: String,
       parent: Option[IUserExhibitRoom]) = {
@@ -33,7 +34,7 @@ private[squeryl] class UserExhibitRoomService(table: Table[UserExhibitRoom])
     table.where( e => e.name === name).nonEmpty
   }
   
-  def getParent(element: IUserExhibitRoom): Option[IUserExhibitRoom] = {
+  def getParent(element: IUserExhibitRoom): Option[UserExhibitRoom] = {
     parentFor(element.id)
   }
   
@@ -49,14 +50,14 @@ private[squeryl] class UserExhibitRoomService(table: Table[UserExhibitRoom])
     }
   }
   
-  def getChildren(parent: Option[IUserExhibitRoom]): List[IUserExhibitRoom] = {
+  def getChildren(parent: Option[IUserExhibitRoom]): List[UserExhibitRoom] = {
     inTransaction {
       table.where(e => nvl(e.parentId, 0L) === parent.map(_.id).getOrElse(0L)).toList
     }
   }
   
   def remove(element: IUserExhibitRoom) = inTransaction {
-    table.deleteWhere(e => e.id === element.id)
+    table.delete(element.id)
   }
   
   def save(element: IUserExhibitRoom) = inTransaction {

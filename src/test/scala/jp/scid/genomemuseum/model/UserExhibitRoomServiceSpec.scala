@@ -7,7 +7,6 @@ object UserExhibitRoomServiceSpec extends Mockito {
     TreeDataServiceSpec.makeMock(service)
     service.addRoom(any, anyString, any) returns mock[UserExhibitRoom]
     service.nameExists(anyString) returns false
-    service.remove(any) returns 0
     service
   }
 }
