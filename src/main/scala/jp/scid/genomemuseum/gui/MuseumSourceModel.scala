@@ -19,6 +19,10 @@ class MuseumSourceModel(source: MuseumStructure) extends DataTreeModel(source) {
   
   private var currentDataService: Option[UserExhibitRoomService] = None
   
+  /** 変化監視の接続 */
+  // TODO テスト
+  val observableServiceAdapter = new SourceTreeModelAdapter[ExhibitRoom, UserExhibitRoom](sourceTreeModel)
+  
   /**
    * 未使用の名前を検索する。
    * {@code baseName} の名前を持つ部屋がサービス中に存在するとき、
@@ -139,6 +143,7 @@ class MuseumSourceModel(source: MuseumStructure) extends DataTreeModel(source) {
    */
   def dataService_=(newDataService: UserExhibitRoomService) {
     currentDataService = Option(newDataService)
+    currentDataService.foreach(observableServiceAdapter.connect)
     source.userExhibitRoomSource = newDataService
     reloadWithDataService()
   }

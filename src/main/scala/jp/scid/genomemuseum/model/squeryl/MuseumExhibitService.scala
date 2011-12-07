@@ -16,33 +16,11 @@ import SquerylTriggerAdapter.{TableOperation, Inserted, Updated, Deleted}
  */
 private[squeryl] class MuseumExhibitService(
     val exhibitRelation: OneToManyRelation[MuseumExhibit, RoomExhibit],
-    val roomTable: Table[UserExhibitRoom]) extends IMuseumExhibitService with RoomElementService {
+    val roomTable: Table[UserExhibitRoom]) extends IMuseumExhibitService with RoomElementService
+    with MuseumExhibitPublisher {
   type ElementClass = MuseumExhibit
   
-  def this(exhibitRelation: OneToManyRelation[MuseumExhibit, RoomExhibit],
-      roomTable: Table[UserExhibitRoom],
-      observedTable: Publisher[TableOperation[MuseumExhibit]]) {
-    this(exhibitRelation, roomTable)
-    
-    new ObservableListDataService(observedTable) {
-      private val table = exhibitTable
-      
-      def notify(event: TableOperation[MuseumExhibit]) = event match {
-        case Inserted(`table`, id) =>
-          val index = from(table)(e => where(e.id lte id) compute(count)).toInt - 1
-          table.lookup(id).foreach(e => publish(Include(Index(index), e)))
-        case Updated(`table`, id) =>
-          val index = from(table)(e => where(e.id lte id) compute(count)).toInt - 1
-          table.lookup(id).foreach(e => publish(Update(Index(index), e)))
-        case Deleted(`table`, id) =>
-          val index = from(table)(e => where(e.id lt id) compute(count)).toInt
-          val e = MuseumExhibit("")
-          e.id = id
-          if (index >= 0) publish(Remove(Index(index), e))
-        case _ =>
-      }
-    }
-  }
+  def museumExhibitTablePublisher = SquerylTriggerAdapter.connect(exhibitRelation.leftTable, 7)
   
   /**
    * このサービスが持つ全ての要素を取得する。

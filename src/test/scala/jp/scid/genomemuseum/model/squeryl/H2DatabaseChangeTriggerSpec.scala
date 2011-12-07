@@ -8,6 +8,7 @@ import org.squeryl.{Schema, Table}
 import org.squeryl.PrimitiveTypeMode._
 
 import H2DatabaseChangeTrigger._
+import SquerylConnection._
 
 object H2DatabaseChangeTriggerSpec {
   trait TestSchema {
@@ -38,7 +39,7 @@ object H2DatabaseChangeTriggerSpec {
   }
 }
 
-class H2DatabaseChangeTriggerSpec extends Specification with SquerylConnection {
+class H2DatabaseChangeTriggerSpec extends Specification {
   import H2DatabaseChangeTriggerSpec._
   
   def is = "H2DatabaseChangeTrigger" ^
@@ -47,9 +48,6 @@ class H2DatabaseChangeTriggerSpec extends Specification with SquerylConnection {
     "テーブル行更新通知" ^ canPublishUpdating(triggeredSchema) ^ bt ^
     "テーブル行削除通知" ^ canPublishDeleting(triggeredSchema) ^ bt ^
     end
-  
-  @deprecated("dont use", "2011-12-03")
-  val schema = new TestSchemaImpl
   
   def canCreateTrigger =
     "SQL 発行" ! trigger.executeSql

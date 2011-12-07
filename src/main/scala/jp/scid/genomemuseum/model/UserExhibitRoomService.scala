@@ -1,11 +1,15 @@
 package jp.scid.genomemuseum.model
 
+import scala.collection.mutable.Publisher
+import scala.collection.script.Message
+
 import UserExhibitRoom.RoomType._
 
 /**
  * UserExhibitRoom データ提供サービスのインターフェイス。
  */
-trait UserExhibitRoomService extends TreeDataService[UserExhibitRoom] {
+trait UserExhibitRoomService extends TreeDataService[UserExhibitRoom]
+    with Publisher[Message[UserExhibitRoom]] {
   /**
    * 部屋をサービスに追加する。
    * @param roomType 部屋の種類

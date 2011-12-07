@@ -11,11 +11,11 @@ import jp.scid.genomemuseum.model.{UserExhibitRoom => IUserExhibitRoom}
 import IUserExhibitRoom.RoomType._
 import SquerylConnection._
 
-object UserExhibitRoomServiceSpec {
+private[squeryl] object UserExhibitRoomServiceSpec {
   import org.squeryl.Schema
   
   private[squeryl] class TestSchema extends Schema {
-    private val schemaName = "UserExhibitRoomServiceSpec" + util.Random.alphanumeric.take(5).mkString
+    private val schemaName = "UserExhibitRoomServiceSpec_" + util.Random.alphanumeric.take(5).mkString
     override def name = Some(schemaName)
     
     val userExhibitRoom = table[UserExhibitRoom]
@@ -24,6 +24,16 @@ object UserExhibitRoomServiceSpec {
     val roomTree = oneToManyRelation(userExhibitRoom, userExhibitRoom)
         .via((c, p) => c.parentId === p.id)
     roomTree.foreignKeyDeclaration.constrainReference(onDelete cascade)
+  }
+  
+  private[squeryl] trait UserExhibitRoomTesting {
+    protected def userExhibitRoomTable: Table[UserExhibitRoom]
+    
+    def insertRoom(roomType: RoomType) =
+      userExhibitRoomTable.insert(UserExhibitRoom("name", roomType, None))
+    
+    def insertRoom(roomType: RoomType, parent: UserExhibitRoom) =
+      userExhibitRoomTable.insert(UserExhibitRoom("name", roomType, Some(parent.id)))
   }
 }
 
@@ -91,15 +101,11 @@ class UserExhibitRoomServiceSpec extends Specification {
     "名前変更の永続化" ! save(f).tableParsists ^
     bt
   
-  class TestBase(f: Factory) {
+  class TestBase(f: Factory) extends UserExhibitRoomTesting {
     val table = emptySchema.userExhibitRoom
     val service = f(table)
     
-    def insertRoom(roomType: RoomType) =
-      table.insert(UserExhibitRoom("name", roomType, None))
-    
-    def insertRoom(roomType: RoomType, parent: UserExhibitRoom) =
-      table.insert(UserExhibitRoom("name", roomType, Some(parent.id)))
+    def userExhibitRoomTable = table
   }
   
   def addRoom(f: Factory) = new TestBase(f) {

@@ -8,7 +8,7 @@ import jp.scid.gui.ValueHolder
 import jp.scid.gui.event.{ValueChange, DataListSelectionChanged}
 import jp.scid.gui.table.DataTableModel
 import jp.scid.genomemuseum.{view, model, gui}
-import gui.ExhibitTableModel
+import gui.{ExhibitTableModel, PublisherScheduleTaskAdapter}
 import model.{UserExhibitRoom, MuseumExhibit, MuseumExhibitService}
 
 /**
@@ -44,6 +44,14 @@ class MuseumExhibitListController(
     model
   }
   
+  /** ソースの再読み込み */
+  private def reloadSource() {
+    tableModel.source = userExhibitRoom match {
+      case Some(room) => dataService.getExhibits(room)
+      case None => dataService.allElements
+    }
+  }
+  
   // コントローラ
   /** 転送ハンドラ */
   override private[controller] val tableTransferHandler =
@@ -51,6 +59,8 @@ class MuseumExhibitListController(
   /** ローカルソースの選択項目を除去するアクション */
   override val removeSelectionAction = getAction("removeSelections")
   removeSelectionAction.enabled = false
+  /** サービス変化を監視してモデルの再読み込みを行うアダプタ */
+  private val reloadingHandler = PublisherScheduleTaskAdapter[MuseumExhibit] { _ => reloadSource() }
   
   @Action(name="removeSelections")
   def removeSelections() {
@@ -64,15 +74,14 @@ class MuseumExhibitListController(
   /** テーブルのデータサービスを設定 */
   def dataService_=(newService: MuseumExhibitService) {
     currentService = Option(newService)
+    currentService.foreach(reloadingHandler.connect)
   }
   
   def userExhibitRoom = currentUserExhibitRoom
   
   def userExhibitRoom_=(room: Option[UserExhibitRoom]) {
-    tableModel.source = room match {
-      case Some(room) => dataService.getExhibits(room)
-      case None => dataService.allElements
-    }
+    currentUserExhibitRoom = room
+    reloadSource()
   }
   
   /** 現在の読み込み管理オブジェクトを取得 */

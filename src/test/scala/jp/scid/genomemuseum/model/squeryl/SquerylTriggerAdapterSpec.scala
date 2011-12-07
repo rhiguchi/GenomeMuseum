@@ -5,9 +5,10 @@ import org.specs2._
 import scala.collection.mutable.{Buffer, ArrayBuffer, SynchronizedBuffer,
   Publisher}
 
-import org.squeryl.{Table, KeyedEntity}
+import org.squeryl.{Table, KeyedEntity, Session}
 
 import SquerylTriggerAdapter._
+import SquerylConnection._
 
 private[squeryl] object SquerylTriggerAdapterSpec {
   private[squeryl] class Schema(schemaName: String = "") extends org.squeryl.Schema {
@@ -24,57 +25,39 @@ private[squeryl] object SquerylTriggerAdapterSpec {
   }
 }
 
-class SquerylTriggerAdapterSpec extends Specification with SquerylConnection {
+class SquerylTriggerAdapterSpec extends Specification {
   import SquerylTriggerAdapterSpec._
   
   private type OpePub = Publisher[TableOperation[TestEntity]]
   
   def is = "SquerylTriggerAdapter" ^
-    "トリガー有り挿入操作" ^ canPublishInsertedEvent(triggeredTable) ^ bt ^
-    "トリガー無し挿入操作" ^ notPublishInsertedEvent(nontriggeredTable) ^ bt ^
-    "トリガー有り更新操作" ^ canPublishUpdatedEvent(triggeredTable) ^ bt ^
-    "トリガー無し更新操作" ^ notPublishUpdatedEvent(nontriggeredTable) ^ bt ^
-    "トリガー有り削除操作" ^ canPublishDeletedEvent(triggeredTable) ^ bt ^
-    "トリガー無し削除操作" ^ notPublishDeletedEvent(nontriggeredTable) ^ bt ^
+    "挿入操作" ^ canPublishInsertedEvent(basicTable) ^ bt ^
+    "更新操作" ^ canPublishUpdatedEvent(basicTable) ^ bt ^
+    "削除操作" ^ canPublishDeletedEvent(basicTable) ^ bt ^
     end
   
-  def schema = new Schema(util.Random.alphanumeric.take(10).mkString)
-  
-  def triggeredTable = {
-    val s = schema
+  def basicTable = {
+    val s = new Schema(util.Random.alphanumeric.take(10).mkString)
     setUpSchema(s)
-    SquerylTriggerAdapter.installTriggerFor(s.entityTable)
-    s.entityTable
-  }
-  
-  def nontriggeredTable = {
-    val s = schema
-    setUpSchema(s)
+    def table = s.entityTable
+    
     s.entityTable
   }
   
   def canPublishInsertedEvent(table: => Table[TestEntity]) =
     "イベントを発行" ! insertedEvent(table).publish
   
-  def notPublishInsertedEvent(table: => Table[TestEntity]) =
-    "イベントを発行しない" ! insertedEvent(table).notPublish
-  
   def canPublishUpdatedEvent(table: => Table[TestEntity]) =
     "イベントを発行" ! updatedEvent(table).publish
-  
-  def notPublishUpdatedEvent(table: => Table[TestEntity]) =
-    "イベントを発行しない" ! updatedEvent(table).notPublish
   
   def canPublishDeletedEvent(table: => Table[TestEntity]) =
     "イベントを発行" ! deletedEvent(table).publish
   
-  def notPublishDeletedEvent(table: => Table[TestEntity]) =
-    "イベントを発行しない" ! deletedEvent(table).notPublish
-  
   abstract class EventTestBase(table: Table[TestEntity]) {
     val eventIds = new ArrayBuffer[Long] with SynchronizedBuffer[Long]
     
-    val pub = SquerylTriggerAdapter.connect(table, 2)
+    val pub = SquerylTriggerAdapter.connect(Session.currentSession.connection,
+      table, 2)
     
     def eventToId: PartialFunction[TableOperation[TestEntity], Long]
     

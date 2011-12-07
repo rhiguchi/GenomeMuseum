@@ -163,6 +163,14 @@ class SourceTreeModel[A <: AnyRef: ClassManifest](source: TreeSource[A]) extends
     }
   }
   
+  def nodeRemoved(parent: A) {
+    // TODO
+  }
+  
+  def nodeChanged(parent: A) {
+    // TODO
+  }
+  
   // リスナー
   def addTreeModelListener(l: TreeModelListener) =
     treeDelegate addTreeModelListener l

@@ -12,9 +12,11 @@ import IUserExhibitRoom.RoomType._
 /**
  * GenomeMuseum データソースの Squeryl 実装
  */
-private[squeryl] class UserExhibitRoomService(table: Table[UserExhibitRoom])
-    extends IUserExhibitRoomService {
+private[squeryl] class UserExhibitRoomService(private[squeryl] val table: Table[UserExhibitRoom])
+    extends IUserExhibitRoomService with UserExhibitRoomPublisher {
   type Node = UserExhibitRoom
+  
+  def userExhibitRoomTablePublisher = SquerylTriggerAdapter.connect(table, 2)
   
   def addRoom(roomType: RoomType, name: String,
       parent: Option[IUserExhibitRoom]) = {

@@ -1,5 +1,7 @@
 package jp.scid.genomemuseum.model.squeryl
 
+import java.sql.Connection
+
 import collection.mutable.Publisher
 
 import org.squeryl.{Schema, Session, Table, KeyedEntity}
@@ -26,6 +28,7 @@ object SquerylTriggerAdapter {
   
   /**
    * テーブルの変更を接続する。
+   * トリガーが設定されている必要がある。
    * @param table テーブル変化を監視する Squeryl テーブルオブジェクト
    * @param idColumnIndex 行の id 列の番号
    */
@@ -38,12 +41,15 @@ object SquerylTriggerAdapter {
   }
   
   /**
-   * H2 database にトリガーを設定する。
-   * @param table 変更トリガーを作成する Squeryl テーブルオブジェクト。
+   * トリガーの作成と共にテーブルの変更を接続する。
+   * @param table テーブル変化を監視する Squeryl テーブルオブジェクト
+   * @param idColumnIndex 行の id 列の番号
    */
-  def installTriggerFor(table: Table[_]) {
-    H2DatabaseChangeTrigger.createTriggers(Session.currentSession.connection,
-      table.name, table.schema.name.get)
+  def connect[A <: KeyedEntity[Long]](conn: Connection, table: Table[A], idColumnIndex: Int): Publisher[TableOperation[A]] = {
+    // トリガー追加
+    H2DatabaseChangeTrigger.createTriggers(conn, table.name, table.schema.name.get)
+    
+    connect(table, idColumnIndex)
   }
   
   /**
@@ -83,7 +89,7 @@ object SquerylTriggerAdapter {
     private def getIdValue(data: Array[AnyRef]) = data(idColumnIndex) match {
       case id: java.lang.Long => id
       case _ => throw new IllegalStateException(
-        "column index '%d' may not be index of id. Data: %d"
+        "column index '%d' may not be index of id. Data: %s"
           .format(idColumnIndex, data.toList))
     }
   }
