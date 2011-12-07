@@ -10,7 +10,7 @@ import ca.odell.glazedlists.matchers.{Matcher, MatcherEditor}
 class DataTableModelSpec extends Specification with Mockito {
   import DataTableModelSpec.{TestElement, TestElementTableFormat}
   
-  def is = "DataTableModel" ^
+  def is = "DataTableModel" ^ sequential ^
     "初期プロパティ" ^
       "visibledColumns" ! initial.s1 ^
     bt ^ "tableModel" ^

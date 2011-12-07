@@ -30,7 +30,7 @@ class SquerylTriggerAdapterSpec extends Specification {
   
   private type OpePub = Publisher[TableOperation[TestEntity]]
   
-  def is = "SquerylTriggerAdapter" ^
+  def is = "SquerylTriggerAdapter" ^ sequential ^
     "挿入操作" ^ canPublishInsertedEvent(basicTable) ^ bt ^
     "更新操作" ^ canPublishUpdatedEvent(basicTable) ^ bt ^
     "削除操作" ^ canPublishDeletedEvent(basicTable) ^ bt ^
