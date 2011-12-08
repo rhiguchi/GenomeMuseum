@@ -40,7 +40,7 @@ class SourceTreeModel[A <: AnyRef: ClassManifest](source: TreeSource[A]) extends
    * @throws IllegalArgumentException {@code node} が {@code A} 型でない時
    * @throws NoSuchElementException {@code node} の親が不明でパスが定まっていない時
    */
-  def isLeaf(node: Any): Boolean = withSource(node){ treeDelegate isLeaf }
+  def isLeaf(node: AnyRef): Boolean = withSource(node){ treeDelegate isLeaf }
   
   /**
    * 子要素が source から読み込まれているか。
@@ -76,11 +76,7 @@ class SourceTreeModel[A <: AnyRef: ClassManifest](source: TreeSource[A]) extends
    */
   def getChild(parent: Any, index: Int): A = withSource(parent){ parent =>
     ensureChildrenLoad(parent)
-    val child = treeDelegate.getChild(parent, index).asInstanceOf[DefaultMutableTreeNode]
-    if (itemClass.erasure isInstance child.getUserObject)
-      child.getUserObject.asInstanceOf[A]
-    else
-      throw new IllegalStateException("Not a source item")
+    parent.getChildren(index).nodeObject
   }
   
   /** 
@@ -94,8 +90,7 @@ class SourceTreeModel[A <: AnyRef: ClassManifest](source: TreeSource[A]) extends
    */
   def getIndexOfChild(parent: Any, child: Any) = withSource(parent) { parent =>
     getTreeNode(child) match {
-      case Some(childNode) =>
-        treeDelegate.getIndexOfChild(parent, childNode)
+      case Some(childNode) => treeDelegate.getIndexOfChild(parent, childNode)
       case None => -1
     }
   }
@@ -109,12 +104,10 @@ class SourceTreeModel[A <: AnyRef: ClassManifest](source: TreeSource[A]) extends
    * @throws NoSuchElementException {@code path} にパスが定まっていない項目が含まれる時。
    */
   def valueForPathChanged(path: TreePath, newValue: AnyRef) {
-    val seqPath = convertTreePath(path)
-    val lastNode = treeNodes(seqPath.last)
     source match {
       case source: EditableTreeSource[_] =>
-        source.update(seqPath, newValue)
-        treeDelegate nodeChanged lastNode
+        source.update(convertTreePath(path), newValue)
+        getTreeNode(path.getLastPathComponent) foreach treeDelegate.nodeChanged
       case _ =>
     }
   }
@@ -128,10 +121,10 @@ class SourceTreeModel[A <: AnyRef: ClassManifest](source: TreeSource[A]) extends
    * 指定した項目から下のツリーを初期化する
    * @param node このノードから先をソースから読み込む
    */
-  def reset(item: A) = getTreeNode(item) map { node =>
-    val node = treeNodes(item)
-    reloadChildren(node)
-    treeDelegate.reload(node)
+  def reset(item: A) = treeNodes.get(item) foreach { treeNode =>
+    removeDescendant(treeNode.getChildren.toList)
+    reloadChildren(treeNode)
+    treeDelegate.reload(treeNode)
   }
   
   /**
@@ -139,12 +132,15 @@ class SourceTreeModel[A <: AnyRef: ClassManifest](source: TreeSource[A]) extends
    */
   def someChildrenWereInserted(parent: A) {
     treeNodes.get(parent) filter (_.childPrepared) foreach { node =>
-      val oldChildren = node.getChildren.toList
+      val oldChildren = node.getChildren
       reloadChildren(node)
-      val newChildren = node.getChildren.toList
+      val newChildren = node.getChildren
       val inserted = newChildren diff oldChildren
-      val indices = getIndices(Buffer.empty, newChildren, inserted).toIndexedSeq
-      treeDelegate.nodesWereInserted(node, indices.toArray)
+      val indices = inserted.foldLeft(Vector.empty[Int]) { (indices, node) =>
+        indices :+ newChildren.indexOf(node, indices.lastOption.getOrElse(0))
+      }
+      if (indices.nonEmpty)
+        treeDelegate.nodesWereInserted(node, indices.toArray)
     }
   }
   
@@ -156,20 +152,29 @@ class SourceTreeModel[A <: AnyRef: ClassManifest](source: TreeSource[A]) extends
       val oldChildren = node.getChildren
       reloadChildren(node)
       val newChildren = node.getChildren
-      val remove = oldChildren diff newChildren
-      val indices = getIndices(Buffer.empty, oldChildren, remove).toIndexedSeq
-      removeDescendant(remove.toList)
-      treeDelegate.nodesWereRemoved(node, indices.toArray, remove.toArray)
+      val removed = oldChildren diff newChildren
+      val indices = removed.foldLeft(Vector.empty[Int]) { (indices, node) =>
+        indices :+ oldChildren.indexOf(node, indices.lastOption.getOrElse(0))
+      }
+      removeDescendant(removed)
+      if (indices.nonEmpty)
+        treeDelegate.nodesWereRemoved(node, indices.toArray, removed.toArray)
     }
   }
   
-  def nodeRemoved(parent: A) {
-    // TODO
-  }
+  /**
+   * 削除されたことを通知する。
+   * ソースから再読み込みは行われない。
+   */
+  def nodeRemoved(node: A) =
+    getTreeNode(node) foreach treeDelegate.removeNodeFromParent
   
-  def nodeChanged(parent: A) {
-    // TODO
-  }
+  /**
+   * 更新されたことを通知する。
+   * ソースから再読み込みは行われない。
+   */
+  def nodeChanged(node: A) =
+    getTreeNode(node) foreach treeDelegate.nodeChanged
   
   // リスナー
   def addTreeModelListener(l: TreeModelListener) =
@@ -184,23 +189,20 @@ class SourceTreeModel[A <: AnyRef: ClassManifest](source: TreeSource[A]) extends
   
   /** 子要素の再読み込み */
   private def reloadChildren(node: SourceTreeNode[A]) {
-    val children =
-      if (treeDelegate isLeaf node)
-        IndexedSeq.empty[SourceTreeNode[A]]
-      else
-        source childrenFor node.nodeObject map treeNodeFor
+    val children = treeDelegate isLeaf node match {
+      case true => IndexedSeq.empty[SourceTreeNode[A]]
+      case false => source childrenFor node.nodeObject map treeNodeFor
+    }
     node.updateChildren(children)
   }
   
-  private def removeDescendant(nodes: List[SourceTreeNode[A]]): Unit = nodes match {
-    case node :: tail =>
-      val children = node.getChildren.toList
-      node.resetChildren()
-      treeNodes.remove(node.nodeObject)
-      node.removeFromParent()
-      
-      removeDescendant(tail ::: children)
-    case Nil =>
+  private def removeDescendant(nodes: Seq[SourceTreeNode[A]]): Unit = nodes match {
+    case Seq() =>
+    case Seq(head, tail @ _*) =>
+      val children = head.getChildren
+      head.resetChildren()
+      head.removeFromParent()
+      removeDescendant(children ++ tail)
   }
   
   /**

@@ -1,365 +1,510 @@
 package jp.scid.gui.tree
 
-import org.specs2._
-import mock._
 import javax.swing.tree.TreePath
 import javax.swing.event.{TreeModelListener, TreeModelEvent}
 
+import collection.mutable.ListBuffer
+
+import org.specs2._
+import mock._
+
+
 class SourceTreeModelSpec extends Specification with Mockito {
-  def is = "SourceTreeModel" ^
-    "getRoot" ^
-      "ルートオブジェクト取得" ! test.s1 ^
-      "TreeSource#root のコールは一回" ! test.s2 ^
-    bt ^ "isLeaf" ^
-      "取得" ! test.s3 ^
-      "TreeSource#isLeaf のコールは一回" ! test.s6 ^
-      "未探索時は例外を送出" ! test.s4 ^
-      "型が違う場合は例外を送出" ! test.s5 ^
-    bt ^ "getChildCount" ^
-      "取得" ! test.s7 ^
-      "TreeSource#childrenFor のコールは一回" ! test.s8 ^
-      "isLeaf が true の項目は 0 を返す" ! test.s9 ^
-      "isLeaf が true の項目は TreeSource#childrenFor がコールされない" ! test.s12 ^
-      "未探索時は例外を送出" ! test.s10 ^
-      "型が違う場合は例外を送出" ! test.s11 ^
-    bt ^ "getChild" ^
-      "取得" ! test.s13 ^
-      "getChildCount せずに取得" ! test.s14 ^
-      "TreeSource#childrenFor のコールは一回" ! test.s15 ^
-      "範囲を超えたら例外" ! test.s16 ^
-      "未探索時は例外を送出" ! test.s17 ^
-      "型が違う場合は例外を送出" ! test.s18 ^
-    bt ^ "getIndexOfChild" ^
-      "取得" ! test.s19 ^
-      "存在しない要素は -1 を返す" ! test.s20 ^
-      "未探索時は例外を送出" ! test.s21 ^
-      "型が違う場合は例外を送出" ! test.s22 ^
-    bt ^ "isChildrenExposed" ^
-      "取得" ! test.s23 ^
-      "開くと true を返す" ! test.s24 ^
-      "leaf は開いても false" ! test.s25 ^
-      "未探索時は例外を送出" ! test.s26 ^
-      "型が違う場合は例外を送出" ! test.s27 ^
-    bt ^ "valueForPathChanged" ^
-      "TreeSource#update のコール" ! vptest.s1 ^
-      "treeNodesChanged イベント発行" ! vptest.s2 ^
-      "source が TreeSource の時はリスナーを呼ばない" ! vptest.s3 ^
-      "treeNodesChanged のイベントオブジェクト生成" ! vptest.s4 ^
-      "未探索時は例外を送出" ! vptest.s5 ^
-      "型が違う場合は例外を送出" ! vptest.s6 ^
-    bt ^ "reset" ^
-      "reset 後に子ノード取得で TreeSource から childrenFor で再読み込み" ! resettest.s1 ^
-      "reset は指定したノードより上の再最読み込みは行わない" ! resettest.s2 ^
-      "開いていないノードでの呼び出しでは何も起こらない" ! resettest.s3 ^
-      "treeStructureChanged 発行" ! resettest.s4 ^
-      "treeStructureChanged のイベントオブジェクト生成" ! resettest.s5 ^
-    bt ^ "someChildrenWereInserted" ^
-      "someChildrenWereInserted 後に TreeSource から childrenFor で再読み込み" ! nwitest.s1 ^
-      "開いていないノードでの呼び出しでは TreeSource の childrenFor は呼ばれない" ! nwitest.s2 ^
-      "treeNodesInserted 発行" ! nwitest.s3 ^
-      "treeNodesInserted のイベントオブジェクト生成" ! nwitest.s4 ^
-    bt ^ "someChildrenWereRemoved" ^
-      "someChildrenWereRemoved 後に TreeSource から childrenFor で再読み込み" ! nwrtest.s1 ^
-      "開いていないノードでの呼び出しでは TreeSource の childrenFor は呼ばれない" ! nwrtest.s2 ^
-      "nodesWereRemoved 発行" ! nwrtest.s3 ^
-      "nodesWereRemoved のイベントオブジェクト生成" ! nwrtest.s4 
-    
-  def test = new ModelTest1()
-  def vptest = new ValueForPathTest()
-  def resettest = new ResetEventTest()
-  def nwitest = new NWIEventTest()
-  def nwrtest = new NWREventTest()
+  private type Factory = TreeSource[Symbol] => SourceTreeModel[Symbol]
   
-  trait ModelWithEvent extends ModelTrait {
-    // リスナ
-    val listener = mock[TreeModelListener]
-    model addTreeModelListener listener
+  def is = "SourceTreeModel" ^
+    "ルートオブジェクト取得" ^ canGetRoot(treeModelOf) ^
+    "葉要素判定" ^ canGetLeaf(treeModelOf) ^
+    "子要素数取得" ^ canGetChildCount(treeModelOf) ^
+    "子要素取得" ^ canGetChild(treeModelOf) ^
+    "子要素番号取得" ^ canGetIndexOfChild(treeModelOf) ^
+    "要素変更通知" ^ valueForPathChangedSpec(treeModelOf) ^
+    "リセット" ^ canReset(treeModelOf) ^
+    "ノード削除通知" ^ nodeRemovedSpec(treeModelOf) ^
+    "ノード変更通知" ^ nodeChangedSpec(treeModelOf) ^
+    "子要素削除通知" ^ someChildrenWereRemovedSpec(treeModelOf) ^
+    "子要素挿入通知" ^ someChildrenWereInsertedSpec(treeModelOf) ^
+    end
+  
+  def canGetRoot(f: Factory) =
+    "ソースから取得" ! getRoot(f).returnsRoot ^
+    "TreeSource#root のコールは一回" ! getRoot(f).callsOnlyOnce ^
+    bt
+  
+  def canGetLeaf(f: Factory) =
+    "ソースから取得" ! isLeaf(f).returnsFromSource ^
+    "TreeSource#isLeaf のコールは一回" ! isLeaf(f).callsOnlyOnce ^
+    "未探索時は例外を送出" ! isLeaf(f).throwsNSEE ^
+    "型が違う場合は例外を送出" ! isLeaf(f).throwsIAE ^
+    bt
+  
+  def canGetChildCount(f: Factory) =
+    "ソースから取得" ! getChildCount(f).returnsFromSource ^
+    "TreeSource#childrenFor のコールは一回" ! getChildCount(f).callsOnlyOnce ^
+    "isLeaf が true の項目は 0 を返す" ! getChildCount(f).returnsZeroByLeaf ^
+    "isLeaf が true の項目は TreeSource#childrenFor がコールされない" ! getChildCount(f).notCallByLeaf ^
+    "未探索時は例外を送出" ! getChildCount(f).throwsNSEE ^
+    "型が違う場合は例外を送出" ! getChildCount(f).throwsIAE ^
+    bt
+  
+  def canGetChild(f: Factory) =
+    "ソースから取得" ! getChild(f).returnsFromSource ^
+    "TreeSource#childrenFor のコールは一回" ! getChild(f).callsOnlyOnce ^
+    "範囲を超えたら例外" ! getChild(f).throwsIOBE ^
+    "未探索時は例外を送出" ! getChild(f).throwsNSEE ^
+    "型が違う場合は例外を送出" ! getChild(f).throwsIAE ^
+    bt
+  
+  def canGetIndexOfChild(f: Factory) =
+    "取得" ! getIndexOfChild(f).returnsValue ^
+    "存在しない要素は -1 を返す" ! getIndexOfChild(f).retursMinusByNoElement ^
+    "未探索時は例外を送出" ! getIndexOfChild(f).throwsNSEE ^
+    "型が違う場合は例外を送出" ! getIndexOfChild(f).throwsIAE ^
+    bt
+  
+  def valueForPathChangedSpec(f: Factory) =
+    "EditableTreeSource#update がコールされる" ! valueForPathChanged(f).callsMethod ^
+    "treeNodesChanged イベント発行"  ! valueForPathChanged(f).publishEvent ^
+    "treeNodesChanged イベントソースオブジェクト"  ! valueForPathChanged(f).eventObjectSource ^
+    "treeNodesChanged イベントパス"  ! valueForPathChanged(f).eventObjectPath ^
+    "型が違う場合は例外を送出" ! valueForPathChanged(f).throwsIAE ^
+    bt
+  
+  def canReset(f: Factory) =
+    "ソースから再読み込みが行われる" ! reset(f).reloadFromSource ^
+    "開いていないノードを指定しても何も起こらない" ! reset(f).notOpen ^
+    "指定無しはルートが再読み込みされる" ! reset(f).noArg ^
+    "treeStructureChanged 発行" ! reset(f).publishEvent ^
+    "treeStructureChanged のイベントソースオブジェクト" ! reset(f).eventSource ^
+    "treeStructureChanged のイベントパス" ! reset(f).eventPath ^
+    bt
+  
+  def nodeRemovedSpec(f: Factory) =
+    "treeNodesRemoved イベント発行" ! nodeRemoved(f).publishEvent ^
+    "treeNodesRemoved イベントソースオブジェクト" ! nodeRemoved(f).eventSource ^
+    "treeNodesRemoved イベントパス" ! nodeRemoved(f).eventPath ^
+    "treeNodesRemoved イベント子要素番号" ! nodeRemoved(f).eventIndices ^
+    "treeNodesRemoved イベント子要素" ! nodeRemoved(f).eventChildren ^
+    "開いていない要素ではイベントを発行しない" ! nodeRemoved(f).notPublish ^
+    "親ノードから除去されている" ! nodeRemoved(f).removedFromParent ^
+    bt
+  
+  def nodeChangedSpec(f: Factory) =
+    "treeNodesChanged イベント発行" ! nodeChanged(f).publishEvent ^
+    "treeNodesChanged イベントソースオブジェクト" ! nodeChanged(f).eventSource ^
+    "treeNodesChanged イベントパス" ! nodeChanged(f).eventPath ^
+    "開いていない要素ではイベントを発行しない" ! nodeRemoved(f).notPublish ^
+    bt
+  
+  def someChildrenWereRemovedSpec(f: Factory) =
+    "treeNodesRemoved イベント発行" ! someChildrenWereRemoved(f).publishEvent ^
+    "treeNodesRemoved イベントソースオブジェクト" ! someChildrenWereRemoved(f).eventSource ^
+    "treeNodesRemoved イベントパス" ! someChildrenWereRemoved(f).eventPath ^
+    "treeNodesRemoved イベント子要素番号" ! someChildrenWereRemoved(f).eventIndices ^
+    "treeNodesRemoved イベント子要素" ! someChildrenWereRemoved(f).eventChildren ^
+    "開いていない要素ではイベントを発行しない" ! someChildrenWereRemoved(f).notPublish ^
+    "親ノードから除去されている" ! someChildrenWereRemoved(f).removedFromParent ^
+    bt
+  
+  def someChildrenWereInsertedSpec(f: Factory) =
+    "treeNodesInserted イベント発行" ! someChildrenWereInserted(f).publishEvent ^
+    "treeNodesInserted イベントソースオブジェクト" ! someChildrenWereInserted(f).eventSource ^
+    "treeNodesInserted イベントパス" ! someChildrenWereInserted(f).eventPath ^
+    "treeNodesInserted イベント子要素番号" ! someChildrenWereInserted(f).eventIndices ^
+    "treeNodesInserted イベント子要素" ! someChildrenWereInserted(f).eventChildren ^
+    "開いていない要素ではイベントを発行しない" ! someChildrenWereInserted(f).notPublish ^
+    "要素にアクセスできる" ! someChildrenWereInserted(f).getFromParent ^
+    bt
+  
+  def treeModelOf(source: TreeSource[Symbol]) = {
+    new SourceTreeModel(source)
   }
   
-  trait ModelTrait {
-    val source = mock[EditableTreeSource[Symbol]]
-    makeSourceMock(source)
+  def sourceMockOf(root: Symbol) = {
+    val source = mock[TreeSource[Symbol]]
+    TreeSourceSpec.makeMock(source, root)
+  }
+  
+  def getRoot(f: Factory) = new {
+    def modelWith(root: Symbol) = f(sourceMockOf(root))
     
-    val model = new SourceTreeModel(source)
+    def returnsRoot = {
+      val roots = List('root, 'a, 'b)
+      roots map modelWith map (_.getRoot) must_== roots
+    }
+    
+    def callsOnlyOnce = {
+      val source = sourceMockOf('root)
+      val model = f(source)
+      1 to 9 foreach(_ => model.getRoot)
+      there was one(source).root
+    }
+  }
+  
+  class TestBase(f: Factory) {
+    val source = sourceMockOf('root)
+    
+    lazy val model = f(source)
+    
+    def makeMockLeaf(pairs: (Symbol, Boolean)*) {
+      pairs foreach { case (v, b) => source.isLeaf(v) returns b }
+    }
+    
+    def makeMockChildren(pairs: (Symbol, List[Symbol])*) {
+      pairs foreach { case (v, b) => source.childrenFor(v) returns b }
+    }
+  }
+  
+  def isLeaf(f: Factory) = new TestBase(f) {
+    makeMockChildren('root -> List('a, 'b, 'c))
+    makeMockLeaf('a -> true, 'b -> false, 'c -> false)
+    
+    model.getRoot
+    
+    def returnsFromSource = {
+      model.getChildCount('root)
+      List('a, 'b, 'c) map model.isLeaf must_== List(true, false, false)
+    }
+    
+    def callsOnlyOnce = {
+      model.getChildCount('root)
+      1 to 9 foreach(_ => model.isLeaf('a))
+      there was one(source).isLeaf('a)
+    }
+    
+    def throwsNSEE = model.isLeaf('a) must throwA[NoSuchElementException]
+    
+    def throwsIAE = model.isLeaf("other type") must throwA[IllegalArgumentException]
+  }
+  
+  def getChildCount(f: Factory) = new TestBase(f) {
+    makeMockChildren('root -> List('a, 'b, 'c))
+    makeMockLeaf('a -> true, 'b -> false, 'c -> false)
+    makeMockChildren('a -> List('a_a) , 'b -> List('b_a, 'b_b), 'c -> Nil)
+    
+    model.getRoot
+    
+    def returnsFromSource =
+      List('root, 'b, 'c) map model.getChildCount must_== List(3, 2, 0)
+    
+    def callsOnlyOnce = {
+      1 to 9 foreach(_ => model.getChildCount('root))
+      there was one(source).childrenFor('root)
+    }
+    
+    def returnsZeroByLeaf =
+      List('root, 'a) map model.getChildCount drop 1 must_== List(0)
+    
+    def notCallByLeaf = {
+      List('root, 'a) map model.getChildCount
+      there was no(source).childrenFor('a)
+    }
+    
+    def throwsNSEE = model.getChildCount('a) must throwA[NoSuchElementException]
+    
+    def throwsIAE = model.getChildCount("other type") must throwA[IllegalArgumentException]
+  }
+  
+  def getChild(f: Factory) = new TestBase(f) {
+    makeMockChildren('root -> List('a, 'b, 'c))
+    makeMockLeaf('a -> true, 'b -> false, 'c -> false)
+    makeMockChildren('a -> List('a_a) , 'b -> List('b_a, 'b_b), 'c -> Nil)
+    
+    model.getRoot
+    
+    def returnsFromSource =
+      List('root -> 3, 'b -> 2, 'c -> 0) flatMap { case (s, c) =>
+        (0 until c).map(i => model.getChild(s, i)) } must_==
+          List('a, 'b, 'c, 'b_a, 'b_b)
+    
+    def callsOnlyOnce = {
+      1 to 9 foreach(_ => model.getChild('root, 0))
+      there was one(source).childrenFor('root)
+    }
+    
+    def throwsIOBE = {
+      model.getChildCount('root)
+      model.getChild('a, 0) must throwA[IndexOutOfBoundsException]
+    }
+    
+    def throwsNSEE = model.getChild('b, 0) must throwA[NoSuchElementException]
+    
+    def throwsIAE = model.getChild("other type", 0) must throwA[IllegalArgumentException]
+  }
+  
+  def getIndexOfChild(f: Factory) = new TestBase(f) {
+    makeMockChildren('root -> List('a, 'b))
+    makeMockLeaf('a -> true, 'b -> false)
+    makeMockChildren('a -> List('a_a) , 'b -> List('b_a, 'b_b))
+    
+    model.getRoot
+    
+    def returnsValue = {
+      List('root, 'b) foreach model.getChildCount
+      List('a, 'b).map(c => model.getIndexOfChild('root, c)) :::
+        List('b_a, 'b_b).map(c => model.getIndexOfChild('b, c)) must_==
+          List(0, 1, 0, 1)
+    }
+    
+    def retursMinusByNoElement = {
+      model.getIndexOfChild('root, 'c) must_== -1
+    }
+    
+    def throwsNSEE = model.getIndexOfChild('b, 'b) must throwA[NoSuchElementException]
+    
+    def throwsIAE = model.getIndexOfChild("other type", 'b) must throwA[IllegalArgumentException]
+  }
+  
+  private class TreeModelEventCatcher extends TreeModelListener {
+    val events = ListBuffer.empty[TreeModelEvent]
+    
+    def treeNodesChanged(e: TreeModelEvent) { events += e }
+    def treeNodesInserted(e: TreeModelEvent) { events += e }
+    def treeNodesRemoved(e: TreeModelEvent) { events += e }
+    def treeStructureChanged(e: TreeModelEvent) { events += e }
+  }
+  
+  def valueForPathChanged(f: Factory) = new TestBase(f) {
+    override val source = mock[EditableTreeSource[Symbol]]
+    TreeSourceSpec.makeMock(source, 'root)
+    makeMockChildren('root -> List('a, 'b))
+    
+    private val eventCatcher = new TreeModelEventCatcher
+    model.addTreeModelListener(eventCatcher)
     
     model.getRoot
     model.getChildCount('root)
-    model.isLeaf('itemB)
-    model.isLeaf('itemB)
+    val path = new TreePath(Array[Object]('root, 'b))
+    model.valueForPathChanged(path, 'newValue)
     
-    def makeSourceMock(source: TreeSource[Symbol]) {
-      source.root returns 'root
-      source.isLeaf('root) returns false
-      source.childrenFor('root) returns List('itemA, 'itemB, 'itemC)
-      source.isLeaf('itemA) returns true
-      source.childrenFor('itemA) returns List('itemA_A, 'itemA_B)
-      source.isLeaf('itemB) returns false
-      source.childrenFor('itemB) returns List('itemB_B)
-      source.isLeaf('itemB_B) returns true
-      source.isLeaf('itemC) returns false
-      source.childrenFor('itemC) returns List()
-    }
-  }
-  
-  class ModelTest1 extends ModelTrait {
+    def callsMethod =  there was one(source).update(Vector('root, 'b), 'newValue)
     
-    def s1 = model.getRoot must_== 'root
+    def publishEvent = eventCatcher.events must haveSize(1)
     
-    def s2 = {
-      model.getRoot
-      there was one(source).root
-    }
+    def eventObjectSource = eventCatcher.events.headOption.map(_.getSource) must beSome(model)
     
-    def s3_1 = model.isLeaf('root) must beFalse
-    def s3_2 = model.isLeaf('itemA) must beTrue
-    def s3_3 = model.isLeaf('itemB) must beFalse
-    def s3 = s3_1 and s3_2 and s3_3
+    def eventObjectPath = eventCatcher.events.headOption.map(_.getTreePath) must
+      beSome(path.getParentPath)
     
-    def s4 = model.isLeaf('itemB_B) must throwA[NoSuchElementException]
-    
-    def s5 = model.isLeaf("other type") must throwA[IllegalArgumentException]
-    
-    def s6 = there was one(source).isLeaf('itemB)
-    
-    def s7_1 = model.getChildCount('root) must_== 3
-    def s7_2 = model.getChildCount('itemB) must_== 1
-    def s7_3 = model.getChildCount('itemC) must_== 0
-    def s7 = s7_1 and s7_2 and s7_3
-    
-    def s8 = {
-      model.getChildCount('itemB)
-      model.getChildCount('itemB)
-      there was one(source).childrenFor('itemB)
-    }
-    
-    def s9 = model.getChildCount('itemA) must_== 0
-    
-    def s10 = model.getChildCount('itemB_B) must throwA[NoSuchElementException]
-    
-    def s11 = model.getChildCount("other type") must throwA[IllegalArgumentException]
-    
-    def s12 = s9 and {
-      there was no(source).childrenFor('itemA)
-    }
-    
-    def s13_1 = model.getChild('root, 1) must_== 'itemB
-    def s13_2 = model.getChild('root, 2) must_== 'itemC
-    def s13_3 = {
-      model.getChildCount('itemB)
-      model.getChild('itemB, 0) must_== 'itemB_B
-    }
-    def s13 = s13_1 and s13_2 and s13_3
-    
-    def s14 = model.getChild('itemB, 0) must_== 'itemB_B
-    
-    def s15 = {
-      model.getChild('root, 0)
-      model.getChild('root, 0)
-      model.getChild('itemB, 0)
-      model.getChild('itemB, 0)
-      there was one(source).childrenFor('itemB) and
-        (there was one(source).childrenFor('root))
-    }
-    
-    def s16_1 = model.getChild('root, -1) must throwA[IndexOutOfBoundsException]
-    def s16_2 = model.getChild('root, 3) must throwA[IndexOutOfBoundsException]
-    def s16 = s16_1 and s16_2
-    
-    def s17 = model.getChild('itemB_B, 0) must throwA[NoSuchElementException]
-    
-    def s18 = model.getChild(123, 0) must throwA[IllegalArgumentException]
-    
-    def s19_1 = model.getIndexOfChild('root, 'itemB) must_== 1
-    def s19_2 = model.getIndexOfChild('root, 'itemC) must_== 2
-    def s19_3 = {
-      model.getChildCount('itemB)
-      model.getIndexOfChild('itemB, 'itemB_B) must_== 0
-    }
-    def s19 = s19_1 and s19_2 and s19_3
-    
-    def s20_1 = model.getIndexOfChild('itemB, 'root) must_== -1
-    def s20_2 = model.getIndexOfChild('itemB, 'root2) must_== -1
-    def s20 = s20_1 and s20_2
-    
-    def s21_1 = model.getIndexOfChild('itemB_B, 'itemB_B_A) must throwA[NoSuchElementException]
-    def s21_2 = model.getIndexOfChild('itemX, 'root) must throwA[NoSuchElementException]
-    def s21 = s21_1 and s21_2
-    
-    def s22_1 = model.getIndexOfChild('root, 123) must throwA[IllegalArgumentException]
-    def s22_2 = model.getIndexOfChild(123, 'root) must throwA[IllegalArgumentException]
-    def s22 = s22_1 and s22_2
-    
-    def s23 = model.isChildrenExposed('root) must beTrue and
-      (model.isChildrenExposed('itemB) must beFalse)
-    
-    def s24 = {
-      model.getChildCount('itemB)
-      model.isChildrenExposed('itemB) must beTrue
-    }
-    
-    def s25 = {
-      model.getChildCount('itemA)
-      model.isChildrenExposed('itemA) must beFalse
-    }
-    
-    def s26 = model.isChildrenExposed('itemB_B) must throwA[NoSuchElementException]
-    
-    def s27 = model.isChildrenExposed(123) must throwA[IllegalArgumentException]
-  }
-  
-  class ValueForPathTest extends ModelWithEvent {
-    // イベントオブジェクトの保持
-    var event: TreeModelEvent = null
-    listener.treeNodesChanged(any) answers { e =>
-      event = e.asInstanceOf[TreeModelEvent]
-      e
-    }
-    
-    // 値の編集
-    val pathA = new TreePath(Array[Object]('root, 'itemC))
-    model.getChildCount(model.getRoot)
-    model.valueForPathChanged(pathA, "new value")
-    
-    def s1 = there was one(source).update(IndexedSeq('root, 'itemC), "new value")
-    
-    def s2 = there was one(listener).treeNodesChanged(any)
-    
-    def s3 = {
-      val source = mock[TreeSource[Symbol]]
-      makeSourceMock(source)
-      val model = new SourceTreeModel(source)
-      val listener = mock[TreeModelListener]
-      model addTreeModelListener listener
-      model.getChildCount(model.getRoot)
-      model.valueForPathChanged(pathA, "new value")
-      there was no(listener).treeNodesChanged(any)
-    }
-    
-    def s4_1 = event.getSource must_== model
-    def s4_2 = event.getPath must_== Array('root)
-    def s4_3 = event.getChildIndices must_== Array(2)
-    def s4_4 = event.getChildren must_== Array('itemC)
-    def s4 = s4_1 and s4_2 and s4_3 and s4_4
-    
-    def s5 = model.valueForPathChanged(new TreePath(Array[Object]('root, 'itemB, 'itemB_B)), "new value") must
-      throwA[NoSuchElementException]
-    
-    def s6 = model.valueForPathChanged(new TreePath(Array[Object]('root, "123")), "new value") must
+    def throwsIAE = model.valueForPathChanged(
+      new TreePath(Array[Object]('root, "other type")), 'newValue) must
       throwA[IllegalArgumentException]
   }
   
-  class ResetEventTest extends ModelWithEvent {
-    // イベントオブジェクトの保持
-    var event: TreeModelEvent = null
-    listener.treeStructureChanged(any) answers { e =>
-      event = e.asInstanceOf[TreeModelEvent]
-      e
+  def reset(f: Factory) = new TestBase(f) {
+    makeMockChildren('root -> List('a, 'b))
+    makeMockLeaf('a -> true, 'b -> false)
+    makeMockChildren('a -> List('a_a) , 'b -> List('b_a, 'b_b))
+    
+    model.getRoot
+    model.getChildCount('root)
+    model.getChildCount('b)
+    
+    // ソースが変更
+    makeMockLeaf('a -> true, 'b -> false)
+    makeMockChildren('root -> List('a), 'a -> List('a_a) , 'b -> List('b_a, 'b_b, 'b_c))
+    
+    // イベント捕獲
+    private val eventCatcher = new TreeModelEventCatcher
+    model.addTreeModelListener(eventCatcher)
+    
+    val path = new TreePath(Array[Object]('root, 'b))
+    
+    def reloadFromSource = {
+      model.reset('b)
+      List('root, 'b) map model.getChildCount must_== List(2, 3)
     }
     
-    def s1 = {
-      model.reset('root)
-      model.getChildCount('root)
-      there were two(source).childrenFor('root)
+    def notOpen = {
+      model.reset('b_c)
+      List('root, 'b) map model.getChildCount must_== List(2, 2)
     }
     
-    def s2 = {
-      model.getChildCount('itemB)
-      model.reset('itemB)
-      there were two(source).childrenFor('itemB) and
-        (there were one(source).childrenFor('root))
+    def noArg = {
+      model.reset()
+      List('root, 'a) map model.getChildCount must_== List(1, 0)
     }
     
-    def s3 = {
-      model.reset('itemB)
-      there was no(source).childrenFor('itemB_B)
+    def publishEvent = {
+      model.reset('b)
+      model.reset()
+      eventCatcher.events must haveSize(2)
     }
     
-    def s4 = {
-      model.reset('root)
-      there was one(listener).treeStructureChanged(any)
+    def eventSource = {
+      model.reset('b)
+      model.reset()
+      eventCatcher.events.map(_.getSource) must_== List(model, model)
     }
     
-    def s5 = {
-      val item = model.getChild(model.getRoot, 1)
-      model.reset(item)
-      event.getSource must_== model and
-        (event.getPath must_== Array('root, item))
+    def eventPath = {
+      model.reset('b)
+      model.reset()
+      eventCatcher.events.map(_.getTreePath) must_== List(path, path.getParentPath)
     }
   }
-
-  class NWIEventTest extends ModelWithEvent {
-    // イベントオブジェクトの保持
-    var event: TreeModelEvent = null
-    listener.treeNodesInserted(any) answers { e =>
-      event = e.asInstanceOf[TreeModelEvent]
-      e
+  
+  def treePathOf(items: Symbol*) = new TreePath(items.toArray[Object])
+  
+  def nodeRemoved(f: Factory) = new TestBase(f) {
+    makeMockChildren('root -> List('a, 'b))
+    makeMockLeaf('a -> true, 'b -> false)
+    makeMockChildren('a -> List('a_a) , 'b -> List('b_a, 'b_b))
+    
+    model.getRoot
+    model.getChildCount('root)
+    model.getChildCount('b)
+    
+    // イベント捕獲
+    private val eventCatcher = new TreeModelEventCatcher
+    model.addTreeModelListener(eventCatcher)
+    
+    def publishEvent = {
+      List('b_a, 'a) foreach model.nodeRemoved
+      eventCatcher.events must haveSize(2)
     }
     
-    val itemB = model.getChild(model.getRoot, 1)
-    model.getChildCount(itemB)
-    // 子ノード変化
-    source.childrenFor(itemB) returns List('itemB_A, 'itemB_B, 'itemB_C, 'itemB_D)
-    // 変化通知
-    model.someChildrenWereInserted(itemB)
-    
-    def s1 = there were one(source).childrenFor('root) and
-        (there were two(source).childrenFor(itemB))
-    
-    def s2 = {
-      model.someChildrenWereInserted('itemA_A)
-      there were no(source).childrenFor('itemA_A)
+    def eventSource = {
+      List('b_a, 'a) foreach model.nodeRemoved
+      eventCatcher.events.map(_.getSource) must_== List(model, model)
     }
     
-    def s3 = there was one(listener).treeNodesInserted(any)
+    def eventPath = {
+      List('b_a, 'a) foreach model.nodeRemoved
+      eventCatcher.events.map(_.getTreePath) must_==
+        List(treePathOf('root, 'b), treePathOf('root))
+    }
     
-    def s4_1 = event.getSource must_== model
-    def s4_2 = event.getChildren.length must_== 3
-    def s4_3 = event.getChildren.toArray must_== Array('itemB_A, 'itemB_C, 'itemB_D)
-    def s4_4 = event.getChildIndices.length must_== 3
-    def s4_5 = event.getChildIndices must_== Array(0, 2, 3)
-    def s4 = s4_1 and s4_2 and s4_3 and s4_4 and s4_5
+    def eventIndices = {
+      List('b_b, 'a) foreach model.nodeRemoved
+      eventCatcher.events.flatMap(_.getChildIndices) must_== List(1, 0)
+    }
+    
+    def eventChildren = {
+      List('b_b, 'a) foreach model.nodeRemoved
+      eventCatcher.events.flatMap(_.getChildren) must_== List('b_b, 'a)
+    }
+    
+    def notPublish = {
+      List('a_a) foreach model.nodeRemoved
+      eventCatcher.events must beEmpty
+    }
+    
+    def removedFromParent = {
+      List('b_b) foreach model.nodeRemoved
+      model.getIndexOfChild('b, 'b_b) must_== -1
+    }
   }
-
-  class NWREventTest extends ModelWithEvent {
-    // イベントオブジェクトの保持
-    var event: TreeModelEvent = null
-    listener.treeNodesRemoved(any) answers { e =>
-      event = e.asInstanceOf[TreeModelEvent]
-      e
+  
+  def nodeChanged(f: Factory) = new TestBase(f) {
+    makeMockChildren('root -> List('a, 'b))
+    makeMockLeaf('a -> true, 'b -> false)
+    makeMockChildren('a -> List('a_a) , 'b -> List('b_a, 'b_b))
+    
+    model.getRoot
+    model.getChildCount('root)
+    model.getChildCount('b)
+    
+    // イベント捕獲
+    private val eventCatcher = new TreeModelEventCatcher
+    model.addTreeModelListener(eventCatcher)
+    
+    def publishEvent = {
+      List('b_a, 'a) foreach model.nodeChanged
+      eventCatcher.events must haveSize(2)
     }
     
-    override def makeSourceMock(source: TreeSource[Symbol]) {
-      source.root returns 'root
-      source.isLeaf('root) returns false
-      source.childrenFor('root) returns List('itemA, 'itemB, 'itemC)
-      source.isLeaf('itemA) returns false
-      source.childrenFor('itemA) returns List('itemA_A, 'itemA_B)
-      source.isLeaf('itemB) returns false
-      source.childrenFor('itemB) returns List('itemB_A, 'itemB_B, 'itemB_C, 'itemB_D, 'itemB_E)
+    def eventSource = {
+      List('b_a, 'a) foreach model.nodeChanged
+      eventCatcher.events.map(_.getSource) must_== List(model, model)
     }
     
-    model.getChildCount(model.getRoot)
-    model.getChildCount('itemB)
-    // 子ノード変化
-    source.childrenFor('itemB) returns List('itemB_B, 'itemB_D)
-    // 変化通知
-    model.someChildrenWereRemoved('itemB)
-    
-    def s1 = there were one(source).childrenFor('root) and
-        (there were two(source).childrenFor('itemB))
-    
-    def s2 = {
-      model.someChildrenWereRemoved('itemA_A)
-      there were no(source).childrenFor('itemA_A)
+    def eventPath = {
+      List('b_a, 'a) foreach model.nodeChanged
+      eventCatcher.events.map(_.getTreePath) must_==
+        List(treePathOf('root, 'b), treePathOf('root))
     }
     
-    def s3 = there was one(listener).treeNodesRemoved(any)
+    def notPublish = {
+      List('a_a) foreach model.nodeChanged
+      eventCatcher.events must beEmpty
+    }
+  }
+  
+  def someChildrenWereRemoved(f: Factory) = new TestBase(f) {
+    makeMockChildren('root -> List('a, 'b))
+    makeMockLeaf('a -> false, 'b -> false)
+    makeMockChildren('a -> List('a_a, 'a_b, 'a_c), 'b -> List('b_a, 'b_b))
     
-    def s4_1 = event.getSource must_== model
-    def s4_2 = event.getChildren.length must_== 3
-    def s4_3 = event.getChildren.toArray must_== Array('itemB_A, 'itemB_C, 'itemB_E)
-    def s4_4 = event.getChildIndices.length must_== 3
-    def s4_5 = event.getChildIndices must_== Array(0, 2, 4)
-    def s4 = s4_1 and s4_2 and s4_3 and s4_4 and s4_5
+    List(model.getRoot, 'a, 'b) foreach model.getChildCount
+    // ソース変化
+    makeMockChildren('root -> List('a), 'a -> List('a_a, 'a_c),
+      'b -> List())
+    
+    // イベント捕獲
+    private val eventCatcher = new TreeModelEventCatcher
+    model.addTreeModelListener(eventCatcher)
+    
+    List('b, 'a, 'root) foreach model.someChildrenWereRemoved
+    
+    def publishEvent = eventCatcher.events must haveSize(3)
+    
+    def eventSource =
+      eventCatcher.events.map(_.getSource) must_== List(model, model, model)
+    
+    def eventPath = eventCatcher.events.map(_.getTreePath) must_==
+      List(treePathOf('root, 'b), treePathOf('root, 'a), treePathOf('root))
+      
+    def eventIndices =
+      eventCatcher.events.flatMap(_.getChildIndices) must_== List(0, 1, 1, 1)
+    
+    def eventChildren =
+      eventCatcher.events.flatMap(_.getChildren) must_==  List('b_a, 'b_b, 'a_b, 'b)
+      
+    def notPublish = {
+      List('c) foreach model.nodeChanged
+      eventCatcher.events must haveSize(3)
+    }
+    
+    def removedFromParent = model.getChildCount('root) must_== 1
+  }
+  
+  
+  def someChildrenWereInserted(f: Factory) = new TestBase(f) {
+    makeMockChildren('root -> List('a))
+    makeMockLeaf('a -> false, 'b -> false)
+    makeMockChildren('a -> List('a_a, 'a_c), 'b -> List('b_a, 'b_b))
+    
+    List(model.getRoot, 'a) foreach model.getChildCount
+    // ソース変化
+    makeMockChildren('root -> List('a, 'b), 'a -> List('a_a, 'a_b, 'a_c))
+    
+    // イベント捕獲
+    private val eventCatcher = new TreeModelEventCatcher
+    model.addTreeModelListener(eventCatcher)
+    
+    List('root, 'a, 'b) foreach model.someChildrenWereInserted
+    
+    def publishEvent = eventCatcher.events must haveSize(2)
+    
+    def eventSource =
+      eventCatcher.events.map(_.getSource) must_== List(model, model)
+    
+    def eventPath = eventCatcher.events.map(_.getTreePath) must_==
+      List(treePathOf('root), treePathOf('root, 'a))
+      
+    def eventIndices =
+      eventCatcher.events.flatMap(_.getChildIndices) must_== List(1, 1)
+    
+    def eventChildren =
+      eventCatcher.events.flatMap(_.getChildren) must_==  List('b, 'a_b)
+      
+    def notPublish = {
+      List('c) foreach model.nodeChanged
+      eventCatcher.events must haveSize(2)
+    }
+    
+    def getFromParent =
+      List('root, 'a, 'b) map model.getChildCount must_== List(2, 3, 2)
   }
 }
