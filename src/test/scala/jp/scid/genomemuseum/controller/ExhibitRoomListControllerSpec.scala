@@ -7,140 +7,208 @@ import java.awt.datatransfer.{Transferable, DataFlavor, Clipboard}
 import javax.swing.{JTree, TransferHandler}
 import javax.swing.tree.{TreeModel, TreePath}
 
-import jp.scid.genomemuseum.model.{UserExhibitRoomService, UserExhibitRoom, ExhibitRoom}
+import jp.scid.genomemuseum.model.{UserExhibitRoomService, UserExhibitRoom, ExhibitRoom,
+  UserExhibitRoomServiceSpec}
 import UserExhibitRoom.RoomType._
 
 class ExhibitRoomListControllerSpec extends Specification with Mockito {
+  private type Factory = JTree => ExhibitRoomListController
+  
   def is = "ExhibitRoomListController" ^
-    "ビューにモデルが設定される" ! s1 ^
-    "アクション" ^
-      "addBasicRoomAction" ^
-        "tree の編集開始コール" ! addBasicRoomAction.s1 ^
-        "選択状態" ! addBasicRoomAction.s2 ^
-      bt ^ "addGroupRoomAction" ^
-        "tree の編集開始コール" ! addGroupRoomAction.s1 ^
-        "選択状態" ! addGroupRoomAction.s2 ^
-      bt ^ "addSamrtRoomAction" ^
-        "tree の編集開始コール" ! addSamrtRoomAction.s1 ^
-        "選択状態" ! addSamrtRoomAction.s2 ^
-      bt ^ "removeSelectedUserRoomAction" ^
-        "service の remove コール" ! removeSelectedUserRoomAction.s1 ^
-        "ローカルソース選択" ! removeSelectedUserRoomAction.s2 ^
-    bt ^ bt ^ "selectedRoom" ^
-      "選択された部屋が格納" ! selectedRoom.s1 ^
-      "ローカルソース格納" ! selectedRoom.s2 ^
-      "ウェブソース格納" ! selectedRoom.s3 ^
-      "選択解除するとローカルソースが格納" ! selectedRoom.s4 ^
-      "ライブラリノードを選択するとローカルソースが格納" ! selectedRoom.s5 ^
-      "ユーザールームルートを選択するとローカルソースが格納" ! selectedRoom.s6
- 
-  class TestBase {
-    val view = spy(new JTree(null.asInstanceOf[TreeModel]))
-    view setEditable true
+    "ビュー" ^
+      "JTree" ^ viewSpec(controllerOf) ^
+    bt ^
+    "プロパティ設定" ^ propertiesSpec(controllerOf) ^
+    "選択された部屋" ^ selectedRoomSpec(controllerOf) ^
+    "BasicRoom 追加" ^ canAddBasicRoom(controllerOf) ^
+    "GroupRoom 追加" ^ canAddGroupRoom(controllerOf) ^
+    "SmartRoom 追加" ^ canAddSmartRoom(controllerOf) ^
+    "アクション" ^ actionsSpec(controllerOf) ^
+    end
+  
+  def controllerOf(view: JTree) = new ExhibitRoomListController(view)
+  
+  def viewSpec(f: Factory) =
+    "ツリーモデルが設定される" ! tree(f).appliesModel ^
+    "ドラッグ可能" ! tree(f).dragEnabled ^
+    "転送ハンドラ設定" ! tree(f).transferHandler ^
+    bt
+  
+  def propertiesSpec(f: Factory) =
+    "データサービスの設定と取得" ! properties(f).userExhibitRoomService ^
+    "データサービスがソースリストモデルに適用" ! properties(f).userExhibitRoomServiceToModel ^
+    bt
+  
+  def selectedRoomSpec(f: Factory) =
+    "設定と取得" ! selectedRoom(f).appliesValue ^
+    bt
+  
+  def canAddBasicRoom(f: Factory) =
+    "サービスの addRoom を呼び出す" ! addBasicRoom(f).callsAddRoom ^
+    "選択されている GroupRoom が親となる" ! addBasicRoom(f).onParent ^
+    "選択部屋が GroupRoom では無い時は親の GroupRoom が親" ! addBasicRoom(f).onAncestor ^
+    "選択部屋が ExhibitRoom の時は親が None" ! addBasicRoom(f).noParent ^
+    "名前がすでに存在する時は 1 が後につく" ! addBasicRoom(f).newName ^
+    "名前がすでに存在する時の連番増加する" ! addBasicRoom(f).newNameIterate ^
+    "編集開始状態となる" ! addBasicRoom(f).startEditing ^
+    bt
+  
+  def canAddGroupRoom(f: Factory) =
+    "サービスの addRoom を呼び出す" ! addGroupRoom(f).callsAddRoom ^
+    "選択されている GroupRoom が親となる" ! addGroupRoom(f).onParent ^
+    "選択部屋が GroupRoom では無い時は親の GroupRoom が親" ! addGroupRoom(f).onAncestor ^
+    "選択部屋が ExhibitRoom の時は親が None" ! addGroupRoom(f).noParent ^
+    "名前がすでに存在する時は 1 が後につく" ! addGroupRoom(f).newName ^
+    "名前がすでに存在する時の連番増加する" ! addGroupRoom(f).newNameIterate ^
+    bt
+  
+  def canAddSmartRoom(f: Factory) =
+    "サービスの addRoom を呼び出す" ! addSmartRoom(f).callsAddRoom ^
+    "選択されている GroupRoom が親となる" ! addSmartRoom(f).onParent ^
+    "選択部屋が GroupRoom では無い時は親の GroupRoom が親" ! addSmartRoom(f).onAncestor ^
+    "選択部屋が ExhibitRoom の時は親が None" ! addSmartRoom(f).noParent ^
+    "名前がすでに存在する時は 1 が後につく" ! addSmartRoom(f).newName ^
+    "名前がすでに存在する時の連番増加する" ! addSmartRoom(f).newNameIterate ^
+    bt
+  
+  def actionsSpec(f: Factory) =
+    "BasicRoom 追加アクション" ! actions(f).addBasicRoom ^
+    bt
+  
+  // ファクトリーメソッド
+  def exhibitRoomOf(name: String) = {
+    val room = mock[ExhibitRoom]
+    room.name returns name
+    room
+  }
+  
+  def userRoomOf(roomType: RoomType) = {
+    val room = mock[UserExhibitRoom]
+    room.roomType returns roomType
+    room
+  }
+  
+  // テストクラス
+  class TestBase(f: Factory) {
+    val tree = spy(new JTree())
+    val ctrl = f(tree)
     
-    val testRoom = UserExhibitRoom("room")
-    val room1 = UserExhibitRoom("room1", GroupRoom)
-    val room1_1 = UserExhibitRoom("room1_1", BasicRoom)
-    val room1_2 = UserExhibitRoom("room1_2", GroupRoom)
-    val room1_2_1 = UserExhibitRoom("room1_2_1", SmartRoom)
+    lazy val service = UserExhibitRoomServiceSpec.makeMock(mock[UserExhibitRoomService])
     
-    // UserExhibitRoomService モック作成
-    val service = mock[UserExhibitRoomService]
-    // ルート
-    service.getChildren(None) returns List(testRoom, room1)
-    service.getParent(any) returns None
-    // 1 階層
-    val parent1 = Some(room1)
-    service.getChildren(parent1) returns List(room1_1, room1_2)
-    service.getParent(room1_1) returns parent1
-    service.getParent(room1_2) returns parent1
-    // 2 階層
-    val parent1_2 = Some(room1_2)
-    service.getChildren(parent1_2) returns List(room1_2_1)
-    service.getParent(room1_2_1) returns parent1_2
-    
-    service.addRoom(any, any, any) returns testRoom
-    
-    // コントローラ作成
-    val ctrl = new ExhibitRoomListController(view)
-    ctrl.userExhibitRoomService = service
-    
-    def structure = ctrl.sourceStructure
     def sourceListModel = ctrl.sourceListModel
   }
   
-  def initialState = new TestBase
-  
-  def s1 = initialState.view.getModel must not beNull
-  
-  trait AddRoomSpec { this: TestBase =>
-    val path = new TreePath(structure.pathToRoot(testRoom).toArray[Object])
-    def s1 = there was one(view).startEditingAtPath(path)
-    def s2 = view.getSelectionPath must_== path
+  class DataServiceReady(f: Factory) extends TestBase(f) {
+    ctrl.userExhibitRoomService = service
   }
   
-  val addBasicRoomAction = new TestBase with AddRoomSpec {
-    ctrl.addBasicRoomAction()
+  def tree(f: Factory) = new TestBase(f) {
+    def appliesModel = tree.getModel must_== sourceListModel.treeModel
+    def dragEnabled = tree.getDragEnabled must beTrue
+    def transferHandler = tree.getTransferHandler must beAnInstanceOf[ExhibitRoomListTransferHandler]
   }
   
-  val addGroupRoomAction = new TestBase with AddRoomSpec {
-    ctrl.addGroupRoomAction()
-  }
-  
-  val addSamrtRoomAction = new TestBase with AddRoomSpec {
-    ctrl.addSamrtRoomAction()
-  }
-  
-  val removeSelectedUserRoomAction = new TestBase {
-    val path = structure.pathToRoot(testRoom)
-    sourceListModel.selectPath(path)
-    ctrl.removeSelectedUserRoomAction()
+  // プロパティ
+  def properties(f: Factory) = new DataServiceReady(f) {
+    def userExhibitRoomService = ctrl.userExhibitRoomService must_== service
     
-    def s1 = there was one(service).remove(testRoom)
-    def s2 = sourceListModel.selectedPath must_==
-      Some(sourceListModel.pathForLocalLibrary)
+    def userExhibitRoomServiceToModel =
+      ctrl.sourceListModel.dataService must_== service
   }
   
-  val export = new TestBase {
-    // 選択された行をクリップボード転送する
-    sourceListModel.selectPath(structure.pathToRoot(testRoom))
-    // クリップボード
-    val testClipboard = new Clipboard("test")
-    view.getTransferHandler.exportToClipboard(view, testClipboard, TransferHandler.MOVE)
+  def selectedRoom(f: Factory) = new TestBase(f) {
+    val roomMock = mock[ExhibitRoom]
     
-    def s1 = testClipboard.getData(ExhibitRoomTransferData.dataFlavor) must
-      beAnInstanceOf[ExhibitRoomTransferData]
-  }
-  
-  val selectedRoom = new TestBase {
-    import jp.scid.gui.tree.DataTreeModel.Path
-    
-    val roomSel = setlectPath(structure.pathToRoot(testRoom))
-    val localSel = setlectPath(sourceListModel.pathForLocalLibrary)
-    val websel = setlectPath(structure.pathToRoot(structure.webSource))
-    val desel = {
-      sourceListModel.deselect
-      ctrl.selectedRoom()
+    def appliesValue = {
+      ctrl.selectedRoom := roomMock
+      ctrl.selectedRoom() must_== roomMock
     }
-    val libSel = setlectPath(sourceListModel.pathForLibraries)
-    val urSel = setlectPath(sourceListModel.pathForUserRooms)
+  }
+  
+  abstract class AddRoomTestBase(f: Factory, roomType: RoomType) extends DataServiceReady(f) {
+    val node = userRoomOf(SmartRoom)
+    val parent = userRoomOf(GroupRoom)
+    val roomAdded = userRoomOf(roomType)
+    service.getParent(node) returns Some(parent)
+    service.addRoom(any, any, any) returns roomAdded
     
+    service.nameExists("defname") returns true
+    List("a", "a 1", "a 2") foreach (s => service.nameExists(s) returns true)
     
-    private def setlectPath(path: Path[ExhibitRoom]) = {
-      sourceListModel.selectPath(path)
-      ctrl.selectedRoom()
+    def defaultName: String
+    def defaultName_=(name: String)
+    
+    def action(): Unit
+    
+    def callsAddRoom = there was addRoomCalledAfterAction()
+    
+    def addRoomCalledAfterAction(name: String = defaultName, parent: Option[UserExhibitRoom] = None) = {
+      action()
+      one(service).addRoom(roomType, name, parent)
     }
     
-    def s1 = roomSel must_== testRoom
+    def onParent = {
+      ctrl.selectedRoom := parent
+      there was addRoomCalledAfterAction(parent = Some(parent))
+    }
     
-    def s2 = libSel must_== structure.localSource
+    def onAncestor = {
+      ctrl.selectedRoom := node
+      there was addRoomCalledAfterAction(parent = Some(parent))
+    }
     
-    def s3 = websel must_== structure.webSource
+    def noParent = {
+      ctrl.selectedRoom := mock[ExhibitRoom]
+      there was addRoomCalledAfterAction()
+    }
     
-    def s4 = desel must_== structure.localSource
+    def newName = {
+      defaultName = "defname"
+      there was addRoomCalledAfterAction("defname 1")
+    }
     
-    def s5 = libSel must_== structure.localSource
+    def newNameIterate = {
+      defaultName = "a"
+      there was addRoomCalledAfterAction("a 3")
+    }
     
-    def s6 = urSel must_== structure.localSource
+    def startEditing = todo
+  }
+ 
+  // アクション
+  // BasicRoom
+  def addBasicRoom(f: Factory) = new AddRoomTestBase(f, BasicRoom) {
+    def defaultName = sourceListModel.basicRoomDefaultName
+    
+    def defaultName_=(name: String) = sourceListModel.basicRoomDefaultName = name
+    
+    def action = ctrl.addBasicRoom
+  }
+  
+  // GroupRoom
+  def addGroupRoom(f: Factory) = new AddRoomTestBase(f, GroupRoom) {
+    def defaultName = sourceListModel.groupRoomDefaultName
+    
+    def defaultName_=(name: String) = sourceListModel.groupRoomDefaultName = name
+    
+    def action = ctrl.addGroupRoom
+  }
+  
+  // SmartRoom
+  def addSmartRoom(f: Factory) = new AddRoomTestBase(f, SmartRoom) {
+    def defaultName = sourceListModel.smartRoomDefaultName
+    
+    def defaultName_=(name: String) = sourceListModel.smartRoomDefaultName = name
+    
+    def action = ctrl.addSmartRoom
+  }
+  
+  def actions(f: Factory) = new {
+    val tree = spy(new JTree())
+    val ctrl = spy(f(tree))
+    
+    def addBasicRoom = {
+      ctrl.addBasicRoomAction must not beNull
+    }
   }
 }

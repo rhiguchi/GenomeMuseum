@@ -80,6 +80,16 @@ class MuseumSourceModel(source: MuseumStructure) extends DataTreeModel(source) {
     room
   }
   
+  def addUserExhibitRoom(roomType: RoomType, parent: Option[UserExhibitRoom]) = {
+    val baseName = roomType match {
+      case BasicRoom => basicRoomDefaultName
+      case GroupRoom => groupRoomDefaultName
+      case SmartRoom => smartRoomDefaultName
+    }
+    val name = findRoomNewName(baseName)
+    addRoom(roomType, name, parent)
+  }
+  
   /**
    * 部屋をサービスに追加する。
    * @param roomType 部屋の種類
@@ -131,6 +141,11 @@ class MuseumSourceModel(source: MuseumStructure) extends DataTreeModel(source) {
     dataService.setParent(element, newParent)
     fireSomeUserExhibitRoomWereRemoved(oldParent)
     fireSomeUserExhibitRoomWereInserted(newParent)
+  }
+  
+  // TODO test
+  def isDescendant(maybe: ExhibitRoom, room: ExhibitRoom) = {
+    source.pathToRoot(room) startsWith source.pathToRoot(maybe)
   }
   
   /**

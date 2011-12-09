@@ -35,6 +35,11 @@ object UserExhibitRoom {
       id: Long = 0L, parentId: Option[Long] = None): UserExhibitRoom =
     UserExhibitRoomImpl(name, roomType, id, parentId)
   
+  def unapply(room: ExhibitRoom): Option[(UserExhibitRoom)] = room match {
+    case room: UserExhibitRoom => Some(room)
+    case _ => None
+  }
+  
   private case class UserExhibitRoomImpl(
     var name: String,
     roomType: RoomType.Value,

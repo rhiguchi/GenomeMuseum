@@ -60,7 +60,7 @@ private[controller] class ExhibitRoomListController(
   /** ツリーの展開を管理するハンドラ */
   private val expansionCtrl = new ExhibitRoomListExpansionController(view, sourceListModel)
   /** 転送ハンドラ */
-  private val transferHandler = new ExhibitRoomListTransferHandler(this)
+  private val transferHandler = new ExhibitRoomListTransferHandler(sourceListModel)
   
   // アクション
   /** {@link addBasicRoom} のアクション */
@@ -75,21 +75,21 @@ private[controller] class ExhibitRoomListController(
   /** BasicRoom 型の部屋を追加し、部屋名を編集開始状態にする */
   @Action(name="addBasicRoom")
   def addBasicRoom {
-    val newRoom = sourceListModel.addUserRoomToSelectedPath(BasicRoom)
+    val newRoom = sourceListModel.addUserExhibitRoom(BasicRoom, findInsertParent)
     startEditingRoom(newRoom)
   }
   
   /** GroupRoom 型の部屋を追加し、部屋名を編集開始状態にする */
   @Action(name="addGroupRoom")
   def addGroupRoom {
-    val newRoom = sourceListModel.addUserRoomToSelectedPath(GroupRoom)
+    val newRoom = sourceListModel.addUserExhibitRoom(GroupRoom, findInsertParent)
     startEditingRoom(newRoom)
   }
   
   /** SmartRoom 型の部屋を追加し、部屋名を編集開始状態にする */
   @Action(name="addSmartRoom")
   def addSmartRoom {
-    val newRoom = sourceListModel.addUserRoomToSelectedPath(SmartRoom)
+    val newRoom = sourceListModel.addUserExhibitRoom(SmartRoom, findInsertParent)
     startEditingRoom(newRoom)
   }
   
@@ -114,6 +114,14 @@ private[controller] class ExhibitRoomListController(
   private def updateActionAvailability() {
     // ノード削除アクションの使用可不可
     removeSelectedUserRoomAction.enabled = selectedRoom().isInstanceOf[UserExhibitRoom]
+  }
+  
+  /** 部屋作成時の親となるの部屋を返す */
+  private def findInsertParent = selectedRoom() match {
+    case room: UserExhibitRoom =>
+      sourceStructure.pathToRoot(room).reverse.collectFirst{
+        case e: UserExhibitRoom if e.roomType == GroupRoom => e}
+    case _ => None
   }
   
   /** 部屋の名前を編集状態にする。 */
@@ -165,144 +173,3 @@ private object ExhibitRoomListController {
   }
 }
 
-import javax.swing.{TransferHandler, JComponent}
-import java.awt.datatransfer.{Transferable, DataFlavor}
-import TransferHandler.TransferSupport
-import DataFlavor.javaFileListFlavor
-
-/**
- * ExhibitRoomListController 用転送ハンドラ
- */
-private[controller] class ExhibitRoomListTransferHandler(ctrl: ExhibitRoomListController) extends TransferHandler {
-  import ExhibitRoomTransferData.{dataFlavor => exhibitRoomDataFlavor}
-  import MuseumExhibitTransferData.{dataFlavor => exhibitListDataFlavor}
-  
-  override def canImport(ts: TransferSupport) = {
-    val destPath = ctrl.getImportingTargetPath(ts)
-    lazy val localLibNode = ctrl.sourceStructure.localSource
-    
-    // ノードの転送
-    var transferred = ts.isDataFlavorSupported(exhibitRoomDataFlavor) match {
-      case true =>
-        val sourcePath = ts.getTransferable.getTransferData(exhibitRoomDataFlavor)
-          .asInstanceOf[ExhibitRoomTransferData].transferPath
-      
-        destPath.isEmpty match {
-          case true => sourcePath.lastOption.map(_.isInstanceOf[UserExhibitRoom]).getOrElse(false)
-          case false => ctrl.canMove(sourcePath, destPath)
-        }
-      case false => false
-    }
-    // 展示物の転送
-    transferred = if (transferred) true
-    else ts.isDataFlavorSupported(exhibitListDataFlavor) match {
-      case true => destPath.lastOption match {
-        case Some(UserExhibitRoom.RoomType(BasicRoom)) => true
-        case _ => false
-      }
-      case false => false
-    }
-    // ファイルの転送
-    transferred = if (transferred) true
-    else ts.isDataFlavorSupported(javaFileListFlavor) match {
-      case true => destPath.lastOption match {
-        case Some(UserExhibitRoom.RoomType(BasicRoom)) => true
-        case Some(`localLibNode`) => true
-        case _ => false
-      }
-      case false => false
-    }
-    
-    transferred
-  }
-  
-  override def importData(ts: TransferSupport) = {
-    val destPath = ctrl.getImportingTargetPath(ts)
-    lazy val localLibNode = ctrl.sourceStructure.localSource
-    
-    if (ts.isDataFlavorSupported(exhibitRoomDataFlavor)) {
-      val sourcePath = ts.getTransferable.getTransferData(exhibitRoomDataFlavor)
-        .asInstanceOf[ExhibitRoomTransferData].transferPath
-      val newPath = destPath.isEmpty match {
-        case true => ctrl.movePath(sourcePath, ctrl.sourceStructure.pathToRoot(ctrl.sourceStructure.localSource))
-        case false => ctrl.movePath(sourcePath, destPath)
-      }
-      newPath.nonEmpty
-    }
-    else if (ts.isDataFlavorSupported(exhibitListDataFlavor)) {
-      destPath.lastOption match {
-        case Some(room @ UserExhibitRoom.RoomType(BasicRoom)) =>
-//          val exhibits = ts.getTransferable.getTransferData(exhibitListDataFlavor)
-//            .asInstanceOf[ExhibitRoomTransferData].exhibits
-//          ctrl.addExhibitsTo(room.asInstanceOf[UserExhibitRoom], exhibits)
-          true
-        case _ => false
-      }
-    }
-    else if (ts.isDataFlavorSupported(javaFileListFlavor)) {
-      // TODO
-//      destPath.lastOption match {
-//        case Some(room @ UserExhibitRoom.RoomType(BasicRoom)) =>
-//          ctrl.importExhibitFilesTo()
-//        case Some(`localLibNode`) =>
-//        case _ => false
-      false
-    }
-    else {
-      false
-    }
-  }
-  
-  override def getSourceActions(c: JComponent) =
-    TransferHandler.COPY_OR_MOVE
-  
-  override def createTransferable(c: JComponent) = {
-    ctrl.sourceListModel.selectedPath match {
-      case Some(PathLastNode(room: UserExhibitRoom)) =>
-        ExhibitRoomTransferDataImpl(room)
-      case _ => null
-    }
-  }
-  
-  private object PathLastNode {
-    def unapply[A](path: Path[A]): Option[A] =
-      path.lastOption
-  }
-}
-
-object ExhibitRoomTransferData {
-  val dataFlavor = new DataFlavor(ExhibitRoomTransferData.getClass,
-    "ExhibitRoomTransferData")
-}
-
-trait ExhibitRoomTransferData {
-  def transferPath: IndexedSeq[ExhibitRoom]
-}
-
-/**
- * 転送オブジェクト
- */
-case class ExhibitRoomTransferDataImpl(
-  room: UserExhibitRoom
-) extends Transferable {
-  import ExhibitRoomTransferData.{dataFlavor => exhibitRoomDataFlavor}
-  
-  def getTransferDataFlavors(): Array[DataFlavor] = {
-    return Array(exhibitRoomDataFlavor)
-  }
-  
-  def getTransferData(flavor: DataFlavor) = {
-    flavor match {
-      case `exhibitRoomDataFlavor` =>
-        this
-      case _ => null
-    }
-  }
-  
-  def isDataFlavorSupported(flavor: DataFlavor) = flavor match {
-    case `exhibitRoomDataFlavor` => true
-    case _ => false
-  }
-  
-  def transferPath: IndexedSeq[ExhibitRoom] = IndexedSeq.empty
-}

@@ -6,7 +6,8 @@ import java.io.{File, IOException}
 import javax.swing.{JComponent, TransferHandler}
 import DataFlavor.javaFileListFlavor
 
-import jp.scid.genomemuseum.model.{MuseumExhibit, MuseumExhibitStorage}
+import jp.scid.genomemuseum.model.{MuseumExhibit, MuseumExhibitStorage, MuseumExhibitTransferData,
+  UserExhibitRoom}
 import jp.scid.genomemuseum.gui.ExhibitTableModel
 import MuseumExhibitTransferData.{dataFlavor => exhibitDataFlavor}
 
@@ -22,6 +23,10 @@ private[controller] class MuseumExhibitListTransferHandler(
   
   /** 読み込み実行クラス */
   var loadManager: Option[MuseumExhibitLoadManager] = None
+  
+  var transferExhibits: Seq[MuseumExhibit] = Nil
+  
+  var sourceRoom: Option[UserExhibitRoom] = None
   
   override def canImport(comp: JComponent, transferFlavors: Array[DataFlavor]) = {
     logger.debug("canImport")
@@ -80,21 +85,17 @@ private[controller] class MuseumExhibitListTransferHandler(
     TransferHandler.COPY
   
   override def createTransferable(c: JComponent) = {
-    tableModel.selections match {
-      case Nil => null
-      case selections => new MuseumExhibitTransferData(selections, tableModel,
-        loadManager.flatMap(_.museumExhibitStorage))
-    }
+    MuseumExhibitTransferData(transferExhibits, sourceRoom, loadManager.get.museumExhibitStorage.get)
   }
   
 }
 
-private object MuseumExhibitListTransferHandler {
+private[controller] object MuseumExhibitListTransferHandler {
   private val logger = org.slf4j.LoggerFactory.getLogger(classOf[MuseumExhibitListTransferHandler])
   /**
    * ディレクトリ内に含まれる全てのファイルを探索し、取得する。
    */
-  private def getAllFiles(files: Seq[File]) = {
+  private[controller] def getAllFiles(files: Seq[File]) = {
     import collection.mutable.{Buffer, ListBuffer, HashSet}
     // 探索済みディレクトリ
     val checkedDirs = HashSet.empty[String]
@@ -110,15 +111,12 @@ private object MuseumExhibitListTransferHandler {
           if (head.isHidden) {
             collectFiles(tail, accume)
           }
-          else if (head.isFile) {
-            accume += head
-            collectFiles(tail, accume)
-          }
           else if (head.isDirectory && !alreadyChecked(head)) {
             addCheckedDir(head)
             collectFiles(head.listFiles.toList ::: tail, accume)
           }
           else {
+            accume += head
             collectFiles(tail, accume)
           }
         case Nil => accume.toList
@@ -127,64 +125,4 @@ private object MuseumExhibitListTransferHandler {
     
     collectFiles(files.toList)
   }
-}
-
-/**
- * MuseumExhibit 行の転送データ
- */
-private[controller] case class MuseumExhibitTransferData(
-  exhibits: List[MuseumExhibit],
-  tableModel: ExhibitTableModel
-) extends Transferable {
-  import MuseumExhibitTransferData.{dataFlavor => exhibitDataFlavor}
-  
-  private var exhibitStorage: Option[MuseumExhibitStorage] = None
-  
-  private lazy val transferFiles = getFiles()
-  
-  def this(exhibits: List[MuseumExhibit], tableModel: ExhibitTableModel,
-      storage: Option[MuseumExhibitStorage]) = {
-    this(exhibits, tableModel)
-    this.exhibitStorage = storage
-  }
-  
-  def getTransferDataFlavors(): Array[DataFlavor] = {
-    import collection.mutable.Buffer
-    val flavors = Buffer.empty[DataFlavor]
-    flavors += exhibitDataFlavor
-    if (transferFiles.nonEmpty)
-      flavors += javaFileListFlavor
-    
-    return flavors.toArray
-  }
-  
-  def getTransferData(flavor: DataFlavor) = {
-    flavor match {
-      case `exhibitDataFlavor` => this
-      case `javaFileListFlavor` =>
-        import collection.JavaConverters._
-        transferFiles.asJava
-      case _ => null
-    }
-  }
-  
-  def isDataFlavorSupported(flavor: DataFlavor) = flavor match {
-    case `exhibitDataFlavor` => true
-    case `javaFileListFlavor` => transferFiles.nonEmpty
-    case _ => false
-  }
-  
-  def getFiles() = {
-    exhibitStorage match {
-      case Some(storage) =>
-        exhibits flatMap storage.getSource filter (_.getProtocol.==("file")) map
-          (url => new File(url.toURI))
-      case None => Nil
-    }
-  }
-}
-
-private object MuseumExhibitTransferData {
-  val dataFlavor = new DataFlavor(MuseumExhibitTransferData.getClass,
-    "MuseumExhibitTransferData")
 }
