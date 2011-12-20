@@ -14,10 +14,16 @@ trait MuseumSchema {
 }
 
 object MuseumSchema {
+  /**
+   * メモリー上のプライベート空間を格納先に持ったデータスキーマを作成する。
+   */
   def onMemory = {
-    squeryl.MuseumSchema.onMemory("GenomeMuseum")
+    squeryl.MuseumSchema.onMemory("")
   }
   
+  /**
+   * ファイルを格納先に持ったデータスキーマを作成する。
+   */
   def onFile(file: java.io.File) = {
     squeryl.MuseumSchema.onFile(file)
   }

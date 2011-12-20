@@ -20,17 +20,17 @@ class StringFilterableSpec extends Specification {
   
   def base = new TestBase {
     def pleFiltered = {
-      model filterWith "ple"
+      model.filterText = "ple"
       model.viewSource
     }
     
     def noMatch = {
-      model filterWith "123456"
+      model.filterText = "123456"
       model.viewSource
     }
     
     def emptyFilter = {
-      model filterWith ""
+      model.filterText = ""
       model.viewSource
     }
   }

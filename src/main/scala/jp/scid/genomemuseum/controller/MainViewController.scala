@@ -9,9 +9,16 @@ import jp.scid.genomemuseum.{view, model, gui, GenomeMuseumGUI}
 import view.MainView
 import model.{MuseumSchema, ExhibitRoom, UserExhibitRoom, MuseumExhibit}
 
+/**
+ * 主画面の操作を受け付け、操作反応を実行するオブジェクト。
+ * 
+ * @param application データやメッセージを取り扱うアプリケーションオブジェクト。
+ * @param mainView 表示と入力を行う画面。
+ */
 class MainViewController(
-  private[controller] val mainView: MainView
-) {
+  application: ApplicationActionHandler,
+  mainView: MainView
+) extends GenomeMuseumController(application) {
   import MainViewController.TableSource._
   // ビュー
   /** ソースリストショートカット */
@@ -25,93 +32,38 @@ class MainViewController(
   
   private def loadingView = mainView.fileLoadingActivityPane
   
+  /** データリストコントローラ用ビュー */
+  private val dataListView = DataListController.View(dataTable, quickSearchField)
+  
   // コントローラ
   /** ソースリスト用 */
-  val sourceListCtrl = new ExhibitRoomListController(mainView.sourceList)
+  val sourceListCtrl = new ExhibitRoomListController(
+    application, mainView.sourceList)
   
   // データリスト用
   /** MuseumExhibit 表示用 */
-  private[controller] val museumExhibitListCtrl = new MuseumExhibitListController(dataTable,
-    quickSearchField)
+  val museumExhibitListCtrl = new MuseumExhibitListController(
+    application, dataListView)
   /** WebService 表示用 */
-  private[controller] val webServiceResultCtrl = new WebServiceResultController(dataTable,
-    quickSearchField)
+  val webServiceResultCtrl = new WebServiceResultController(
+    application, dataListView)
   /** ファイル読み込み表示 */
-  private[controller] val fileLoadingProgressHandler = new FileLoadingProgressViewHandler(loadingView,
+  val fileLoadingProgressHandler = new FileLoadingProgressViewHandler(loadingView,
       mainView.fileLoadingProgress, mainView.fileLoadingStatus)
   /** コンテントビューワー */
   private val contentViewer = new FileContentViewer(fileContentView)
   
   // モデル
-  /** 現在のスキーマ */
-  private var currentSchema: Option[MuseumSchema] = None
-  /** 現在の読み込みマネージャ */
-  private var currentLoadManager: Option[MuseumExhibitLoadManager] = None
   /** データテーブルの現在の表示モード */
-  private var currentTableSource: TableSource = LocalSource
+  private val tableSource = new ValueHolder[TableSource](LocalSource)
   /** データリストテーブルの結合 */
   private var currentConnectors: List[Connector] = Nil
-  /** ソースリストの選択項目 */
-  private[controller] def selectedRoom = sourceListCtrl.selectedRoom
-  /** データテーブルの選択項目 */
-  private var contentViewItem: Option[MuseumExhibit] = None
   /** このコントローラを表すタイトル */
   val title = new ValueHolder("")
-  
-  // モデルバインド
-  /** ソースリスト項目選択 */
-  selectedRoom.reactions += {
-    case ValueChange(_, _, _) => updateRoomContents()
-  }
-  /** ファイルソース表示 */
-  museumExhibitListCtrl.tableSelection.reactions += {
-    case ValueChange(_, _, newValue: Seq[_]) =>
-      contentViewItem = newValue.headOption.collect { case e: MuseumExhibit => e }
-      updateContentView()
-  }
-  // データリストコントローラと結合
-  updateTableSource()
-  
-  // アクションバインディング
-  setActionTo(mainView.addListBox -> sourceListCtrl.addBasicRoomAction,
-    mainView.addSmartBox -> sourceListCtrl.addSamrtRoomAction,
-    mainView.addBoxFolder -> sourceListCtrl.addGroupRoomAction,
-    mainView.removeBoxButton -> sourceListCtrl.removeSelectedUserRoomAction)
-  
-  private def setActionTo(binds: (javax.swing.AbstractButton, swing.Action)*) {
-    binds foreach { pair => pair._1 setAction pair._2.peer }
-  }
-  
-  // プロパティ
-  /** 現在のデータモデルを取得設定 */
-  def dataSchema = currentSchema.get
-  
-  /** ソースリストやデータリストの表示に使用するデータモデルを設定 */
-  def dataSchema_=(newSchema: MuseumSchema) {
-    currentSchema = Option(newSchema)
-    currentSchema foreach { dataSchema =>
-      // ソースリスト
-      sourceListCtrl.userExhibitRoomService = dataSchema.userExhibitRoomService
-      // データテーブル
-      museumExhibitListCtrl.dataService = dataSchema.museumExhibitService
-    }
-    updateRoomContents()
-  }
-  
-  /** 読み込み管理オブジェクトを取得 */
-  def loadManager = currentLoadManager.get
-  
-  /** 読み込み管理オブジェクトを設定 */
-  def loadManager_=(newManager: MuseumExhibitLoadManager) {
-    currentLoadManager = Option(newManager)
-    fileLoadingProgressHandler.listenTo(newManager)
-    fileLoadingProgressHandler.updateViews()
-    museumExhibitListCtrl.loadManager = newManager
-    webServiceResultCtrl.loadManager = currentLoadManager
-  }
-  
-  /** ファイルストレージ取得 */
-  private def exhibitStorage = currentLoadManager.flatMap(_.museumExhibitStorage)
+  /** ソースリストの選択項目 */
+  def selectedRoom = sourceListCtrl.selectedRoom
+  /** データテーブルの選択項目 */
+  def contentViewItem = museumExhibitListCtrl.tableSelection
   
   class FileLoadingProgressViewHandler(contentPane: JComponent, progressBar: JProgressBar, statusLabel: JLabel) extends swing.Reactor {
     import MuseumExhibitLoadManager._
@@ -160,23 +112,12 @@ class MainViewController(
     protected def isIndeterminate =  inProgress && progressMax <= progressValue
   }
   
-  /** 表示モードを取得 */
-  private def tableSource = currentTableSource
-  
-  /** 表示モードを設定 */
-  private def tableSource_=(newSource: TableSource) {
-    if (currentTableSource != newSource) {
-      currentTableSource = newSource
-      updateTableSource()
-    }
-  }
-  
   /** データテーブルの表示状態を変更する */
-  private def updateTableSource() {
+  private def setTableSource(newTableSource: TableSource) {
     // 結合解除
     currentConnectors.foreach(_.release())
     
-    currentConnectors = tableSource match {
+    currentConnectors = newTableSource match {
       case LocalSource =>
         ValueHolder.connect(museumExhibitListCtrl.statusTextModel, title) ::
         museumExhibitListCtrl.bind()
@@ -190,26 +131,27 @@ class MainViewController(
    * データテーブル領域に表示するコンテンツを設定する
    * 通常は、ソースリストの選択項目となる
    */
-  private def updateRoomContents() {
-    if (selectedRoom() == sourceListCtrl.sourceStructure.webSource) {
-      tableSource = WebSource
+  private def updateRoomContents(newRoom: ExhibitRoom) {
+    if (newRoom == sourceListCtrl.sourceStructure.webSource) {
+      tableSource := WebSource
     }
     else {
-      museumExhibitListCtrl.userExhibitRoom = selectedRoom() match {
+      val room = newRoom match {
         case newRoom: UserExhibitRoom => Some(newRoom)
         case _ =>  None
       }
-      tableSource = LocalSource
+      museumExhibitListCtrl.userExhibitRoom := room
+      tableSource := LocalSource
     }
   }
   
   /**
    * コンテンツビューのモデルを変更する。
    */
-  private def updateContentView() {
+  private def setContentViewItem(newItem: Option[MuseumExhibit]) {
     // ビューワー表示
-    val source = (contentViewItem, exhibitStorage) match {
-      case (Some(exhibit), Some(storage)) => storage.getSource(exhibit) match {
+    val source = newItem match {
+      case Some(exhibit) => fileStorage.getSource(exhibit) match {
         case None => Iterator.empty
         case Some(source) => io.Source.fromURL(source).getLines
       }
@@ -220,6 +162,42 @@ class MainViewController(
     if (mainView.isContentViewerClosed)
       mainView.openContentViewer(200)
   }
+  
+  /** モデルの結合を行う */
+  private def bindModels() {
+    // ソースリスト項目選択
+    sourceListCtrl.selectedRoom.reactions += {
+      case ValueChange(_, _, newRoom) => updateRoomContents(newRoom.asInstanceOf[ExhibitRoom])
+    }
+    
+    // データリストの表示モードの変更
+    tableSource.reactions += {
+      case ValueChange(_, _, newMode) => setTableSource(newMode.asInstanceOf[TableSource])
+    }
+    
+    // ファイルソース表示
+    contentViewItem.reactions += {
+      case ValueChange(_, _, newValue: Seq[_]) =>
+        val newItem = newValue.headOption.collect { case e: MuseumExhibit => e }
+        setContentViewItem(newItem)
+    }
+    
+    //  読み込み管理オブジェクトの進行表示
+    fileLoadingProgressHandler.listenTo(loadManager)
+    fileLoadingProgressHandler.updateViews()
+  }
+  
+  /** アクションの結合を行う */
+  private def bindActions() {
+    // ボタン
+    bindAction(mainView.addListBox -> sourceListCtrl.addBasicRoomAction,
+      mainView.addSmartBox -> sourceListCtrl.addSamrtRoomAction,
+      mainView.addBoxFolder -> sourceListCtrl.addGroupRoomAction,
+      mainView.removeBoxButton -> sourceListCtrl.removeSelectedUserRoomAction)
+  }
+  
+  bindModels()
+  bindActions()
 }
 
 object MainViewController {

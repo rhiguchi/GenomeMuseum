@@ -1,133 +1,130 @@
 package jp.scid.genomemuseum.controller
 
-import org.specs2._
-import mock._
-
 import java.awt.datatransfer.{Clipboard, DataFlavor, Transferable}
 import java.io.File
 
-import javax.swing.TransferHandler
+import javax.swing.{TransferHandler, JComponent}
+
+import org.specs2._
+import mock._
 
 import jp.scid.genomemuseum.gui.ExhibitTableModel
-import jp.scid.genomemuseum.model.{MuseumExhibit, MuseumExhibitTransferData}
+import jp.scid.genomemuseum.model.{MuseumExhibit, MuseumExhibitTransferData, UserExhibitRoom,
+  UserExhibitRoomMock, MuseumExhibitMock}
+import UserExhibitRoom.RoomType._
 import MuseumExhibitTransferData.{dataFlavor => exhibitDataFlavor}
 import DataFlavor.javaFileListFlavor
-
-object MuseumExhibitListTransferHandlerSpec extends Mockito {
-  def fileTransferObject(files: File*) = {
-    val fileList = new java.util.ArrayList[File]()
-    files foreach fileList.add
-    
-    val t = mock[Transferable]
-    t.getTransferData(javaFileListFlavor) returns fileList
-    t.getTransferDataFlavors returns Array(javaFileListFlavor)
-    t.isDataFlavorSupported(javaFileListFlavor) returns true
-    
-    t
-  }
-}
+import TransferHandler.TransferSupport
 
 class MuseumExhibitListTransferHandlerSpec extends Specification with Mockito {
-  import MuseumExhibitListTransferHandlerSpec._
-  
   def is = "MuseumExhibitListTransferHandler" ^
-    "項目が選択されていない状態" ^ cannotTransfer(defaultHandler) ^ bt ^
-    "項目が選択されている状態" ^ canTransfer(itemSelectedHandler) ^ bt ^
-    "読み込みハンドラが設定されている時" ^ withLoadManager(handlerWithLoadManager) ^ bt ^
-    "読み込みハンドラが設定されていない時" ^ withNoLoadManager(defaultHandler) ^ bt ^
+    "転入可能性の確認" ^ canImportSpec(createHandler) ^
+    "転入操作" ^ importDataSpec(createHandler) ^
     end
   
-  def defaultHandler = {
-    val tableModel = spy(new ExhibitTableModel)
-    new MuseumExhibitListTransferHandler(tableModel)
+  def createHandler = new MuseumExhibitListTransferHandler() {
+    def importFiles(files: Seq[File], targetRoom: Option[UserExhibitRoom]) = true
+    def importExhibits(exhibits: Seq[MuseumExhibit], targetRoom: UserExhibitRoom) = true
+    protected[controller] def getTargetRooom(ts: TransferSupport) = None
   }
   
-  def itemSelectedHandler = {
-    val tableModel = spy(new ExhibitTableModel)
-    tableModel.selections returns List(mock[MuseumExhibit])
-    new MuseumExhibitListTransferHandler(tableModel)
-  }
+  def canImportSpec(h: => MuseumExhibitListTransferHandler) =
+    "MuseumExhibitTransferData を受け入れ可能" ! canimport(h).exhibit ^
+    "File を受け入れ可能" ! canimport(h).file ^
+    "標準で受け入れ不可" ! canimport(h).empty ^
+    bt
   
-  def handlerWithLoadManager = {
-    val loadManager = mock[MuseumExhibitLoadManager]
-    val handler = defaultHandler
-    handler.loadManager = Some(loadManager)
-    handler
-  }
-  
-  def cannotTransfer(handler: => MuseumExhibitListTransferHandler) =
-    "アクション取得" ! exportingSpec(handler).sourceAction ^
-    "転送オブジェクトは作成されない" ! exportingSpec(handler).notCreateTransferable
-  
-  def canTransfer(handler: => MuseumExhibitListTransferHandler) =
-    "アクション取得" ! exportingSpec(handler).sourceAction ^
-    "転送オブジェクトが作成される" ! exportingSpec(handler).createsTransferable ^
-    "選択項目が転送される" ! exportingSpec(handler).exportsSelectedItem
-  
-  def withLoadManager(handler: => MuseumExhibitListTransferHandler) =
-    "ファイルフレーバーの取り込みが可能" ! importingSpec(handler).acceptFileFlavor ^
-    "ファイルが読み込まれる" ! importingSpec(handler).importsFile ^
-    "ディレクトリは読み込まれない" ! importingSpec(handler).notImportsDir ^
-    "読み込みハンドラの読み込み処理が呼ばれる" ! importingSpec(handler).callsLoadExhibits
-  
-  def withNoLoadManager(handler: => MuseumExhibitListTransferHandler) =
-    "ファイルフレーバーの取り込みはできない" ! importingSpec(handler).notAcceptFileFlavor
+  def importDataSpec(h: => MuseumExhibitListTransferHandler) =
+    "MuseumExhibitTransferData を転入" ! importData(h).exhibit ^
+    "File を転入" ! importData(h).file ^
+    "他は転入しない" ! importData(h).empty ^
+    bt
   
   class TestBase {
+    val t = mock[Transferable]
+    val ts = new TransferSupport(mock[JComponent], t)
+    
+    val Seq(basicRoom, smartRoom, groupRoom) = List(BasicRoom, SmartRoom, GroupRoom)
+      .map(r => Some(UserExhibitRoomMock.of(r)))
+    
+    // ファイルフレーバーを付与
+    protected def makeTransferDataFileFlavor(files: Seq[File]) {
+      import scala.collection.JavaConverters._
+      
+      t.isDataFlavorSupported(javaFileListFlavor) returns true
+      t.getTransferData(javaFileListFlavor) returns files.toBuffer.asJava
+    }
+    
+    // 展示物フレーバーを付与
+    protected def makeTransferDataExhibitFlavor(museumExhibits: Seq[MuseumExhibit], sourceRoom: Option[UserExhibitRoom]) {
+      import scala.collection.JavaConverters._
+      
+      t.isDataFlavorSupported(exhibitDataFlavor) returns true
+      
+      val data = mock[MuseumExhibitTransferData]
+      data.museumExhibits returns museumExhibits.toList
+      data.sourceRoom returns sourceRoom
+      t.getTransferData(exhibitDataFlavor) returns data
+    }
   }
   
-  def exportingSpec(handler: MuseumExhibitListTransferHandler) = new Object {
-    def sourceAction =
-      handler.getSourceActions(null) must_!= TransferHandler.NONE
+  def canimport(h: MuseumExhibitListTransferHandler) = new TestBase {
+    val handler = spy(h)
     
-    def createsTransferable =
-      handler.createTransferable(null) must beAnInstanceOf[MuseumExhibitTransferData]
-    
-    def notCreateTransferable =
-      handler.createTransferable(null) must beNull
-    
-    def exportsSelectedItem = {
-      val testClipboard = new Clipboard("testClipboard")
-      handler.exportToClipboard(null, testClipboard, TransferHandler.COPY)
-      handler.createTransferable(null) must beAnInstanceOf[MuseumExhibitTransferData]
-      todo
-//      testClipboard.getData(exhibitDataFlavor).asInstanceOf[MuseumExhibitTransferData]
-//        .exhibits must_== handler.tableModel.selections
+    def exhibit = {
+      val exhibits = (0 to 4).map(i => MuseumExhibitMock.of("exhibit" + i))
+      val sourceRoom = UserExhibitRoomMock.of(BasicRoom)
+      makeTransferDataExhibitFlavor(exhibits, Some(sourceRoom))
+      handler.getTargetRooom(ts) returns basicRoom
+      
+      handler.canImport(ts) must beTrue
     }
+    
+    def file = {
+      t.isDataFlavorSupported(javaFileListFlavor) returns true
+      h.canImport(ts) must beTrue
+    }
+    
+    def empty = h.canImport(ts) must beFalse
   }
   
-  def importingSpec(handler: MuseumExhibitListTransferHandler) = new Object {
-    import DataFlavor.javaFileListFlavor
-    import java.io.File
+  def importData(h: MuseumExhibitListTransferHandler) = new TestBase {
+    val handler = spy(h)
     
-    def acceptFileFlavor = {
-      handler.canImport(null, Array(javaFileListFlavor)) must beTrue
+    // 転入先を指定して転入操作
+    private def importDataTo(room: Option[UserExhibitRoom]) {
+      handler.getTargetRooom(ts) returns room
+      handler.importData(ts)
     }
     
-    def notAcceptFileFlavor = {
-      handler.canImport(null, Array(javaFileListFlavor)) must beFalse
-    }
-    
-    def importsFile = {
-      val t = fileTransferObject(File.createTempFile("test", ".dat"))
+    def exhibit = {
+      val exhibits = (0 to 4).map(i => MuseumExhibitMock.of("exhibit" + i))
+      val sourceRoom = UserExhibitRoomMock.of(BasicRoom)
+      makeTransferDataFileFlavor(Nil)
       
-      handler.importData(null, t) must beTrue
+      makeTransferDataExhibitFlavor(exhibits, Some(sourceRoom))
+      Seq(basicRoom, smartRoom, groupRoom, None) foreach importDataTo
+      
+      makeTransferDataExhibitFlavor(exhibits, None)
+      Seq(basicRoom, smartRoom, groupRoom, None) foreach importDataTo
+      
+      makeTransferDataExhibitFlavor(exhibits, basicRoom)
+      Seq(basicRoom, smartRoom, groupRoom, None) foreach importDataTo
+      
+      there was two(handler).importExhibits(exhibits, basicRoom.get) then
+        two(handler).importExhibits(any, any)
     }
     
-    def notImportsDir = {
-      val t = fileTransferObject(new File("xxxx"))
+    def file = {
+      val files = (0 to 4).map(i => new File("file" + i))
+      makeTransferDataFileFlavor(files)
       
-      handler.importData(null, t) must beFalse
-    }
-    
-    def callsLoadExhibits = {
-      val file1, file2, file3 = File.createTempFile("test", ".dat")
-      val t = fileTransferObject(file1, file2, file3)
-      handler.importData(null, t)
+      Seq(basicRoom, smartRoom, groupRoom, None) foreach importDataTo
       
-      there was one(handler.loadManager.get).loadExhibit(file1) then
-        one(handler.loadManager.get).loadExhibit(file2) then
-        one(handler.loadManager.get).loadExhibit(file3)
+      there was one(handler).importFiles(files, basicRoom) then
+        one(handler).importFiles(files, None) then
+        two(handler).importFiles(any, any)
     }
+    def empty = todo
   }
 }

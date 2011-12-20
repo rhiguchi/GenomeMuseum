@@ -3,7 +3,8 @@ package jp.scid.genomemuseum.gui
 import jp.scid.gui.tree.{DataTreeModel, SourceTreeModel, TreeSource}
 import jp.scid.genomemuseum.model.{MuseumStructure, ExhibitRoom,
   UserExhibitRoom, UserExhibitRoomService}
-import UserExhibitRoom.RoomType._
+import UserExhibitRoom.RoomType
+import RoomType._
 import DataTreeModel.Path
 
 /**
@@ -13,108 +14,33 @@ import DataTreeModel.Path
 class MuseumSourceModel(source: MuseumStructure) extends DataTreeModel(source) {
   import MuseumSourceModel._
   
-  var basicRoomDefaultName = "Basic Room"
-  var groupRoomDefaultName = "Group Room"
-  var smartRoomDefaultName = "Smart Room"
-  
-  private var currentDataService: Option[UserExhibitRoomService] = None
-  
   /** 変化監視の接続 */
   // TODO テスト
   val observableServiceAdapter = new SourceTreeModelAdapter[ExhibitRoom, UserExhibitRoom](sourceTreeModel)
   
-  /**
-   * 未使用の名前を検索する。
-   * {@code baseName} の名前を持つ部屋がサービス中に存在するとき、
-   * 連番をつけて次の名前を検索する。
-   * @param baseName 基本の名前
-   * @return 他と重複しない、部屋の名前。
-   */
-  private def findRoomNewName(baseName: String) = {
-    def searchNext(index: Int): String = {
-      val candidate = baseName + " " + index
-      if (dataService.nameExists(candidate)) {
-        searchNext(index + 1)
-      }
-      else
-        candidate
+  /** 部屋作成時の親となるの部屋を返す */
+  private def findInsertPath = {
+    selectedPath.getOrElse(pathForUserRooms).reverse.dropWhile {
+      case UserExhibitRoom(room @ RoomType(GroupRoom)) => false
+      case _ => true
+    } match {
+      case path @ Seq(parent: UserExhibitRoom, _*) => (Some(parent), path.reverse)
+      case _ => (None, pathForUserRooms)
     }
-    
-    if (dataService.nameExists(baseName)) {
-      searchNext(1)
-    }
-    else
-      baseName
-  }
-  
-  /** 選択された UserExhibitRoom を削除 */
-  def removeSelectedUserRoom() {
-    // 削除対象の Room を取得
-    val rooms = selectedPaths.sortWith(_.length > _.length)
-      .map(_.last).collect{ case e: UserExhibitRoom => e }
-    rooms foreach removeRoom
-  }
-  
-  /**
-   * 選択中のパスに部屋を追加する。
-   * @return 追加された場所を示すパス
-   */
-  def addUserRoomToSelectedPath(roomType: RoomType) = {
-    val baseName = roomType match {
-      case BasicRoom => basicRoomDefaultName
-      case GroupRoom => groupRoomDefaultName
-      case SmartRoom => smartRoomDefaultName
-    }
-    val name = findRoomNewName(baseName)
-    
-    // 親を取得
-    val parentPathOp = selectedPath.map(findAncestorGroupRoom) match {
-      case Some(Path()) => None
-      case other => other
-    }
-    val parent = parentPathOp.map(_.last.asInstanceOf[UserExhibitRoom])
-    
-    val room = addRoom(roomType, name, parent)
-    selectPath(parentPathOp.getOrElse(pathForUserRooms) :+ room)
-    
-    room
-  }
-  
-  def addUserExhibitRoom(roomType: RoomType, parent: Option[UserExhibitRoom]) = {
-    val baseName = roomType match {
-      case BasicRoom => basicRoomDefaultName
-      case GroupRoom => groupRoomDefaultName
-      case SmartRoom => smartRoomDefaultName
-    }
-    val name = findRoomNewName(baseName)
-    addRoom(roomType, name, parent)
   }
   
   /**
    * 部屋をサービスに追加する。
+   * 
    * @param roomType 部屋の種類
-   * @param name 表示名
-   * @param parent 親要素
-   * @return 追加に成功した場合、そのオブジェクトが返る。
-   * @throws IllegalArgumentException
-   *         {@code parent#roomType} が {@code GroupRoom} 以外の時
-   * @throws IllegalStateException dataService が 設定されていない時
+   * @return 新しい部屋までのパス
    * @see UserExhibitRoom
    */
-  def addRoom(roomType: RoomType, name: String,
-      parent: Option[UserExhibitRoom]): UserExhibitRoom = {
-    parent match {
-      case Some(elm) if elm.roomType != GroupRoom =>
-        throw new IllegalArgumentException("roomType of parent must be GroupRoom")
-      case _ =>
-    }
-    
-    if (currentDataService.isEmpty)
-      throw new IllegalStateException("to add room require a dataService but not served")
-    
-    val newRoom = dataService.addRoom(roomType, name, parent)
+  def addRoom(roomType: RoomType) = {
+    val (parent, path) = findInsertPath
+    val newRoom = source.addRoom(roomType, parent)
     fireSomeUserExhibitRoomWereInserted(parent)
-    newRoom
+    path :+ newRoom
   }
   
   /**
@@ -125,42 +51,9 @@ class MuseumSourceModel(source: MuseumStructure) extends DataTreeModel(source) {
    * @throws IllegalStateException 指定した親が要素自身か、子孫である時
    */
   def moveRoom(element: UserExhibitRoom, newParent: Option[UserExhibitRoom]) {
-    newParent match {
-      case Some(parent @ UserExhibitRoom.RoomType(GroupRoom)) =>
-        val elmPath = source.pathToRoot(element)
-        val destPath = source.pathToRoot(parent)
-        if (destPath.startsWith(elmPath))
-          throw new IllegalStateException("'%s' is not allowed to move to '%s'"
-            .format(elmPath, destPath))
-        elmPath(elmPath.size - 2)
-      case None => dataServiceRoot
-      case _ => throw new IllegalArgumentException("parent must be a GroupRoom")
-    }
-    
-    val oldParent = source.userExhibitRoomSource.getParent(element)
-    dataService.setParent(element, newParent)
-    fireSomeUserExhibitRoomWereRemoved(oldParent)
+    sourceTreeModel.nodeRemoved(element)
+    source.moveRoom(element, newParent)
     fireSomeUserExhibitRoomWereInserted(newParent)
-  }
-  
-  // TODO test
-  def isDescendant(maybe: ExhibitRoom, room: ExhibitRoom) = {
-    source.pathToRoot(room) startsWith source.pathToRoot(maybe)
-  }
-  
-  /**
-   * 現在のユーザーボックスのデータソースを取得
-   */
-  def dataService = currentDataService.get
-  
-  /**
-   * ユーザーボックスのデータソースを設定する。
-   */
-  def dataService_=(newDataService: UserExhibitRoomService) {
-    currentDataService = Option(newDataService)
-    currentDataService.foreach(observableServiceAdapter.connect)
-    source.userExhibitRoomSource = newDataService
-    reloadWithDataService()
   }
   
   /**
@@ -168,10 +61,14 @@ class MuseumSourceModel(source: MuseumStructure) extends DataTreeModel(source) {
    * {@code room} に子要素が存在する時は、その要素もサービスから除外される。
    * @param room 削除する要素
    */
-  def removeRoom(room: UserExhibitRoom) {
-    val parent = dataService.getParent(room)
-    dataService.remove(room)
-    fireSomeUserExhibitRoomWereRemoved(parent)
+  def removeSelections() {
+    selectedPaths.sortWith(_.length > _.length).map(_.reverse).foreach {
+      case Seq(room: UserExhibitRoom, tail @ _*) =>
+        source.removeRoom(room)
+        val parent = tail.headOption.collect{ case e: UserExhibitRoom => e }
+        fireSomeUserExhibitRoomWereRemoved(parent)
+      case _ =>
+    }
   }
   
   /** データサービス更新時にイベント送出に使用するルート要素 */
@@ -195,7 +92,7 @@ class MuseumSourceModel(source: MuseumStructure) extends DataTreeModel(source) {
     source.pathToRoot(source.userRoomsRoot)
   
   /** ローカルライブラリノードを選択状態にする */
-  private def selectPathLocalLibrary() {
+  def selectPathLocalLibrary() {
     selectPath(pathForLocalLibrary)
   }
   
@@ -205,7 +102,7 @@ class MuseumSourceModel(source: MuseumStructure) extends DataTreeModel(source) {
   }
   
   /** TreeModel に要素追加イベントを発行させる */
-  private def fireSomeUserExhibitRoomWereInserted(parent: Option[UserExhibitRoom]) {
+  def fireSomeUserExhibitRoomWereInserted(parent: Option[UserExhibitRoom]) {
     sourceTreeModel.someChildrenWereInserted(parent.getOrElse(dataServiceRoot))
   }
 }

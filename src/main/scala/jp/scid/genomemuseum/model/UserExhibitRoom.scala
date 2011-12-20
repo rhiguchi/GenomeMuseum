@@ -25,9 +25,8 @@ object UserExhibitRoom {
     /** 条件を設定することで自動で中身が定まる『部屋』 */
     val SmartRoom = Value(3)
     
-    def unapply(room: ExhibitRoom): Option[Value] = room match {
-      case room: UserExhibitRoom => Some(room.roomType)
-      case _ => None
+    def unapply(room: UserExhibitRoom): Option[Value] = {
+      Some(room.roomType)
     }
   }
   

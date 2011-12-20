@@ -9,7 +9,7 @@ import ca.odell.glazedlists.matchers.SearchEngineTextMatcherEditor
 trait StringFilterable[A] {
   this: DataListModel[A] =>
   
-  var filterText = ""
+  private var currentFilterText = ""
   
   private val matcherEditor = new SearchEngineTextMatcherEditor(new TextFilterator[A]{
     def getFilterStrings(baseList: java.util.List[String], element: A) {
@@ -17,11 +17,12 @@ trait StringFilterable[A] {
     }
   })
   
-  /**
-   * 文字列でフィルタリング
-   */
-  def filterWith(text: String) {
-    filterText = text
+  /** 現在の抽出条件文字列を取得する */
+  def filterText = currentFilterText
+  
+  /** 抽出条件文字列を設定する */
+  def filterText_=(text: String) {
+    currentFilterText = text
     matcherEditor refilter text
   }
   

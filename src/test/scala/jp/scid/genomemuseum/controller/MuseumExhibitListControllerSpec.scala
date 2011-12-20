@@ -7,161 +7,70 @@ import javax.swing.{JTable, JTextField, JLabel, TransferHandler}
 
 import jp.scid.gui.event.DataListSelectionChanged
 import jp.scid.genomemuseum.{model, gui, view}
-import model.{MuseumExhibitService, MuseumExhibit, MuseumExhibitLoaderSpec}
+import model.{MuseumExhibitService, MuseumExhibit, UserExhibitRoom}
 import gui.ExhibitTableModel
 import view.FileContentView
+import DataListController.View
+
+import GenomeMuseumControllerSpec.spyApplicationActionHandler
 
 @org.junit.runner.RunWith(classOf[runner.JUnitRunner])
 class MuseumExhibitListControllerSpec extends Specification with Mockito {
+  
+  private type Factory = (ApplicationActionHandler, View) =>
+    MuseumExhibitListController
+  
   def is = "MuseumExhibitListController" ^
-    "初期状態" ^ initialSpec(controller) ^ bt ^
-    "データテーブル" ^ dataTableSpec(controller) ^ bt ^
-    "検索フィールド" ^ searchFieldSpec(controller) ^ bt ^
-    "削除アクション" ^ removingActionSpec(controller) ^ bt ^
-    "ドラッグ＆ドロップ" ^ dragAndDropSpec(controller) ^ bt ^
-    "プロパティ" ^ propertiesSpec(controller) ^ bt ^
+    "現在の部屋" ^ userExhibitRoomSpec(createController) ^
+    "選択項目" ^ tableSelectionSpec(createController) ^
+    "クイックサーチ" ^ searchFieldFilteringSpec(createController) ^
     end
   
-  def controller = {
-    val spiedTable = spy(new JTable)
-    val spiedQuickSearchField = spy(new JTextField)
-    val spiedContentViewer = spy(new FileContentView)
-    
-    val ctrl = new MuseumExhibitListController(spiedTable, spiedQuickSearchField) {
-      override def createTableModel = spy(new ExhibitTableModel2)
-    }
+  def createController(app: ApplicationActionHandler, view: View) =
+    new MuseumExhibitListController(app, view)
+  
+  def userExhibitRoomSpec(f: Factory) =
+    "テーブルモデルに適用" ! userExhibitRoom(f).toTableModel ^
+    bt
+  
+  def tableSelectionSpec(f: Factory) =
+    "テーブルモデルの選択が変わるとモデルに適用" ! tableSelection(f).fromTableModel ^
+    bt
+  
+  def searchFieldFilteringSpec(f: Factory) =
+    "フィールドの文字列が抽出文字列として適用" ! searchFieldFiltering(f).toTableModel ^
+    bt
+  
+  class TestBase(f: Factory) {
+    val searchField = new JTextField
+    val view = View(new JTable, searchField)
+    val ctrl = f(spyApplicationActionHandler, view)
     ctrl.bind()
-    ctrl
   }
   
-  def initialSpec(ctrl: => MuseumExhibitListController) =
-    "無選択" ! controller(ctrl).notSelected ^
-    "削除アクションが無効" ! controller(ctrl).removingActionUnabled
-  
-  def dataTableSpec(ctrl: => MuseumExhibitListController) =
-    "モデルの適用" ! dataTable(ctrl).bindTableModel ^
-    "選択モデルの適用"  ! dataTable(ctrl).bindSelectionModel ^
-    "転送ハンドラの適用"  ! dataTable(ctrl).hasTransferHandler
-  
-  def searchFieldSpec(ctrl: => MuseumExhibitListController) =
-    "モデル適用" ! searchField(ctrl).boundModel ^
-    "テーブルのフィルタリング効果"  ! searchField(ctrl).callsFilterWith
-  
-  def removingActionSpec(ctrl: => MuseumExhibitListController) =
-    "選択時に有効" ! removingAction(ctrl).availableToSelect ^
-    "無選択時には無効" ! removingAction(ctrl).unavailableToSelect ^
-    "tableModel#removeSelections コール" ! removingAction(ctrl).callsTableMethod
-  
-  def dragAndDropSpec(ctrl: => MuseumExhibitListController) =
-    "テーブルにファイルをドロップできる" ! dragAndDrop(ctrl).dropBioFile
-  
-  def propertiesSpec(ctrl: => MuseumExhibitListController) =
-    "dataService 適用" ! properties(ctrl).applyDataService ^
-    "loadManager 適用" ! properties(ctrl).applyLoadManager
-  
-  class TestBase(ctrl: MuseumExhibitListController) {
-    def dataTable = ctrl.dataTable
-    
-    def tableModel = ctrl.tableModel
-  }
-  
-  def controller(ctrl: MuseumExhibitListController) = new TestBase(ctrl) {
-    def notSelected = ctrl.tableSelection() must beEmpty
-    
-    def removingActionUnabled = ctrl.removeSelectionAction.enabled must beFalse
-  }
-  
-  def dataTable(ctrl: MuseumExhibitListController) = new TestBase(ctrl) {
-    def bindTableModel = {
-      dataTable.getModel must_== tableModel.tableModel
-    }
-    
-    def bindSelectionModel = {
-      dataTable.getSelectionModel must_== tableModel.selectionModel
-    }
-    
-    def hasTransferHandler = {
-      dataTable.getTransferHandler must beAnInstanceOf[MuseumExhibitListTransferHandler]
+  def userExhibitRoom(f: Factory) = new TestBase(f) {
+    def toTableModel = {
+      val room = mock[UserExhibitRoom]
+      ctrl.userExhibitRoom := Some(room)
+      
+      ctrl.tableModel.userExhibitRoom must beSome(room)
     }
   }
   
-  def searchField(ctrl: MuseumExhibitListController) = new TestBase(ctrl) {
-    def quickSearchField = ctrl.quickSearchField
-    
-    def applyTextToModel(text: String*) =
-      text foreach ctrl.searchTextModel.:=
-    
-    def boundModel = {
-      applyTextToModel("test text", "txt2", "xxx")
-      there was one(quickSearchField).setText("test text") then
-      one(quickSearchField).setText("txt2") then
-      one(quickSearchField).setText("xxx")
-    }
-    
-    def callsFilterWith = {
-      applyTextToModel("test text", "txt2", "xxx")
-      there was one(tableModel).filterWith("test text") then
-      one(tableModel).filterWith("txt2") then
-      one(tableModel).filterWith("xxx")
+  def tableSelection(f: Factory) = new TestBase(f) {
+    def fromTableModel = {
+      val exhibit1, exhibit2, exhibit3 = mock[MuseumExhibit]
+      val evt = DataListSelectionChanged(ctrl.tableModel, false,
+        List(exhibit1, exhibit2, exhibit3))
+      ctrl.tableModel.publish(evt)
+      ctrl.tableSelection() must contain(exhibit1, exhibit2, exhibit3).only.inOrder
     }
   }
   
-  def removingAction(ctrl: MuseumExhibitListController) = new TestBase(ctrl) {
-    def action = ctrl.removeSelectionAction
-    
-    def publishTableSelectionEvent(elements: MuseumExhibit*) =
-      tableModel.publish(DataListSelectionChanged(tableModel, false, elements.toList))
-    
-    def availableToSelect = {
-      publishTableSelectionEvent(mock[MuseumExhibit])
-      action.enabled must beTrue
+  def searchFieldFiltering(f: Factory) = new TestBase(f) {
+    def toTableModel = {
+      searchField.setText("12345")
+      ctrl.tableModel.filterText must_== "12345"
     }
-    
-    def unavailableToSelect = {
-      publishTableSelectionEvent()
-      action.enabled must beFalse
-    }
-    
-    def callsTableMethod = { todo
-//      action()
-//      there was one(tableModel).removeSelections()
-    }
-  }
-  
-  def properties(ctrl: MuseumExhibitListController) = new TestBase(ctrl) {
-    def applyDataService = {
-      val service = mock[MuseumExhibitService]
-      service.allElements returns Nil
-      ctrl.dataService = service
-      ctrl.dataService must_== service
-    }
-    
-    def applyLoadManager = {
-      val mgr = mock[MuseumExhibitLoadManager]
-      ctrl.loadManager = mgr
-      ctrl.tableTransferHandler.loadManager must beSome(mgr)
-    }
-  }
-  
-  def dragAndDrop(ctrl: MuseumExhibitListController) = new TestBase(ctrl) {
-    import MuseumExhibitListTransferHandlerSpec.fileTransferObject
-    
-    val loaderSpec = new MuseumExhibitLoaderSpec
-    
-    def dropBioFile = {
-      ctrl.loadManager = mock[MuseumExhibitLoadManager]
-      val t = fileTransferObject(loaderSpec.genBankFile)
-      ctrl.dataTable.getTransferHandler.importData(ctrl.dataTable, t) must beTrue
-    }
-  }
-  
-  class ExhibitTableModel2 extends ExhibitTableModel {
-    override def filterWith(text: String) {
-      super.filterWith(text)
-    }
-    
-//    override def removeSelections() {
-//      super.removeSelections()
-//    }
   }
 }

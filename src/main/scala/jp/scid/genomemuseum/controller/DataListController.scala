@@ -6,18 +6,29 @@ import jp.scid.gui.ValueHolder
 import jp.scid.gui.table.{DataTableModel, TableColumnSortable}
 import jp.scid.gui.event.ValueChange
 
+object DataListController {
+  case class View(dataTable: JTable, quickSearchField: JTextField)
+}
+
+/**
+ * テーブルと検索フィールドの操作反応基底クラス。
+ */
 abstract class DataListController(
-  dataTable: JTable,
-  quickSearchField: JTextField
-) extends GenomeMuseumController {
+  application: ApplicationActionHandler,
+  view: DataListController.View
+) extends GenomeMuseumController(application) {
+  // ビューショートカット
+  private def dataTable = view.dataTable
+  private def quickSearchField = view.quickSearchField
+  
   /** テーブルモデル */
-  private[controller] def tableModel: DataTableModel[_] with TableColumnSortable[_]
+  def tableModel: DataTableModel[_] with TableColumnSortable[_]
   /** 検索文字列モデル */
-  private[controller] val searchTextModel: ValueHolder[String] = new ValueHolder("")
+  val searchTextModel: ValueHolder[String] = new ValueHolder("")
   /** 状態文字列モデル */
-  private[controller] val statusTextModel: ValueHolder[String] = new ValueHolder("")
+  val statusTextModel: ValueHolder[String] = new ValueHolder("")
   /** 転送ハンドラ */
-  private[controller] val tableTransferHandler = new TransferHandler("")
+  val tableTransferHandler = new TransferHandler("")
   
   // アクション
   /** 項目削除アクション */

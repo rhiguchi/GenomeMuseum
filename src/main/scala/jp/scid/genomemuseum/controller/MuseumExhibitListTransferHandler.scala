@@ -5,89 +5,105 @@ import java.io.{File, IOException}
 
 import javax.swing.{JComponent, TransferHandler}
 import DataFlavor.javaFileListFlavor
+import TransferHandler.TransferSupport
 
 import jp.scid.genomemuseum.model.{MuseumExhibit, MuseumExhibitStorage, MuseumExhibitTransferData,
-  UserExhibitRoom}
+  UserExhibitRoom, ExhibitRoom}
+import UserExhibitRoom.RoomType
+import RoomType._
 import jp.scid.genomemuseum.gui.ExhibitTableModel
 import MuseumExhibitTransferData.{dataFlavor => exhibitDataFlavor}
 
 /**
  * MuseumExhibit の転送ハンドラ。
- * @param tableModel ハンドラが適用されているコンポーネントと結合しているモデル。
+ * 
  */
-private[controller] class MuseumExhibitListTransferHandler(
-    private[controller] val tableModel: ExhibitTableModel) extends TransferHandler {
+abstract class MuseumExhibitListTransferHandler extends TransferHandler {
   import MuseumExhibitListTransferHandler._
   
-  private val importableFlavors = IndexedSeq(javaFileListFlavor, exhibitDataFlavor)
+  override def importData(ts: TransferSupport) = {
+    if (ts.isDataFlavorSupported(exhibitDataFlavor))
+      getImportExhibitsFunction(getTargetRooom(ts), ts.getTransferable).map(_.apply).getOrElse(false)
+    else if (ts.isDataFlavorSupported(javaFileListFlavor))
+      getImportFilesFunction(getTargetRooom(ts), ts.getTransferable).map(_.apply).getOrElse(false)
+    else
+      super.importData(ts)
+  }
   
-  /** 読み込み実行クラス */
-  var loadManager: Option[MuseumExhibitLoadManager] = None
+  override def canImport(ts: TransferSupport) = {
+    if (ts.isDataFlavorSupported(exhibitDataFlavor))
+      getImportExhibitsFunction(getTargetRooom(ts), ts.getTransferable).nonEmpty
+    else if (ts.isDataFlavorSupported(javaFileListFlavor))
+      getImportFilesFunction(getTargetRooom(ts), ts.getTransferable).nonEmpty
+    else
+      super.canImport(ts)
+  }
   
-  var transferExhibits: Seq[MuseumExhibit] = Nil
-  
-  var sourceRoom: Option[UserExhibitRoom] = None
-  
-  override def canImport(comp: JComponent, transferFlavors: Array[DataFlavor]) = {
-    logger.debug("canImport")
-    loadManager match {
-      case None => false
-      case Some(manager) =>
-        transferFlavors.contains(javaFileListFlavor)
+  /**
+   * 展示物の転入操作をする関数を取得する。
+   * 
+   * 転入先や転出元のの条件で転送可能な展示物がない時は {@code None} が返る。
+   */
+  protected[controller] def getImportExhibitsFunction(
+      targetRoomOp: Option[ExhibitRoom], t: Transferable): Option[() => Boolean] = {
+    (targetRoomOp, t.getTransferData(exhibitDataFlavor)) match {
+      case (Some(targetRoom @ RoomType(BasicRoom)), transferData: MuseumExhibitTransferData) =>
+        transferData.sourceRoom match {
+          case Some(`targetRoom`) => None
+          case _ =>
+            Some(() => importExhibits(transferData.museumExhibits, targetRoom))
+        }
+      case _ => None
     }
   }
   
-  override def importData(comp: JComponent, t: Transferable) = {
-    logger.debug("読み込み応答")
+  /**
+   * ファイル転入転送を行う関数を取得する。
+   * 
+   * 転入先や転出元のの条件で転送可能なファイルがない時は空の配列が返る。
+   */
+  protected[controller] def getImportFilesFunction(targetRoom: Option[ExhibitRoom],
+      t: Transferable): Option[() => Boolean] = {
+    import collection.JavaConverters._
+    lazy val fileList = getAllFiles(t.getTransferData(javaFileListFlavor).asInstanceOf[java.util.List[File]].asScala)
     
-    if (t.isDataFlavorSupported(exhibitDataFlavor)) {
-      logger.trace("ExhibitData フレーバー読み込み")
-      // TODO 展示物転送処理
-      false
-    }
-    else if (t.isDataFlavorSupported(javaFileListFlavor) && loadManager.nonEmpty) {
-      import collection.JavaConverters._
-      import util.control.Exception.catching
-      
-      logger.trace("ファイルフレーバー読み込み")
-      
-      try {
-        val files = t.getTransferData(javaFileListFlavor) match {
-          case null => Nil
-          case data => data.asInstanceOf[java.util.List[File]].asScala
-        }
-        getAllFiles(files) match {
-          case Nil => false
-          case files =>
-            // 読み込みマネージャへ処理を委譲
-            files foreach loadManager.get.loadExhibit
-            true
-        }
-      }
-      catch {
-        case e: Exception =>
-          scala.swing.Swing.onEDT {
-            loadManager.get.alertFailToTransfer(e)
-          }
-          false
-      }
-    }
-    else {
-      logger.trace("対応するフレーバー無し")
-      false
+    targetRoom match {
+      case Some(room @ RoomType(BasicRoom)) =>
+        Some(() => importFiles(fileList, Some(room)))
+      case None =>
+        Some(() => importFiles(fileList, None))
+      case _ => None
     }
   }
+  
+  /**
+   * 転送されたファイルを読み込む。
+   * 
+   * @param files ディレクトリではないパスリスト
+   * @param targetRoom 転入先の部屋
+   * @return 取り込みが正常に完了したら {@code true}
+   */
+  def importFiles(files: Seq[File], targetRoom: Option[UserExhibitRoom]): Boolean
+  
+  /**
+   * 展示物の転入操作を行う。
+   * 
+   * @param exhibits 追加する展示物。
+   * @param targetRoom 転入先
+   * @return 取り込みが正常に完了したら {@code true}
+   */
+  def importExhibits(exhibits: Seq[MuseumExhibit], targetRoom: UserExhibitRoom): Boolean
+  
+  /**
+   * 転入先の部屋を取得する。
+   */
+  protected[controller] def getTargetRooom(ts: TransferSupport): Option[ExhibitRoom]
   
   /**
    * 転送許可
    */
   override def getSourceActions(c: JComponent) =
     TransferHandler.COPY
-  
-  override def createTransferable(c: JComponent) = {
-    MuseumExhibitTransferData(transferExhibits, sourceRoom, loadManager.get.museumExhibitStorage.get)
-  }
-  
 }
 
 private[controller] object MuseumExhibitListTransferHandler {

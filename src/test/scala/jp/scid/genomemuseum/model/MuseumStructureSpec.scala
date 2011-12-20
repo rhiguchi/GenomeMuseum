@@ -44,7 +44,7 @@ class MuseumStructureSpec extends Specification with Mockito {
   class TestBase {
     val structure = new MuseumStructure
     val roomSource = mock[TreeDataService[UserExhibitRoom]]
-    structure.userExhibitRoomSource = roomSource
+//    structure.userExhibitRoomSource = roomSource
     
     val groupRoom = UserExhibitRoom("", GroupRoom)
     val basicRoom = UserExhibitRoom("", BasicRoom)
