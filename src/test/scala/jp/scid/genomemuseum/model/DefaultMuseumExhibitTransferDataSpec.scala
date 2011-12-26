@@ -7,33 +7,30 @@ import java.net.URL
 import DataFlavor.{javaFileListFlavor, stringFlavor}
 
 import org.specs2._
-import mock._
 
-class MuseumExhibitTransferDataImplSpec extends Specification with Mockito {
-  private type TransferData = MuseumExhibitTransferDataImpl
+class DefaultMuseumExhibitTransferDataSpec extends Specification with mock.Mockito {
+  private type TransferData = DefaultMuseumExhibitTransferData
   private type Factory = (MuseumExhibit*) => TransferData
   import MuseumExhibitTransferData.{dataFlavor => exhibitDataFlavor}
   
-  def is = "MuseumExhibitTransferDataImpl" ^
+  def is = "DefaultMuseumExhibitTransferData" ^
     "対応データフレーバー" ^ isDataFlavorSupportedSpec(transferDataOf) ^
     "対応フレーバー取得" ^ canGetTransferDataFlavors(transferDataOf) ^
     "データ取得" ^ canGetTransferData(transferDataOf) ^
     end
   
   private def transferDataOf(exhibits: MuseumExhibit*) = {
-    new MuseumExhibitTransferDataImpl(exhibits)
+    new DefaultMuseumExhibitTransferData(exhibits)
   }
   
   def isDataFlavorSupportedSpec(f: Factory) =
     "MuseumExhibit" ! isDataFlavorSupported(f).exhibit ^
     "文字列" ! isDataFlavorSupported(f).string ^
     "ファイル" ! isDataFlavorSupported(f).file ^
-    "ファイル格納管理オブジェクトが無い時はファイル転送できない" ! isDataFlavorSupported(f).fileWithOutStorage ^
     bt
   
   def canGetTransferDataFlavors(f: Factory) =
     "取得" ! getTransferDataFlavors(f).returnsFlavors ^
-    "ファイル格納管理オブジェクトがある時は file も含まれる" ! getTransferDataFlavors(f).returnsFileFlavor ^
     bt
   
   def canGetTransferData(f: Factory) =
@@ -42,11 +39,10 @@ class MuseumExhibitTransferDataImplSpec extends Specification with Mockito {
     "文字列取得" ! getTransferData(f).getString ^
     bt
   
-  def exhibitOf = MuseumExhibitSpec.mockOf _
+  def exhibitOf = MuseumExhibitMock.of _
   
   class TestBase(f: Factory) {
     val exhibits = 0 to 9 map (i => exhibitOf("e" + i))
-    val storage = mock[MuseumExhibitStorage]
     private[model] val t = f(exhibits: _*)
   }
   
@@ -55,22 +51,12 @@ class MuseumExhibitTransferDataImplSpec extends Specification with Mockito {
     
     def string = t.isDataFlavorSupported(stringFlavor) must beTrue
     
-    def fileWithOutStorage = t.isDataFlavorSupported(javaFileListFlavor) must beFalse
-    
-    def file = {
-      t.fileStorage = Some(storage)
-      t.isDataFlavorSupported(javaFileListFlavor) must beTrue
-    }
+    def file = t.isDataFlavorSupported(javaFileListFlavor) must beTrue
   }
   
   def getTransferDataFlavors(f: Factory) = new TestBase(f) {
     def returnsFlavors =
-      t.getTransferDataFlavors.toList must contain(exhibitDataFlavor, stringFlavor).only
-    
-    def returnsFileFlavor = {
-      t.fileStorage = Some(storage)
-      t.getTransferDataFlavors.toList must contain(javaFileListFlavor)
-    }
+      t.getTransferDataFlavors.toList must contain(exhibitDataFlavor, stringFlavor, javaFileListFlavor)
   }
   
   def getTransferData(f: Factory) = new TestBase(f) {
@@ -80,14 +66,11 @@ class MuseumExhibitTransferDataImplSpec extends Specification with Mockito {
     def getFiles = {
       import scala.collection.JavaConverters._
       
-      val fileUrls = 0 to 5 map (i => new File("file" + i)) map (_.toURI.toURL)
-      val otherUrls = new URL("http://example.com")
-      storage.getSource(any) returns None
-      (0 to 5).foreach(i => storage.getSource(exhibits(i)) returns Some(fileUrls(i)))
-      (6 to 8).foreach(i => storage.getSource(exhibits(i)) returns Some(otherUrls))
+      val files = 0 to 5 map (i => new File("file" + i))
+      (0 to 5).foreach(i => exhibits(i).sourceFile returns Some(files(i)))
+      (6 to 9).foreach(i => exhibits(i).sourceFile returns None)
       
-      t.fileStorage = Some(storage)
-      t.getTransferData(javaFileListFlavor) must_== fileUrls.map(u => new File(u.toURI)).asJava
+      t.getTransferData(javaFileListFlavor) must_== files.asJava
     }
     
     def getString = {

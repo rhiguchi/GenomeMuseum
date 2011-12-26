@@ -1,8 +1,9 @@
 package jp.scid.genomemuseum.gui
 
-import jp.scid.gui.tree.{DataTreeModel, SourceTreeModel, TreeSource}
-import jp.scid.genomemuseum.model.{MuseumStructure, ExhibitRoom,
-  UserExhibitRoom, UserExhibitRoomService}
+import collection.script.{Message, Include, Update, Remove}
+
+import jp.scid.gui.tree.{DataTreeModel, SourceTreeModel}
+import jp.scid.genomemuseum.model.{MuseumStructure, ExhibitRoom, UserExhibitRoom}
 import UserExhibitRoom.RoomType
 import RoomType._
 import DataTreeModel.Path
@@ -14,13 +15,22 @@ import DataTreeModel.Path
 class MuseumSourceModel(source: MuseumStructure) extends DataTreeModel(source) {
   import MuseumSourceModel._
   
-  /** 変化監視の接続 */
-  // TODO テスト
-  val observableServiceAdapter = new SourceTreeModelAdapter[ExhibitRoom, UserExhibitRoom](sourceTreeModel)
+  /** 変更イベントの結合 */
+  source.subscribe(new source.Sub {
+    def notify(pub: source.Pub, event: Message[ExhibitRoom]) = event match {
+      case Include(loc, room) => source.pathToRoot(room).reverse match {
+        case Seq(_, parent, _*) => sourceTreeModel.someChildrenWereInserted(parent)
+        case _ =>
+      }
+      case Update(loc, room) => sourceTreeModel.nodeChanged(room)
+      case Remove(loc, room) => sourceTreeModel.nodeRemoved(room)
+      case _ =>
+    }
+  })
   
-  /** 部屋作成時の親となるの部屋を返す */
+  /** 部屋作成時の親となる部屋を返す */
   private def findInsertPath = {
-    selectedPath.getOrElse(pathForUserRooms).reverse.dropWhile {
+    selectedPath.getOrElse(IndexedSeq.empty).reverse.dropWhile {
       case UserExhibitRoom(room @ RoomType(GroupRoom)) => false
       case _ => true
     } match {
@@ -62,11 +72,10 @@ class MuseumSourceModel(source: MuseumStructure) extends DataTreeModel(source) {
    * @param room 削除する要素
    */
   def removeSelections() {
-    selectedPaths.sortWith(_.length > _.length).map(_.reverse).foreach {
+    selectedPaths.sortBy(_.length).reverse.map(_.reverse).foreach {
       case Seq(room: UserExhibitRoom, tail @ _*) =>
         source.removeRoom(room)
-        val parent = tail.headOption.collect{ case e: UserExhibitRoom => e }
-        fireSomeUserExhibitRoomWereRemoved(parent)
+        sourceTreeModel.nodeRemoved(room)
       case _ =>
     }
   }
@@ -80,29 +89,18 @@ class MuseumSourceModel(source: MuseumStructure) extends DataTreeModel(source) {
   }
   
   /** ローカルライブラリノードへのパス */
-  val pathForLocalLibrary: Path[ExhibitRoom] =
-    source.pathToRoot(source.localSource)
-  
-  /** ライブラリノードへのパス */
-  def pathForLibraries: Path[ExhibitRoom] =
-    source.pathToRoot(source.sourcesRoot)
+  def pathForLocalLibrary: Path[ExhibitRoom] = source.pathToRoot(source.localSource)
   
   /** ユーザールームルートへのパス */
-  def pathForUserRooms: Path[ExhibitRoom] =
-    source.pathToRoot(source.userRoomsRoot)
+  def pathForUserRooms: Path[ExhibitRoom] = source.pathToRoot(source.userRoomsRoot)
   
   /** ローカルライブラリノードを選択状態にする */
   def selectPathLocalLibrary() {
     selectPath(pathForLocalLibrary)
   }
   
-  /** TreeModel に要素削除イベントを発行させる */
-  private def fireSomeUserExhibitRoomWereRemoved(parent: Option[UserExhibitRoom]) {
-    sourceTreeModel.someChildrenWereRemoved(parent.getOrElse(dataServiceRoot))
-  }
-  
   /** TreeModel に要素追加イベントを発行させる */
-  def fireSomeUserExhibitRoomWereInserted(parent: Option[UserExhibitRoom]) {
+  private def fireSomeUserExhibitRoomWereInserted(parent: Option[UserExhibitRoom]) {
     sourceTreeModel.someChildrenWereInserted(parent.getOrElse(dataServiceRoot))
   }
 }

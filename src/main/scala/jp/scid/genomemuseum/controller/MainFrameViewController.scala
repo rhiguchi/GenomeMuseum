@@ -2,6 +2,7 @@ package jp.scid.genomemuseum.controller
 
 import jp.scid.gui.ValueHolder
 import jp.scid.gui.event.ValueChange
+import jp.scid.genomemuseum.GenomeMuseumGUI
 import jp.scid.genomemuseum.view.MainFrameView
 import jp.scid.genomemuseum.model.MuseumSchema
 
@@ -12,21 +13,16 @@ import jp.scid.genomemuseum.model.MuseumSchema
  * @param frameView 表示と入力を行う画面枠。
  */
 class MainFrameViewController(
-  application: ApplicationActionHandler,
+  application: GenomeMuseumGUI,
   frameView: MainFrameView
-) extends GenomeMuseumController(application) {
+) extends GenomeMuseumController {
   // ビュー
-  private def mainView = frameView.mainView
   private def frame = frameView.frame
   private def menuBar = frameView.mainMenu
   
   // モデル
   /** この画面枠用のタイトル */
   val title = new ValueHolder("GenomeMuseum")
-  /** データスキーマ */
-  private var currentDataSchema: Option[MuseumSchema] = None
-  /** メインビュー用コントローラ */
-  val mainCtrl = new MainViewController(application, mainView)
   /** 列設定用コントローラ */
   val viewSettingDialogCtrl = new ViewSettingDialogController(
       frameView.columnConfigPane, frameView.columnConfigDialog)
@@ -40,18 +36,19 @@ class MainFrameViewController(
     frame.setVisible(true)
   }
   
-  /** モデルの結合を行う */
-  private def bindModels() {
-    // タイトル
-    ValueHolder.connect(title, frame, "title")
-    
-    // コントローラのタイトルを利用して、画面枠のタイトルを設定
-    mainCtrl.title.reactions += {
+  /** タイトルモデルの結合を行う */
+  def bindTitle(viewTitle: ValueHolder[String]) {
+    viewTitle.reactions += {
       case ValueChange(_, _, ctrlTitle: String) => ctrlTitle match {
         case "" => title := "GenomeMuseum"
         case _ => title := "GenomeMuseum - " + ctrlTitle
       }
     }
+  }
+  
+  private def bindModels() {
+    // タイトル
+    ValueHolder.connect(title, frame, "title")
   }
   
   /** アクションの結合を行う */

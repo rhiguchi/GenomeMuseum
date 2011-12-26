@@ -2,6 +2,8 @@ package jp.scid.genomemuseum.gui
 
 import java.util.Date
 
+import collection.script.Message
+
 import ca.odell.glazedlists.gui.TableFormat
 
 import jp.scid.gui.StringFilterable
@@ -11,6 +13,9 @@ import jp.scid.genomemuseum.model.{MuseumExhibit, MuseumExhibitService,
 
 /**
  * データサービスから展示物を取得して表示するテーブルモデル
+ * 
+ * @param dataService モデルに表示するサービス。
+ * @param tableFormat 表表示のモデル
  */
 class ExhibitTableModel(dataService: MuseumExhibitService, tableFormat: TableFormat[MuseumExhibit])
     extends DataTableModel[MuseumExhibit](tableFormat)
@@ -21,7 +26,9 @@ class ExhibitTableModel(dataService: MuseumExhibitService, tableFormat: TableFor
   /** 現在の部屋 */
   private var currentUserExhibitRoom: Option[UserExhibitRoom] = None
   /** サービス変化を監視してモデルの再読み込みを行うアダプタ */
-  private val reloadingHandler = PublisherScheduleTaskAdapter[MuseumExhibit] { _ => reloadSource() }
+  private val reloadingHandler = EventQueuePublisherAdapter(dataService) { _ =>
+    reloadSource()
+  }
   
   /** ソースの再読み込み */
   protected[gui] def reloadSource() {
@@ -44,4 +51,6 @@ class ExhibitTableModel(dataService: MuseumExhibitService, tableFormat: TableFor
     base add e.name
     base add e.source
   }
+  
+  reloadSource()
 }

@@ -439,6 +439,7 @@ public class MainView implements GenomeMuseumView {
         }
     }
     
+    @SuppressWarnings("unused")
     private Action createSampleDownloadingAction(final TaskProgressTableCell editor) {
         return new AbstractAction("Download") {
             @Override

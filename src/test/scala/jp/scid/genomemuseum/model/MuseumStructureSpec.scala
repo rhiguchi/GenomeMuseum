@@ -1,141 +1,342 @@
 package jp.scid.genomemuseum.model
 
+import collection.script.{Message, Include, Update, Remove}
+
 import org.specs2._
-import mock._
 import UserExhibitRoom.RoomType._
 
-class MuseumStructureSpec extends Specification with Mockito {
-  def newMuseumStructure = {
-    new MuseumStructure
-  }
+class MuseumStructureSpec extends Specification with mock.Mockito {
+  private type Factory = UserExhibitRoomService => MuseumStructure
   
   def is = "MuseumStructure" ^
-    "isLeaf" ^
-      "root は false" ! initial.s1 ^
-      "localSource は true" ! initial.s2 ^
-      "webSource は true" ! initial.s3 ^
-      "sourcesRoot は false" ! initial.s4 ^
-      "userRoomsRoot は false" ! initial.s5 ^
-      "UserExhibitRoom オブジェクト" ^
-        "GroupRoom は false" ! initial.s6 ^
-        "BasicRoom は true" ! initial.s7 ^
-        "SmartRoom は true" ! initial.s8 ^
-    bt ^ bt ^ "childrenFor" ^
-      "root の子要素" ! initial.s9 ^
-      "UserExhibitRoom オブジェクト" ^
-        "GroupRoom で roomSource から取得" ! childrenFor.s1 ^
-        "BasicRoom では Nil" ! childrenFor.s2 ^
-        "SmartRoom では Nil" ! childrenFor.s3 ^
-      bt ^"childrenForUserRooms の子要素" ! childrenForUserRooms.s1 ^
-    bt ^ "pathToRoot" ^
-      "root" ! pathToRoot.s1 ^
-      "sourcesRoot" ! pathToRoot.s2 ^
-      "localSource" ! pathToRoot.s3 ^
-      "webSource" ! pathToRoot.s4 ^
-      "userRoomsRoot" ! pathToRoot.s5 ^
-      "UserExhibitRoom オブジェクト" ^
-        "直下" ! pathToRoot.s6 ^
-        "GroupRoom が親" ! pathToRoot.s7 ^
-    bt ^ "update" ^
-      "UserExhibitRoom オブジェクト" ^
-        "名前の更新" ! update.s1 ^
-        "roomSource#save 呼び出し" ! update.s2
+    "葉要素判定" ^ isLeafSpec(createStructure) ^
+    "子要素" ^ childrenForSpec(createStructure) ^
+    "更新" ^ updateSpec(createStructure) ^
+    "ルートまでのパス" ^ pathToRootSpec(createStructure) ^
+    "部屋の追加" ^ canAddRoom(createStructure) ^
+    "部屋の移動可能判定" ^ canMoveSpec(createStructure) ^
+    "部屋の移動" ^ canMoveRoom(createStructure) ^
+    "部屋の削除" ^ canRemoveRoom(createStructure) ^
+    "サービスのイベント委譲" ^ canDelegateEvent(createStructure) ^
+    end
   
-  class TestBase {
-    val structure = new MuseumStructure
-    val roomSource = mock[TreeDataService[UserExhibitRoom]]
-//    structure.userExhibitRoomSource = roomSource
-    
-    val groupRoom = UserExhibitRoom("", GroupRoom)
-    val basicRoom = UserExhibitRoom("", BasicRoom)
-    val smartRoom = UserExhibitRoom("", SmartRoom)
+  def createStructure(service: UserExhibitRoomService) =
+    new MuseumStructure(service)
+  
+  def isLeafSpec(f: Factory) =
+    "root は false" ! isLeaf(f).root ^
+    "ライブラリカテゴリ は false" ! isLeaf(f).sourcesRoot ^
+    "ユーザー部屋カテゴリ は false" ! isLeaf(f).userRoomsRoot ^
+    "ローカルライブラリ は true" ! isLeaf(f).localSource ^
+    "ウェブ検索 は true" ! isLeaf(f).webSource ^
+    "GroupRoom は false" ! isLeaf(f).gRoom ^
+    "BasicRoom は true" ! isLeaf(f).bRoom ^
+    "SmartRoom は true" ! isLeaf(f).sRoom ^
+    bt
+  
+  def childrenForSpec(f: Factory) =
+    "root は ライブラリカテゴリとユーザー部屋カテゴリ" ! childrenFor(f).root ^
+    "ライブラリカテゴリはローカルをウェブ検索" ! childrenFor(f).sourcesRoot ^
+    "ユーザー部屋カテゴリは roomService を参照" ! childrenFor(f).userRoomsRoot ^
+    "BasicRoom は常に empty" ! childrenFor(f).bRoom ^
+    "SmartRoom は常に empty" ! childrenFor(f).sRoom ^
+    "GroupRoom は roomService を参照" ! childrenFor(f).gRoom ^
+    bt
+  
+  def updateSpec(f: Factory) =
+    "UserExhibitRoom は roomService の save をコール" ! update(f).callsSave ^
+    "UserExhibitRoom の名前を更新" ! update(f).nameApplied ^
+    bt
+  
+  def pathToRootSpec(f: Factory) =
+    "root" ! pathToRoot(f).root ^
+    "userRoomsRoot" ! pathToRoot(f).userRoomsRoot ^
+    "sourcesRoot" ! pathToRoot(f).sourcesRoot ^
+    "webSource" ! pathToRoot(f).webSource ^
+    "localSource" ! pathToRoot(f).localSource ^
+    "UserExhibitRoom" ! pathToRoot(f).userRoom ^
+    bt
+  
+  def canAddRoom(f: Factory) =
+    "親なしで部屋を追加" ! addRoom(f).withNoParemt ^
+    "プロパティに指定した名前で作成される" ! addRoom(f).defaultName ^
+    "既に名前が存在している時は連番が付与される" ! addRoom(f).nameWithSuffix ^
+    "GroupRoom を親にして部屋を追加" ! addRoom(f).withParent ^
+    bt
+  
+  def canMoveSpec(f: Factory) =
+    "GroupRoom に移動可能" ! canMove(f).toGroupRoom ^
+    "最上位に移動可能" ! canMove(f).toTop ^
+    "最上位から最上位は移動できない" ! canMove(f).falseToTopFromTop ^
+    "自分以下には移動できない" ! canMove(f).falseToDescOrEqual ^
+    bt
+  
+  def canMoveRoom(f: Factory) =
+    "GroupRoom に移動" ! moveRoom(f).toGroupRoom ^
+    "最上位に移動" ! moveRoom(f).toTop ^
+    bt
+  
+  def canRemoveRoom(f: Factory) =
+    "サービスに処理を委譲" ! removeRoom(f).callsService ^
+    bt
+  
+  def canDelegateEvent(f: Factory) =
+    "Include" ! delegateEvent(f).include ^
+    "Update" ! delegateEvent(f).udpate ^
+    "Remove" ! delegateEvent(f).remove ^
+    bt
+  
+  class TestBase(f: Factory) {
+    val roomService = UserExhibitRoomServiceMock.of()
+    val structure = f(roomService)
   }
   
-  val initial = new TestBase {
-    def s1 = structure.isLeaf(structure.root) must beFalse
+  /** 葉要素判定 */
+  def isLeaf(f: Factory) = new TestBase(f) {
+    private def getLeaf(func: MuseumStructure => ExhibitRoom) = structure.isLeaf(func(structure))
     
-    def s2 = structure.isLeaf(structure.localSource) must beTrue
+    def root = getLeaf(_.root) must beFalse
     
-    def s3 = structure.isLeaf(structure.webSource) must beTrue
+    def sourcesRoot = getLeaf(_.sourcesRoot) must beFalse
     
-    def s4 = structure.isLeaf(structure.sourcesRoot) must beFalse
+    def userRoomsRoot = getLeaf(_.userRoomsRoot) must beFalse
     
-    def s5 = structure.isLeaf(structure.userRoomsRoot) must beFalse
+    def localSource = getLeaf(_.localSource) must beTrue
     
-    def s6 = structure.isLeaf(groupRoom) must beFalse
+    def webSource = getLeaf(_.webSource) must beTrue
     
-    def s7 = structure.isLeaf(basicRoom) must beTrue
+    def gRoom = structure.isLeaf(UserExhibitRoomMock.of(GroupRoom)) must beFalse
     
-    def s8 = structure.isLeaf(smartRoom) must beTrue
+    def bRoom = structure.isLeaf(UserExhibitRoomMock.of(BasicRoom)) must beTrue
     
-    def s9 = structure.childrenFor(structure.root) must
-      contain(structure.sourcesRoot, structure.userRoomsRoot).inOrder
+    def sRoom = structure.isLeaf(UserExhibitRoomMock.of(SmartRoom)) must beTrue
   }
   
-  val childrenFor = new TestBase {
-    val dummy1 = UserExhibitRoom("dummy1")
-    val dummy2 = UserExhibitRoom("dummy2")
-    roomSource.getChildren(Some(groupRoom)) returns List(dummy1, dummy2)
-    roomSource.getChildren(Some(basicRoom)) returns List(dummy2)
-    roomSource.getChildren(Some(smartRoom)) returns List(dummy1)
+  /** 子要素判定 */
+  def childrenFor(f: Factory) = new TestBase(f) {
+    val basicRoom = UserExhibitRoomMock.of(BasicRoom)
+    val smartRoom = UserExhibitRoomMock.of(SmartRoom)
+    val groupRoom = UserExhibitRoomMock.of(GroupRoom)
     
-    val groupChildren = structure.childrenFor(groupRoom)
-    val basicChildren = structure.childrenFor(basicRoom)
-    val smartChildren = structure.childrenFor(smartRoom)
+    def root = structure.childrenFor(structure.root) must_==
+      List(structure.sourcesRoot, structure.userRoomsRoot)
+      
+    def sourcesRoot = structure.childrenFor(structure.sourcesRoot) must_==
+      List(structure.localSource, structure.webSource)
     
-    val s1_1 = groupChildren must contain(dummy1, dummy2)
-    val s1_2 = there was one(roomSource).getChildren(Some(groupRoom))
-    def s1 = s1_1 and s1_2
+    def userRoomsRoot = {
+      val children = List(basicRoom, smartRoom, groupRoom)
+      roomService.getChildren(None) returns children
+      
+      structure.childrenFor(structure.userRoomsRoot) must_== children
+    }
     
-    def s2 = basicChildren must_== Nil
+    def bRoom = {
+      roomService.getChildren(Some(basicRoom)) returns List(basicRoom)
+      
+      structure.childrenFor(basicRoom) must beEmpty
+    }
     
-    def s3 = smartChildren must_== Nil
+    def sRoom = {
+      roomService.getChildren(Some(smartRoom)) returns List(smartRoom)
+      
+      structure.childrenFor(smartRoom) must beEmpty
+    }
+    
+    def gRoom = {
+      roomService.getChildren(Some(groupRoom)) returns List(basicRoom, smartRoom)
+      
+      structure.childrenFor(groupRoom) must_== List(basicRoom, smartRoom)
+    }
   }
   
-  val childrenForUserRooms = new TestBase {
-    roomSource.getChildren(None) returns List(groupRoom, basicRoom, smartRoom)
+  /** 更新 */
+  def update(f: Factory) = new TestBase(f) {
+    val basicRoom = IndexedSeq(UserExhibitRoomMock.of(BasicRoom))
+    val smartRoom = IndexedSeq(UserExhibitRoomMock.of(SmartRoom))
+    val groupRoom = IndexedSeq(UserExhibitRoomMock.of(GroupRoom))
     
-    def s1 = structure.childrenFor(structure.userRoomsRoot) must
-      contain(groupRoom, basicRoom, smartRoom)
+    def callsSave = {
+      structure.update(basicRoom, "newValue")
+      there was one(roomService).save(basicRoom.last)
+    }
+    
+    def nameApplied = {
+      structure.update(basicRoom, "newName")
+      structure.update(basicRoom, "newName2")
+      structure.update(smartRoom, "n")
+      structure.update(groupRoom, "1")
+      
+      there was one(basicRoom.last).name_=("newName") then
+        one(basicRoom.last).name_=("newName2") then
+        one(smartRoom.last).name_=("n") then
+        one(groupRoom.last).name_=("1")
+    }
   }
   
-  val pathToRoot = new TestBase {
-    val rootPath = IndexedSeq(structure.root)
-    val sourcesPath = rootPath :+ structure.sourcesRoot
-    val localSourcePath = sourcesPath :+ structure.localSource
-    val webSourcePath = sourcesPath :+ structure.webSource
-    val userRoomsPath = rootPath :+ structure.userRoomsRoot
+  /** ルートまでのパス */
+  def pathToRoot(f: Factory) = new TestBase(f) {
+    private def getPath(func: MuseumStructure => ExhibitRoom) = structure.pathToRoot(func(structure))
     
-    roomSource.getParent(basicRoom) returns None
-    roomSource.getParent(groupRoom) returns None
-    roomSource.getParent(smartRoom) returns Some(groupRoom)
+    def root = getPath(_.root) must_== Seq(structure.root)
     
-    val basicRoomPath = userRoomsPath :+ basicRoom
-    val smartRoomPath = userRoomsPath :+ groupRoom :+ smartRoom
+    def userRoomsRoot = getPath(_.userRoomsRoot) must_==
+      Seq(structure.root, structure.userRoomsRoot)
     
-    def s1 = structure.pathToRoot(structure.root) must_== rootPath
+    def sourcesRoot = getPath(_.sourcesRoot) must_==
+      Seq(structure.root, structure.sourcesRoot)
     
-    def s2 = structure.pathToRoot(structure.sourcesRoot) must_== sourcesPath
+    def webSource = getPath(_.webSource) must_==
+      Seq(structure.root, structure.sourcesRoot, structure.webSource)
     
-    def s3 = structure.pathToRoot(structure.localSource) must_== localSourcePath
+    def localSource = getPath(_.localSource) must_==
+      Seq(structure.root, structure.sourcesRoot, structure.localSource)
     
-    def s4 = structure.pathToRoot(structure.webSource) must_== webSourcePath
-    
-    def s5 = structure.pathToRoot(structure.userRoomsRoot) must_== userRoomsPath
-    
-    def s6 = structure.pathToRoot(basicRoom) must_== basicRoomPath
-    
-    def s7 = structure.pathToRoot(smartRoom) must_== smartRoomPath
+    def userRoom = {
+      val room1, room2, room3, room4 = UserExhibitRoomMock.of(GroupRoom)
+      roomService.getParent(room4) returns Some(room3)
+      roomService.getParent(room3) returns Some(room2)
+      roomService.getParent(room2) returns Some(room1)
+      roomService.getParent(room1) returns None
+      
+      structure.pathToRoot(room3) must_== (structure.root ::
+        structure.userRoomsRoot :: room1 :: room2 :: room3 :: Nil)
+    }
   }
   
-  val update = new TestBase {
-    val anyRoom = UserExhibitRoom("", GroupRoom)
-    val userRoomsPath = structure.pathToRoot(structure.userRoomsRoot)
+  /** 部屋の追加 */
+  def addRoom(f: Factory) = new TestBase(f) {
+    val room1, room2, room3 = UserExhibitRoomMock.of(BasicRoom)
+    roomService.addRoom(BasicRoom, structure.basicRoomDefaultName, None) returns room1
+    roomService.addRoom(GroupRoom, structure.groupRoomDefaultName, None) returns room2
+    roomService.addRoom(SmartRoom, structure.smartRoomDefaultName, None) returns room3
+    roomService.addRoom(BasicRoom, "name1", None) returns room2
+    roomService.addRoom(GroupRoom, "name2", None) returns room3
+    roomService.addRoom(SmartRoom, "name3", None) returns room1
+    roomService.nameExists("n") returns true
+    roomService.nameExists("n 1") returns true
+    roomService.nameExists("n 2") returns true
     
-    structure.update(userRoomsPath :+ anyRoom, "new value")
+    val roomTypes = Seq(BasicRoom, GroupRoom, SmartRoom)
+
+    def withNoParemt = roomTypes.map(t => structure.addRoom(t, None)) must_==
+      Seq(room1, room2, room3)
+
+    def defaultName = {
+      structure.basicRoomDefaultName = "name1"
+      structure.groupRoomDefaultName = "name2"
+      structure.smartRoomDefaultName = "name3"
+      
+      roomTypes.map(t => structure.addRoom(t, None)) must_==
+        Seq(room2, room3, room1)
+    }
     
-    def s1 = anyRoom.name must_== "new value"
+    def nameWithSuffix = {
+      roomService.addRoom(BasicRoom, "n 3", None) returns room1
+      structure.basicRoomDefaultName = "n"
+      
+      structure.addRoom(BasicRoom, None) must_== room1
+    }
     
-    def s2 = there was one(roomSource).save(anyRoom)
+    def withParent = {
+      val parent = Some(UserExhibitRoomMock.of(GroupRoom))
+      roomService.addRoom(BasicRoom, structure.basicRoomDefaultName, parent) returns room1
+      roomService.addRoom(GroupRoom, structure.groupRoomDefaultName, parent) returns room2
+      roomService.addRoom(SmartRoom, structure.smartRoomDefaultName, parent) returns room3
+      
+      roomTypes.map(t => structure.addRoom(t, parent)) must_==
+        Seq(room1, room2, room3)
+    }
+  }
+  
+  /** 部屋の移動可能性 */
+  def canMove(f: Factory) = new TestBase(f) {
+    val bRoom = UserExhibitRoomMock.of(BasicRoom)
+    val gRoom = UserExhibitRoomMock.of(GroupRoom)
+    val sRoom = UserExhibitRoomMock.of(SmartRoom)
+    val rooms = Seq(bRoom, gRoom, sRoom)
+    val roomTypes = Seq(BasicRoom, GroupRoom, SmartRoom)
+
+    def toGroupRoom = {
+      val dest = Some(UserExhibitRoomMock.of(GroupRoom))
+      rooms.map(r => structure.canMove(r, dest)) must_== Seq(true, true, true)
+    }
+    
+    def toTop = {
+      val parent = Some(UserExhibitRoomMock.of(GroupRoom))
+      rooms.foreach(r => roomService.getParent(r) returns parent)
+      rooms.map(r => structure.canMove(r, None)) must_== Seq(true, true, true)
+    }
+    
+    def falseToTopFromTop =
+      rooms.map(r => structure.canMove(r, None)) must_== Seq(false, false, false)
+    
+    def falseToDescOrEqual = {
+      val gRoom1, gRoom2, gRoom3 = UserExhibitRoomMock.of(GroupRoom)
+      roomService.getParent(gRoom3) returns Some(gRoom2)
+      roomService.getParent(gRoom2) returns Some(gRoom1)
+      
+      Seq(bRoom, gRoom, sRoom, gRoom2, gRoom3).map(r => structure.canMove(r, Some(gRoom3))) must_==
+        Seq(true, true, true, false, false)
+    }
+  }
+  
+  /** 部屋の移動 */
+  def moveRoom(f: Factory) = new TestBase(f) {
+    val room = UserExhibitRoomMock.of(BasicRoom)
+    val parent = Some(UserExhibitRoomMock.of(GroupRoom))
+    roomService.getParent(room) returns parent
+    
+    val gRoom = UserExhibitRoomMock.of(GroupRoom)
+    
+    def toGroupRoom = {
+      structure.moveRoom(room, None)
+      there was one(roomService).setParent(room, None)
+    }
+    
+    def toTop = {
+      val room2 = UserExhibitRoomMock.of(BasicRoom)
+      structure.moveRoom(room2, parent)
+      there was one(roomService).setParent(room2, parent)
+    }
+  }
+  
+  /** 部屋の削除 */
+  def removeRoom(f: Factory) = new TestBase(f) {
+    val room = UserExhibitRoomMock.of(BasicRoom)
+    structure.removeRoom(room)
+    
+    def callsService = there was one(roomService).remove(room)
+  }
+  
+  /** サービスのイベント委譲 */
+  def delegateEvent(f: Factory) = new {
+    val roomService = UserExhibitRoomServiceMock.canPublish()
+    val structure = f(roomService)
+    val room = UserExhibitRoomMock.of(BasicRoom)
+    
+    var published = IndexedSeq.empty[Message[ExhibitRoom]]
+    private val sub = new structure.Sub {
+      def notify(pub: structure.Pub, event: Message[ExhibitRoom]) {
+        published = published :+ event
+      }
+    }
+    structure.subscribe(sub)
+    
+    def include = {
+      val event = new Include(room)
+      roomService.publish(event)
+      published must_== Seq(event)
+    }
+    def udpate = {
+      val event = new Update(room)
+      roomService.publish(event)
+      published must_== Seq(event)
+    }
+    def remove = {
+      val event = new Remove(room)
+      roomService.publish(event)
+      published must_== Seq(event)
+    }
   }
 }

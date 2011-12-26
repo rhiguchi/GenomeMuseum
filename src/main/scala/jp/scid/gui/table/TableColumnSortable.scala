@@ -19,7 +19,7 @@ trait TableColumnSortable[A] extends StringSortable[A] {
   /**
    * 列が持つ現在の比較記述の取得する。
    */
-  def orderStatement(identifier: String): String = {
+  def getOrderStatement(identifier: String): String = {
     logger.debug("並び替え記述の取得 {}", identifier)
     currentOrderMap.getOrElse(identifier,
       columnOrderStatementsFor(identifier).headOption.getOrElse(""))
@@ -50,7 +50,7 @@ trait TableColumnSortable[A] extends StringSortable[A] {
    * 列並び替えを再度行う。
    */
   protected[table] def updateColumnSorting() {
-    sortWith(orderStatement(currentSortColumn))
+    orderStatement = getOrderStatement(currentSortColumn)
   }
   
   /**
@@ -146,7 +146,7 @@ private[table] class SortableTableHeaderHandler(model: TableColumnSortable[_],
     // 同じ列をクリックした時はその列の並び替え記述を更新
     if (identifier == model.sortColumn) {
       val orders = model.columnOrderStatementsFor(identifier)
-      val currentOrder = model.orderStatement(identifier)
+      val currentOrder = model.getOrderStatement(identifier)
       val rest = orders.dropWhile(currentOrder.!=)
       if (rest.nonEmpty) {
         val newOrder = rest.tail.headOption.getOrElse(orders.head)
@@ -203,7 +203,7 @@ private[table] class SortableTableHeaderHandler(model: TableColumnSortable[_],
       
       // 方向アイコン
       val iconOp = isSortingColumn match {
-        case true => Some(orderIconOf(model.orderStatement(identifier)))
+        case true => Some(orderIconOf(model.getOrderStatement(identifier)))
         case false => None
       }
       

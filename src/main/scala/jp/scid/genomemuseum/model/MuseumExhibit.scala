@@ -2,6 +2,7 @@ package jp.scid.genomemuseum.model
 
 import java.util.Date
 import java.net.URI
+import java.io.File
 
 /**
  * 『展示物』インターフェイス
@@ -24,6 +25,11 @@ trait MuseumExhibit {
   var fileSize: Long
   var fileType: MuseumExhibit.FileType.Value
   var filePathAsURI: URI
+  
+  var dataSourceUri: String
+  
+  def sourceFile: Option[File]
+  def sourceFile_=(file: Option[File])
 }
 
 object MuseumExhibit {

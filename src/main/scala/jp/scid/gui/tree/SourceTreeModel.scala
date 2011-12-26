@@ -36,7 +36,7 @@ class SourceTreeModel[A <: AnyRef: ClassManifest](source: TreeSource[A]) extends
   /** 
    * 項目が子項目を持つことができない要素か
    * @param node {@code A} 型で親ノードから既に読み出されたことがあるオブジェクト
-   * @retrun 子項目を持つことができる場合 {@code true}
+   * @return 子項目を持つことができる場合 {@code true}
    * @throws IllegalArgumentException {@code node} が {@code A} 型でない時
    * @throws NoSuchElementException {@code node} の親が不明でパスが定まっていない時
    */
@@ -56,7 +56,7 @@ class SourceTreeModel[A <: AnyRef: ClassManifest](source: TreeSource[A]) extends
   /** 
    * 子項目数の取得
    * @param parent {@code A} 型で親ノードから既に読み出されたことがあるオブジェクト
-   * @retrun 子項目数
+   * @return 子項目数
    * @throws IllegalArgumentException {@code parent} が {@code A} 型でない時
    * @throws NoSuchElementException {@code parent} の親が不明でパスが定まっていない時
    */
@@ -69,7 +69,7 @@ class SourceTreeModel[A <: AnyRef: ClassManifest](source: TreeSource[A]) extends
    * 子項目の取得
    * @param parent {@code A} 型で親ノードから既に読み出されたことがあるオブジェクト
    * @param index 位置
-   * @retrun 子項目
+   * @return 子項目
    * @throws IllegalArgumentException {@code parent} が {@code A} 型でない時
    * @throws IndexOutOfBoundsException {@code index} が 0 未満か {@link #getChildCount(Any)}
    *         の値以上の時
@@ -83,7 +83,7 @@ class SourceTreeModel[A <: AnyRef: ClassManifest](source: TreeSource[A]) extends
    * 子項目の順序番号を取得
    * @param parent {@code A} 型で親ノードから既に読み出されたことがあるオブジェクト
    * @param child {@code A} 型で親ノードから既に読み出されたことがあるオブジェクト
-   * @retrun 順序番号
+   * @return 順序番号
    * @throws IllegalArgumentException {@code parent} もしくは {@code child} が
    *         {@code A} 型でない時
    * @throws NoSuchElementException {@code parent} が不明でパスが定まっていない時
@@ -166,8 +166,14 @@ class SourceTreeModel[A <: AnyRef: ClassManifest](source: TreeSource[A]) extends
    * 削除されたことを通知する。
    * ソースから再読み込みは行われない。
    */
-  def nodeRemoved(node: A) =
-    getTreeNode(node) foreach treeDelegate.removeNodeFromParent
+  def nodeRemoved(node: A) {
+    getTreeNode(node) foreach { treeNode =>
+      removeDescendant(treeNode.getChildren)
+      treeNode.resetChildren()
+      treeNodes.remove(node)
+      treeDelegate.removeNodeFromParent(treeNode)
+    }
+  }
   
   /**
    * 更新されたことを通知する。
@@ -202,6 +208,7 @@ class SourceTreeModel[A <: AnyRef: ClassManifest](source: TreeSource[A]) extends
       val children = head.getChildren
       head.resetChildren()
       head.removeFromParent()
+      treeNodes.remove(head.nodeObject)
       removeDescendant(children ++ tail)
   }
   
@@ -226,8 +233,8 @@ class SourceTreeModel[A <: AnyRef: ClassManifest](source: TreeSource[A]) extends
     getTreeNode(item) match {
       case Some(node) => taskWith(node)
       case None =>
-        throw new NoSuchElementException("%s treeNode is not prepared yet."
-          .format(item.getClass))
+        throw new NoSuchElementException("%s [%s] treeNode is not prepared yet."
+          .format(item.toString, item.getClass))
     }
   
   /** 

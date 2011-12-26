@@ -10,25 +10,31 @@ import jp.scid.gui.event.{ValueChange, DataListSelectionChanged}
 import jp.scid.gui.table.DataTableModel
 import jp.scid.genomemuseum.{view, model, gui}
 import gui.{ExhibitTableModel, PublisherScheduleTaskAdapter}
-import model.{UserExhibitRoom, MuseumExhibit, MuseumExhibitService, MuseumExhibitTransferData}
+import model.{UserExhibitRoom, MuseumExhibit, MuseumExhibitService, DefaultMuseumExhibitTransferData}
+import DataListController.View
 
 /**
  * 展示物のテーブル表示と、フィルタリング、テーブルに表示されている項目の
  * 情報を表示する機能を提供する操作クラス。
  */
 class MuseumExhibitListController(
-  application: ApplicationActionHandler,
-  view: DataListController.View
-) extends DataListController(application, view) {
+  exhibitService: MuseumExhibitService, view: View
+) extends DataListController(view) {
+  /**
+   * 読み込みマネージャを利用してクラスを作成する
+   */
+  def this(exhibitService: MuseumExhibitService, view: View, loadManager: MuseumExhibitLoadManager) {
+    this(exhibitService, view)
+    this.loadManager = Option(loadManager)
+  }
+  
   // モデル
-  /** 展示物サービス */
-  private def museumExhibitService = museumSchema.museumExhibitService
-  /** 現在設定されている部屋 */
+  /** 表に表示する展示物の部屋。{@code exhibitService} よりから取得に利用される。 */
   val userExhibitRoom = new ValueHolder[Option[UserExhibitRoom]](None)
   /** テーブルの選択項目 */
   val tableSelection = new ValueHolder(List.empty[MuseumExhibit])
   /** テーブルモデル */
-  val tableModel = new ExhibitTableModel(museumExhibitService)
+  val tableModel = new ExhibitTableModel(exhibitService)
   
   // コントローラ
   /** 転送ハンドラ */
@@ -42,25 +48,18 @@ class MuseumExhibitListController(
 //    tableModel.selections foreach dataService.remove
   }
   
-  /** 選択項目が変化した際の処理 */
-  private def tableSelectionChanged() {
-    // 行が選択されているときのみ削除アクションが有効化
-    removeSelectionAction.enabled = tableSelection().nonEmpty
-  }
-  
   /** 転送ハンドラ実装 */
   private class MyTransferHandler extends MuseumExhibitListTransferHandler {
     import TransferHandler.TransferSupport
     
     override def importFiles(files: Seq[File], targetRoom: Option[UserExhibitRoom]) = {
-      files foreach loadManager.loadExhibit
+      files foreach (f => loadExhibit(f, targetRoom))
       true
     }
     
     override def importExhibits(exhibits: Seq[MuseumExhibit], targetRoom: UserExhibitRoom) = {
-      val service = museumExhibitService
-      exhibits map (_.asInstanceOf[service.ElementClass]) foreach
-        (e => service.addElement(targetRoom, e))
+      exhibits map (_.asInstanceOf[exhibitService.ElementClass]) foreach
+        (e => exhibitService.addElement(targetRoom, e))
       true
     }
     
@@ -68,7 +67,7 @@ class MuseumExhibitListController(
       userExhibitRoom()
     
     override def createTransferable(c: JComponent) = {
-      MuseumExhibitTransferData(tableSelection(), userExhibitRoom(), fileStorage)
+      new DefaultMuseumExhibitTransferData(tableSelection(), userExhibitRoom())
     }
   }
   
@@ -79,18 +78,25 @@ class MuseumExhibitListController(
       case ValueChange(_, _, _) => tableModel.userExhibitRoom = userExhibitRoom()
     }
     
-    // 選択項目変化
+    // 選択行の保持と削除アクションの有効性の変化
     tableModel.reactions += {
       case DataListSelectionChanged(_, false, selections) =>
         tableSelection := selections.collect { case e: MuseumExhibit => e }
-        tableSelectionChanged()
+        updateRemoveActionEnabled()
     }
     
-    /** テーブルフィルタリング */
+    // テーブルフィルタリングのための結合
     searchTextModel.reactions += {
       case ValueChange(_, _, text: String) => tableModel.filterText = text
     }
   }
   
+  /** 選択項目が変化した際の処理 */
+  private def updateRemoveActionEnabled() {
+    // 行が選択されているときのみ削除アクションが有効化
+    removeSelectionAction.enabled = tableSelection().nonEmpty
+  }
+  
+  bind()
   bindModels()
 }

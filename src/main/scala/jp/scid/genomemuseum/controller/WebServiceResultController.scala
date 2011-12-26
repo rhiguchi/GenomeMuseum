@@ -1,6 +1,7 @@
 package jp.scid.genomemuseum.controller
 
 import javax.swing.{JTable, JTextField, JLabel, JComponent, SwingWorker}
+import java.util.concurrent.{Executors, ScheduledFuture, TimeUnit}
 
 import jp.scid.gui.ValueHolder
 import jp.scid.gui.event.ValueChange
@@ -15,9 +16,8 @@ object WebServiceResultController {
 }
 
 class WebServiceResultController(
-  application: ApplicationActionHandler,
   view: DataListController.View
-) extends DataListController(application, view) {
+) extends DataListController(view) {
   import WebServiceResultController._
   
   // モデル
@@ -27,10 +27,10 @@ class WebServiceResultController(
   val tableModel = new WebServiceResultsModel
   /** 現在の検索の該当数 */
   private var currentCount = 0
-  /** 現在の検索している文字列 */
-  private var currentQuery = ""
-  /** 検索実行 Actor ID */
-  private val searchingId = new java.util.concurrent.atomic.AtomicInteger
+  /** 検索遅延実行用のスケジューラー */
+  private val searchScheduler = Executors.newSingleThreadScheduledExecutor
+  /** 最新の検索実行のタスク */
+  private var scheduledSearchTask: Option[ScheduledFuture[_]] = None
   
   /** ダウンロードボタンアクション */
   val downloadAction = swing.Action("Download") {
@@ -39,17 +39,32 @@ class WebServiceResultController(
     view.dataTable.removeEditor()
   }
   
-  // モデルバインド
-  /** Web 検索文字列の変更 */
-  searchTextModel.reactions += {
-    case ValueChange(_, _, newValue) =>
-      // 実行遅延
-      val myId = searchingId.incrementAndGet()
-      actors.Actor.actor {
-        Thread.sleep(1000)
-        if (searchingId.get == myId)
-          researching()
+  /**
+   * 検索を遅延実行する。
+   * 
+   * 検索は最後に追加されてから 1 秒後に実行される。
+   * 遅延中に追加を行うと、前のクエリは実行されない。
+   * 文字列が前後空白を除いて 3 文字以下のときは、検索を行わない。
+   * @return 遅延検索処理の Future
+   */
+  def scheduleSearch(text: String, delayMillis: Long = 1000) = synchronized {
+    // 遅延実行のキャンセル
+    scheduledSearchTask.filterNot(_.isDone).map(_.cancel(true))
+    scheduledSearchTask = None
+    
+    val searchQuery = text.trim.split("\\s+").mkString(" ")
+    if (searchQuery.length >= 3 && searchQuery != tableModel.searchQuery) {
+      // 検索実行タスク
+      val runnner = new Runnable {
+        def run() { tableModel searchWith searchQuery }
       }
+      // 実行遅延
+      val future = searchScheduler.schedule(runnner, delayMillis, TimeUnit.MILLISECONDS)
+      logger.debug("scheduleSearch: {}", searchQuery)
+      scheduledSearchTask = Some(future)
+    }
+    
+    scheduledSearchTask
   }
   
   /**
@@ -88,22 +103,13 @@ class WebServiceResultController(
     task.execute
   }
   
-  private def researching() {
-    val searchQuery = searchTextModel().trim.split("\\s+").mkString(" ")
-    if (searchQuery.length >= 3 && currentQuery != searchQuery) {
-      logger.debug("Search query: {}", searchQuery)
-      currentQuery = searchQuery
-      tableModel searchWith searchQuery
-    }
-  }
-  
   def createDownloadTask(item: SearchResult) = {
     new DownloadTask(item.sourceUrl.get.toString) {
       override def done() {
         if (!isCancelled) {
           logger.trace("ダウンロード完了 {}", item.sourceUrl.get.toString)
           val file = get()
-          loadManager.loadExhibit(file)
+          loadExhibit(file, None)
         }
         else {
           logger.trace("ダウンロードキャンセル {}", item.sourceUrl.get.toString)
@@ -142,13 +148,25 @@ class WebServiceResultController(
       isProgress := false
   }
   
+  /** モデルバインド */
+  private def bindModels() {
+    /** Web 検索文字列の変更 */
+    searchTextModel.reactions += {
+      case ValueChange(_, _, newValue: String) => scheduleSearch(newValue)
+    }
+  }
+  
   override def bind() = {
     val connList = super.bind()
     
+    view.dataTable.setDragEnabled(false)
     downloadingTableCell.map(_.setExecuteButtonAction(downloadAction.peer))
     
     connList
   }
+  
+  bindModels()
+  bind()
 }
 
 import java.net.URL

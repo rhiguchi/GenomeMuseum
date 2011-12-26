@@ -55,7 +55,7 @@ class WebSearchManager(listModel: DataListModel[SearchResult],
       // 該当数取得イベント発行
       publish(CountRetrieved(query.count))
       
-      query.count <= resultMaximumCount match {
+      0 < query.count && query.count <= resultMaximumCount match {
         case true => awaitOption(searchAgent.searchIdentifiers(query))
         case false => Some(IndexedSeq.empty)
       }

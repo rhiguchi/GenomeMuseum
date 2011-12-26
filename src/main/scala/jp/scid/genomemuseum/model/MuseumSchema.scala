@@ -11,20 +11,16 @@ trait MuseumSchema {
   
   /** 『展示物』データのテーブルデータサービス */
   def museumExhibitService: MuseumExhibitService
+  
+  /** 展示物のデータファイルをライブラリからの相対パスに変換するオブジェクト */
+  var localFileStorage: Option[UriFileStorage]
 }
 
 object MuseumSchema {
   /**
-   * メモリー上のプライベート空間を格納先に持ったデータスキーマを作成する。
-   */
-  def onMemory = {
-    squeryl.MuseumSchema.onMemory("")
-  }
-  
-  /**
    * ファイルを格納先に持ったデータスキーマを作成する。
    */
-  def onFile(file: java.io.File) = {
-    squeryl.MuseumSchema.onFile(file)
+  def on(place: String): MuseumSchema = {
+    squeryl.MuseumSchema.on(place)
   }
 }

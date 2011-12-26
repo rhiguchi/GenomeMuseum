@@ -1,14 +1,12 @@
 package jp.scid.genomemuseum
 
-import java.awt.{BorderLayout, FileDialog}
-import java.io.{File, FileInputStream, IOException}
-import java.text.ParseException
+import java.io.File
 import org.jdesktop.application.{Application, Action, ProxyActions}
 import view.{ApplicationViews, MainFrameView, MainView, MainViewMenuBar, ColumnVisibilitySetting}
-import controller.{GenomeMuseumController, MainViewController, MuseumExhibitLoadManager, ApplicationActionHandler}
-import model.{MuseumSchema, LibraryFileManager, MuseumExhibitStorage, MuseumExhibitLoader,
+import controller.{GenomeMuseumController, MainFrameViewController, MainViewController,
+  MuseumExhibitLoadManager, ApplicationController}
+import model.{MuseumSchema, MuseumExhibitLoader, DefaultMuseumExhibitFileLibrary,
   MuseumExhibitService}
-import scala.swing.{Frame, Dialog, Panel}
 
 /**
  * GenomeMuseum GUI アプリケーション実行クラス。
@@ -22,6 +20,7 @@ class GenomeMuseumGUI extends Application {
   import GenomeMuseumGUI._
   import RunMode._
   
+  @deprecated("", "")
   def this(runMode: GenomeMuseumGUI.RunMode.Value) {
     this()
     GenomeMuseumGUI.runMode = runMode
@@ -29,31 +28,92 @@ class GenomeMuseumGUI extends Application {
   
   // リソースのネームスペースを無しに設定
   getContext.getResourceManager.setResourceFolder("")
+  // アプリケーションのクラスを設定
+  getContext.setApplicationClass(classOf[GenomeMuseumGUI])
   
   // プロパティ
-  /** スキーマをファイルに保存する時の保存先 */
-  var schemaFileSource: Option[File] = None
+  /** SAF のローカル保管場所を保持しておく */
+  private val defaultLocalStorageDir = getContext.getLocalStorage.getDirectory
+  /** アプリケーションのデータが保存されるディレクトリ */
+  private var defaultApplicationHome: Option[File] = None
   /** データファイルが保存される基本ディレクトリ */
   var fileStorageDir: Option[File] = None
-  
-  // Model
-  /** データ保管のディレクトリ */
-  private var genomemuseumHome = {
-    def getTempDir(trying: Int): File = {
-      if (trying <= 0) throw new IllegalStateException("could not create temp dir.")
-      
-      val file = File.createTempFile("GenomeMuseum", "")
-      if (file.delete && file.mkdir)
-        file
-      else
-        getTempDir(trying - 1)
-    }
-    
-    getTempDir(20)
+  /** データベース情報が保存される場所 */
+  var databaseSource = "mem:" + util.Random.alphanumeric.take(5).mkString
+  /** アプリケーションデータのディレクトリ */
+  lazy val applicationHome: File = {
+    getContext.getLocalStorage.setDirectory(defaultApplicationHome.getOrElse(createTempDir))
+    getContext.getLocalStorage.getDirectory
   }
-  /** データベースの構築をメモリー内で行うか */
-  private var useInMemoryDatabase = false
   
+  // アプリケーションアクション
+  /** 切り取りプロキシアクション */
+  lazy val cutProxyAction = getAction("cut")
+  /** コピープロキシアクション */
+  lazy val copyProxyAction = getAction("copy")
+  /** 貼付けプロキシアクション */
+  lazy val pasteProxyAction = getAction("paste")
+  /** 全てを選択プロキシアクション */
+  lazy val selectAllProxyAction = getAction("selectAll")
+  /** {@code chooseAndLoadFile} を呼び出すアクション */
+  lazy val openAction = getAction("open")
+  /** {@link GenomeMuseumGUI#exit} を呼び出すアクション */
+  lazy val quitAction = getAction("quit")
+  
+  /**
+   * 展示物のファイルライブラリオブジェクト
+   * 
+   * @see #fileStorageDir
+   */
+  lazy protected[genomemuseum] val exhibitFileLibrary: Option[DefaultMuseumExhibitFileLibrary] = {
+    logger.info("Bio files stored on {}", fileStorageDir)
+    
+    fileStorageDir.map { dir => 
+      dir.mkdirs
+      new DefaultMuseumExhibitFileLibrary(dir)
+    }
+  }
+  
+  // モデル
+  /**
+   * アプリケーションのデータモデルのためのスキーマ
+   * 
+   * このスキーマオブジェクト遅延評価によって作成されるが、
+   * オブジェクトは {@link databaseSource} の値によって変化し、
+   * ファイルパスを返すとき、ファイルに保存されるスキーマを作成する。
+   * この時の保存先はH2 Database の命名規則に従う（パスの最後に ".h2.db" ついたファイルが作成される）。
+   * {@code mem:} から始まる文字列の時は、メモリー上にスキーマが作成される。
+   * @see #databaseSource
+   */
+  lazy val museumSchema = {
+    logger.info("Library on {}", databaseSource)
+    val museumSchema = MuseumSchema.on(databaseSource)
+    museumSchema.localFileStorage = exhibitFileLibrary.map(_.uriFileStorage)
+    museumSchema
+  }
+  
+  /**
+   * バイオデータの読み込み操作オブジェクトを作成する。
+   * 
+   * ファイルライブラリとして {@code loadManager} が利用される。
+   * @see #museumSchema
+   * @see #loadManager
+   */
+  lazy val exhibitLoadManager = {
+    val loadManager = new MuseumExhibitLoadManager(museumSchema.museumExhibitService)
+    loadManager.fileLibrary = exhibitFileLibrary
+    loadManager
+  }
+  
+  // ビュー
+  /**
+   * このアプリケーションの画面オブジェクト
+   * 
+   * @see #createApplicationViews()
+   */
+  lazy val applicationViews = new ApplicationViews()
+  
+  // アプリケーション処理
   /**
    * アプリケーションのデータを保存するディレクトリを設定する。
    * 
@@ -61,14 +121,12 @@ class GenomeMuseumGUI extends Application {
    * 新しい値に設定される。
    */
   override protected[genomemuseum] def initialize(args: Array[String]) {
-    args.contains("--LocalLibrary") match {
-      case true =>
-        schemaFileSource = Some(new File(applicationHome, "Library/lib"))
-      case false =>
-        applicationContext.getLocalStorage.setDirectory(createTempDir())
+    if (args.contains("--LocalLibrary")) {
+      val dir = defaultLocalStorageDir
+      defaultApplicationHome = Option(dir)
+      databaseSource = new File(dir, "Library/lib").toString
+      fileStorageDir = Some(new File(dir, "BioFiles"))
     }
-    
-    fileStorageDir = Some(new File(applicationHome, "BioFiles"))
   }
   
   /**
@@ -76,89 +134,75 @@ class GenomeMuseumGUI extends Application {
    * 
    * Swing Application Framework によって起動時に一度呼び出される。
    * 
-   * @see ApplicationActionHandler#showMainFrameView()
+   * @see jp.scid.genomemuseu.controller.MainFrameViewController
    */
   override def startup() {
     logger.debug("startup")
     
-    val handler = createApplicationHandler()
-    handler.showMainFrameView()
+    val mainViewCtrl = createMainViewController(applicationViews.mainView)
+    
+    val mainFrameViewCtrl = createMainFrameViewController(applicationViews.mainVrameView)
+    
+    // 主画面のタイトルから画面枠のタイトルを設定
+    mainFrameViewCtrl.bindTitle(mainViewCtrl.title)
+    
+    // 表示
+    mainFrameViewCtrl.show()
   }
   
   override protected def ready() {
     logger.info("ready")
   }
   
-  /** @return アプリケーションのデータが保存されるディレクトリ */
-  def applicationHome = applicationContext.getLocalStorage.getDirectory
-  
+  // アクションメソッド
   /**
-   * アプリケーションのデータスキーマを作成する。
+   * ファイル選択ダイアログを表示し、選ばれたファイルをバイオデータとして読み込みを行う。
    * 
-   * 通常、 {@link startup} から一度呼び出され、このアプリケーションのデータモデルとなる。
-   * 
-   * 作成されるスキーマは {@link schemaFileSource} の値によって変化し、
-   * 何らかのファイルパスを返すとき、ファイルに保存されるスキーマを作成する。
-   * この時の保存先はH2 Database の命名規則に従う（パスの最後に ".h2.db" ついたファイルが作成される）。
-   * {@code None} が返される時は、メモリー上のプライベート空間にスキーマが作成される。
-   * @see #schemaFileSource
+   * @see MuseumExhibitLoadManager#loadExhibit(File)
    */
-  def createMuseumSchema(): MuseumSchema = {
-    logger.info("Library on {}", schemaFileSource)
-     
-    schemaFileSource match {
-      case Some(file) => MuseumSchema.onFile(file)
-      case None => MuseumSchema.onMemory
-    }
-  }
-  
-  /**
-   * アプリケーションのバイオファイル管理オブジェクトを作成する。
-   * 
-   * 通常、 {@link startup} から一度呼び出され、この読み込み処理管理オブジェクトとなる。
-   * @see #fileStorageDir
-   */
-  protected[genomemuseum] def createFileStorage(): LibraryFileManager = {
-    logger.info("Bio files stored on {}", fileStorageDir)
+  @Action(name="open")
+  def chooseAndLoadFile() {
+    val dialog = applicationViews.openDialog
+    dialog.setVisible(true)
     
-    fileStorageDir match {
-      case Some(dir) => new LibraryFileManager(dir)
-      case None => new LibraryFileManager(createTempDir())
-    }
+    Option(dialog.getFile).map(new File(dialog.getDirectory, _))
+      .foreach(exhibitLoadManager.loadExhibit)
   }
   
+  // コントローラ生成
   /**
-   * アプリケーションの画面を作成する。
+   * 主画面操作オブジェクトを作成する。
    * 
-   * 通常、 {@link startup} から一度呼び出され、主画面として利用される。
+   * @param mainView 入出力画面オブジェクト
    */
-  def createApplicationViews() = {
-    new ApplicationViews()
-  }
+  protected[genomemuseum] def createMainViewController(mainView: MainView) =
+    new MainViewController(this, mainView)
   
   /**
-   * アプリケーションにおける操作対応オブジェクトを作成する。
-   * 
-   * 通常、 {@link startup} から一度呼び出され、主画面の入出力処理オブジェクトとして利用される。
+   * 主画面枠の操作対応オブジェクトを作成する。
    */
-  protected[genomemuseum] def createApplicationHandler() = {
-    new ApplicationActionHandler(this)
-  }
+  protected[genomemuseum] def createMainFrameViewController(mainVrameView: MainFrameView) =
+    new MainFrameViewController(this, mainVrameView)
   
   /**
    * アプリケーションのアクションを取得する
    */
-  def getAction(key: String): swing.Action = {
-    val action = applicationContext.getActionManager.getActionMap().get(key)
-    if (action == null)
-      logger.warn("Action '%s' is not defined on GenomeMuseumGUI.".format(key))
+  def getAction(key: String) = {
+    // このクラスを Swing Application Framework 外でインスタンス化した時は
+    // コンテキストオブジェクトにこのアプリケーションのクラスとインスタンスが設定されないための対応
+    val context = getContext
+    if (context.getApplication == null) {
+      val setApplication = context.getClass.getDeclaredMethod("setApplication", classOf[Application])
+      setApplication.setAccessible(true)
+      setApplication.invoke(context, this)
+    }
     
-    convertToScalaSwingAction(action)
+    ApplicationController.getAction(key, context.getActionMap)
   }
 }
 
 object GenomeMuseumGUI {
-  import org.jdesktop.application.ApplicationActionMap
+  import org.jdesktop.application.{ApplicationActionMap, ApplicationAction => SAFAction}
   import java.awt.event.ActionEvent
   import scala.swing.Action
   import model.MuseumExhibit
@@ -193,51 +237,6 @@ object GenomeMuseumGUI {
     
     getTempDir(20)
   }
-  
-  /**
-   * アプリケーションのコンテキストオブジェクトを取得
-   */
-  lazy val applicationContext = {
-    import util.control.Exception.catching
-    
-    def getInstance = Application.getInstance(classOf[GenomeMuseumGUI])
-    
-    val application = catching(classOf[IllegalStateException]).opt
-        {getInstance}.getOrElse {
-      java.beans.Beans.setDesignTime(true)
-      getInstance
-    }
-    application.getContext()
-  }
-  
-  /**
-   * リソースマップを取得
-   * 指定したコントローラのオブジェクトから、GenomeMuseumController までの
-   * 階層内のマップを返す。
-   */
-  def resourceMapOf(obj: AnyRef) = applicationContext
-    .getResourceManager.getResourceMap(obj.getClass, classOf[Object])
-  
-  /**
-   * Swing のアクションを scala.swing のアクションに変換する
-   */
-  implicit def convertToScalaSwingAction(swingAction: javax.swing.Action)
-      = new scala.swing.Action("") {
-    import java.awt.event.ActionEvent
-    
-    override lazy val peer = swingAction
-    override def apply() {
-      val e = new ActionEvent(this, ActionEvent.ACTION_PERFORMED, "apply")
-      apply(e)
-    }
-    def apply(event: ActionEvent) = peer.actionPerformed(event)
-  }
-  
-  /**
-   * リソースマップの取得
-   */
-  def resourceMap(c: Class[_]) =
-    Application.getInstance().getContext().getResourceMap(c)
   
   /**
    * サンプルデータを 10 件作成する

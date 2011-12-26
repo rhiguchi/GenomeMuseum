@@ -57,24 +57,24 @@ class StringSortableSpec extends Specification {
     def viewSource = model.viewSource
     
     def sortWithEmpty = {
-      model sortWith ""
+      model.orderStatement = ""
       viewSource
     }
   }
   
   def normal = new TestBase {
     def sortWithAddr = {
-      model sortWith "addr"
+      model.orderStatement = "addr"
       viewSource
     }
     
     def sortWithNameAndAge = {
-      model sortWith "name, age"
+      model.orderStatement = "name, age"
       viewSource
     }
     
     def sortWithAgeDesc = {
-      model sortWith "age desc"
+      model.orderStatement = "age desc"
       viewSource
     }
     
@@ -92,17 +92,17 @@ class StringSortableSpec extends Specification {
       with StringSortable[TestElement]
     
     def sortWithAge = {
-      model sortWith "age"
+      model.orderStatement = "age"
       viewSource
     }
     
     def sortWithNullColumn = {
-      model sortWith "name"
+      model.orderStatement = "name"
       viewSource
     }
     
     def sortWithAddrDesc = {
-      model sortWith "addr desc"
+      model.orderStatement = "addr desc"
       viewSource
     }
     

@@ -16,9 +16,9 @@ import model.{MuseumSchema, ExhibitRoom, UserExhibitRoom, MuseumExhibit}
  * @param mainView 表示と入力を行う画面。
  */
 class MainViewController(
-  application: ApplicationActionHandler,
+  application: GenomeMuseumGUI,
   mainView: MainView
-) extends GenomeMuseumController(application) {
+) extends GenomeMuseumController {
   import MainViewController.TableSource._
   // ビュー
   /** ソースリストショートカット */
@@ -38,15 +38,15 @@ class MainViewController(
   // コントローラ
   /** ソースリスト用 */
   val sourceListCtrl = new ExhibitRoomListController(
-    application, mainView.sourceList)
+    application.museumSchema.userExhibitRoomService, mainView.sourceList,
+    application.exhibitLoadManager, application.museumSchema.museumExhibitService)
   
   // データリスト用
   /** MuseumExhibit 表示用 */
   val museumExhibitListCtrl = new MuseumExhibitListController(
-    application, dataListView)
+    application.museumSchema.museumExhibitService, dataListView, application.exhibitLoadManager)
   /** WebService 表示用 */
-  val webServiceResultCtrl = new WebServiceResultController(
-    application, dataListView)
+  val webServiceResultCtrl = new WebServiceResultController(dataListView)
   /** ファイル読み込み表示 */
   val fileLoadingProgressHandler = new FileLoadingProgressViewHandler(loadingView,
       mainView.fileLoadingProgress, mainView.fileLoadingStatus)
@@ -150,17 +150,17 @@ class MainViewController(
    */
   private def setContentViewItem(newItem: Option[MuseumExhibit]) {
     // ビューワー表示
-    val source = newItem match {
-      case Some(exhibit) => fileStorage.getSource(exhibit) match {
-        case None => Iterator.empty
-        case Some(source) => io.Source.fromURL(source).getLines
-      }
-      case _ => Iterator.empty
-    }
-    
-    contentViewer.source = source
-    if (mainView.isContentViewerClosed)
-      mainView.openContentViewer(200)
+//    val source = newItem match {
+//      case Some(exhibit) => fileStorage.getSource(exhibit) match {
+//        case None => Iterator.empty
+//        case Some(source) => io.Source.fromURL(source).getLines
+//      }
+//      case _ => Iterator.empty
+//    }
+//    
+//    contentViewer.source = source
+//    if (mainView.isContentViewerClosed)
+//      mainView.openContentViewer(200)
   }
   
   /** モデルの結合を行う */
@@ -183,7 +183,7 @@ class MainViewController(
     }
     
     //  読み込み管理オブジェクトの進行表示
-    fileLoadingProgressHandler.listenTo(loadManager)
+//    fileLoadingProgressHandler.listenTo(loadManager)
     fileLoadingProgressHandler.updateViews()
   }
   

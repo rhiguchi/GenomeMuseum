@@ -11,7 +11,7 @@ import TransferHandler.TransferSupport
 import DataFlavor.javaFileListFlavor
 
 import jp.scid.genomemuseum.model.{ExhibitRoom, UserExhibitRoom, MuseumExhibitService,
-  MuseumStructure, MuseumExhibit, MuseumExhibitTransferData, UserExhibitRoomSpec}
+  MuseumStructure, MuseumExhibit, MuseumExhibitTransferData}
 import jp.scid.genomemuseum.gui.{MuseumSourceModel}
 import UserExhibitRoom.RoomType._
 

@@ -1,7 +1,7 @@
 package jp.scid.genomemuseum.model
 
 import java.net.URL
-import java.io.{File, IOException, InputStreamReader}
+import java.io.{File, IOException, InputStreamReader, Reader, PushbackReader, BufferedReader}
 import java.text.ParseException
 
 import collection.mutable.{Buffer, ListBuffer}
@@ -80,26 +80,34 @@ class MuseumExhibitLoader {
   private val parsers = List(GenBnakSource, FastaSource)
   
   /**
-   * ファイルからデータを読み込み、そのデータをオブジェクトへ格納する。
-   * @return 展示物が構成された時は {@code true} 。対応するファイルパーサーが無かったときは {@code false} 。
+   * ソースから展示物を作成する。
    * @throws IOException ファイルのアクセスに不正状態が発生した時。
    * @throws ParseException ファイル内を解析中に不正な文字列が含まれていた時。
    */
   @throws(classOf[ParseException])
   @throws(classOf[IOException])
-  def makeMuseumExhibit(exhibit: MuseumExhibit, source: URL): Boolean = {
+  def makeMuseumExhibit[E <: MuseumExhibit](exhibitFactory: => E, source: Reader): Option[E] = {
     // ファイルの先頭部分の一部の文字列
-    val headString = readHeadFrom(source)
+    val pushBackReader = new PushbackReader(source, 2048)
+    val cbuf = new Array[Char](2048)
+    val read = pushBackReader.read(cbuf)
+    val headString = if (read <= 0) "" else new String(cbuf, 0, read)
     
     /** ファイルの先頭部分の文字列から Source オブジェクトを作成 */
     def headSource = io.Source.fromString(headString).getLines
     
-    parsers.find(_.canParse(headSource)) match {
-      case Some(parser) =>
-        parser.makeExhibitFromFile(exhibit, io.Source.fromURL(source).getLines)
-        true
-      case None =>
-        false
+    parsers.find(_.canParse(headSource)).map { parser =>
+      pushBackReader.unread(cbuf, 0, read)
+      
+      // リーダーからソースを作れないので継承でハック
+      val bufSource = new io.BufferedSource(null)(null) {
+        override def reader() = null
+        override val bufferedReader = new BufferedReader(pushBackReader)
+      }
+      val exhibit = exhibitFactory
+      parser.makeExhibitFromFile(exhibit, bufSource.getLines)
+      
+      exhibit
     }
   }
   

@@ -49,8 +49,8 @@ class TableColumnSortableSpec extends Specification {
   }
   
   def initial = new TestBase {
-    def s1_1 = model.orderStatement("name") must_== "name"
-    def s1_2 = model.orderStatement("addr") must_== "order1"
+    def s1_1 = model.getOrderStatement("name") must_== "name"
+    def s1_2 = model.getOrderStatement("addr") must_== "order1"
     def s1 = s1_1 and s1_2
     
     def s2 = model.sortColumn must_== ""
@@ -111,7 +111,7 @@ class TableColumnSortableSpec extends Specification {
     
     def s1 = ageClick must contain(e3, e4, e1, e2).only.inOrder
     
-    def s2_1 = ageTwoClick.orderStatement("age") must_== "age desc"
+    def s2_1 = ageTwoClick.getOrderStatement("age") must_== "age desc"
     def s2_2 = ageTwoClick.sortColumn must_== "age"
     def s2_3 = ageTwoClick.viewSource must contain(e2, e1, e4, e3).only.inOrder
     def s2 = s2_1 and s2_2 and s2_3

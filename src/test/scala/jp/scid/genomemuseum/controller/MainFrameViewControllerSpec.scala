@@ -10,21 +10,26 @@ import jp.scid.genomemuseum.model.MuseumSchema
 import jp.scid.genomemuseum.view.MainFrameView
 
 class MainFrameViewControllerSpec extends Specification with mock.Mockito {
-  private type Factory = (ApplicationActionHandler, MainFrameView) => MainFrameViewController
+  private type Factory = (GenomeMuseumGUI, MainFrameView) => MainFrameViewController
   
   def is = "MainFrameViewController" ^
     "フレームの表示" ^ canShow(createHandler) ^
     "フレームタイトルの更新" ^ canUpdateFrameTitle(createHandler) ^
+    "フレームタイトルモデルの結合" ^ canBindTitleModel(createHandler) ^
     "メニューバーアクション" ^ menuBarActionsSpec(createHandler) ^
     end
   
-  def createHandler(h: ApplicationActionHandler, v: MainFrameView) =
+  def createHandler(h: GenomeMuseumGUI, v: MainFrameView) =
     new MainFrameViewController(h, v)
   
   def canUpdateFrameTitle(f: Factory) = 
     "frame#setTitle への適用" ! updateFrameTitle(f).appliedView ^
-    "mainCtrl#title から適用" ! updateFrameTitle(f).fromMainCtrl ^
     bt
+  
+  def canBindTitleModel(f: Factory) = 
+    "モデルが空文字の時は GenomeMuseum と表示" ! bindTitle(f).empty ^
+    "モデルに文字がある時は ハイフン を挟んで表示" ! bindTitle(f).someText ^
+    todo
   
   def canShow(f: Factory) = 
     "frameView#frame の setVisible を true" ! show(f).frameVisibled ^
@@ -47,24 +52,6 @@ class MainFrameViewControllerSpec extends Specification with mock.Mockito {
     "全てを選択" ! fileMenu(f).selectAll ^
     bt
   
-  private def mockApplicationActionHandler = {
-    val openAction, quitAction, cutProxyAction, copyProxyAction,
-      pasteProxyAction, selectAllProxyAction = swing.Action(""){}
-    val handler = spyApplicationActionHandler
-    handler.openAction returns openAction
-    handler.quitAction returns quitAction
-    handler.cutProxyAction returns cutProxyAction
-    handler.copyProxyAction returns copyProxyAction
-    handler.pasteProxyAction returns pasteProxyAction
-    handler.selectAllProxyAction returns selectAllProxyAction
-    handler
-  }
-  
-  private def spyApplicationActionHandler = {
-    val gui = new GenomeMuseumGUI
-    spy(new ApplicationActionHandler(gui))
-  }
-  
   private def spyMainFrameViewOf(frame: JFrame) = {
     val view = spy(new MainFrameView)
     view.frame returns frame
@@ -74,7 +61,7 @@ class MainFrameViewControllerSpec extends Specification with mock.Mockito {
   // フレームタイトル
   def updateFrameTitle(f: Factory) = new {
     val frameMock = mock[JFrame]
-    val ctrl = f(mockApplicationActionHandler, spyMainFrameViewOf(frameMock))
+    val ctrl = f(new GenomeMuseumGUI, spyMainFrameViewOf(frameMock))
     
     def appliedView = {
       List("title", "some", "") map ctrl.title.:=
@@ -84,19 +71,27 @@ class MainFrameViewControllerSpec extends Specification with mock.Mockito {
         frameMock.setTitle("GenomeMuseum - ")
       }
     }
+  }
+  
+  // タイトルモデル
+  def bindTitle(f: Factory) = new {
+    val titleModel = new ValueHolder("")
+    val frame = new JFrame
+    val ctrl = f(new GenomeMuseumGUI, spyMainFrameViewOf(frame))
+    ctrl.bindTitle(titleModel)
     
-    def fromMainCtrl = {
-      List("Room", "", "NCBI") map ctrl.mainCtrl.title.:=
-      there was one(frameMock).setTitle("GenomeMuseum - Room") then
-      one(frameMock).setTitle("GenomeMuseum") then
-      one(frameMock).setTitle("GenomeMuseum - NCBI")
+    def empty = frame.getTitle must_== "GenomeMuseum"
+    
+    def someText = {
+      titleModel := "title"
+      frame.getTitle must_== "GenomeMuseum - title"
     }
   }
   
   // 表示
   def show(f: Factory) = new {
     val frameMock = mock[JFrame]
-    val hander = mockApplicationActionHandler
+    val hander = new GenomeMuseumGUI
     val view = spyMainFrameViewOf(frameMock)
     val ctrl = f(hander, view)
     
@@ -108,12 +103,10 @@ class MainFrameViewControllerSpec extends Specification with mock.Mockito {
   // ファイルメニュー
   def fileMenu(f: Factory) = new {
     val view = new MainFrameView
-    val handler = mockApplicationActionHandler
+    val handler = new GenomeMuseumGUI
     val ctrl = f(handler, view)
     
     def menuBar = view.mainMenu
-    
-    def roomListCtrl = ctrl.mainCtrl.sourceListCtrl
     
     def open = menuBar.open.action must_== handler.openAction
     

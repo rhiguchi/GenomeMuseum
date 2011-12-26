@@ -11,7 +11,7 @@ import tree.DataTreeModel
 import DataTreeModel.Path
 import event.DataTreePathsSelectionChanged
 import jp.scid.genomemuseum.model.{ExhibitRoom, UserExhibitRoom, MuseumExhibit,
-  MuseumStructure, UserExhibitRoomService, ExhibitRoomTransferData}
+  MuseumStructure, UserExhibitRoomService, ExhibitRoomTransferData, MuseumExhibitService}
 import jp.scid.genomemuseum.gui.MuseumSourceModel
 import UserExhibitRoom.RoomType
 import RoomType._
@@ -19,53 +19,48 @@ import RoomType._
 /**
  * 『部屋』の一覧をツリー上に表示し、また『部屋』の追加、編集、削除を行う操作オブジェクト。
  * 
- * 
+ * @param roomService 部屋のモデル
+ * @param view ツリー
+ * @param loadManager ファイルの読み込み操作管理
  */
 class ExhibitRoomListController(
-  application: ApplicationActionHandler,
+  roomService: UserExhibitRoomService,
   view: JTree
-) extends GenomeMuseumController(application) {
-  // ビュー
-  
-  private def roomService = museumSchema.userExhibitRoomService
-  /** 標準での選択部屋 */
-  private def defaultSelectionPath = sourceListModel.pathForLocalLibrary
-  
-  /** ソースリストのツリー構造 */
-  val sourceStructure = new MuseumStructure()
-  sourceStructure.userExhibitRoomSource = museumSchema.userExhibitRoomService
-  sourceStructure.basicRoomDefaultName = getResourceString("basicRoom.defaultName")
-  sourceStructure.groupRoomDefaultName = getResourceString("groupRoom.defaultName")
-  sourceStructure.smartRoomDefaultName = getResourceString("smartRoom.defaultName")
-  
-  /** ソースリストのモデル */
-  private[controller] val sourceListModel = new MuseumSourceModel(sourceStructure)
-  
-  /** 現在選択されているパスモデル */
-  val selectedRoom = new ValueHolder(defaultSelectionPath.last) {
-    selectLocalLibraryNode()
-    
-    // 選択状態を更新するリアクション
-    sourceListModel.reactions += {
-      case DataTreePathsSelectionChanged(_, newPaths, _) =>
-      newPaths.headOption match {
-        case None => selectLocalLibraryNode()
-        case Some(selection) =>
-          this := selection.last.asInstanceOf[ExhibitRoom]
-          updateActionAvailability()
-      }
-    }
-  
-    /** ローカルライブラリを選択状態にする。 */
-    private def selectLocalLibraryNode() =
-      sourceListModel.selectPath(defaultSelectionPath)
+) extends GenomeMuseumController {
+  /**
+   * 指定したモデルとビューからこのコントローラを作成する。
+   * 
+   * @param roomService 部屋のモデル
+   * @param view ツリー
+   * @param loadManager ファイルの読み込み操作管理
+   * @param exhibitService 展示物の管理
+   */
+  def this(roomService: UserExhibitRoomService, view: JTree, loadManager: MuseumExhibitLoadManager,
+      exhibitService: MuseumExhibitService) {
+    this(roomService, view)
+    this.loadManager = Option(loadManager)
+    this.exhibitService = Option(exhibitService)
   }
+  
+  // モデル
+  /** ソースリストのツリー構造 */
+  val sourceStructure = new MuseumStructure(roomService)
+  /** ソースリストのモデル */
+  val sourceListModel = new MuseumSourceModel(sourceStructure)
+  /** 現在選択されているパスモデル */
+  val selectedRoom = new ValueHolder[ExhibitRoom](sourceStructure.localSource)
+  
+  // プロパティ
+  /** 転入操作に用いられる、読み込み操作管理オブジェクト */
+  var loadManager: Option[MuseumExhibitLoadManager] = None
+  /** 転入操作に用いられる、展示物管理オブジェクト */
+  var exhibitService: Option[MuseumExhibitService] = None
   
   // コントローラ
   /** ツリーの展開を管理するハンドラ */
   private val expansionCtrl = new ExhibitRoomListExpansionController(view, sourceListModel)
   /** 転送ハンドラ */
-  val transferHandler: ExhibitRoomListTransferHandler = new MyTransferHandler
+  protected[controller] val transferHandler: ExhibitRoomListTransferHandler = new MyTransferHandler
   
   // アクション
   /** {@link addBasicRoom} のアクション */
@@ -79,30 +74,29 @@ class ExhibitRoomListController(
   
   /** BasicRoom 型の部屋を追加し、部屋名を編集開始状態にする */
   @Action(name="addBasicRoom")
-  def addBasicRoom {
+  def addBasicRoom() {
     val roomPath = sourceListModel.addRoom(BasicRoom)
     startEditingRoom(roomPath)
   }
   
   /** GroupRoom 型の部屋を追加し、部屋名を編集開始状態にする */
   @Action(name="addGroupRoom")
-  def addGroupRoom {
+  def addGroupRoom() {
     val roomPath = sourceListModel.addRoom(GroupRoom)
     startEditingRoom(roomPath)
   }
   
   /** SmartRoom 型の部屋を追加し、部屋名を編集開始状態にする */
   @Action(name="addSmartRoom")
-  def addSmartRoom {
+  def addSmartRoom() {
     val roomPath = sourceListModel.addRoom(SmartRoom)
     startEditingRoom(roomPath)
   }
   
-  /** 選択中の UserExhibitRoom ノードを除去し、ローカルライブラリを選択する */
+  /** 選択中の UserExhibitRoom ノードを除去する */
   @Action(name="deleteSelectedRoom")
   def deleteSelectedRoom {
     sourceListModel.removeSelections()
-    sourceListModel.selectPathLocalLibrary()
   }
   
   /** アクション状態を更新 */
@@ -118,8 +112,6 @@ class ExhibitRoomListController(
   }
   
   private class MyTransferHandler extends ExhibitRoomListTransferHandler {
-    private def exhibitService = museumSchema.museumExhibitService
-    
     override def canMove(source: UserExhibitRoom, dest: Option[UserExhibitRoom]) =
       sourceStructure.canMove(source, dest)
     
@@ -129,15 +121,17 @@ class ExhibitRoomListController(
     }
     
     override def importFiles(files: Seq[File], targetRoom: Option[UserExhibitRoom]) = {
-      files foreach loadManager.loadExhibit
+      loadManager.foreach(m => files foreach m.loadExhibit)
       true
     }
     
     override def importExhibits(exhibits: Seq[MuseumExhibit], targetRoom: UserExhibitRoom) = {
-      val service = exhibitService
-      exhibits map (_.asInstanceOf[service.ElementClass]) foreach
-        (e => service.addElement(targetRoom, e))
-      true
+      exhibitService.map { service =>
+        exhibits map (_.asInstanceOf[service.ElementClass]) foreach
+          (e => service.addElement(targetRoom, e))
+        true
+      }
+      .getOrElse(false)
     }
     
     override def getTargetRooom(ts: TransferSupport): Option[ExhibitRoom] = {
@@ -158,7 +152,10 @@ class ExhibitRoomListController(
     override def createTransferable(c: JComponent) = {
       c match {
         case `view` => selectedRoom() match {
-          case room: UserExhibitRoom => ExhibitRoomTransferData(room, exhibitService)
+          case room: UserExhibitRoom => exhibitService match {
+            case Some(exhibitService) => ExhibitRoomTransferData(room, exhibitService)
+            case None => null
+          }
           case _ => null
         }
         case _ => null
@@ -166,17 +163,41 @@ class ExhibitRoomListController(
     }
   }
   
-  // モデル結合
-  ExhibitRoomListController.bind(view, this)
-  sourceListModel.sourceListSelectionMode = true
-  expansionCtrl.update()
+  /** モデルと結合する */
+  private def bindModels() {
+    ExhibitRoomListController.bind(view, this)
+    sourceListModel.sourceListSelectionMode = true
+    expansionCtrl.update()
+    
+    // 選択部屋を保持するモデル
+    sourceListModel.reactions += {
+      case DataTreePathsSelectionChanged(_, _, newPaths) => newPaths.headOption match {
+        case None => sourceListModel.selectPathLocalLibrary()
+        case Some(selection) =>
+          selectedRoom := selection.last.asInstanceOf[ExhibitRoom]
+          updateActionAvailability()
+      }
+    }
+  
+    /** ローカルライブラリを選択状態にする。 */
+    sourceListModel.selectPathLocalLibrary()
+      
+    // リソースの適用
+    sourceStructure.basicRoomDefaultName = resourceMap.getString("basicRoom.defaultName")
+    sourceStructure.groupRoomDefaultName = resourceMap.getString("groupRoom.defaultName")
+    sourceStructure.smartRoomDefaultName = resourceMap.getString("smartRoom.defaultName")
+  }
+  
+  bindModels()
 }
 
 private object ExhibitRoomListController {
+  import javax.swing.DropMode
   private def bind(view: JTree, ctrl: ExhibitRoomListController) {
     DataTreeModel.bind(view, ctrl.sourceListModel)
     view setTransferHandler ctrl.transferHandler
     view.setDragEnabled(true)
+    view.setDropMode(DropMode.ON)
     
     // アクションバインド
     view.getActionMap.put("delete", ctrl.removeSelectedUserRoomAction.peer)

@@ -33,14 +33,6 @@ trait StringSortable[A] {
   
   private var currentOrderStatement = ""
   
-  /**
-   * 文字列で並び替え。
-   * @param orderStatement 並び替えの記述
-   */
-  @deprecated("use orderStatement")
-  def sortWith(newValue: String) {
-    orderStatement = newValue
-  }
   
   /**
    * 文字列で並び替え記述の取得

@@ -1,5 +1,8 @@
 package jp.scid.genomemuseum.model
 
+import scala.collection.mutable.Publisher
+import scala.collection.script.Message
+
 import jp.scid.gui.tree.EditableTreeSource
 import UserExhibitRoom.RoomType
 import RoomType._
@@ -7,67 +10,56 @@ import RoomType._
 /**
  * ExhibitRoom のツリーのモデル
  */
-class MuseumStructure extends EditableTreeSource[ExhibitRoom] {
+class MuseumStructure(val roomService: UserExhibitRoomService)
+    extends EditableTreeSource[ExhibitRoom] with Publisher[Message[ExhibitRoom]] {
   import MuseumStructure._
   
+  // プロパティ
+  /** {@code BasicRoom} 型の部屋を作成するときの標準の名前 */
   var basicRoomDefaultName = "New BasicRoom"
+  /** {@code GroupRoom} 型の部屋を作成するときの標準の名前 */
   var groupRoomDefaultName = "New GroupRoom"
+  /** {@code SmartRoom} 型の部屋を作成するときの標準の名前 */
   var smartRoomDefaultName = "New SmartRoom"
   
-  /** データソース */
-  private var currentUserExhibitRoomSource: Option[UserExhibitRoomService] = None
-  
-  /** ローカルファイルのソース要素 */
-  private val localSourceFloor = MuseumFloor("Local")
-  /** NCBI ソース要素 */
-  private val webSourceFloor = MuseumFloor("NCBI")
-  /** ソースを含めた要素 */
-  private val sourcesFloor = MuseumFloor("Libraries", localSourceFloor, webSourceFloor)
-  /** ユーザー部屋のルートノード */
-  private val userRoomsFloor = MuseumFloor("User Rooms")
-  /** ルート要素 */
-  private val museum = MuseumFloor("Museum", sourcesFloor, userRoomsFloor)
-  
-  /** ルートオブジェクト */
-  def root: ExhibitRoom = museum
-  
+  // 規定ノード
   /** ローカルソースの要素を取得 */
-  def localSource: ExhibitRoom = localSourceFloor
-  
+  val localSource = MuseumFloor("Local")
   /** Web ソースの要素を取得 */
-  def webSource: ExhibitRoom = webSourceFloor
+  val webSource = MuseumFloor("NCBI")
+  /** ライブラリーカテゴリの要素 */
+  val sourcesRoot = MuseumFloor("Libraries", localSource, webSource)
+  /** ユーザー部屋カテゴリの要素 */
+  val userRoomsRoot = MuseumFloor("User Rooms")
+  /** ルート要素 */
+  val root = MuseumFloor("Museum", sourcesRoot, userRoomsRoot)
   
-  /** ユーザー設定部屋のルート要素 */
-  def userRoomsRoot: ExhibitRoom = userRoomsFloor
+  /** 変更イベントの結合 */
+  roomService.subscribe(new roomService.Sub {
+    def notify(pub: roomService.Pub, event: Message[UserExhibitRoom]) {
+      publish(event)
+    }
+  })
   
-  /** ソースのルート要素 */
-  def sourcesRoot: ExhibitRoom = sourcesFloor
-  
-  /** 子要素 */
-  def childrenFor(parent: ExhibitRoom) = {
+  /** 子要素を取得 */
+  override def childrenFor(parent: ExhibitRoom) = {
     if (isLeaf(parent)) Nil
     else parent match {
       // ユーザー設定部屋ルートの時は、サービスからのルート要素取得して返す
-      case `userRoomsFloor` =>
-        getUserRoomChildren(None)
-      
+      case `userRoomsRoot` => roomService.getChildren(None).toList
       // ユーザー設定部屋の時は、サービスから子要素を取得して返す
-      case parent: UserExhibitRoom =>
-        getUserRoomChildren(Some(parent))
-      
+      case parent: UserExhibitRoom => roomService.getChildren(Some(parent)).toList
       // MuseumFloor の時は、メソッドから子要素を返す
-      case parent: MuseumFloor =>
-        parent.children
-      
+      case parent: MuseumFloor => parent.children
       // 該当が無い時は Nil
       case _ => Nil
     }
   }
   
   /** 末端要素であるか */
-  def isLeaf(room: ExhibitRoom) = room match {
+  override def isLeaf(room: ExhibitRoom) = room match {
     case room: UserExhibitRoom => room.roomType != GroupRoom
-    case `userRoomsFloor` => false
+    case `userRoomsRoot` => false
     case floor: MuseumFloor => floor.children.isEmpty
     case _ => throw new IllegalArgumentException(
       "node %s is not valid ExhibitRoom".format(room))
@@ -81,19 +73,13 @@ class MuseumStructure extends EditableTreeSource[ExhibitRoom] {
       case value: String => element.name = value
       case _ =>
     }
-    userExhibitRoomSource.save(element)
+    roomService.save(element)
   }
   
   /** 値の更新 */
-  def update(path: IndexedSeq[ExhibitRoom], newValue: AnyRef) = path match {
-    case Seq(`museum`, `userRoomsFloor`, userRoomPath @ _*) => userRoomPath.lastOption match {
-      case Some(element: UserExhibitRoom) => 
-        update(element, newValue)
-      case None =>
-        throw new IllegalArgumentException("updating is not allowed")
-      }
-    case _ =>
-      throw new IllegalArgumentException("updating is not allowed")
+  override def update(path: IndexedSeq[ExhibitRoom], newValue: AnyRef) = path.lastOption match {
+    case Some(element: UserExhibitRoom) => update(element, newValue)
+    case None =>
   }
   
   /**
@@ -109,30 +95,13 @@ class MuseumStructure extends EditableTreeSource[ExhibitRoom] {
           case None => node :: path // return value
         }
         case room: UserExhibitRoom =>
-          val parent = userExhibitRoomSource.getParent(room).getOrElse(userRoomsRoot)
+          val parent = roomService.getParent(room).getOrElse(userRoomsRoot)
           getParent(parent, room :: path)
       }
     }
     
     getParent(node).toIndexedSeq
   }
-  
-  /**
-   * ユーザー設定部屋のデータソースを取得
-   */
-  def userExhibitRoomSource = currentUserExhibitRoomSource.get
-  
-  /**
-   * ユーザー設定部屋のデータソースを設定
-   */
-  def userExhibitRoomSource_=(newSource: UserExhibitRoomService) {
-    currentUserExhibitRoomSource = Option(newSource)
-  }
-  
-  /** UserExhibitRoom の子要素を取得するショートカット */
-  private def getUserRoomChildren(parent: Option[UserExhibitRoom]) =
-    userExhibitRoomSource.getChildren(parent).toList
-  
   
   /**
    * 部屋をサービスに追加する。
@@ -157,7 +126,7 @@ class MuseumStructure extends EditableTreeSource[ExhibitRoom] {
       case SmartRoom => smartRoomDefaultName
     })
     
-    userExhibitRoomSource.addRoom(roomType, name, parent)
+    roomService.addRoom(roomType, name, parent)
   }
   
   /**
@@ -165,9 +134,9 @@ class MuseumStructure extends EditableTreeSource[ExhibitRoom] {
    */
   def canMove(source: UserExhibitRoom, dest: Option[UserExhibitRoom]) = {
     dest match {
-      case UserExhibitRoom(dest @ RoomType(GroupRoom)) =>
+      case Some(dest @ RoomType(GroupRoom)) =>
         !pathToRoot(dest).startsWith(pathToRoot(source))
-      case None => userExhibitRoomSource.getParent(source).nonEmpty
+      case None => roomService.getParent(source).nonEmpty
       case _ => false
     }
   }
@@ -179,17 +148,17 @@ class MuseumStructure extends EditableTreeSource[ExhibitRoom] {
    * @throws IllegalArgumentException 指定した親が GroupRoom ではない時
    * @throws IllegalStateException 指定した親が要素自身か、子孫である時
    */
-  def moveRoom(source: UserExhibitRoom, newParent: Option[UserExhibitRoom]) = {
+  def moveRoom(source: UserExhibitRoom, newParent: Option[UserExhibitRoom]) {
     newParent match {
-      case UserExhibitRoom(dest @ RoomType(GroupRoom)) =>
+      case Some(dest @ RoomType(GroupRoom)) =>
         val sourcePath = pathToRoot(source)
         val destPath = pathToRoot(dest)
         destPath.startsWith(sourcePath) match {
           case true => throw new IllegalStateException(
             "'%s' is not allowed to move to '%s'".format(sourcePath, destPath))
-          case false => userExhibitRoomSource.setParent(source, newParent)
+          case false => roomService.setParent(source, newParent)
         }
-      case None => userExhibitRoomSource.setParent(source, None)
+      case None => roomService.setParent(source, None)
       case _ => throw new IllegalArgumentException("parent must be a GroupRoom")
     }
   }
@@ -198,7 +167,7 @@ class MuseumStructure extends EditableTreeSource[ExhibitRoom] {
    * 部屋を削除する
    */
   def removeRoom(room: UserExhibitRoom) {
-    userExhibitRoomSource.remove(room)
+    roomService.remove(room)
   }
   
   /**
@@ -211,13 +180,13 @@ class MuseumStructure extends EditableTreeSource[ExhibitRoom] {
   private def findRoomNewName(baseName: String) = {
     def searchNext(index: Int): String = {
       val candidate = baseName + " " + index
-      userExhibitRoomSource.nameExists(candidate) match {
+      roomService.nameExists(candidate) match {
         case true => searchNext(index + 1)
         case false => candidate
       }
     }
     
-    userExhibitRoomSource.nameExists(baseName) match {
+    roomService.nameExists(baseName) match {
       case true => searchNext(1)
       case false => baseName
     }
@@ -225,10 +194,16 @@ class MuseumStructure extends EditableTreeSource[ExhibitRoom] {
 }
 
 object MuseumStructure {
-  private case class MuseumFloor(
+  /**
+   * 階層オブジェクト
+   */
+  case class MuseumFloor(
+    /** このノードの名前 */
     var name: String,
+    /** このノードの子要素 */
     children: List[MuseumFloor] = Nil
   ) extends ExhibitRoom {
+    /** 親要素 */
     var parent: Option[MuseumFloor] = None
     
     override def toString = name

@@ -1,11 +1,27 @@
 package jp.scid.genomemuseum.model
 
-import org.specs2.mock._
+import collection.script.Message
 
-object MuseumExhibitServiceSpec extends Mockito {
-  def makeMock(mock: MuseumExhibitService) = {
-    mock.allElements returns Nil
-    mock.getExhibits(any) returns Nil
-    mock
+object MuseumExhibitServiceMock extends org.specs2.mock.Mockito {
+  def of(elements: MuseumExhibit*) = {
+    val s = mock[MuseumExhibitService]
+    s.allElements returns elements.toList.asInstanceOf[List[s.ElementClass]]
+    s.getExhibits(any) returns Nil
+    s
   }
+}
+
+class EmptyMuseumExhibitService extends MuseumExhibitService {
+  type ElementClass = MuseumExhibit
+  
+  override def publish(event: Message[_ <: MuseumExhibit]) {
+    super.publish(event)
+  }
+  
+  def allElements: List[MuseumExhibit] = Nil
+  def create() = null
+  def save(element: MuseumExhibit) {}
+  def remove(element: MuseumExhibit) = false
+  def getExhibits(room: UserExhibitRoom): List[MuseumExhibit] = Nil
+  def addElement(room: UserExhibitRoom, item: MuseumExhibit) {}
 }

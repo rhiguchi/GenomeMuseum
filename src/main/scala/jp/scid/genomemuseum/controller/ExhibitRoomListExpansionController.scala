@@ -49,7 +49,7 @@ class ExhibitRoomListExpansionController(tree: JTree, model: MuseumSourceModel) 
   }
   
   protected def isCollapseAllowed(path: Path[_]) = {
-    path != model.pathForUserRooms && path != model.pathForLibraries
+    path != model.pathForLocalLibrary.take(2) && path != model.pathForUserRooms
   }
   
   tree addTreeWillExpandListener expandHandler

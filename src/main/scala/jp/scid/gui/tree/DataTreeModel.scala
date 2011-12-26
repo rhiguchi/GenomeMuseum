@@ -125,10 +125,10 @@ object DataTreeModel {
     def valueChanged(tsEvent: TreeSelectionEvent) {
       // イベントオブジェクトの生成
       val (newPaths, oldPaths) = tsEvent.getPaths.toList partition tsEvent.isAddedPath
-      val newPathSeq = newPaths map convertTreePathToPath
       val oldPathSeq = oldPaths map convertTreePathToPath
+      val newPathSeq = newPaths map convertTreePathToPath
       
-      val dtEvent = DataTreePathsSelectionChanged(publisher, newPathSeq, oldPathSeq)
+      val dtEvent = DataTreePathsSelectionChanged(publisher, oldPathSeq, newPathSeq)
       
       // イベント発行
       publisher publish dtEvent

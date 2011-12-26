@@ -7,7 +7,7 @@ import javax.swing.{JComponent, TransferHandler}
 import DataFlavor.javaFileListFlavor
 import TransferHandler.TransferSupport
 
-import jp.scid.genomemuseum.model.{MuseumExhibit, MuseumExhibitStorage, MuseumExhibitTransferData,
+import jp.scid.genomemuseum.model.{MuseumExhibit, MuseumExhibitTransferData,
   UserExhibitRoom, ExhibitRoom}
 import UserExhibitRoom.RoomType
 import RoomType._
@@ -22,19 +22,25 @@ abstract class MuseumExhibitListTransferHandler extends TransferHandler {
   import MuseumExhibitListTransferHandler._
   
   override def importData(ts: TransferSupport) = {
+    // 展示物オブジェクトの転入
     if (ts.isDataFlavorSupported(exhibitDataFlavor))
       getImportExhibitsFunction(getTargetRooom(ts), ts.getTransferable).map(_.apply).getOrElse(false)
+    // ファイルの転入
     else if (ts.isDataFlavorSupported(javaFileListFlavor))
       getImportFilesFunction(getTargetRooom(ts), ts.getTransferable).map(_.apply).getOrElse(false)
+    // その他は上位クラスに委譲
     else
       super.importData(ts)
   }
   
   override def canImport(ts: TransferSupport) = {
+    // 展示物オブジェクトの転入
     if (ts.isDataFlavorSupported(exhibitDataFlavor))
       getImportExhibitsFunction(getTargetRooom(ts), ts.getTransferable).nonEmpty
+    // ファイルの転入
     else if (ts.isDataFlavorSupported(javaFileListFlavor))
       getImportFilesFunction(getTargetRooom(ts), ts.getTransferable).nonEmpty
+    // その他
     else
       super.canImport(ts)
   }
@@ -48,6 +54,7 @@ abstract class MuseumExhibitListTransferHandler extends TransferHandler {
       targetRoomOp: Option[ExhibitRoom], t: Transferable): Option[() => Boolean] = {
     (targetRoomOp, t.getTransferData(exhibitDataFlavor)) match {
       case (Some(targetRoom @ RoomType(BasicRoom)), transferData: MuseumExhibitTransferData) =>
+        // 転入先部屋が転出元と異なるときのみ転送する
         transferData.sourceRoom match {
           case Some(`targetRoom`) => None
           case _ =>

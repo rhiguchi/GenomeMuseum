@@ -7,7 +7,8 @@ import org.squeryl.dsl.OneToManyRelation
 import collection.script.{End, Include, Update, Remove, Index, NoLo}
 import collection.mutable.Publisher
 
-import jp.scid.genomemuseum.model.{MuseumExhibitService => IMuseumExhibitService}
+import jp.scid.genomemuseum.model.{MuseumExhibitService => IMuseumExhibitService,
+  UriFileStorage}
 import SquerylTriggerAdapter.{TableOperation, Inserted, Updated, Deleted}
 
 /**
@@ -19,6 +20,8 @@ private[squeryl] class MuseumExhibitService(
     val roomTable: Table[UserExhibitRoom]) extends IMuseumExhibitService with RoomElementService
     with MuseumExhibitPublisher {
   type ElementClass = MuseumExhibit
+  
+  private var fileStorage: Option[UriFileStorage] = None
   
   def museumExhibitTablePublisher = SquerylTriggerAdapter.connect(exhibitRelation.leftTable, 7)
   
@@ -54,6 +57,15 @@ private[squeryl] class MuseumExhibitService(
    */
   def save(element: ElementClass) = inTransaction {
     exhibitTable.insertOrUpdate(element)
+  }
+  
+  /** MuseumExhibit のローカルファイル管理オブジェクトを取得する */
+  def localFileStorage = fileStorage
+  
+  /** MuseumExhibit のローカルファイル管理オブジェクトを設定する */
+  def localFileStorage_=(newStorage: Option[UriFileStorage]) {
+    fileStorage = newStorage
+    MuseumExhibit.defaultStorage = newStorage
   }
 }
 

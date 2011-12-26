@@ -5,6 +5,7 @@ import javax.swing.{JTable, JTextField, JLabel, JComponent, TransferHandler, Dro
 import jp.scid.gui.ValueHolder
 import jp.scid.gui.table.{DataTableModel, TableColumnSortable}
 import jp.scid.gui.event.ValueChange
+import jp.scid.genomemuseum.model.UserExhibitRoom
 
 object DataListController {
   case class View(dataTable: JTable, quickSearchField: JTextField)
@@ -14,9 +15,16 @@ object DataListController {
  * テーブルと検索フィールドの操作反応基底クラス。
  */
 abstract class DataListController(
-  application: ApplicationActionHandler,
   view: DataListController.View
-) extends GenomeMuseumController(application) {
+) extends GenomeMuseumController {
+  /**
+   * 読み込みマネージャを利用してクラスを作成する
+   */
+  def this(view: DataListController.View, loadManager: MuseumExhibitLoadManager) {
+    this(view)
+    this.loadManager = Option(loadManager)
+  }
+  
   // ビューショートカット
   private def dataTable = view.dataTable
   private def quickSearchField = view.quickSearchField
@@ -27,8 +35,11 @@ abstract class DataListController(
   val searchTextModel: ValueHolder[String] = new ValueHolder("")
   /** 状態文字列モデル */
   val statusTextModel: ValueHolder[String] = new ValueHolder("")
+  // コントローラ
   /** 転送ハンドラ */
   val tableTransferHandler = new TransferHandler("")
+  /** 読み込み処理 */
+  var loadManager: Option[MuseumExhibitLoadManager] = None
   
   // アクション
   /** 項目削除アクション */
@@ -36,6 +47,12 @@ abstract class DataListController(
     def apply() {}
     enabled = false
   }
+  
+  /**
+   * 展示物ファイルの読み込みを行う
+   */
+  def loadExhibit(file: java.io.File, targetRoom: Option[UserExhibitRoom]) =
+    loadManager.get.loadExhibit(file)
   
   /**
    * ビューとモデルの結合を行う。

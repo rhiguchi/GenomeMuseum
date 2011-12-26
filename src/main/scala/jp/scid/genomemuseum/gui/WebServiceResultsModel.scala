@@ -15,6 +15,9 @@ class WebServiceResultsModel(format: WebServiceResultTableFormat)
   
   def this() = this(new WebServiceResultTableFormat)
   
+  /** 現在の検索している文字列 */
+  private var currentQuery = ""
+  
   private var searchAgent = WebServiceAgent()
   
   /** 現在実行中の検索取得タスク */
@@ -26,8 +29,13 @@ class WebServiceResultsModel(format: WebServiceResultTableFormat)
   def agent_=(newAgent: WebServiceAgent) =
     searchAgent = newAgent
   
+  /** 現在の検索している文字列を取得する */
+  def searchQuery = currentQuery
+  
   /** 検索クエリ */
   def searchWith(newQuery: String) = synchronized {
+    currentQuery = newQuery
+    
     currentTask.foreach { case (manager, actor) =>
       if (actor.getState != Actor.State.Terminated) {
         actor ! 'stop

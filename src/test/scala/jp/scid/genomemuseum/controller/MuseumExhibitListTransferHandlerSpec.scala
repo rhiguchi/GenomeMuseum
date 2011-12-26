@@ -10,7 +10,7 @@ import mock._
 
 import jp.scid.genomemuseum.gui.ExhibitTableModel
 import jp.scid.genomemuseum.model.{MuseumExhibit, MuseumExhibitTransferData, UserExhibitRoom,
-  UserExhibitRoomMock, MuseumExhibitMock}
+  UserExhibitRoomMock, MuseumExhibitMock, MuseumExhibitTransferDataMock}
 import UserExhibitRoom.RoomType._
 import MuseumExhibitTransferData.{dataFlavor => exhibitDataFlavor}
 import DataFlavor.javaFileListFlavor
@@ -22,10 +22,12 @@ class MuseumExhibitListTransferHandlerSpec extends Specification with Mockito {
     "転入操作" ^ importDataSpec(createHandler) ^
     end
   
-  def createHandler = new MuseumExhibitListTransferHandler() {
-    def importFiles(files: Seq[File], targetRoom: Option[UserExhibitRoom]) = true
-    def importExhibits(exhibits: Seq[MuseumExhibit], targetRoom: UserExhibitRoom) = true
-    protected[controller] def getTargetRooom(ts: TransferSupport) = None
+  def createHandler() = new MuseumExhibitListTransferHandlerImpl
+  
+  class MuseumExhibitListTransferHandlerImpl() extends MuseumExhibitListTransferHandler {
+    def importFiles(files: Seq[File], targetRoom: Option[UserExhibitRoom]) = false
+    def importExhibits(exhibits: Seq[MuseumExhibit], targetRoom: UserExhibitRoom) = false
+    def getTargetRooom(ts: TransferSupport): Option[UserExhibitRoom] = None
   }
   
   def canImportSpec(h: => MuseumExhibitListTransferHandler) =
@@ -41,6 +43,7 @@ class MuseumExhibitListTransferHandlerSpec extends Specification with Mockito {
     bt
   
   class TestBase {
+    def data() = mock[Transferable]
     val t = mock[Transferable]
     val ts = new TransferSupport(mock[JComponent], t)
     
@@ -74,7 +77,9 @@ class MuseumExhibitListTransferHandlerSpec extends Specification with Mockito {
     def exhibit = {
       val exhibits = (0 to 4).map(i => MuseumExhibitMock.of("exhibit" + i))
       val sourceRoom = UserExhibitRoomMock.of(BasicRoom)
-      makeTransferDataExhibitFlavor(exhibits, Some(sourceRoom))
+      val data = MuseumExhibitTransferDataMock.of(exhibits, Some(sourceRoom))
+      val ts = new TransferSupport(mock[JComponent], data)
+      
       handler.getTargetRooom(ts) returns basicRoom
       
       handler.canImport(ts) must beTrue

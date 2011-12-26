@@ -6,4 +6,6 @@ class ApplicationViews() {
   val mainVrameView = new MainFrameView
   
   val openDialog = new FileDialog(null.asInstanceOf[java.awt.Frame], "", FileDialog.LOAD)
+  
+  def mainView = mainVrameView.mainView
 }

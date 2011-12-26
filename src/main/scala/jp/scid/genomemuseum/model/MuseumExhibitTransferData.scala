@@ -3,17 +3,14 @@ package jp.scid.genomemuseum.model
 import java.awt.datatransfer.{Transferable, DataFlavor}
 
 object MuseumExhibitTransferData {
+  /** データフレーバー */
   val dataFlavor = new DataFlavor(MuseumExhibitTransferData.getClass,
     "MuseumExhibitTransferData")
-  
-  def apply(exhibits: Seq[MuseumExhibit], sourceRoom: Option[UserExhibitRoom],
-      storage: MuseumExhibitStorage): MuseumExhibitTransferData = {
-    val t = new MuseumExhibitTransferDataImpl(exhibits, sourceRoom)
-    t.fileStorage = Some(storage)
-    t
-  }
 }
 
+/**
+ * MuseumExhibit が転送される時の転送データインターフェイス。
+ */
 trait MuseumExhibitTransferData extends Transferable {
   /** 転送する展示物 */
   def museumExhibits: List[MuseumExhibit]

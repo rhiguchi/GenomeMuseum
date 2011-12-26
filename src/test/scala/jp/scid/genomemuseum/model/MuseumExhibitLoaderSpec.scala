@@ -4,11 +4,12 @@ import org.specs2._
 import mock._
 
 import java.net.URL
-import java.io.{File, FileInputStream, IOException, InputStream,
-  BufferedInputStream, ByteArrayInputStream, FileOutputStream, BufferedOutputStream}
+import java.io.{File, FileInputStream, IOException, InputStream, InputStreamReader,
+  FileReader, BufferedInputStream, ByteArrayInputStream, FileOutputStream, BufferedOutputStream}
 import java.text.ParseException
 
 import jp.scid.bio.BioData
+import MuseumExhibit.FileType._
 
 object MuseumExhibitLoaderSpec {
   def download(source: URL) = {
@@ -40,7 +41,7 @@ class MuseumExhibitLoaderSpec extends Specification with Mockito {
   import MuseumExhibitLoaderSpec._
   
   def is = "MuseumExhibitLoader" ^
-    "makeMuseumExhibit" ^ canMakeExhibit(defaultParsers) ^ bt ^
+    "MuseumExhibitの作成" ^ canMakeMuseumExhibit(defaultParsers) ^
     "genbank ファイル" ^ canParseGenBankFile(defaultParsers) ^ bt ^
     "FASTA ファイル" ^ canParseFastaFile(defaultParsers) ^ bt ^
     end
@@ -56,11 +57,12 @@ class MuseumExhibitLoaderSpec extends Specification with Mockito {
   lazy val emptyFile = File.createTempFile("empty", ".txt")
   lazy val invalidFile = download(invalidResourceResource)
   
-  def canMakeExhibit(parsers: => MuseumExhibitLoader) =
-    "GenBank 形式ファイルから取得" ! findParserForSpec(parsers).fromGenBank ^
-    "FASTA 形式ファイルから取得" ! findParserForSpec(parsers).fromFasta ^
-    "空ファイルから取得できない" ! findParserForSpec(parsers).fromEmpty ^
-    "不正形式ファイルから取得できない" ! findParserForSpec(parsers).fromINvalid
+  def canMakeMuseumExhibit(l: => MuseumExhibitLoader) =
+    "GenBank 形式ファイルから作成" ! makeMuseumExhibit(l).fromGenBank ^
+    "FASTA 形式ファイルから作成" ! makeMuseumExhibit(l).fromFasta ^
+    "空ファイルから取得できない" ! makeMuseumExhibit(l).fromEmpty ^
+    "不正形式ファイルから取得できない" ! makeMuseumExhibit(l).fromINvalid
+    bt
   
   def canParseGenBankFile(parsers: => MuseumExhibitLoader) =
     "name" ! fromGenBank(parsers).name ^
@@ -81,26 +83,41 @@ class MuseumExhibitLoaderSpec extends Specification with Mockito {
     "version" ! fromFasta(parsers).version ^
     "definition" ! fromFasta(parsers).definition
   
-  class TestBase(loader: MuseumExhibitLoader) {
-    lazy val exhibit = mock[MuseumExhibit]
-    
-    def makeFromGenBankFile =
-      loader.makeMuseumExhibit(exhibit, gbkResource)
-    
-    def makeFromFastaFile =
-      loader.makeMuseumExhibit(exhibit, fastaResource)
+  private def using[A <% java.io.Closeable, B](s: A)(f: A => B) = {
+    try f(s) finally s.close()
   }
   
-  def findParserForSpec(parsers: MuseumExhibitLoader) = new TestBase(parsers) {
-    def fromGenBank = makeFromGenBankFile must beTrue
+  class TestBase(loader: MuseumExhibitLoader) {
+    val exhibit = mock[MuseumExhibit]
     
-    def fromFasta =  makeFromFastaFile must beTrue
+    def makeFromGenBankFile = using(new InputStreamReader(gbkResource.openStream)) { reader => 
+      loader.makeMuseumExhibit(exhibit, reader)
+    }
+    
+    def makeFromFastaFile = using(new InputStreamReader(fastaResource.openStream)) { reader => 
+      loader.makeMuseumExhibit(exhibit, reader)
+    }
+  }
+  
+  def makeMuseumExhibit(loader: MuseumExhibitLoader) = new TestBase(loader) {
+    def fromGenBank = makeFromGenBankFile must beSome(exhibit) and
+        (there was one(exhibit).fileType_=(GenBank))
+    
+    def fromFasta = makeFromFastaFile must beSome(exhibit) and
+        (there was one(exhibit).fileType_=(FASTA))
     
     def fromEmpty = {
-      parsers.makeMuseumExhibit(exhibit, emptyFile.toURI.toURL) must beFalse
+      val result = using(new FileReader(emptyFile)) { reader => 
+        loader.makeMuseumExhibit(exhibit, reader)
+      }
+      result must beNone
     }
+    
     def fromINvalid = {
-      parsers.makeMuseumExhibit(exhibit, invalidResourceResource) must beFalse
+      val result = using(new InputStreamReader(invalidResourceResource.openStream)) { reader => 
+        loader.makeMuseumExhibit(exhibit, reader)
+      }
+      result must beNone
     }
   }
   

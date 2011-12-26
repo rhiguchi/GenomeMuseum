@@ -12,7 +12,7 @@ trait DataTreeModelEvent[A <: AnyRef] extends DataModelEvent {
 
 case class DataTreePathsSelectionChanged[A <: AnyRef](
   source: DataTreeModel[A],
-  newPaths: List[Path[A]] = Nil,
-  oldPaths: List[Path[A]] = Nil
+  oldPaths: List[Path[A]] = Nil,
+  newPaths: List[Path[A]] = Nil
 ) extends DataTreeModelEvent[A] {
 }

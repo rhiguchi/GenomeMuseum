@@ -4,16 +4,13 @@ import org.specs2._
 import mock._
 
 import jp.scid.gui.event.ValueChange
-import jp.scid.genomemuseum.{view, gui, model}
-import model.{ExhibitRoom, UserExhibitRoom, MuseumSchema,
-  MuseumSchemaSpec, MuseumExhibitService}
+import jp.scid.genomemuseum.{view, gui, model, GenomeMuseumGUI}
+import model.{ExhibitRoom, UserExhibitRoom, MuseumSchema, MuseumExhibitService}
 import view.MainView
 import gui.ExhibitTableModel
 
-import GenomeMuseumControllerSpec.spyApplicationActionHandler
-
 class MainViewControllerSpec extends Specification with Mockito {
-  private type Factory = (ApplicationActionHandler, MainView) => MainViewController
+  private type Factory = (GenomeMuseumGUI, MainView) => MainViewController
   
   def is = "MainViewController" ^
     "部屋の選択" ^ selectedRoomSpec(createController) ^
@@ -25,7 +22,7 @@ class MainViewControllerSpec extends Specification with Mockito {
 //    "ボタンアクション" ^ appliedActions(defaultController) ^ bt ^
     end
   
-  def createController(app: ApplicationActionHandler, mainView: MainView) =
+  def createController(app: GenomeMuseumGUI, mainView: MainView) =
     new MainViewController(app, mainView)
   
   def selectedRoomSpec(f: Factory) =
@@ -36,7 +33,7 @@ class MainViewControllerSpec extends Specification with Mockito {
   
   def selectedRoom(f: Factory) = new {
     val view = new MainView
-    val ctrl = f(spyApplicationActionHandler, view)
+    val ctrl = f(new GenomeMuseumGUI, view)
     
     private def museumStructure = ctrl.sourceListCtrl.sourceStructure
     
