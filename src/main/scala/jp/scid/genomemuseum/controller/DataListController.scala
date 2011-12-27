@@ -7,34 +7,36 @@ import jp.scid.gui.table.{DataTableModel, TableColumnSortable}
 import jp.scid.gui.event.ValueChange
 import jp.scid.genomemuseum.model.UserExhibitRoom
 
-object DataListController {
-  case class View(dataTable: JTable, quickSearchField: JTextField)
-}
-
 /**
  * テーブルと検索フィールドの操作反応基底クラス。
  */
-abstract class DataListController(
-  view: DataListController.View
-) extends GenomeMuseumController {
+abstract class DataListController extends GenomeMuseumController {
   /**
    * 読み込みマネージャを利用してクラスを作成する
    */
-  def this(view: DataListController.View, loadManager: MuseumExhibitLoadManager) {
-    this(view)
+  def this(loadManager: MuseumExhibitLoadManager) {
+    this()
     this.loadManager = Option(loadManager)
   }
   
-  // ビューショートカット
-  private def dataTable = view.dataTable
-  private def quickSearchField = view.quickSearchField
-  
+  // モデル
+  /** テーブルがドラッグ不可設定 */
+  protected[controller] def isTableDraggable = false
   /** テーブルモデル */
   def tableModel: DataTableModel[_] with TableColumnSortable[_]
-  /** 検索文字列モデル */
-  val searchTextModel: ValueHolder[String] = new ValueHolder("")
+  /**
+   * 検索文字列モデル。
+   * 
+   * @see #searchTextChange {@code ValueChange} 発行時に呼び出される。
+   */
+  val searchTextModel: ValueHolder[String] = new ValueHolder("") {
+    reactions += {
+      case ValueChange(_, _, newValue: String) => searchTextChange(newValue)
+    }
+  }
   /** 状態文字列モデル */
   val statusTextModel: ValueHolder[String] = new ValueHolder("")
+  
   // コントローラ
   /** 転送ハンドラ */
   val tableTransferHandler = new TransferHandler("")
@@ -43,10 +45,12 @@ abstract class DataListController(
   
   // アクション
   /** 項目削除アクション */
-  val removeSelectionAction = new swing.Action("Remove") {
-    def apply() {}
-    enabled = false
-  }
+  def tableDeleteAction: Option[javax.swing.Action] = None
+  
+  /**
+   * {@code searchTextModel} が変更された時に呼び出される。検索処理に利用する。
+   */
+  protected def searchTextChange(newValue: String)
   
   /**
    * 展示物ファイルの読み込みを行う
@@ -55,22 +59,33 @@ abstract class DataListController(
     loadManager.get.loadExhibit(file)
   
   /**
-   * ビューとモデルの結合を行う。
+   * このコントローラの検索フィールドモデルを JTextField へ結合
+   * 
+   * @return 結合保持オブジェクト
    */
-  def bind() = {
-    dataTable.setDragEnabled(true)
-    dataTable.setDropMode(DropMode.INSERT_ROWS)
-    DataTableModel.connect(tableModel, dataTable)
-    dataTable setTransferHandler tableTransferHandler
-    dataTable.getParent match {
-      case scrollPane: JComponent => scrollPane setTransferHandler tableTransferHandler
+  def bindSearchField(field: JTextField) = {
+    ValueHolder.connect(searchTextModel, field)
+  }
+  
+  /**
+   * このコントローラのテーブルモデルを JTable へ結合
+   * 
+   * @return 結合保持オブジェクト
+   */
+  def bindTable(table: JTable) = {
+    DataTableModel.connect(tableModel, table)
+    table.setDragEnabled(isTableDraggable)
+    table.setDropMode(javax.swing.DropMode.INSERT_ROWS)
+    table setTransferHandler tableTransferHandler
+    table.getActionMap.put("delete", tableDeleteAction.getOrElse(null))
+    // 親への転送ハンドラ適用
+    table.getParent match {
+      case parent: JComponent => parent setTransferHandler tableTransferHandler
       case _ =>
     }
-    dataTable.getActionMap.put("delete", removeSelectionAction.peer)
     
-    val headerConn = TableColumnSortable.connect(tableModel, dataTable.getTableHeader)
-    val searchConn = ValueHolder.connect(searchTextModel, quickSearchField)
-    List(headerConn, searchConn)
+    val headerConn = TableColumnSortable.connect(tableModel, table.getTableHeader)
+    List(headerConn)
   }
 }
 

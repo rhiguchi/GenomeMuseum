@@ -36,7 +36,9 @@ class ValueHolder[T: ClassManifest](initialValue: T) extends DataModel with Publ
       val old = currentValue
       currentValue = newValue
       publishValueChange(old, newValue)
-      jgoodiesDelegate.setValue(newValue)
+      // イベント実行中に値が変更されたとき、delegate が古い値でイベントを発行することで
+      // ループを発生させてしまうのを防ぐため currentValue で実行
+      jgoodiesDelegate.setValue(currentValue)
     }
   }
   

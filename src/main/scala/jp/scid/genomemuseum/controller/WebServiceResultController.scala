@@ -11,14 +11,19 @@ import view.TaskProgressTableCell
 import model.{SearchResult, HttpDownloader, TaskProgressModel}
 import WebSearchManager._
 
-object WebServiceResultController {
+private object WebServiceResultController {
   private val logger = org.slf4j.LoggerFactory.getLogger(classOf[WebServiceResultController])
 }
 
-class WebServiceResultController(
-  view: DataListController.View
-) extends DataListController(view) {
+class WebServiceResultController extends DataListController {
   import WebServiceResultController._
+  /**
+   * 読み込みマネージャを利用してクラスを作成する
+   */
+  def this(loadManager: MuseumExhibitLoadManager) {
+    this()
+    this.loadManager = Option(loadManager)
+  }
   
   // モデル
   /** タスクが実行中であるかの状態を保持 */
@@ -36,8 +41,11 @@ class WebServiceResultController(
   val downloadAction = swing.Action("Download") {
     downloadBioDataOnEditingRow()
     // プログレスバー表示の有効化と、ソース変更時にエディタが残るのを防ぐため。
-    view.dataTable.removeEditor()
+//    view.dataTable.removeEditor()
   }
+  
+  /** 指定した文字列で検索を行う */
+  protected def searchTextChange(newValue: String) = scheduleSearch(newValue)
   
   /**
    * 検索を遅延実行する。
@@ -73,34 +81,34 @@ class WebServiceResultController(
   def downloadBioDataOnEditingRow() {
     logger.debug("ダウンロード")
     
-    val item = tableModel.viewItem(view.dataTable.getEditingRow)
-    val task = createDownloadTask(item)
-    
-    DownloadTask.propertyBind(task) { (prop, value) =>
-      import SwingWorker.StateValue._
-      import util.control.Exception.catching
-      // 値の更新
-      item.state = task.getState match {
-        case DONE => task.isCancelled match {
-          case true => PENDING
-          case false =>
-            catching(classOf[Exception]).opt(task.get) match {
-              case Some(_) => DONE
-              case None => PENDING
-            }
-        }
-        case state => state
-      }
-      item.progress = task.getProgress
-      item.label = item.state match {
-        case STARTED => item.identifier + " is downloaing..."
-        case _ => item.identifier
-      }
-      // 更新通知
-      tableModel.updated(item)
-    }
-    
-    task.execute
+//    val item = tableModel.viewItem(view.dataTable.getEditingRow)
+//    val task = createDownloadTask(item)
+//    
+//    DownloadTask.propertyBind(task) { (prop, value) =>
+//      import SwingWorker.StateValue._
+//      import util.control.Exception.catching
+//      // 値の更新
+//      item.state = task.getState match {
+//        case DONE => task.isCancelled match {
+//          case true => PENDING
+//          case false =>
+//            catching(classOf[Exception]).opt(task.get) match {
+//              case Some(_) => DONE
+//              case None => PENDING
+//            }
+//        }
+//        case state => state
+//      }
+//      item.progress = task.getProgress
+//      item.label = item.state match {
+//        case STARTED => item.identifier + " is downloaing..."
+//        case _ => item.identifier
+//      }
+//      // 更新通知
+//      tableModel.updated(item)
+//    }
+//    
+//    task.execute
   }
   
   def createDownloadTask(item: SearchResult) = {
@@ -115,13 +123,6 @@ class WebServiceResultController(
           logger.trace("ダウンロードキャンセル {}", item.sourceUrl.get.toString)
         }
       }
-    }
-  }
-  
-  def downloadingTableCell: Option[TaskProgressTableCell] = {
-    view.dataTable.getDefaultRenderer(classOf[TaskProgressModel]) match {
-      case renderer: TaskProgressTableCell => Some(renderer)
-      case _ => None
     }
   }
   
@@ -148,25 +149,19 @@ class WebServiceResultController(
       isProgress := false
   }
   
-  /** モデルバインド */
-  private def bindModels() {
-    /** Web 検索文字列の変更 */
-    searchTextModel.reactions += {
-      case ValueChange(_, _, newValue: String) => scheduleSearch(newValue)
+  /*
+   * テーブル結合
+   */
+  override def bindTable(table: JTable) = {
+    // ダウンロードアクションの設定
+    table.getDefaultRenderer(classOf[TaskProgressModel]) match {
+      case renderer: TaskProgressTableCell =>
+        renderer.setExecuteButtonAction(downloadAction.peer)
+      case _ =>
     }
-  }
-  
-  override def bind() = {
-    val connList = super.bind()
     
-    view.dataTable.setDragEnabled(false)
-    downloadingTableCell.map(_.setExecuteButtonAction(downloadAction.peer))
-    
-    connList
+    super.bindTable(table)
   }
-  
-  bindModels()
-  bind()
 }
 
 import java.net.URL

@@ -4,52 +4,68 @@ import javax.swing.{JTable, JTextField}
 
 import org.specs2._
 
-import DataListController.View
-
-trait DataListControllerSpec {
-  this: Specification =>
+class DataListControllerSpec extends Specification with mock.Mockito {
+  def is = "DataListController" ^ end
   
-  private type Factory = View => _ <: DataListController
-  
-  class TestBase(f: Factory) {
-    val searchField = new JTextField
-    val table = new JTable
-    val view = View(table, searchField)
-    val ctrl = f(view)
-  }
-  
-  def searchTextModelSpec(f: Factory) =
-    "初期内容は空" ! searchTextModel(f).isEmptyOnDefault ^
-    "フィールドの内容が適用" ! searchTextModel(f).appliedFromSearchField ^
+  def canBindToTable(ctrl: => DataListController) =
+    "tableModel の適用" ! bindTableModel(ctrl).tableModel ^
+    "tableColumnModel の適用" ! bindTableModel(ctrl).tableColumnModel ^
+    "selectionModel の適用" ! bindTableModel(ctrl).selectionModel ^
+    "ドラッグ可能" ! bindTableModel(ctrl).setDragEnabled ^
+    "行上ドロップ" ! bindTableModel(ctrl).setDropMode ^
+    "転送ハンドラ" ! bindTableModel(ctrl).setTransferHandler ^
+    "親コンポーネントがある時は親へ転送ハンドラ" ! bindTableModel(ctrl).setTransferHandlerToParent ^
+    "削除アクション設定" ! bindTableModel(ctrl).actionMapDelete ^
+    "テーブルヘッダにクリックソート" ! todo ^
     bt
   
-  // テーブルビュー
-  def viewTableSpec(f: Factory) =
-    "tableModel のモデルが結合" ! viewTable(f).bindsTableModel ^
-    "転送ハンドラの適用" ! viewTable(f).hasTransferrable ^
+  def canBindSearchField(ctrl: => DataListController) =
+    "モデル -> フィールド" ! bindSearchField(ctrl).modelToField ^
+    "フィールド -> モデル" ! bindSearchField(ctrl).fieldToModel ^
     bt
   
-  // 検索文字列モデル
-  def searchTextModel(f: Factory) = new TestBase(f) {
-    def isEmptyOnDefault = ctrl.searchTextModel() must beEmpty
+  // SearchField 結合
+  def bindSearchField(ctrl: DataListController) = new {
+    val field = new JTextField
+    val textSource = Seq("val", "", "123")
     
-    private def setTextAndModelGet(text: String) = {
-      searchField.setText(text)
-      ctrl.searchTextModel()
+    ctrl.bindSearchField(field)
+    
+    def modelToField = {
+      val fldValues = textSource.map { value =>
+        ctrl.searchTextModel := value
+        field.getText
+      }
+      fldValues must_== textSource
     }
     
-    def appliedFromSearchField = {
-      val values = List("12345", "", "abcde")
-      val results = values map setTextAndModelGet
-      results must_== values
+    def fieldToModel = {
+      val fldValues = textSource.map { value =>
+        field setText value
+        ctrl.searchTextModel.apply
+      }
+      fldValues must_== textSource
     }
   }
   
-  // ビューのテーブル
-  def viewTable(f: Factory) = new TestBase(f) {
-    def bindsTableModel = table.getModel must_==
-      ctrl.tableModel.tableModel
+  // dataTable 結合
+  def bindTableModel(ctrl: DataListController) = new {
+    val parent = mock[javax.swing.JComponent]
+    val table = spy(new JTable)
+    table.getParent returns parent
+    ctrl.bindTable(table)
     
-    def hasTransferrable = table.getTransferHandler must_== ctrl.tableTransferHandler
+    private def tm = ctrl.tableModel
+    
+    def tableModel = there was one(table).setModel(tm.tableModel)
+    def tableColumnModel = there was one(table).setColumnModel(tm.columnModel)
+    def selectionModel = there was one(table).setSelectionModel(tm.selectionModel)
+    def setDragEnabled = there was one(table).setDragEnabled(ctrl.isTableDraggable)
+    def setDropMode = there was one(table).setDropMode(javax.swing.DropMode.INSERT_ROWS)
+    def setTransferHandler = there was one(table).setTransferHandler(ctrl.tableTransferHandler)
+    def setTransferHandlerToParent = there was one(parent)
+      .setTransferHandler(ctrl.tableTransferHandler)
+    def actionMapDelete = table.getActionMap.get("delete") must_==
+      ctrl.tableDeleteAction.getOrElse(null)
   }
 }

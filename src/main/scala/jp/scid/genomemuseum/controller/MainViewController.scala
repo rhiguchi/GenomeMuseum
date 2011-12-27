@@ -12,52 +12,30 @@ import model.{MuseumSchema, ExhibitRoom, UserExhibitRoom, MuseumExhibit}
 /**
  * 主画面の操作を受け付け、操作反応を実行するオブジェクト。
  * 
+ * @param sourceListCtrl ソースリスト 表示コントローラ
+ * @param museumExhibitListCtrl MuseumExhibit 表示コントローラ
+ * @param webServiceResultCtrl WebService 表示ントローラ
  * @param application データやメッセージを取り扱うアプリケーションオブジェクト。
  * @param mainView 表示と入力を行う画面。
  */
 class MainViewController(
-  application: GenomeMuseumGUI,
-  mainView: MainView
+  val sourceListCtrl: ExhibitRoomListController,
+  val museumExhibitListCtrl: MuseumExhibitListController,
+  val webServiceResultCtrl: WebServiceResultController
 ) extends GenomeMuseumController {
+  
+  def this(application: GenomeMuseumGUI, mainView: MainView) {
+    this(new ExhibitRoomListController(application.museumSchema.userExhibitRoomService,
+      application.exhibitLoadManager),
+      new MuseumExhibitListController(application.museumSchema.museumExhibitService,
+      application.exhibitLoadManager), new WebServiceResultController())
+  }
+  
   import MainViewController.TableSource._
-  // ビュー
-  /** ソースリストショートカット */
-  private def sourceList = mainView.sourceList
-  private def contentViewerSplit = mainView.dataListContentSplit
-  private def dataTable = mainView.dataTable
-  private def quickSearchField = mainView.quickSearchField
-  private def statusField = mainView.statusLabel
-  private def progressView = mainView.loadingIconLabel
-  private def fileContentView = mainView.fileContentView
-  
-  private def loadingView = mainView.fileLoadingActivityPane
-  
-  /** データリストコントローラ用ビュー */
-  private val dataListView = DataListController.View(dataTable, quickSearchField)
-  
-  // コントローラ
-  /** ソースリスト用 */
-  val sourceListCtrl = new ExhibitRoomListController(
-    application.museumSchema.userExhibitRoomService, mainView.sourceList,
-    application.exhibitLoadManager, application.museumSchema.museumExhibitService)
-  
-  // データリスト用
-  /** MuseumExhibit 表示用 */
-  val museumExhibitListCtrl = new MuseumExhibitListController(
-    application.museumSchema.museumExhibitService, dataListView, application.exhibitLoadManager)
-  /** WebService 表示用 */
-  val webServiceResultCtrl = new WebServiceResultController(dataListView)
-  /** ファイル読み込み表示 */
-  val fileLoadingProgressHandler = new FileLoadingProgressViewHandler(loadingView,
-      mainView.fileLoadingProgress, mainView.fileLoadingStatus)
-  /** コンテントビューワー */
-  private val contentViewer = new FileContentViewer(fileContentView)
   
   // モデル
   /** データテーブルの現在の表示モード */
   private val tableSource = new ValueHolder[TableSource](LocalSource)
-  /** データリストテーブルの結合 */
-  private var currentConnectors: List[Connector] = Nil
   /** このコントローラを表すタイトル */
   val title = new ValueHolder("")
   /** ソースリストの選択項目 */
@@ -112,21 +90,6 @@ class MainViewController(
     protected def isIndeterminate =  inProgress && progressMax <= progressValue
   }
   
-  /** データテーブルの表示状態を変更する */
-  private def setTableSource(newTableSource: TableSource) {
-    // 結合解除
-    currentConnectors.foreach(_.release())
-    
-    currentConnectors = newTableSource match {
-      case LocalSource =>
-        ValueHolder.connect(museumExhibitListCtrl.statusTextModel, title) ::
-        museumExhibitListCtrl.bind()
-      case WebSource =>
-        ValueHolder.connect(webServiceResultCtrl.statusTextModel, title) ::
-        webServiceResultCtrl.bind()
-    }
-  }
-  
   /**
    * データテーブル領域に表示するコンテンツを設定する
    * 通常は、ソースリストの選択項目となる
@@ -140,7 +103,7 @@ class MainViewController(
         case newRoom: UserExhibitRoom => Some(newRoom)
         case _ =>  None
       }
-      museumExhibitListCtrl.userExhibitRoom := room
+      museumExhibitListCtrl.userExhibitRoom = room
       tableSource := LocalSource
     }
   }
@@ -170,34 +133,64 @@ class MainViewController(
       case ValueChange(_, _, newRoom) => updateRoomContents(newRoom.asInstanceOf[ExhibitRoom])
     }
     
-    // データリストの表示モードの変更
-    tableSource.reactions += {
-      case ValueChange(_, _, newMode) => setTableSource(newMode.asInstanceOf[TableSource])
-    }
-    
     // ファイルソース表示
     contentViewItem.reactions += {
       case ValueChange(_, _, newValue: Seq[_]) =>
         val newItem = newValue.headOption.collect { case e: MuseumExhibit => e }
         setContentViewItem(newItem)
     }
-    
-    //  読み込み管理オブジェクトの進行表示
-//    fileLoadingProgressHandler.listenTo(loadManager)
-    fileLoadingProgressHandler.updateViews()
   }
   
-  /** アクションの結合を行う */
-  private def bindActions() {
-    // ボタン
+  
+  def bindMainView(mainView: MainView) {
+    // テーブル結合
+    // TODO プライベートクラスにリファクタリング
+    var currentConnectors: List[Connector] = Nil
+    
+    def bindTo(ctrl: DataListController) =
+      ValueHolder.connect(ctrl.statusTextModel, title) ::
+        ctrl.bindSearchField(mainView.quickSearchField) ::
+        ctrl.bindTable(mainView.dataTable) ::: Nil
+    
+    /** データテーブルの表示状態を変更する */
+    def setTableSource(newTableSource: TableSource) {
+      // 結合解除
+      currentConnectors.foreach(_.release())
+      
+      currentConnectors = newTableSource match {
+        case LocalSource => bindTo(museumExhibitListCtrl)
+        case WebSource => bindTo(webServiceResultCtrl)
+      }
+    }
+    
+    // データリストの表示モードの変更
+    tableSource.reactions += {
+      case ValueChange(_, _, newMode) => setTableSource(newMode.asInstanceOf[TableSource])
+    }
+    setTableSource(LocalSource)
+    
+    // ソースリスト結合
+    sourceListCtrl.bindTree(mainView.sourceList)
+    
+    // ボタンアクションの結合
     bindAction(mainView.addListBox -> sourceListCtrl.addBasicRoomAction,
       mainView.addSmartBox -> sourceListCtrl.addSamrtRoomAction,
       mainView.addBoxFolder -> sourceListCtrl.addGroupRoomAction,
       mainView.removeBoxButton -> sourceListCtrl.removeSelectedUserRoomAction)
+
+    /** コンテントビューワー */
+    val contentViewer = new FileContentViewer(mainView.fileContentView)
+    
+    /** ファイル読み込み表示 */
+    val fileLoadingProgressHandler = new FileLoadingProgressViewHandler(
+        mainView.fileLoadingActivityPane,
+        mainView.fileLoadingProgress, mainView.fileLoadingStatus)
+    fileLoadingProgressHandler.updateViews()
+    //  読み込み管理オブジェクトの進行表示
+//    fileLoadingProgressHandler.listenTo(loadManager)
   }
   
   bindModels()
-  bindActions()
 }
 
 object MainViewController {

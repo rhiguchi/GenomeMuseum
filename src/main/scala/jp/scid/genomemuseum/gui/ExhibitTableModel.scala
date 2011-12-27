@@ -17,7 +17,7 @@ import jp.scid.genomemuseum.model.{MuseumExhibit, MuseumExhibitService,
  * @param dataService モデルに表示するサービス。
  * @param tableFormat 表表示のモデル
  */
-class ExhibitTableModel(dataService: MuseumExhibitService, tableFormat: TableFormat[MuseumExhibit])
+class ExhibitTableModel(val dataService: MuseumExhibitService, tableFormat: TableFormat[MuseumExhibit])
     extends DataTableModel[MuseumExhibit](tableFormat)
     with StringFilterable[MuseumExhibit] with TableColumnSortable[MuseumExhibit] {
   

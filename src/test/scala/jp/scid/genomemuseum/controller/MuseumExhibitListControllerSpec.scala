@@ -1,68 +1,73 @@
 package jp.scid.genomemuseum.controller
 
 import org.specs2._
-import mock._
 
-import javax.swing.{JTable, JTextField, JLabel, TransferHandler}
+import javax.swing.{JTable, JTextField, TransferHandler}
 
-import jp.scid.gui.event.DataListSelectionChanged
-import jp.scid.genomemuseum.{model, gui, view}
+import jp.scid.genomemuseum.{model, gui}
 import model.{MuseumExhibitService, MuseumExhibit, UserExhibitRoom,
   MuseumExhibitServiceMock}
-import gui.ExhibitTableModel
-import view.FileContentView
-import DataListController.View
 
 @org.junit.runner.RunWith(classOf[runner.JUnitRunner])
-class MuseumExhibitListControllerSpec extends Specification with Mockito with DataListControllerSpec {
-  private type Factory = (MuseumExhibitService, View) =>
-    MuseumExhibitListController
+class MuseumExhibitListControllerSpec extends Specification with mock.Mockito {
+  private val dataListCtrlSpec = new DataListControllerSpec
   
-  def is = "MuseumExhibitListController" ^
+  private type Factory = MuseumExhibitService => MuseumExhibitListController
+  
+  def is = "MuseumExhibitListController" ^ sequential ^
     "テーブルモデル" ^ tableModelSpec(createController) ^
-    "ビュー - テーブル" ^ viewTableSpec2(createController) ^
+    "プロパティ" ^ propertiesSpec(createController) ^
+    "dataTable 結合" ^ canBindToTable(createController) ^
+    "quickSearchField 結合" ^ canBindToQuickSearchField(createController) ^
     "部屋の選択" ^ userExhibitRoomSpec(createController) ^
     "選択項目" ^ tableSelectionSpec(createController) ^
-    "検索文字列モデル" ^ searchTextModelSpec(convertFactory(createController)) ^
-    "検索フィールドの挙動" ^ searchFieldFilteringSpec(createController) ^
+    "選択項目の削除" ^ canRemoevSelection(createController) ^
     "削除アクション" ^ remoevSelectionActionSpec(createController) ^
-    "転送ハンドラ" ^ tableTransferHandlerSpec(createController) ^
+//    "転送ハンドラ" ^ tableTransferHandlerSpec(createController) ^
     end
   
-  def createController(s: MuseumExhibitService, view: View) =
-    new MuseumExhibitListController(s, view)
+  def createController(s: MuseumExhibitService) =
+    new MuseumExhibitListController(s)
   
-  implicit def convertFactory(f: this.Factory): View => _ <: DataListController =
-    (view: View) => f(MuseumExhibitServiceMock.of(), view)
-    
+  implicit def toMockCon(f: this.Factory): MuseumExhibitListController = {
+    val exhibitService = MuseumExhibitServiceMock.of()
+    f(exhibitService)
+  }
   
   def tableModelSpec(f: Factory) =
-    "exhibitService の内容が適用" ! tableModel(f).showsContentfsOfService ^
+    "exhibitService で作成されている" ! tableModel(f).showsContentfsOfService ^
     bt
   
-  def viewTableSpec2(f: Factory) =
-    "ドラッグ可能" ! viewTable2(f).isDragEnabled ^
-    super.viewTableSpec(f)
+  def propertiesSpec(c: Factory) =
+    "ドラッグ可能" ! properties(c).isTableDraggable ^
+    "削除アクションがある" ! properties(c).tableDeleteAction ^
+    bt
+
+  def canBindToTable(ctrl: Factory) =
+    dataListCtrlSpec.canBindToTable(ctrl)  
+  
+  def canBindToQuickSearchField(ctrl: Factory) =
+    dataListCtrlSpec.canBindSearchField(ctrl)
   
   def userExhibitRoomSpec(f: Factory) =
     "初期内容は空" ! userExhibitRoom(f).isEmptyOnInitial ^
     "テーブルモデルに適用" ! userExhibitRoom(f).toTableModel ^
     bt
   
-  def tableSelectionSpec(f: Factory) =
-    "初期内容は空" ! tableSelection(f).isEmptyOnInitial ^
-    "テーブルモデルの選択が変わるとモデルに適用" ! tableSelection(f).fromTableModel ^
+  def tableSelectionSpec(ctrl: Factory) =
+    "初期内容は空" ! tableSelection(ctrl).isEmptyOnInitial ^
+    "テーブルモデルの選択が変わるとモデルに適用" ! tableSelection(ctrl).fromTableModel ^
     bt
   
-  def searchFieldFilteringSpec(f: Factory) =
-    "初期内容は空" ! searchFieldFiltering(f).isEmptyOnInitial ^
-    "フィールドの文字列が抽出文字列として適用" ! searchFieldFiltering(f).toTableModel ^
+  def canRemoevSelection(ctrl: Factory) =
+    "選択モデル内の項目をサービスから削除" ! remoevSelection(ctrl).fromService ^
     bt
   
-  def remoevSelectionActionSpec(f: Factory) =
-    "最初は利用不可" ! remoevSelectionAction(f).notEnabled ^
-    "行選択されると利用可能" ! remoevSelectionAction(f).enableWithRowSelected ^
-    "選択が解除されると利用不可" ! remoevSelectionAction(f).enableWithRowUnselected ^
+  def remoevSelectionActionSpec(ctrl: Factory) =
+    "フレームワークから生成" ! remoevSelectionAction(ctrl).create ^
+    "最初は利用不可" ! remoevSelectionAction(ctrl).notEnabled ^
+    "行選択されると利用可能" ! remoevSelectionAction(ctrl).enableWithRowSelected ^
+    "選択が解除されると利用不可" ! remoevSelectionAction(ctrl).enableWithRowUnselected ^
     bt
   
   def tableTransferHandlerSpec(f: Factory) =
@@ -74,38 +79,47 @@ class MuseumExhibitListControllerSpec extends Specification with Mockito with Da
   class TestBase(f: Factory) {
     val exhibit1, exhibit2, exhibit3 = mock[MuseumExhibit]
     val exhibitService = MuseumExhibitServiceMock.of(exhibit1, exhibit2, exhibit3)
-    val searchField = new JTextField
-    val table = new JTable
-    val view = View(table, searchField)
-    val ctrl = f(exhibitService, view)
+    val ctrl = f(exhibitService)
     jp.scid.gui.DataListModel.waitEventListProcessing
   }
   
   // テーブルモデル
-  def tableModel(f: Factory) = new TestBase(f) {
-    def showsContentfsOfService = ctrl.tableModel.source must
-      contain(exhibit1, exhibit2, exhibit3).only
+  def tableModel(ctrl: MuseumExhibitListController) = new {
+    def showsContentfsOfService = ctrl.tableModel.dataService must_==
+      ctrl.exhibitService
   }
   
-  // ビューのテーブル
-  def viewTable2(f: Factory) = new TestBase(f) {
-    def isDragEnabled = table.getDragEnabled must beTrue
+  // プロパティ
+  def properties(ctrl: MuseumExhibitListController) = new {
+    def isTableDraggable = ctrl.isTableDraggable must beTrue
+    def tableDeleteAction = ctrl.tableDeleteAction must beSome(ctrl.removeSelectionAction.peer)
   }
   
-  // 部屋の選択モデル
+  // dataTable 結合
+  def bindTableModel(ctrl: MuseumExhibitListController) = new {
+  }
+  
+  // SearchField 結合
+  def bindSearchField(ctrl: MuseumExhibitListController) = new {
+  }
+  
+  // 部屋の選択プロパティ
   def userExhibitRoom(f: Factory) = new TestBase(f) {
-    def isEmptyOnInitial = ctrl.userExhibitRoom() must beNone
+    def isEmptyOnInitial = ctrl.userExhibitRoom must beNone
     
     def toTableModel = {
       val room = mock[UserExhibitRoom]
-      ctrl.userExhibitRoom := Some(room)
+      ctrl.userExhibitRoom = Some(room)
       
       ctrl.tableModel.userExhibitRoom must beSome(room)
     }
   }
   
   // 行選択
-  def tableSelection(f: Factory) = new TestBase(f) {
+  def tableSelection(ctrl: MuseumExhibitListController) = new {
+    val exhibit1, exhibit2, exhibit3 = mock[MuseumExhibit]
+    ctrl.tableModel.source = List(exhibit1, exhibit2, exhibit3)
+    
     def isEmptyOnInitial = ctrl.tableSelection() must beEmpty
     
     def fromTableModel = {
@@ -118,17 +132,23 @@ class MuseumExhibitListControllerSpec extends Specification with Mockito with Da
     }
   }
   
-  // 検索フィールド
-  def searchFieldFiltering(f: Factory) = new TestBase(f) {
-    def isEmptyOnInitial = searchField.getText must beEmpty
+  // 選択項目削除
+  def remoevSelection(f: Factory) = new TestBase(f) {
+    ctrl.tableModel.selections = Seq(exhibit1, exhibit3)
+    ctrl.removeSelections()
     
-    def toTableModel = {
-      searchField.setText("12345")
-      ctrl.tableModel.filterText must_== "12345"
-    }
+    def fromService = there was one(exhibitService).remove(exhibit1) then
+      one(exhibitService).remove(exhibit3) then
+      two(exhibitService).remove(any)
   }
   
-  def remoevSelectionAction(f: Factory) = new TestBase(f) {
+  // 削除アクション
+  def remoevSelectionAction(ctrl: MuseumExhibitListController) = new {
+    val exhibit1, exhibit2, exhibit3 = mock[MuseumExhibit]
+    ctrl.tableModel.source = List(exhibit1, exhibit2, exhibit3)
+    
+    def create = ctrl.removeSelectionAction.name must_== "removeSelections"
+    
     def notEnabled = ctrl.removeSelectionAction.enabled must beFalse
     
     def enableWithRowSelected = {

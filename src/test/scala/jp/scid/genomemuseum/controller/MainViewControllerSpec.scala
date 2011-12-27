@@ -13,22 +13,38 @@ class MainViewControllerSpec extends Specification with Mockito {
   private type Factory = (GenomeMuseumGUI, MainView) => MainViewController
   
   def is = "MainViewController" ^
-    "部屋の選択" ^ selectedRoomSpec(createController) ^
-//    "mainView" ^ mainViewSpec(defaultController) ^ bt ^
+//    "部屋の選択" ^ selectedRoomSpec(createController) ^
+    "ビュー結合" ^ canBindMainView(createController) ^
 //    "ウェブソース選択" ^ webSourceModeSpec(webSourceSelected) ^ bt ^
 //    "UserRoom 選択" ^ localSourceModeSpec(userRoomSelected) ^ bt ^
 //    "ExhibitRoom 選択" ^ localSourceModeSpec(userRoomSelected) ^ bt ^
 //    "プロパティ" ^ propertiesSpec(defaultController) ^ bt ^
-//    "ボタンアクション" ^ appliedActions(defaultController) ^ bt ^
     end
   
   def createController(app: GenomeMuseumGUI, mainView: MainView) =
     new MainViewController(app, mainView)
   
+  private implicit def construct(f: Factory): MainViewController = {
+    val app = new GenomeMuseumGUI
+    val mainView = new MainView
+    createController(app, mainView)
+  }
+  
   def selectedRoomSpec(f: Factory) =
     "ローカルソース選択で部屋選択は None となる" ! selectedRoom(f).localSourceToNone ^
     "ローカルソース選択で展示物一覧表示となる" ! selectedRoom(f).localSourceLocalView ^
     "ウェブソース選択でウェブ検索表示となる" ! selectedRoom(f).webSource ^
+    bt
+  
+  def canBindMainView(f: Factory) =
+    "ツリーが sourceListCtrl と結合される" ! bindMainView(f).toSourceListCtrl ^
+    "museumExhibitListCtrl と結合される" ! bindMainView(f).toExhibitCtrl ^
+    "ウェブソース選択で museumExhibitListCtrl と結合される" ! bindMainView(f).toWebSource ^
+    "addBasicRoom ボタンアクション" ! bindMainView(f).addBasicRoom ^
+    "addGroupRoom ボタンアクション" ! bindMainView(f).addGroupRoom ^
+    "addSmartRoom ボタンアクション" ! bindMainView(f).addSmartRoom ^
+    "removeRoom ボタンアクション" ! bindMainView(f).removeRoom ^
+    "コンテントビューワーと結合" ! todo ^
     bt
   
   def selectedRoom(f: Factory) = new {
@@ -46,7 +62,7 @@ class MainViewControllerSpec extends Specification with Mockito {
     def localSourceToNone = {
       selectLocalSource()
       
-      ctrl.museumExhibitListCtrl.userExhibitRoom() must beNone
+      ctrl.museumExhibitListCtrl.userExhibitRoom must beNone
     }
     
     def localSourceLocalView = {
@@ -64,37 +80,44 @@ class MainViewControllerSpec extends Specification with Mockito {
     }
   }
   
-//  def defaultController = {
-//    val view = new MainView()
-//    new MainViewController(view)
-//  }
-//  
-//  def webSourceSelected = {
-//    val ctrl = new MainViewController(new MainView())
-//    ctrl.dataSchema = MuseumSchemaSpec.makeMock(mock[MuseumSchema])
-//    ctrl.sourceListCtrl.selectedRoom :=
-//      ctrl.sourceListCtrl.sourceStructure.webSource
-//    ctrl
-//  }
-//  
-//  def userRoomSelected = {
-//    val ctrl = new MainViewController(new MainView())
-//    ctrl.dataSchema = MuseumSchemaSpec.makeMock(mock[MuseumSchema])
-//    ctrl.sourceListCtrl.selectedRoom := mock[UserExhibitRoom]
-//    ctrl
-//  }
-//  
-//  def exhibitRoomSelected = {
-//    val ctrl = new MainViewController(new MainView())
-//    ctrl.dataSchema = MuseumSchemaSpec.makeMock(mock[MuseumSchema])
-//    ctrl.sourceListCtrl.selectedRoom := mock[ExhibitRoom]
-//    ctrl
-//  }
-//  
-//  def mainViewSpec(ctrl: => MainViewController) =
-//    "ツリーにモデルの設定" ! views(ctrl).appliedTreeModel ^
-//    "テーブルに展示物リストモデルの設定" ! views(ctrl).appliedExhibitTableModel ^
-//    "LocalSource が選択されている" ! views(ctrl).loadlSourceSelected
+  def bindMainView(c: MainViewController) = new {
+    val ctrl = spy(c)
+    ctrl.sourceListCtrl returns spy(c.sourceListCtrl)
+    ctrl.museumExhibitListCtrl returns spy(c.museumExhibitListCtrl)
+    ctrl.webServiceResultCtrl returns spy(c.webServiceResultCtrl)
+    
+    val view = new MainView
+    ctrl.bindMainView(view)
+    
+    private def sourceListCtrl = ctrl.sourceListCtrl
+    
+    def toSourceListCtrl = there was
+      one(sourceListCtrl).bindTree(view.sourceList)
+    
+    def toExhibitCtrl = there was
+      one(ctrl.museumExhibitListCtrl).bindTable(view.dataTable) then
+      one(ctrl.museumExhibitListCtrl).bindSearchField(view.quickSearchField)
+    
+    def toWebSource = {
+      ctrl.selectedRoom := sourceListCtrl.sourceStructure.webSource
+      there was
+        one(ctrl.webServiceResultCtrl).bindTable(view.dataTable) then
+        one(ctrl.webServiceResultCtrl).bindSearchField(view.quickSearchField)
+    }
+    
+    def addBasicRoom = view.addListBox.getAction must_==
+      sourceListCtrl.addBasicRoomAction.peer
+    
+    def addGroupRoom = view.addSmartBox.getAction must_==
+      sourceListCtrl.addSamrtRoomAction.peer
+    
+    def addSmartRoom = view.addBoxFolder.getAction must_==
+      sourceListCtrl.addGroupRoomAction.peer
+    
+    def removeRoom = view.removeBoxButton.getAction must_==
+      sourceListCtrl.removeSelectedUserRoomAction.peer
+  }
+  
 //  
 //  def webSourceModeSpec(ctrl: => MainViewController) =
 //    "テーブルモデルが webServiceResultCtrl#tableModel" ! views(ctrl).appliedWebSourceTableModel
@@ -106,30 +129,10 @@ class MainViewControllerSpec extends Specification with Mockito {
 //    "loadManager 設定" ! properteis(ctrl).loadManager ^
 //    "dataSchema 設定" ! properteis(ctrl).dataSchema
 //  
-//  def appliedActions(ctrl: => MainViewController) =
-//    "addBasicRoom" ! actionBound(ctrl).addBasicRoom ^
-//    "addGroupRoom" ! actionBound(ctrl).addGroupRoom ^
-//    "addSmartRoom" ! actionBound(ctrl).addSmartRoom ^
-//    "removeRoom" ! actionBound(ctrl).removeRoom
-//  
 //  class TestBase(ctrl: MainViewController) {
 //    def mainView = ctrl.mainView
 //    
 //    def sourceListCtrl = ctrl.sourceListCtrl
-//  }
-//  
-//  def views(ctrl: MainViewController) = new TestBase(ctrl) {
-//    def appliedTreeModel =
-//      mainView.sourceList.getModel must_== ctrl.sourceListCtrl.sourceListModel.treeModel
-//    
-//    def appliedExhibitTableModel =
-//      mainView.dataTable.getModel must_== ctrl.museumExhibitListCtrl.tableModel.tableModel
-//    
-//    def appliedWebSourceTableModel =
-//      mainView.dataTable.getModel must_== ctrl.webServiceResultCtrl.tableModel.tableModel
-//    
-//    def loadlSourceSelected =
-//      ctrl.selectedRoom() must_== ctrl.sourceListCtrl.sourceStructure.localSource
 //  }
 //  
 //  def properteis(ctrl: MainViewController) = new TestBase(ctrl) {
@@ -145,20 +148,6 @@ class MainViewControllerSpec extends Specification with Mockito {
 //      ctrl.dataSchema = schema
 //      ctrl.sourceListCtrl.userExhibitRoomService must_== schema.userExhibitRoomService
 //    }
-//  }
-//  
-//  def actionBound(ctrl: MainViewController) = new TestBase(ctrl) {
-//    def addBasicRoom =
-//      mainView.addListBox.getAction must_== sourceListCtrl.addBasicRoomAction.peer
-//    
-//    def addGroupRoom =
-//      mainView.addSmartBox.getAction must_== sourceListCtrl.addSamrtRoomAction.peer
-//    
-//    def addSmartRoom =
-//      mainView.addBoxFolder.getAction must_== sourceListCtrl.addGroupRoomAction.peer
-//    
-//    def removeRoom =
-//      mainView.removeBoxButton.getAction must_== sourceListCtrl.removeSelectedUserRoomAction.peer
 //  }
 }
 
