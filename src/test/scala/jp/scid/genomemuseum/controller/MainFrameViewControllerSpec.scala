@@ -7,37 +7,38 @@ import org.specs2._
 import jp.scid.gui.ValueHolder
 import jp.scid.genomemuseum.GenomeMuseumGUI
 import jp.scid.genomemuseum.model.MuseumSchema
-import jp.scid.genomemuseum.view.MainFrameView
+import jp.scid.genomemuseum.view.{MainFrameView, MainViewMenuBar}
 
 class MainFrameViewControllerSpec extends Specification with mock.Mockito {
-  private type Factory = (GenomeMuseumGUI, MainFrameView) => MainFrameViewController
+  private type Factory = (GenomeMuseumGUI) => MainFrameViewController
   
   def is = "MainFrameViewController" ^
-    "フレームの表示" ^ canShow(createHandler) ^
-    "フレームタイトルの更新" ^ canUpdateFrameTitle(createHandler) ^
+    "フレームと結合" ^ canBindFrame(createHandler) ^
+    "メニューバーと結合" ^ canBindMenuBar(createHandler) ^
     "フレームタイトルモデルの結合" ^ canBindTitleModel(createHandler) ^
-    "メニューバーアクション" ^ menuBarActionsSpec(createHandler) ^
     end
   
-  def createHandler(h: GenomeMuseumGUI, v: MainFrameView) =
-    new MainFrameViewController(h, v)
+  def createHandler(h: GenomeMuseumGUI) =
+    new MainFrameViewController(h)
   
-  def canUpdateFrameTitle(f: Factory) = 
-    "frame#setTitle への適用" ! updateFrameTitle(f).appliedView ^
+  implicit def constructByDefault(f: Factory): MainFrameViewController = {
+    val gmGui = new GenomeMuseumGUI
+    new MainFrameViewController(gmGui)
+  }
+  
+  def canBindFrame(f: Factory) =
+    "show() 呼び出しで表示できるようになる" ! bindFrame(f).visibleModel ^
+    "タイトルモデルと結合される" ! bindFrame(f).titleModel ^
+    bt
+
+  def canBindMenuBar(f: Factory) =
+    "ファイルメニュー" ^ fileMenuSpec(f) ^
+    "編集メニュー" ^ editMenuSpec(f) ^
     bt
   
   def canBindTitleModel(f: Factory) = 
     "モデルが空文字の時は GenomeMuseum と表示" ! bindTitle(f).empty ^
     "モデルに文字がある時は ハイフン を挟んで表示" ! bindTitle(f).someText ^
-    todo
-  
-  def canShow(f: Factory) = 
-    "frameView#frame の setVisible を true" ! show(f).frameVisibled ^
-    bt
-  
-  def menuBarActionsSpec(f: Factory) = 
-    "ファイルメニュー" ^ fileMenuSpec(f) ^
-    "編集メニュー" ^ editMenuSpec(f) ^
     bt
   
   def fileMenuSpec(f: Factory) = 
@@ -46,10 +47,10 @@ class MainFrameViewControllerSpec extends Specification with mock.Mockito {
     bt
   
   def editMenuSpec(f: Factory) = 
-    "カット" ! fileMenu(f).cut ^
-    "コピー" ! fileMenu(f).copy ^
-    "ペースト" ! fileMenu(f).paste ^
-    "全てを選択" ! fileMenu(f).selectAll ^
+    "カット" ! editMenu(f).cut ^
+    "コピー" ! editMenu(f).copy ^
+    "ペースト" ! editMenu(f).paste ^
+    "全てを選択" ! editMenu(f).selectAll ^
     bt
   
   private def spyMainFrameViewOf(frame: JFrame) = {
@@ -58,66 +59,62 @@ class MainFrameViewControllerSpec extends Specification with mock.Mockito {
     view
   }
   
-  // フレームタイトル
-  def updateFrameTitle(f: Factory) = new {
-    val frameMock = mock[JFrame]
-    val ctrl = f(new GenomeMuseumGUI, spyMainFrameViewOf(frameMock))
+  // フレームと結合
+  def bindFrame(ctrl: MainFrameViewController) = new {
+    val frame = mock[JFrame]
+    ctrl.bindFrame(frame)
     
-    def appliedView = {
+    def visibleModel = {
+      ctrl.show()
+      there was one(frame).setVisible(true)
+    }
+    
+    def titleModel = {
       List("title", "some", "") map ctrl.title.:=
-      got {
-        frameMock.setTitle("GenomeMuseum - title")
-        frameMock.setTitle("GenomeMuseum - some")
-        frameMock.setTitle("GenomeMuseum - ")
-      }
+      there was one(frame).setTitle("title")
+      there was one(frame).setTitle("some")
+      there was one(frame).setTitle("")
     }
-  }
-  
-  // タイトルモデル
-  def bindTitle(f: Factory) = new {
-    val titleModel = new ValueHolder("")
-    val frame = new JFrame
-    val ctrl = f(new GenomeMuseumGUI, spyMainFrameViewOf(frame))
-    ctrl.bindTitle(titleModel)
-    
-    def empty = frame.getTitle must_== "GenomeMuseum"
-    
-    def someText = {
-      titleModel := "title"
-      frame.getTitle must_== "GenomeMuseum - title"
-    }
-  }
-  
-  // 表示
-  def show(f: Factory) = new {
-    val frameMock = mock[JFrame]
-    val hander = new GenomeMuseumGUI
-    val view = spyMainFrameViewOf(frameMock)
-    val ctrl = f(hander, view)
-    
-    ctrl.show()
-    
-    def frameVisibled = there was one(frameMock).setVisible(true)
   }
   
   // ファイルメニュー
-  def fileMenu(f: Factory) = new {
-    val view = new MainFrameView
-    val handler = new GenomeMuseumGUI
-    val ctrl = f(handler, view)
+  def fileMenu(ctrl: MainFrameViewController) = new {
+    val menuBar = new MainViewMenuBar
+    ctrl.bindMenuBar(menuBar)
     
-    def menuBar = view.mainMenu
+    private def app = ctrl.application
     
-    def open = menuBar.open.action must_== handler.openAction
+    def open = menuBar.open.action must_== app.openAction
     
-    def quit = menuBar.quit.action must_== handler.quitAction
+    def quit = menuBar.quit.action must_== app.quitAction
+  }
+  
+  // 編集メニュー
+  def editMenu(ctrl: MainFrameViewController) = new {
+    val menuBar = new MainViewMenuBar
+    ctrl.bindMenuBar(menuBar)
     
-    def cut = menuBar.cut.action must_== handler.cutProxyAction
+    private def app = ctrl.application
     
-    def copy = menuBar.copy.action must_== handler.copyProxyAction
+    def cut = menuBar.cut.action must_== app.cutProxyAction
     
-    def paste = menuBar.paste.action must_== handler.pasteProxyAction
+    def copy = menuBar.copy.action must_== app.copyProxyAction
     
-    def selectAll = menuBar.selectAll.action must_== handler.selectAllProxyAction
+    def paste = menuBar.paste.action must_== app.pasteProxyAction
+    
+    def selectAll = menuBar.selectAll.action must_== app.selectAllProxyAction
+  }
+  
+  // タイトルモデル結合
+  def bindTitle(ctrl: MainFrameViewController) = new {
+    val titleModel = new ValueHolder("")
+    ctrl.bindTitle(titleModel)
+    
+    def empty = ctrl.title() must_== "GenomeMuseum"
+    
+    def someText = {
+      titleModel := "title"
+      ctrl.title() must_== "GenomeMuseum - title"
+    }
   }
 }

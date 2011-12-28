@@ -1,10 +1,12 @@
 package jp.scid.genomemuseum.controller
 
+import javax.swing.JFrame
+
 import jp.scid.gui.ValueHolder
 import jp.scid.gui.event.ValueChange
 import jp.scid.genomemuseum.GenomeMuseumGUI
 import jp.scid.genomemuseum.view.MainFrameView
-import jp.scid.genomemuseum.model.MuseumSchema
+import jp.scid.genomemuseum.view.{MainFrameView, MainViewMenuBar}
 
 /**
  * 主画面と、その画面枠の操作を受け付け、操作反応を実行するオブジェクト。
@@ -13,19 +15,16 @@ import jp.scid.genomemuseum.model.MuseumSchema
  * @param frameView 表示と入力を行う画面枠。
  */
 class MainFrameViewController(
-  application: GenomeMuseumGUI,
-  frameView: MainFrameView
+  val application: GenomeMuseumGUI
 ) extends GenomeMuseumController {
-  // ビュー
-  private def frame = frameView.frame
-  private def menuBar = frameView.mainMenu
-  
   // モデル
   /** この画面枠用のタイトル */
   val title = new ValueHolder("GenomeMuseum")
+  /** 画面枠の表示モデル */
+  val frameVisible = new ValueHolder(false)
   /** 列設定用コントローラ */
-  val viewSettingDialogCtrl = new ViewSettingDialogController(
-      frameView.columnConfigPane, frameView.columnConfigDialog)
+//  val viewSettingDialogCtrl = new ViewSettingDialogController(
+//      frameView.columnConfigPane, frameView.columnConfigDialog)
   
   /**
    * フレームの表示を行う。
@@ -33,7 +32,7 @@ class MainFrameViewController(
    * @see MainFrameView#frame
    */
   def show() {
-    frame.setVisible(true)
+    frameVisible := true
   }
   
   /** タイトルモデルの結合を行う */
@@ -46,13 +45,12 @@ class MainFrameViewController(
     }
   }
   
-  private def bindModels() {
-    // タイトル
+  def bindFrame(frame: JFrame) {
     ValueHolder.connect(title, frame, "title")
+    ValueHolder.connect(frameVisible, frame, "visible")
   }
   
-  /** アクションの結合を行う */
-  private def bindActions() {
+  def bindMenuBar(menuBar: MainViewMenuBar) {
     menuBar.open.action = application.openAction
     menuBar.quit.action = application.quitAction
     
@@ -61,10 +59,6 @@ class MainFrameViewController(
     menuBar.paste.action = application.pasteProxyAction
     menuBar.selectAll.action = application.selectAllProxyAction
     // 列設定メニュー
-    menuBar.columnVisibility.action = viewSettingDialogCtrl.showAction
+//    menuBar.columnVisibility.action = viewSettingDialogCtrl.showAction
   }
-  
-  // データ結合処理
-  bindModels()
-  bindActions()
 }

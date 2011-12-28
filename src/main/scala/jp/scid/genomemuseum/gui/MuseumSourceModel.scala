@@ -12,7 +12,7 @@ import DataTreeModel.Path
  * ExhibitRoom のツリーモデルを保持するクラス。
  * 階層関係の追加、移動、削除を司る。
  */
-class MuseumSourceModel(source: MuseumStructure) extends DataTreeModel(source) {
+class MuseumSourceModel(val source: MuseumStructure) extends DataTreeModel(source) {
   import MuseumSourceModel._
   
   /** 変更イベントの結合 */

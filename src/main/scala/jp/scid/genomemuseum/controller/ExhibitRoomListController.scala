@@ -20,24 +20,12 @@ import RoomType._
  * 『部屋』の一覧をツリー上に表示し、また『部屋』の追加、編集、削除を行う操作オブジェクト。
  * 
  * @param roomService 部屋のモデル
- * @param view ツリー
  * @param loadManager ファイルの読み込み操作管理
  */
 class ExhibitRoomListController(
-  val roomService: UserExhibitRoomService
+  private[controller] val roomService: UserExhibitRoomService,
+  private[controller] val loadManager: MuseumExhibitLoadManager
 ) extends GenomeMuseumController {
-  /**
-   * 指定したモデルとビューからこのコントローラを作成する。
-   * 
-   * @param roomService 部屋のモデル
-   * @param view ツリー
-   * @param loadManager ファイルの読み込み操作管理
-   */
-  def this(roomService: UserExhibitRoomService, loadManager: MuseumExhibitLoadManager) {
-    this(roomService)
-    this.loadManager = Option(loadManager)
-  }
-  
   // モデル
   /** BasicRoom 規定名リソース */
   def basicRoomDefaultNameResource = getResource("basicRoom.defaultName")
@@ -47,7 +35,7 @@ class ExhibitRoomListController(
   def smartRoomDefaultNameResource = getResource("smartRoom.defaultName")
   
   /** ソースリストのツリー構造 */
-  val sourceStructure: MuseumStructure = new MuseumStructure(roomService) {
+  lazy val sourceStructure: MuseumStructure = new MuseumStructure(roomService) {
     // リソースの適用
     basicRoomDefaultName = basicRoomDefaultNameResource()
     groupRoomDefaultName = groupRoomDefaultNameResource()
@@ -71,17 +59,13 @@ class ExhibitRoomListController(
   }
   
   /** 現在選択されているパスモデル */
-  val selectedRoom = new ValueHolder[ExhibitRoom](sourceStructure.localSource)
+  lazy val selectedRoom = new ValueHolder[ExhibitRoom](sourceStructure.localSource)
   /** 編集を開始するためのトリガーモデル */
   private lazy val nodeEditTrigger = new ValueHolder[Path[ExhibitRoom]](Path.empty)
   
-  // プロパティ
-  /** 転入操作に用いられる、読み込み操作管理オブジェクト */
-  var loadManager: Option[MuseumExhibitLoadManager] = None
-  
   // コントローラ
   /** 転送ハンドラ */
-  protected[controller] val transferHandler: ExhibitRoomListTransferHandler = new MyTransferHandler
+  lazy val transferHandler = new ExhibitRoomListTransferHandler(loadManager, sourceListModel)
   
   // アクション
   /** {@link addBasicRoom} のアクション */
@@ -119,61 +103,6 @@ class ExhibitRoomListController(
   @Action(name="deleteSelectedRoom")
   def deleteSelectedRoom {
     sourceListModel.removeSelections()
-  }
-  
-  private class MyTransferHandler extends ExhibitRoomListTransferHandler {
-    /** 転入操作に用いられる、展示物管理オブジェクト */
-    def exhibitService: Option[MuseumExhibitService] = loadManager.map(_.dataService)
-    
-    override def canMove(source: UserExhibitRoom, dest: Option[UserExhibitRoom]) =
-      sourceStructure.canMove(source, dest)
-    
-    override def moveUserExhibitRoom(source: UserExhibitRoom, dest: Option[UserExhibitRoom]) = {
-      sourceListModel.moveRoom(source, dest)
-      true
-    }
-    
-    override def importFiles(files: Seq[File], targetRoom: Option[UserExhibitRoom]) = {
-      loadManager.foreach(m => files foreach m.loadExhibit)
-      true
-    }
-    
-    override def importExhibits(exhibits: Seq[MuseumExhibit], targetRoom: UserExhibitRoom) = {
-      exhibitService.map { service =>
-        exhibits map (_.asInstanceOf[service.ElementClass]) foreach
-          (e => service.addElement(targetRoom, e))
-        true
-      }
-      .getOrElse(false)
-    }
-    
-    override def getTargetRooom(ts: TransferSupport): Option[ExhibitRoom] = {
-      ts.getComponent match {
-        case tree: JTree if tree.getModel == sourceListModel.treeModel =>
-          val loc = ts.getDropLocation.getDropPoint
-          tree.getPathForLocation(loc.x, loc.y) match {
-            case null => None
-            case path => path.getLastPathComponent match {
-              case room: ExhibitRoom => Some(room)
-              case _ => None
-            }
-          }
-        case _ => None
-      }
-    }
-    
-    override def createTransferable(c: JComponent) = {
-      c match {
-        case tree: JTree if tree.getModel == sourceListModel.treeModel => selectedRoom() match {
-          case room: UserExhibitRoom => exhibitService match {
-            case Some(exhibitService) => ExhibitRoomTransferData(room, exhibitService)
-            case None => null
-          }
-          case _ => null
-        }
-        case _ => null
-      }
-    }
   }
   
   /**

@@ -1,13 +1,13 @@
 package jp.scid.genomemuseum.controller
 
-import javax.swing.{TransferHandler, JComponent}
+import javax.swing.{JTree, TransferHandler, JComponent}
 import java.awt.datatransfer.{Transferable, DataFlavor}
 import TransferHandler.TransferSupport
 import DataFlavor.javaFileListFlavor
 import java.io.File
 
 import jp.scid.genomemuseum.model.{MuseumExhibitService, ExhibitRoomTransferData}
-import jp.scid.genomemuseum.model.{ExhibitRoom, UserExhibitRoom,
+import jp.scid.genomemuseum.model.{ExhibitRoom, UserExhibitRoom, MuseumExhibit,
   MuseumStructure, UserExhibitRoomService}
 import jp.scid.genomemuseum.gui.MuseumSourceModel
 import UserExhibitRoom.RoomType
@@ -16,9 +16,25 @@ import MuseumExhibitListTransferHandler.getAllFiles
 
 /**
  * ExhibitRoomListController 用転送ハンドラ
+ * 
+ * {@code #sourceListModel} を指定することで、部屋の移動が可能になる。
+ * @param loadManager 読み込み操作管理オブジェクト
  */
-abstract class ExhibitRoomListTransferHandler extends MuseumExhibitListTransferHandler {
+class ExhibitRoomListTransferHandler(
+    private[controller] val loadManager: MuseumExhibitLoadManager)
+    extends MuseumExhibitListTransferHandler {
   import ExhibitRoomTransferData.{dataFlavor => exhibitRoomDataFlavor}
+  /** sourceListModel を指定してハンドラを構築 */
+  def this(loadManager: MuseumExhibitLoadManager, sourceListModel: MuseumSourceModel) {
+    this(loadManager)
+    this.sourceListModel = Option(sourceListModel)
+  }
+  
+  /** 転入操作に用いられる、展示物管理オブジェクト */
+  private def exhibitService = loadManager.dataService
+  
+  /** ツリーを操作する対象のモデル */
+  var sourceListModel: Option[MuseumSourceModel] = None
   
   override def canImport(ts: TransferSupport) = {
     if (ts.isDataFlavorSupported(exhibitRoomDataFlavor)) {
@@ -59,16 +75,63 @@ abstract class ExhibitRoomListTransferHandler extends MuseumExhibitListTransferH
       super.importData(ts)
     }
   }
+  
   /**
    * 移動可能判定
    */
-  def canMove(source: UserExhibitRoom, dest: Option[UserExhibitRoom]): Boolean
+  def canMove(source: UserExhibitRoom, dest: Option[UserExhibitRoom]) =
+    sourceListModel.map(_.source.canMove(source, dest)).getOrElse(false)
+  
+  override def getSourceActions(c: JComponent) =
+    TransferHandler.COPY_OR_MOVE
+  
   
   /**
    * 部屋を移動する
    */
-  def moveUserExhibitRoom(source: UserExhibitRoom, dest: Option[UserExhibitRoom]): Boolean
+  def moveUserExhibitRoom(source: UserExhibitRoom, dest: Option[UserExhibitRoom]) = {
+    sourceListModel match {
+      case Some(model) =>
+        model.moveRoom(source, dest)
+        true
+      case None => false
+    }
+  }
+    
+  override def importExhibits(exhibits: Seq[MuseumExhibit], targetRoom: UserExhibitRoom) = {
+    val service = exhibitService
+    exhibits map (_.asInstanceOf[service.ElementClass]) foreach
+      (e => service.addElement(targetRoom, e))
+    exhibits.nonEmpty
+  }
+    
+  override def importFiles(files: Seq[File], targetRoom: Option[UserExhibitRoom]) = {
+    files foreach loadManager.loadExhibit
+    files.nonEmpty
+  }
   
-  override def getSourceActions(c: JComponent) =
-    TransferHandler.COPY_OR_MOVE
+  override def getTargetRooom(ts: TransferSupport): Option[ExhibitRoom] = {
+    (ts.getComponent, sourceListModel) match {
+      case (tree: JTree, Some(model)) if tree.getModel == model.treeModel =>
+        val loc = ts.getDropLocation.getDropPoint
+        tree.getPathForLocation(loc.x, loc.y) match {
+          case null => None
+          case path => path.getLastPathComponent match {
+            case room: ExhibitRoom => Some(room)
+            case _ => None
+          }
+        }
+      case _ => None
+    }
+  }
+    
+  override def createTransferable(c: JComponent) = {
+    (c, sourceListModel) match {
+      case (tree: JTree, Some(model)) if tree.getModel == model.treeModel => model.selectedPath.flatMap(_.lastOption) match {
+        case Some(room: UserExhibitRoom) => ExhibitRoomTransferData(room, exhibitService)
+        case _ => null
+      }
+      case _ => null
+    }
+  }
 }

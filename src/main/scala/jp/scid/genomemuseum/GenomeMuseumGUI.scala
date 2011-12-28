@@ -140,7 +140,7 @@ class GenomeMuseumGUI extends Application {
     val mainViewCtrl = createMainViewController()
     mainViewCtrl.bindMainView(applicationViews.mainView)
     
-    val mainFrameViewCtrl = createMainFrameViewController(applicationViews.mainVrameView)
+    val mainFrameViewCtrl = createMainFrameViewController()
     
     // 主画面のタイトルから画面枠のタイトルを設定
     mainFrameViewCtrl.bindTitle(mainViewCtrl.title)
@@ -208,8 +208,8 @@ class GenomeMuseumGUI extends Application {
   /**
    * 主画面枠の操作対応オブジェクトを作成する。
    */
-  protected[genomemuseum] def createMainFrameViewController(mainVrameView: MainFrameView) =
-    new MainFrameViewController(this, mainVrameView)
+  protected[genomemuseum] def createMainFrameViewController() =
+    new MainFrameViewController(this)
   
   /**
    * アプリケーションのアクションを取得する

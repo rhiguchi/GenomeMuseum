@@ -24,11 +24,11 @@ class ExhibitRoomListControllerSpec extends Specification with mock.Mockito {
     "SmartRoom 追加" ^ canAddSmartRoom(createController) ^
     "部屋の削除" ^ canDeleteSelectedRoom(createController) ^
     "アクション" ^ actionsSpec(createController) ^
-    "読み込み操作" ^ loadManagerSpec(createController) ^
+    "転送ハンドラ" ^ transferHandlerSpec(createController) ^
     end
   
   def createController(roomService: UserExhibitRoomService) = {
-    new ExhibitRoomListController(roomService)
+    new ExhibitRoomListController(roomService, mock[MuseumExhibitLoadManager])
   }
   
   private implicit def construct(f: Factory): ExhibitRoomListController = {
@@ -97,12 +97,13 @@ class ExhibitRoomListControllerSpec extends Specification with mock.Mockito {
     "removeSelectedUserRoomAction は最初は使用不可" ! actions(f).deleteSelectedRoomNotEnabled ^
     bt
   
-  def loadManagerSpec(f: Factory) =
-    "初期状態は None" ! loadManager(f).init ^
-    "設定と取得" ! loadManager(f).setAndGet ^
+  def transferHandlerSpec(f: Factory) =
+    "ExhibitRoomListTransferHandler インスタンス" ! transferHandler(f).instance ^
+    "loadManager を利用" ! transferHandler(f).loadManager ^
+    "sourceListModel を利用" ! transferHandler(f).sourceListModel ^
     bt
   
-  def mockUserExhibitRoomService = {
+  def mockUserExhibitRoomService() = {
     val service = mock[UserExhibitRoomService]
     service.getChildren(any) returns Iterable.empty
     service.getParent(any) returns None
@@ -134,7 +135,8 @@ class ExhibitRoomListControllerSpec extends Specification with mock.Mockito {
     def selectionModel = there was one(tree).setSelectionModel(ctrl.sourceListModel.selectionModel)
     def transferHandler = there was one(tree).setTransferHandler(ctrl.transferHandler)
     def dragEnabled = there was one(tree).setDragEnabled(true)
-    def dropMode = there was one(tree).setDropMode(javax.swing.DropMode.ON)
+    // モックでチェックしようとすると、例外が発生するのでプロパティから検証
+    def dropMode = tree.getDropMode must_== javax.swing.DropMode.ON
     def actionMapDelete = tree.getActionMap.get("delete") must_==
       ctrl.removeSelectedUserRoomAction.peer
   }
@@ -224,13 +226,10 @@ class ExhibitRoomListControllerSpec extends Specification with mock.Mockito {
     def deleteSelectedRoomNotEnabled = ctrl.removeSelectedUserRoomAction.enabled must beFalse
   }
   
-  // loadManager プロパティ
-  def loadManager(ctrl: ExhibitRoomListController) = new {
-    def init = ctrl.loadManager must beNone
-    def setAndGet = {
-      val mng = mock[MuseumExhibitLoadManager]
-      ctrl.loadManager = Some(mng)
-      ctrl.loadManager must beSome(mng)
-    }
+  // 転送ハンドラ
+  def transferHandler(ctrl: ExhibitRoomListController) = new {
+    def instance = ctrl.transferHandler must beAnInstanceOf[ExhibitRoomListTransferHandler] 
+    def loadManager = ctrl.transferHandler.loadManager must_== ctrl.loadManager
+    def sourceListModel = ctrl.transferHandler.sourceListModel must beSome(ctrl.sourceListModel)
   }
 }
