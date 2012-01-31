@@ -15,34 +15,42 @@ import jp.scid.genomemuseum.gui.{MuseumSourceModel}
 import UserExhibitRoom.RoomType._
 
 class ExhibitRoomListTransferHandlerSpec extends Specification with mock.Mockito {
-  private type Factory = MuseumExhibitLoadManager => ExhibitRoomListTransferHandler
-  
   import MuseumExhibitTransferData.{dataFlavor => exhibitListDataFlavor}
   
   def is = "ExhibitRoomListTransferHandler" ^
     "sourceListModel プロパティ" ^ sourceListModelSpec(createHandler) ^
+    "loadManager プロパティ" ^ loadManagerSpec(createHandler) ^
     end
   
-  def createHandler(loadManager: MuseumExhibitLoadManager) = {
-    new ExhibitRoomListTransferHandler(loadManager)
-  }
+  def createHandler() = new ExhibitRoomListTransferHandler()
   
-  implicit def consturctByMock(f: Factory): ExhibitRoomListTransferHandler = {
-    createHandler(mock[MuseumExhibitLoadManager])
-  }
-  
-  def sourceListModelSpec(c: Factory) =
-    "初期状態は None" ! sourceListModel(c).init ^
-    "設定と取得" ! sourceListModel(c).setAndGet ^
+  def sourceListModelSpec(h: => ExhibitRoomListTransferHandler) =
+    "初期状態は None" ! sourceListModel(h).init ^
+    "設定と取得" ! sourceListModel(h).setAndGet ^
     bt
   
-  // loadManager プロパティ
+  def loadManagerSpec(h: => ExhibitRoomListTransferHandler) =
+    "初期状態は None" ! loadManager(h).init ^
+    "設定と取得" ! loadManager(h).setAndGet ^
+    bt
+  
+  // sourceListModel プロパティ
   def sourceListModel(ctrl: ExhibitRoomListTransferHandler) = new {
     def init = ctrl.sourceListModel must beNone
     def setAndGet = {
       val model = mock[MuseumSourceModel]
       ctrl.sourceListModel = Some(model)
       ctrl.sourceListModel must beSome(model)
+    }
+  }
+  
+  // exhibitLoadManager プロパティ
+  def loadManager(ctrl: ExhibitRoomListTransferHandler) = new {
+    def init = ctrl.exhibitLoadManager must beNone
+    def setAndGet = {
+      val model = mock[MuseumExhibitLoadManager]
+      ctrl.exhibitLoadManager = Some(model)
+      ctrl.exhibitLoadManager must beSome(model)
     }
   }
 }

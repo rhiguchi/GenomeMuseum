@@ -6,9 +6,8 @@ import org.specs2._
 import UserExhibitRoom.RoomType._
 
 class MuseumStructureSpec extends Specification with mock.Mockito {
-  private type Factory = UserExhibitRoomService => MuseumStructure
-  
   def is = "MuseumStructure" ^
+    "userExhibitRoomService プロパティ" ^ userExhibitRoomServiceSpec(createStructure) ^
     "葉要素判定" ^ isLeafSpec(createStructure) ^
     "子要素" ^ childrenForSpec(createStructure) ^
     "更新" ^ updateSpec(createStructure) ^
@@ -20,79 +19,108 @@ class MuseumStructureSpec extends Specification with mock.Mockito {
     "サービスのイベント委譲" ^ canDelegateEvent(createStructure) ^
     end
   
-  def createStructure(service: UserExhibitRoomService) =
-    new MuseumStructure(service)
+  def createStructure() = new MuseumStructure()
   
-  def isLeafSpec(f: Factory) =
-    "root は false" ! isLeaf(f).root ^
-    "ライブラリカテゴリ は false" ! isLeaf(f).sourcesRoot ^
-    "ユーザー部屋カテゴリ は false" ! isLeaf(f).userRoomsRoot ^
-    "ローカルライブラリ は true" ! isLeaf(f).localSource ^
-    "ウェブ検索 は true" ! isLeaf(f).webSource ^
-    "GroupRoom は false" ! isLeaf(f).gRoom ^
-    "BasicRoom は true" ! isLeaf(f).bRoom ^
-    "SmartRoom は true" ! isLeaf(f).sRoom ^
+  def userExhibitRoomServiceSpec(s: => MuseumStructure) =
+    "初期値" ! userExhibitRoomService(s).init ^
+    "設定" ! userExhibitRoomService(s).setting ^
+    "監視" ! userExhibitRoomService(s).subscribe ^
+    "監視解除" ! userExhibitRoomService(s).removeSubscription ^
+    "ノード変更イベント発行" ! userExhibitRoomService(s).publishEvent ^
     bt
   
-  def childrenForSpec(f: Factory) =
-    "root は ライブラリカテゴリとユーザー部屋カテゴリ" ! childrenFor(f).root ^
-    "ライブラリカテゴリはローカルをウェブ検索" ! childrenFor(f).sourcesRoot ^
-    "ユーザー部屋カテゴリは roomService を参照" ! childrenFor(f).userRoomsRoot ^
-    "BasicRoom は常に empty" ! childrenFor(f).bRoom ^
-    "SmartRoom は常に empty" ! childrenFor(f).sRoom ^
-    "GroupRoom は roomService を参照" ! childrenFor(f).gRoom ^
+  def isLeafSpec(s: => MuseumStructure) =
+    "root は false" ! isLeaf(s).root ^
+    "ライブラリカテゴリ は false" ! isLeaf(s).sourcesRoot ^
+    "ユーザー部屋カテゴリ は false" ! isLeaf(s).userRoomsRoot ^
+    "ローカルライブラリ は true" ! isLeaf(s).localSource ^
+    "ウェブ検索 は true" ! isLeaf(s).webSource ^
+    "GroupRoom は false" ! isLeaf(s).gRoom ^
+    "BasicRoom は true" ! isLeaf(s).bRoom ^
+    "SmartRoom は true" ! isLeaf(s).sRoom ^
     bt
   
-  def updateSpec(f: Factory) =
-    "UserExhibitRoom は roomService の save をコール" ! update(f).callsSave ^
-    "UserExhibitRoom の名前を更新" ! update(f).nameApplied ^
+  def childrenForSpec(s: => MuseumStructure) =
+    "root は ライブラリカテゴリとユーザー部屋カテゴリ" ! childrenFor(s).root ^
+    "ライブラリカテゴリはローカルをウェブ検索" ! childrenFor(s).sourcesRoot ^
+    "ユーザー部屋カテゴリは roomService を参照" ! childrenFor(s).userRoomsRoot ^
+    "BasicRoom は常に empty" ! childrenFor(s).bRoom ^
+    "SmartRoom は常に empty" ! childrenFor(s).sRoom ^
+    "GroupRoom は roomService を参照" ! childrenFor(s).gRoom ^
     bt
   
-  def pathToRootSpec(f: Factory) =
-    "root" ! pathToRoot(f).root ^
-    "userRoomsRoot" ! pathToRoot(f).userRoomsRoot ^
-    "sourcesRoot" ! pathToRoot(f).sourcesRoot ^
-    "webSource" ! pathToRoot(f).webSource ^
-    "localSource" ! pathToRoot(f).localSource ^
-    "UserExhibitRoom" ! pathToRoot(f).userRoom ^
+  def updateSpec(s: => MuseumStructure) =
+    "UserExhibitRoom は roomService の save をコール" ! update(s).callsSave ^
+    "UserExhibitRoom の名前を更新" ! update(s).nameApplied ^
     bt
   
-  def canAddRoom(f: Factory) =
-    "親なしで部屋を追加" ! addRoom(f).withNoParemt ^
-    "プロパティに指定した名前で作成される" ! addRoom(f).defaultName ^
-    "既に名前が存在している時は連番が付与される" ! addRoom(f).nameWithSuffix ^
-    "GroupRoom を親にして部屋を追加" ! addRoom(f).withParent ^
+  def pathToRootSpec(s: => MuseumStructure) =
+    "root" ! pathToRoot(s).root ^
+    "userRoomsRoot" ! pathToRoot(s).userRoomsRoot ^
+    "sourcesRoot" ! pathToRoot(s).sourcesRoot ^
+    "webSource" ! pathToRoot(s).webSource ^
+    "localSource" ! pathToRoot(s).localSource ^
+    "UserExhibitRoom" ! pathToRoot(s).userRoom ^
     bt
   
-  def canMoveSpec(f: Factory) =
-    "GroupRoom に移動可能" ! canMove(f).toGroupRoom ^
-    "最上位に移動可能" ! canMove(f).toTop ^
-    "最上位から最上位は移動できない" ! canMove(f).falseToTopFromTop ^
-    "自分以下には移動できない" ! canMove(f).falseToDescOrEqual ^
+  def canAddRoom(s: => MuseumStructure) =
+    "親なしで部屋を追加" ! addRoom(s).withNoParemt ^
+    "プロパティに指定した名前で作成される" ! addRoom(s).defaultName ^
+    "既に名前が存在している時は連番が付与される" ! addRoom(s).nameWithSuffix ^
+    "GroupRoom を親にして部屋を追加" ! addRoom(s).withParent ^
     bt
   
-  def canMoveRoom(f: Factory) =
-    "GroupRoom に移動" ! moveRoom(f).toGroupRoom ^
-    "最上位に移動" ! moveRoom(f).toTop ^
+  def canMoveSpec(s: => MuseumStructure) =
+    "GroupRoom に移動可能" ! canMove(s).toGroupRoom ^
+    "最上位に移動可能" ! canMove(s).toTop ^
+    "最上位から最上位は移動できない" ! canMove(s).falseToTopFromTop ^
+    "自分以下には移動できない" ! canMove(s).falseToDescOrEqual ^
     bt
   
-  def canRemoveRoom(f: Factory) =
-    "サービスに処理を委譲" ! removeRoom(f).callsService ^
+  def canMoveRoom(s: => MuseumStructure) =
+    "GroupRoom に移動" ! moveRoom(s).toGroupRoom ^
+    "最上位に移動" ! moveRoom(s).toTop ^
     bt
   
-  def canDelegateEvent(f: Factory) =
-    "Include" ! delegateEvent(f).include ^
-    "Update" ! delegateEvent(f).udpate ^
-    "Remove" ! delegateEvent(f).remove ^
+  def canRemoveRoom(s: => MuseumStructure) =
+    "サービスに処理を委譲" ! removeRoom(s).callsService ^
     bt
   
-  class TestBase(f: Factory) {
+  def canDelegateEvent(s: => MuseumStructure) =
+    "Include" ! delegateEvent(s).include ^
+    "Update" ! delegateEvent(s).udpate ^
+    "Remove" ! delegateEvent(s).remove ^
+    "service を変更すると発行されない" ! delegateEvent(s).unsubscribe ^
+    bt
+  
+  /** userExhibitRoomService プロパティ */
+  def userExhibitRoomService(structure: MuseumStructure) = new {
     val roomService = UserExhibitRoomServiceMock.of()
-    val structure = f(roomService)
+    
+    def init = structure.userExhibitRoomService must beNone
+    def setting = {
+      structure.userExhibitRoomService = Some(roomService)
+      structure.userExhibitRoomService must beSome(roomService)
+    }
+    def subscribe = {
+      structure.userExhibitRoomService = Some(roomService)
+      there was one(roomService).subscribe(any)
+    }
+    def removeSubscription = {
+      structure.userExhibitRoomService = Some(roomService)
+      structure.userExhibitRoomService = None
+      there was one(roomService).removeSubscription(any)
+    }
+    
+    def publishEvent = {
+      val spiedStructure = spy(structure)
+      spiedStructure.userExhibitRoomService = Some(roomService)
+      there was one(spiedStructure).publish(new Update(spiedStructure.userRoomsRoot))
+    }
   }
   
   /** 葉要素判定 */
-  def isLeaf(f: Factory) = new TestBase(f) {
+  def isLeaf(structure: MuseumStructure) = new {
     private def getLeaf(func: MuseumStructure => ExhibitRoom) = structure.isLeaf(func(structure))
     
     def root = getLeaf(_.root) must beFalse
@@ -113,10 +141,13 @@ class MuseumStructureSpec extends Specification with mock.Mockito {
   }
   
   /** 子要素判定 */
-  def childrenFor(f: Factory) = new TestBase(f) {
+  def childrenFor(structure: MuseumStructure) = new {
+    val roomService = UserExhibitRoomServiceMock.of()
+    
     val basicRoom = UserExhibitRoomMock.of(BasicRoom)
     val smartRoom = UserExhibitRoomMock.of(SmartRoom)
     val groupRoom = UserExhibitRoomMock.of(GroupRoom)
+    structure.userExhibitRoomService = Some(roomService)
     
     def root = structure.childrenFor(structure.root) must_==
       List(structure.sourcesRoot, structure.userRoomsRoot)
@@ -151,10 +182,12 @@ class MuseumStructureSpec extends Specification with mock.Mockito {
   }
   
   /** 更新 */
-  def update(f: Factory) = new TestBase(f) {
+  def update(structure: MuseumStructure) = new {
+    val roomService = UserExhibitRoomServiceMock.of()
     val basicRoom = IndexedSeq(UserExhibitRoomMock.of(BasicRoom))
     val smartRoom = IndexedSeq(UserExhibitRoomMock.of(SmartRoom))
     val groupRoom = IndexedSeq(UserExhibitRoomMock.of(GroupRoom))
+    structure.userExhibitRoomService = Some(roomService)
     
     def callsSave = {
       structure.update(basicRoom, "newValue")
@@ -175,7 +208,7 @@ class MuseumStructureSpec extends Specification with mock.Mockito {
   }
   
   /** ルートまでのパス */
-  def pathToRoot(f: Factory) = new TestBase(f) {
+  def pathToRoot(structure: MuseumStructure) = new {
     private def getPath(func: MuseumStructure => ExhibitRoom) = structure.pathToRoot(func(structure))
     
     def root = getPath(_.root) must_== Seq(structure.root)
@@ -193,11 +226,13 @@ class MuseumStructureSpec extends Specification with mock.Mockito {
       Seq(structure.root, structure.sourcesRoot, structure.localSource)
     
     def userRoom = {
+      val roomService = UserExhibitRoomServiceMock.of()
       val room1, room2, room3, room4 = UserExhibitRoomMock.of(GroupRoom)
       roomService.getParent(room4) returns Some(room3)
       roomService.getParent(room3) returns Some(room2)
       roomService.getParent(room2) returns Some(room1)
       roomService.getParent(room1) returns None
+      structure.userExhibitRoomService = Some(roomService)
       
       structure.pathToRoot(room3) must_== (structure.root ::
         structure.userRoomsRoot :: room1 :: room2 :: room3 :: Nil)
@@ -205,7 +240,8 @@ class MuseumStructureSpec extends Specification with mock.Mockito {
   }
   
   /** 部屋の追加 */
-  def addRoom(f: Factory) = new TestBase(f) {
+  def addRoom(structure: MuseumStructure) = new {
+    val roomService = UserExhibitRoomServiceMock.of()
     val room1, room2, room3 = UserExhibitRoomMock.of(BasicRoom)
     roomService.addRoom(BasicRoom, structure.basicRoomDefaultName, None) returns room1
     roomService.addRoom(GroupRoom, structure.groupRoomDefaultName, None) returns room2
@@ -218,6 +254,8 @@ class MuseumStructureSpec extends Specification with mock.Mockito {
     roomService.nameExists("n 2") returns true
     
     val roomTypes = Seq(BasicRoom, GroupRoom, SmartRoom)
+    
+    structure.userExhibitRoomService = Some(roomService)
 
     def withNoParemt = roomTypes.map(t => structure.addRoom(t, None)) must_==
       Seq(room1, room2, room3)
@@ -250,7 +288,9 @@ class MuseumStructureSpec extends Specification with mock.Mockito {
   }
   
   /** 部屋の移動可能性 */
-  def canMove(f: Factory) = new TestBase(f) {
+  def canMove(structure: MuseumStructure) = new {
+    val roomService = UserExhibitRoomServiceMock.of()
+    
     val bRoom = UserExhibitRoomMock.of(BasicRoom)
     val gRoom = UserExhibitRoomMock.of(GroupRoom)
     val sRoom = UserExhibitRoomMock.of(SmartRoom)
@@ -265,6 +305,8 @@ class MuseumStructureSpec extends Specification with mock.Mockito {
     def toTop = {
       val parent = Some(UserExhibitRoomMock.of(GroupRoom))
       rooms.foreach(r => roomService.getParent(r) returns parent)
+      structure.userExhibitRoomService = Some(roomService)
+      
       rooms.map(r => structure.canMove(r, None)) must_== Seq(true, true, true)
     }
     
@@ -275,6 +317,7 @@ class MuseumStructureSpec extends Specification with mock.Mockito {
       val gRoom1, gRoom2, gRoom3 = UserExhibitRoomMock.of(GroupRoom)
       roomService.getParent(gRoom3) returns Some(gRoom2)
       roomService.getParent(gRoom2) returns Some(gRoom1)
+      structure.userExhibitRoomService = Some(roomService)
       
       Seq(bRoom, gRoom, sRoom, gRoom2, gRoom3).map(r => structure.canMove(r, Some(gRoom3))) must_==
         Seq(true, true, true, false, false)
@@ -282,10 +325,14 @@ class MuseumStructureSpec extends Specification with mock.Mockito {
   }
   
   /** 部屋の移動 */
-  def moveRoom(f: Factory) = new TestBase(f) {
+  def moveRoom(structure: MuseumStructure) = new {
     val room = UserExhibitRoomMock.of(BasicRoom)
     val parent = Some(UserExhibitRoomMock.of(GroupRoom))
+    
+    val roomService = UserExhibitRoomServiceMock.of()
     roomService.getParent(room) returns parent
+    
+    structure.userExhibitRoomService = Some(roomService)
     
     val gRoom = UserExhibitRoomMock.of(GroupRoom)
     
@@ -302,18 +349,22 @@ class MuseumStructureSpec extends Specification with mock.Mockito {
   }
   
   /** 部屋の削除 */
-  def removeRoom(f: Factory) = new TestBase(f) {
+  def removeRoom(structure: MuseumStructure) = new {
     val room = UserExhibitRoomMock.of(BasicRoom)
+    val roomService = UserExhibitRoomServiceMock.of()
+    structure.userExhibitRoomService = Some(roomService)
+    
     structure.removeRoom(room)
     
     def callsService = there was one(roomService).remove(room)
   }
   
   /** サービスのイベント委譲 */
-  def delegateEvent(f: Factory) = new {
+  def delegateEvent(structure: MuseumStructure) = new {
     val roomService = UserExhibitRoomServiceMock.canPublish()
-    val structure = f(roomService)
     val room = UserExhibitRoomMock.of(BasicRoom)
+    
+    structure.userExhibitRoomService = Some(roomService)
     
     var published = IndexedSeq.empty[Message[ExhibitRoom]]
     private val sub = new structure.Sub {
@@ -337,6 +388,14 @@ class MuseumStructureSpec extends Specification with mock.Mockito {
       val event = new Remove(room)
       roomService.publish(event)
       published must_== Seq(event)
+    }
+    
+    def unsubscribe = {
+      structure.userExhibitRoomService = None
+      published = IndexedSeq.empty
+      List(new Include(room), new Update(room), new Remove(room)) foreach
+        (roomService.publish)
+      published must beEmpty
     }
   }
 }

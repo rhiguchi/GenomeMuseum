@@ -20,4 +20,10 @@ object DataModel {
      */
     def release()
   }
+  
+  object Connector {
+    def apply(releaser: => Unit): Connector = new Connector {
+      def release() = releaser
+    }
+  }
 }

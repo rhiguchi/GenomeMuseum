@@ -15,6 +15,7 @@ class ExhibitRoomListControllerSpec extends Specification with mock.Mockito {
   
   def is = "ExhibitRoomListController" ^
     "リソース" ^ resourcesSpec(createController) ^
+    "プロパティ" ^ propertiesSpec(createController) ^
     "JTree と結合" ^ canBindTree(createController) ^
     "ツリーモデル" ^ sourceListModelSpec(createController) ^
     "ツリー構造" ^ sourceStructureSpec(createController) ^
@@ -41,6 +42,12 @@ class ExhibitRoomListControllerSpec extends Specification with mock.Mockito {
     "smartRoom 名" ! resources(f).smartRoom ^
     bt
   
+  def propertiesSpec(f: Factory) =
+    "exhibitLoadManager 初期値" ! properties(f).exhibitLoadManagerInit ^
+    "exhibitLoadManager 設定" ! properties(f).exhibitLoadManager ^
+    "exhibitLoadManager transferHandler へ適用" ! properties(f).exhibitLoadManagerToManager ^
+    bt
+  
   def canBindTree(f: Factory) =
     "treeModel の適用" ! bindTree(f).treeModel ^
     "selectionModel の適用" ! bindTree(f).selectionModel ^
@@ -63,7 +70,7 @@ class ExhibitRoomListControllerSpec extends Specification with mock.Mockito {
     bt
   
   def sourceStructureSpec(f: Factory) =
-    "roomSource が設定される" ! sourceStructure(f).userExhibitRoomSource ^
+//    "roomSource が設定される" ! sourceStructure(f).userExhibitRoomSource ^
     "basicRoomDefaultName が設定される" ! sourceStructure(f).basicRoomDefaultName ^
     "groupRoomDefaultName が設定される" ! sourceStructure(f).groupRoomDefaultName ^
     "smartRoomDefaultName が設定される" ! sourceStructure(f).smartRoomDefaultName ^
@@ -99,7 +106,7 @@ class ExhibitRoomListControllerSpec extends Specification with mock.Mockito {
   
   def transferHandlerSpec(f: Factory) =
     "ExhibitRoomListTransferHandler インスタンス" ! transferHandler(f).instance ^
-    "loadManager を利用" ! transferHandler(f).loadManager ^
+//    "loadManager を利用" ! transferHandler(f).loadManager ^
     "sourceListModel を利用" ! transferHandler(f).sourceListModel ^
     bt
   
@@ -124,6 +131,21 @@ class ExhibitRoomListControllerSpec extends Specification with mock.Mockito {
     def basicRoom = ctrl.basicRoomDefaultNameResource.key must_== "basicRoom.defaultName"
     def groupRoom = ctrl.groupRoomDefaultNameResource.key must_== "groupRoom.defaultName"
     def smartRoom = ctrl.smartRoomDefaultNameResource.key must_== "smartRoom.defaultName"
+  }
+  
+  // プロパティ
+  def properties(ctrl: ExhibitRoomListController) = new {
+    def exhibitLoadManagerInit = ctrl.exhibitLoadManager must beNone
+    def exhibitLoadManager = {
+      val manager = mock[MuseumExhibitLoadManager]
+      ctrl.exhibitLoadManager = Some(manager)
+      ctrl.exhibitLoadManager must beSome(manager)
+    }
+    def exhibitLoadManagerToManager = {
+      val manager = mock[MuseumExhibitLoadManager]
+      ctrl.exhibitLoadManager = Some(manager)
+      ctrl.transferHandler.exhibitLoadManager must beSome(manager)
+    }
   }
   
   // 結合
@@ -168,7 +190,7 @@ class ExhibitRoomListControllerSpec extends Specification with mock.Mockito {
   // 構造
   def sourceStructure(f: Factory) = new TestBase(f) {
     def str = ctrl.sourceStructure
-    def userExhibitRoomSource = str.roomService must_== service
+//    def userExhibitRoomSource = str.roomService must_== service
     
     def basicRoomDefaultName = str.basicRoomDefaultName must_== ctrl.basicRoomDefaultNameResource()
     def groupRoomDefaultName = str.groupRoomDefaultName must_== ctrl.groupRoomDefaultNameResource()
@@ -229,7 +251,7 @@ class ExhibitRoomListControllerSpec extends Specification with mock.Mockito {
   // 転送ハンドラ
   def transferHandler(ctrl: ExhibitRoomListController) = new {
     def instance = ctrl.transferHandler must beAnInstanceOf[ExhibitRoomListTransferHandler] 
-    def loadManager = ctrl.transferHandler.loadManager must_== ctrl.loadManager
+//    def loadManager = ctrl.transferHandler.loadManager must_== ctrl.loadManager
     def sourceListModel = ctrl.transferHandler.sourceListModel must beSome(ctrl.sourceListModel)
   }
 }

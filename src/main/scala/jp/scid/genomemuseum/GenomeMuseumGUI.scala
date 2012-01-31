@@ -5,7 +5,7 @@ import org.jdesktop.application.{Application, Action, ProxyActions}
 import view.{ApplicationViews, MainFrameView, MainView, MainViewMenuBar, ColumnVisibilitySetting}
 import controller.{GenomeMuseumController, MainFrameViewController, MainViewController,
   MuseumExhibitLoadManager, ExhibitRoomListController, ApplicationController,
-  MuseumExhibitListController, WebServiceResultController}
+  MuseumExhibitListController, WebServiceResultController, GenomeMuseumControllerFactory}
 import model.{MuseumSchema, MuseumExhibitLoader, DefaultMuseumExhibitFileLibrary,
   MuseumExhibitService}
 
@@ -111,6 +111,12 @@ class GenomeMuseumGUI extends Application {
    */
   lazy val applicationViews = new ApplicationViews()
   
+  // コントローラファクトリ
+  /**
+   * アプリケーションの操作オブジェクトの生成オブジェクトを作成
+   */
+  lazy val controllerFactory = new GenomeMuseumControllerFactory(this)
+  
   // アプリケーション処理
   /**
    * アプリケーションのデータを保存するディレクトリを設定する。
@@ -137,13 +143,8 @@ class GenomeMuseumGUI extends Application {
   override def startup() {
     logger.debug("startup")
     
-    val mainViewCtrl = createMainViewController()
-    mainViewCtrl.bindMainView(applicationViews.mainView)
-    
-    val mainFrameViewCtrl = createMainFrameViewController()
-    
-    // 主画面のタイトルから画面枠のタイトルを設定
-    mainFrameViewCtrl.bindTitle(mainViewCtrl.title)
+    val mainFrameViewCtrl = controllerFactory.createMainFrameViewController()
+//    mainFrameViewCtrl.bind(applicationViews)
     
     // 表示
     mainFrameViewCtrl.show()
@@ -169,47 +170,6 @@ class GenomeMuseumGUI extends Application {
   }
   
   // コントローラ生成
-  /**
-   * ソースリスト操作オブジェクトを作成する。
-   * 
-   * {@code loadManager} が設定される。
-   */
-  protected[genomemuseum] def createExhibitRoomListController() =
-    new ExhibitRoomListController(museumSchema.userExhibitRoomService, exhibitLoadManager)
-
-  /**
-   * 展示物リスト操作オブジェクトを作成する。
-   * 
-   * {@code loadManager} が設定される。
-   */
-  protected[genomemuseum] def createMuseumExhibitListController() =
-    new MuseumExhibitListController(museumSchema.museumExhibitService, exhibitLoadManager)
-
-  /**
-   * ウェブ検索操作オブジェクトを作成する。
-   * 
-   * {@code loadManager} が設定される。
-   */
-  protected[genomemuseum] def createWebServiceResultController() =
-    new WebServiceResultController(exhibitLoadManager)
-  
-  /**
-   * 主画面操作オブジェクトを作成する。
-   * 
-   * @param mainView 入出力画面オブジェクト
-   */
-  protected[genomemuseum] def createMainViewController() = {
-    val roomListCtrl = createExhibitRoomListController
-    val exhibitListCtrl = createMuseumExhibitListController
-    val searchResultCtrl = createWebServiceResultController
-    new MainViewController(roomListCtrl, exhibitListCtrl, searchResultCtrl)
-  }
-  
-  /**
-   * 主画面枠の操作対応オブジェクトを作成する。
-   */
-  protected[genomemuseum] def createMainFrameViewController() =
-    new MainFrameViewController(this)
   
   /**
    * アプリケーションのアクションを取得する

@@ -58,6 +58,14 @@ class ExhibitRoomListController(
     sourceListSelectionMode = true
   }
   
+  /** 読み込みマネージャの取得 */
+  def exhibitLoadManager = transferHandler.exhibitLoadManager
+  
+  /** 読み込みマネージャの設定 */
+  def exhibitLoadManager_=(manager: Option[MuseumExhibitLoadManager]) {
+    transferHandler.exhibitLoadManager = manager
+  }
+  
   /** 現在選択されているパスモデル */
   lazy val selectedRoom = new ValueHolder[ExhibitRoom](sourceStructure.localSource)
   /** 編集を開始するためのトリガーモデル */
@@ -65,7 +73,7 @@ class ExhibitRoomListController(
   
   // コントローラ
   /** 転送ハンドラ */
-  lazy val transferHandler = new ExhibitRoomListTransferHandler(loadManager, sourceListModel)
+  lazy val transferHandler = new ExhibitRoomListTransferHandler(sourceListModel)
   
   // アクション
   /** {@link addBasicRoom} のアクション */
@@ -132,6 +140,8 @@ class ExhibitRoomListController(
         nodeEditTrigger := Path.empty
     }
   }
+  
+  
 }
 
 private object ExhibitRoomListController {

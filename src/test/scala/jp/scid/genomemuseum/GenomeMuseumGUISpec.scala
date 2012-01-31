@@ -7,7 +7,8 @@ import org.specs2._
 
 import jp.scid.gui.ValueHolder
 import controller.{GenomeMuseumController, MainViewController, MainFrameViewController,
-  ExhibitRoomListController, MuseumExhibitListController, WebServiceResultController}
+  ExhibitRoomListController, MuseumExhibitListController, WebServiceResultController,
+  GenomeMuseumControllerFactory}
 import model.{MuseumSchema, MuseumExhibitService, DefaultMuseumExhibitFileLibrary,
   UriFileStorage}
 import view.ApplicationViews
@@ -22,13 +23,9 @@ class GenomeMuseumGUISpec extends Specification with mock.Mockito {
     "ビューオブジェクト" ^ applicationViewsSpec(appSimple) ^
     "スキーマブジェクト" ^ museumSchemaSpec(appSimple) ^
     "アクション" ^ actionsSpec(appSimple) ^
-    "主画面枠操作管理オブジェクト作成" ^ canCreateMainFrameViewController(appSimple) ^
     "ファイルライブラリオブジェクト" ^ exhibitFileLibrarySpec(appSimple) ^
     "読み込み操作オブジェクト" ^ exhibitLoadManagerSpec(appSimple) ^
-    "ソースリスト操作オブジェクト作成" ^ canCreateExhibitRoomListController(appSimple) ^
-    "展示物リスト操作オブジェクト作成" ^ canCreateMuseumExhibitListController(appSimple) ^
-    "ウェブ検索操作オブジェクト作成" ^ canCreateWebServiceResultController(appSimple) ^
-    "主画面操作オブジェクト作成" ^ canCreateMainViewController(appSimple) ^
+    "コントローラファクトリ" ^ controllerFactorySpec(appSimple) ^
     "起動処理" ^ startupSpec(appSimple) ^
     end
   
@@ -71,10 +68,6 @@ class GenomeMuseumGUISpec extends Specification with mock.Mockito {
     "quitAction" ! actions(app).quitAction ^
     bt
   
-  def canCreateMainFrameViewController(app: => GenomeMuseumGUI) =
-    "作成" ! createMainFrameViewController(app).create ^
-    bt
-  
   def exhibitFileLibrarySpec(app: => GenomeMuseumGUI) =
     "fileStorageDir が None の時は None" ! exhibitFileLibrary(app).noLibrary ^
     "fileStorageDir のディレクトリで作成される" ! exhibitFileLibrary(app).fromAttr ^
@@ -86,27 +79,8 @@ class GenomeMuseumGUISpec extends Specification with mock.Mockito {
     "fileLibrary に exhibitFileLibrary が利用される" ! exhibitLoadManager(app).fileLibrary ^
     bt
   
-  def canCreateExhibitRoomListController(app: => GenomeMuseumGUI) =
-    "作成" ! createExhibitRoomListController(app).create ^
-    "アプリケーションの roomService が設定されている" ! createExhibitRoomListController(app).roomService ^
-    "loadManager が設定されている" ! createExhibitRoomListController(app).loadManager ^
-    bt
-  
-  def canCreateMuseumExhibitListController(app: => GenomeMuseumGUI) =
-    "作成" ! createMuseumExhibitListController(app).create ^
-    "アプリケーションの loadManager が設定されている" ! createMuseumExhibitListController(app).loadManager ^
-    bt
-  
-  def canCreateWebServiceResultController(app: => GenomeMuseumGUI) =
-    "作成" ! createWebServiceResultController(app).create ^
-    "アプリケーションの loadManager が設定されている" ! createWebServiceResultController(app).loadManager ^
-    bt
-  
-  def canCreateMainViewController(app: => GenomeMuseumGUI) =
-    "作成" ! createMainViewController(app).create ^
-    "ソースリスト操作オブジェクトが利用されている" ! createMainViewController(app).roomCtrl ^
-    "展示物リスト操作オブジェクトが利用されている" ! createMainViewController(app).exhibitCtrl ^
-    "ウェブ検索リスト操作オブジェクトが利用されている" ! createMainViewController(app).webCtrl ^
+  def controllerFactorySpec(app: => GenomeMuseumGUI) =
+    "作成" ! controllerFactory(app).create ^
     bt
   
   def startupSpec(app: => GenomeMuseumGUI) =
@@ -191,12 +165,6 @@ class GenomeMuseumGUISpec extends Specification with mock.Mockito {
     def quitAction = app.quitAction.name must_== "quit"
   }
   
-  /** 主画面枠操作管理オブジェクト作成 */
-  def createMainFrameViewController(app: GenomeMuseumGUI) = new {
-    def create = app.createMainFrameViewController() must
-      beAnInstanceOf[MainFrameViewController]
-  }
-  
   /** ファイルライブラリオブジェクト作成 */
   def exhibitFileLibrary(app: GenomeMuseumGUI) = new {
     def noLibrary = {
@@ -233,73 +201,30 @@ class GenomeMuseumGUISpec extends Specification with mock.Mockito {
     }
   }
   
-  /** ソースリスト操作オブジェクト */
-  def createExhibitRoomListController(app: GenomeMuseumGUI) = new {
-    val ctrl = app.createExhibitRoomListController()
-    
-    def create = ctrl must beAnInstanceOf[ExhibitRoomListController]
-    
-    def roomService = todo //ctrl.roomService must_== app.museumSchema.userExhibitRoomService
-    
-    def loadManager = todo //ctrl.loadManager must app.exhibitLoadManager
-  }
-  
-  /** 展示物リスト操作オブジェクト */
-  def createMuseumExhibitListController(app: GenomeMuseumGUI) = new {
-    val ctrl = app.createMuseumExhibitListController()
-    
-    def create = ctrl must beAnInstanceOf[MuseumExhibitListController]
-    
-    def loadManager = ctrl.loadManager must beSome(app.exhibitLoadManager) 
-  }
-  
-  /** ウェブ検索操作オブジェクト */
-  def createWebServiceResultController(app: GenomeMuseumGUI) = new {
-    val ctrl = app.createWebServiceResultController()
-    
-    def create = ctrl must beAnInstanceOf[WebServiceResultController]
-    
-    def loadManager = ctrl.loadManager must beSome(app.exhibitLoadManager) 
-  }
-  
-  /** 主画面操作オブジェクト */
-  def createMainViewController(app: GenomeMuseumGUI) = new {
-    val application = spy(app)
-    
-    application.createExhibitRoomListController returns
-      spy(app.createExhibitRoomListController)
-    application.createMuseumExhibitListController returns
-      spy(app.createMuseumExhibitListController)
-    application.createWebServiceResultController returns
-      spy(app.createWebServiceResultController)
-    
-    def create = app.createMainViewController() must
-        beAnInstanceOf[MainViewController]
-    
-    def roomCtrl = application.createMainViewController
-      .sourceListCtrl must_== application.createExhibitRoomListController
-
-    def exhibitCtrl = application.createMainViewController
-      .museumExhibitListCtrl must_== application.createMuseumExhibitListController
-
-    def webCtrl = application.createMainViewController
-      .webServiceResultCtrl must_== application.createWebServiceResultController
+  /** 起動時処理 */
+  def controllerFactory(app: GenomeMuseumGUI) = new {
+    def create = app.controllerFactory must beAnInstanceOf[GenomeMuseumControllerFactory]
   }
   
   /** 起動時処理 */
   def startup(app: GenomeMuseumGUI) = new {
     val application = spy(app)
-    val mainViewCtrl = mock[MainViewController]
-    val mainViewTitleModel = new ValueHolder("")
-    mainViewCtrl.title returns mainViewTitleModel
+//    val mainViewCtrl = mock[MainViewController]
+//    val mainViewTitleModel = new ValueHolder("")
+//    mainViewCtrl.title returns mainViewTitleModel
     
     val frameCtrl = mock[MainFrameViewController]
-    doAnswer(_ => mainViewCtrl).when(application).createMainViewController()
-    doAnswer(_ => frameCtrl).when(application).createMainFrameViewController()
+    
+    val controllerFactory = mock[GenomeMuseumControllerFactory]
+    controllerFactory.createMainFrameViewController returns frameCtrl
+    
+//    doAnswer(_ => mainViewCtrl).when(application).createMainViewController()
+    doAnswer(_ => controllerFactory).when(application).controllerFactory
     
     def bindTitleModel = {
-      application.startup()
-      there was one(frameCtrl).bindTitle(mainViewTitleModel)
+      todo
+//      application.startup()
+//      there was one(frameCtrl).bindTitle(application.applicationViews.mainFrameView)
     }
     
     def showsFrame = {

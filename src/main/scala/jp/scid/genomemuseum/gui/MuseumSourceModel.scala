@@ -3,7 +3,8 @@ package jp.scid.genomemuseum.gui
 import collection.script.{Message, Include, Update, Remove}
 
 import jp.scid.gui.tree.{DataTreeModel, SourceTreeModel}
-import jp.scid.genomemuseum.model.{MuseumStructure, ExhibitRoom, UserExhibitRoom}
+import jp.scid.genomemuseum.model.{MuseumStructure, ExhibitRoom, UserExhibitRoom,
+  UserExhibitRoomService}
 import UserExhibitRoom.RoomType
 import RoomType._
 import DataTreeModel.Path
@@ -37,6 +38,16 @@ class MuseumSourceModel(val source: MuseumStructure) extends DataTreeModel(sourc
       case path @ Seq(parent: UserExhibitRoom, _*) => (Some(parent), path.reverse)
       case _ => (None, pathForUserRooms)
     }
+  }
+  
+  /** ユーザー部屋のサービスを取得 */
+  def userExhibitRoomService = source.userExhibitRoomService
+  
+  /** ユーザー部屋のサービスを設定 */
+  def userExhibitRoomService_=(newService: Option[UserExhibitRoomService]) {
+    source.userExhibitRoomService = newService
+    // テストをしていない
+    sourceTreeModel.reset(source.userRoomsRoot)
   }
   
   /**

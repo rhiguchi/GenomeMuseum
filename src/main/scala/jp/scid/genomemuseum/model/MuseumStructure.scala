@@ -1,7 +1,7 @@
 package jp.scid.genomemuseum.model
 
 import scala.collection.mutable.Publisher
-import scala.collection.script.Message
+import scala.collection.script.{Message, Update}
 
 import jp.scid.gui.tree.EditableTreeSource
 import UserExhibitRoom.RoomType
@@ -10,9 +10,13 @@ import RoomType._
 /**
  * ExhibitRoom のツリーのモデル
  */
-class MuseumStructure(val roomService: UserExhibitRoomService)
-    extends EditableTreeSource[ExhibitRoom] with Publisher[Message[ExhibitRoom]] {
+class MuseumStructure extends EditableTreeSource[ExhibitRoom] with Publisher[Message[ExhibitRoom]] {
   import MuseumStructure._
+  
+  def this(roomService: UserExhibitRoomService) {
+    this()
+    userExhibitRoomService = Some(roomService)
+  }
   
   // プロパティ
   /** {@code BasicRoom} 型の部屋を作成するときの標準の名前 */
@@ -21,6 +25,11 @@ class MuseumStructure(val roomService: UserExhibitRoomService)
   var groupRoomDefaultName = "New GroupRoom"
   /** {@code SmartRoom} 型の部屋を作成するときの標準の名前 */
   var smartRoomDefaultName = "New SmartRoom"
+  
+  /** ユーザー部屋 */
+  private var roomService: Option[UserExhibitRoomService] = None
+  /** ユーザー部屋結合解除関数 */
+  private var roomServiceSubscriptionRemover = () => {}
   
   // 規定ノード
   /** ローカルソースの要素を取得 */
@@ -34,21 +43,42 @@ class MuseumStructure(val roomService: UserExhibitRoomService)
   /** ルート要素 */
   val root = MuseumFloor("Museum", sourcesRoot, userRoomsRoot)
   
-  /** 変更イベントの結合 */
-  roomService.subscribe(new roomService.Sub {
-    def notify(pub: roomService.Pub, event: Message[UserExhibitRoom]) {
-      publish(event)
+  /** ユーザー部屋の取得 */
+  def userExhibitRoomService = roomService
+  
+  /** ユーザー部屋の設定 */
+  def userExhibitRoomService_=(roomService: Option[UserExhibitRoomService]) {
+    // 結合解除
+    roomServiceSubscriptionRemover()
+    
+    this.roomService = roomService
+    // 変更イベントの結合
+    roomService foreach { roomService =>
+      val subscription = new roomService.Sub {
+        def notify(pub: roomService.Pub, event: Message[UserExhibitRoom]) {
+          publish(event)
+        }
+      }
+      roomService.subscribe(subscription)
+      roomServiceSubscriptionRemover = () => roomService.removeSubscription(subscription)
     }
-  })
+    
+    publish(new Update(userRoomsRoot))
+  }
+  
+  /** イベント発行委譲 */
+  override protected[model] def publish(event: Message[ExhibitRoom]) = super.publish(event)
   
   /** 子要素を取得 */
   override def childrenFor(parent: ExhibitRoom) = {
     if (isLeaf(parent)) Nil
     else parent match {
       // ユーザー設定部屋ルートの時は、サービスからのルート要素取得して返す
-      case `userRoomsRoot` => roomService.getChildren(None).toList
+      case `userRoomsRoot` =>
+        userExhibitRoomService map (_.getChildren(None).toList) getOrElse Nil
       // ユーザー設定部屋の時は、サービスから子要素を取得して返す
-      case parent: UserExhibitRoom => roomService.getChildren(Some(parent)).toList
+      case parent: UserExhibitRoom =>
+        userExhibitRoomService.map(_.getChildren(Some(parent)).toList) getOrElse Nil
       // MuseumFloor の時は、メソッドから子要素を返す
       case parent: MuseumFloor => parent.children
       // 該当が無い時は Nil
@@ -73,7 +103,7 @@ class MuseumStructure(val roomService: UserExhibitRoomService)
       case value: String => element.name = value
       case _ =>
     }
-    roomService.save(element)
+    userExhibitRoomService.foreach(_.save(element))
   }
   
   /** 値の更新 */
@@ -95,7 +125,7 @@ class MuseumStructure(val roomService: UserExhibitRoomService)
           case None => node :: path // return value
         }
         case room: UserExhibitRoom =>
-          val parent = roomService.getParent(room).getOrElse(userRoomsRoot)
+          val parent = userExhibitRoomService.flatMap(_.getParent(room)).getOrElse(userRoomsRoot)
           getParent(parent, room :: path)
       }
     }
@@ -126,7 +156,11 @@ class MuseumStructure(val roomService: UserExhibitRoomService)
       case SmartRoom => smartRoomDefaultName
     })
     
-    roomService.addRoom(roomType, name, parent)
+    userExhibitRoomService match {
+      case Some(service) => service.addRoom(roomType, name, parent)
+      case _ => throw new IllegalArgumentException(
+        "need an userExhibitRoomService to add room")
+    }
   }
   
   /**
@@ -136,7 +170,7 @@ class MuseumStructure(val roomService: UserExhibitRoomService)
     dest match {
       case Some(dest @ RoomType(GroupRoom)) =>
         !pathToRoot(dest).startsWith(pathToRoot(source))
-      case None => roomService.getParent(source).nonEmpty
+      case None => userExhibitRoomService.map(_.getParent(source).nonEmpty).getOrElse(false)
       case _ => false
     }
   }
@@ -156,9 +190,9 @@ class MuseumStructure(val roomService: UserExhibitRoomService)
         destPath.startsWith(sourcePath) match {
           case true => throw new IllegalStateException(
             "'%s' is not allowed to move to '%s'".format(sourcePath, destPath))
-          case false => roomService.setParent(source, newParent)
+          case false => userExhibitRoomService.foreach(_.setParent(source, newParent))
         }
-      case None => roomService.setParent(source, None)
+      case None => userExhibitRoomService.foreach(_.setParent(source, None))
       case _ => throw new IllegalArgumentException("parent must be a GroupRoom")
     }
   }
@@ -167,7 +201,7 @@ class MuseumStructure(val roomService: UserExhibitRoomService)
    * 部屋を削除する
    */
   def removeRoom(room: UserExhibitRoom) {
-    roomService.remove(room)
+    userExhibitRoomService.foreach(_.remove(room))
   }
   
   /**
@@ -180,15 +214,15 @@ class MuseumStructure(val roomService: UserExhibitRoomService)
   private def findRoomNewName(baseName: String) = {
     def searchNext(index: Int): String = {
       val candidate = baseName + " " + index
-      roomService.nameExists(candidate) match {
-        case true => searchNext(index + 1)
-        case false => candidate
+      userExhibitRoomService.map(_.nameExists(candidate)) match {
+        case Some(true) => searchNext(index + 1)
+        case _ => candidate
       }
     }
     
-    roomService.nameExists(baseName) match {
-      case true => searchNext(1)
-      case false => baseName
+    userExhibitRoomService.map(_.nameExists(baseName)) match {
+      case Some(true) => searchNext(1)
+      case _ => baseName
     }
   }
 }

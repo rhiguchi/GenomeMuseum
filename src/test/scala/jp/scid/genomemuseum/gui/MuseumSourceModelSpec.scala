@@ -15,6 +15,7 @@ class MuseumSourceModelSpec extends Specification with mock.Mockito {
   private type Factory = MuseumStructure => MuseumSourceModel
   
   def is = "MuseumSourceModel" ^
+    "userExhibitRoomService プロパティ" ^ userExhibitRoomServiceSpec(createModel) ^
     "パスの取得" ^ pathsSpec(createModel) ^
     "部屋の追加" ^ canAddRoom(createModel) ^
     "部屋の移動" ^ canMoveRoom(createModel) ^
@@ -27,6 +28,11 @@ class MuseumSourceModelSpec extends Specification with mock.Mockito {
   
   def createModel(structure: MuseumStructure) =
     new MuseumSourceModel(structure)
+  
+  def userExhibitRoomServiceSpec(f: Factory) =
+    "設定と取得" ! userExhibitRoomService(f).setGet ^
+    "source に適用" ! userExhibitRoomService(f).toSource ^
+    bt
   
   def pathsSpec(f: Factory) =
     "ローカルライブラリのパス" ! pathFor(f).localLibrary ^
@@ -74,8 +80,8 @@ class MuseumSourceModelSpec extends Specification with mock.Mockito {
     bt
   
   class TestBase(f: Factory) {
-    val service = UserExhibitRoomServiceMock.of()
-    val source = spy(new MuseumStructure(service))
+    val source = spy(new MuseumStructure)
+    doAnswer(_ => null).when(source).addRoom(any, any)
     val model = f(source)
   }
   
@@ -84,6 +90,20 @@ class MuseumSourceModelSpec extends Specification with mock.Mockito {
     def userRooms = model.pathForUserRooms must_== source.pathToRoot(source.userRoomsRoot)
     
     def localLibrary = model.pathForLocalLibrary must_== source.pathToRoot(source.localSource)
+  }
+  
+  /** サービスの設定 */
+  def userExhibitRoomService(f: Factory) = new TestBase(f) {
+    val serivce = UserExhibitRoomServiceMock.of()
+    
+    def setGet = {
+      model.userExhibitRoomService = Some(serivce)
+      model.userExhibitRoomService must beSome(serivce)
+    }
+    def toSource = {
+      model.userExhibitRoomService = Some(serivce)
+      source.userExhibitRoomService must beSome(serivce)
+    }
   }
   
   /** 部屋の追加 */

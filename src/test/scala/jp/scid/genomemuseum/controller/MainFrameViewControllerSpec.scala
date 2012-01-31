@@ -10,53 +10,90 @@ import jp.scid.genomemuseum.model.MuseumSchema
 import jp.scid.genomemuseum.view.{MainFrameView, MainViewMenuBar}
 
 class MainFrameViewControllerSpec extends Specification with mock.Mockito {
-  private type Factory = (GenomeMuseumGUI) => MainFrameViewController
-  
   def is = "MainFrameViewController" ^
+    "フレームタイトルモデルと結合" ^ canConnectTitleModel(createHandler) ^
+    "プロパティ" ^ propertiesSpec(createHandler) ^
     "フレームと結合" ^ canBindFrame(createHandler) ^
     "メニューバーと結合" ^ canBindMenuBar(createHandler) ^
-    "フレームタイトルモデルの結合" ^ canBindTitleModel(createHandler) ^
+    "MainFrameView と結合" ^ canBind(createHandler) ^
     end
   
-  def createHandler(h: GenomeMuseumGUI) =
-    new MainFrameViewController(h)
+  def createHandler() = new MainFrameViewController()
   
-  implicit def constructByDefault(f: Factory): MainFrameViewController = {
-    val gmGui = new GenomeMuseumGUI
-    new MainFrameViewController(gmGui)
-  }
+  def propertiesSpec(c: => MainFrameViewController) =
+    "application 初期値" ! properties(c).application ^
+    "application 設定" ! properties(c).applicationSet ^
+    "mainViewController 初期値" ! properties(c).mainViewController ^
+    "mainViewController 設定" ! properties(c).mainViewControllerSet ^
+    bt
   
-  def canBindFrame(f: Factory) =
-    "show() 呼び出しで表示できるようになる" ! bindFrame(f).visibleModel ^
-    "タイトルモデルと結合される" ! bindFrame(f).titleModel ^
+  def canBind(c: => MainFrameViewController) =
+    "mainView を mainViewController と結合" ! bindMainFrameView(c).mainViewController ^
+    "frame を bindFrame で結合" ! bindMainFrameView(c).bindFrame ^
+    "mainMenu を bindMenuBar で結合" ! bindMainFrameView(c).bindMenuBar ^
+    bt
+  
+  def canBindFrame(c: => MainFrameViewController) =
+    "show() 呼び出しで表示できるようになる" ! bindFrame(c).visibleModel ^
+    "タイトルモデルと結合される" ! bindFrame(c).titleModel ^
     bt
 
-  def canBindMenuBar(f: Factory) =
-    "ファイルメニュー" ^ fileMenuSpec(f) ^
-    "編集メニュー" ^ editMenuSpec(f) ^
+  def canBindMenuBar(c: => MainFrameViewController) =
+    "ファイルメニュー" ^ fileMenuSpec(c) ^
+    "編集メニュー" ^ editMenuSpec(c) ^
     bt
   
-  def canBindTitleModel(f: Factory) = 
-    "モデルが空文字の時は GenomeMuseum と表示" ! bindTitle(f).empty ^
-    "モデルに文字がある時は ハイフン を挟んで表示" ! bindTitle(f).someText ^
+  def fileMenuSpec(c: => MainFrameViewController) = 
+    "開く" ! fileMenu(c).open ^
+    "終了" ! fileMenu(c).quit ^
     bt
   
-  def fileMenuSpec(f: Factory) = 
-    "開く" ! fileMenu(f).open ^
-    "終了" ! fileMenu(f).quit ^
+  def editMenuSpec(c: => MainFrameViewController) = 
+    "カット" ! editMenu(c).cut ^
+    "コピー" ! editMenu(c).copy ^
+    "ペースト" ! editMenu(c).paste ^
+    "全てを選択" ! editMenu(c).selectAll ^
     bt
   
-  def editMenuSpec(f: Factory) = 
-    "カット" ! editMenu(f).cut ^
-    "コピー" ! editMenu(f).copy ^
-    "ペースト" ! editMenu(f).paste ^
-    "全てを選択" ! editMenu(f).selectAll ^
+  def canConnectTitleModel(c: => MainFrameViewController) = 
+    "モデルが空文字の時は GenomeMuseum と表示" ! connectTitle(c).empty ^
+    "モデルに文字がある時は ハイフン を挟んで表示" ! connectTitle(c).someText ^
     bt
   
   private def spyMainFrameViewOf(frame: JFrame) = {
     val view = spy(new MainFrameView)
     view.frame returns frame
     view
+  }
+  
+  // プロパティ
+  def properties(ctrl: MainFrameViewController) = new {
+    def application = ctrl.application must beNone
+    def applicationSet = {
+      val app = mock[GenomeMuseumGUI]
+      ctrl.application = Some(app)
+      ctrl.application must beSome(app)
+    }
+    
+    def mainViewController = ctrl.mainViewController must beNone
+    def mainViewControllerSet = {
+      val mainViewCtrl = mock[MainViewController]
+      ctrl.mainViewController = Some(mainViewCtrl)
+      ctrl.mainViewController must beSome(mainViewCtrl)
+    }
+  }
+  
+  // MainFrameViewと結合
+  def bindMainFrameView(c: MainFrameViewController) = new {
+    val mainViewCtrl = mock[MainViewController]
+    val ctrl = spy(c)
+    ctrl.mainViewController = Some(mainViewCtrl)
+    val view = new MainFrameView
+    ctrl.bind(view)
+    
+    def mainViewController = there was one(mainViewCtrl).bind(view.mainView)
+    def bindFrame = there was one(ctrl).bindFrame(view.frame)
+    def bindMenuBar = there was one(ctrl).bindMenuBar(view.mainMenu)
   }
   
   // フレームと結合
@@ -79,10 +116,11 @@ class MainFrameViewControllerSpec extends Specification with mock.Mockito {
   
   // ファイルメニュー
   def fileMenu(ctrl: MainFrameViewController) = new {
+    val app = new GenomeMuseumGUI
+    ctrl.application = Some(app)
+    
     val menuBar = new MainViewMenuBar
     ctrl.bindMenuBar(menuBar)
-    
-    private def app = ctrl.application
     
     def open = menuBar.open.action must_== app.openAction
     
@@ -91,10 +129,11 @@ class MainFrameViewControllerSpec extends Specification with mock.Mockito {
   
   // 編集メニュー
   def editMenu(ctrl: MainFrameViewController) = new {
+    val app = new GenomeMuseumGUI
+    ctrl.application = Some(app)
+    
     val menuBar = new MainViewMenuBar
     ctrl.bindMenuBar(menuBar)
-    
-    private def app = ctrl.application
     
     def cut = menuBar.cut.action must_== app.cutProxyAction
     
@@ -106,9 +145,9 @@ class MainFrameViewControllerSpec extends Specification with mock.Mockito {
   }
   
   // タイトルモデル結合
-  def bindTitle(ctrl: MainFrameViewController) = new {
+  def connectTitle(ctrl: MainFrameViewController) = new {
     val titleModel = new ValueHolder("")
-    ctrl.bindTitle(titleModel)
+    ctrl.connectTitle(titleModel)
     
     def empty = ctrl.title() must_== "GenomeMuseum"
     

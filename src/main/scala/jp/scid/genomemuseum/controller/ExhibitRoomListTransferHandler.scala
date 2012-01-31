@@ -20,21 +20,22 @@ import MuseumExhibitListTransferHandler.getAllFiles
  * {@code #sourceListModel} を指定することで、部屋の移動が可能になる。
  * @param loadManager 読み込み操作管理オブジェクト
  */
-class ExhibitRoomListTransferHandler(
-    private[controller] val loadManager: MuseumExhibitLoadManager)
-    extends MuseumExhibitListTransferHandler {
+class ExhibitRoomListTransferHandler extends MuseumExhibitListTransferHandler {
   import ExhibitRoomTransferData.{dataFlavor => exhibitRoomDataFlavor}
   /** sourceListModel を指定してハンドラを構築 */
-  def this(loadManager: MuseumExhibitLoadManager, sourceListModel: MuseumSourceModel) {
-    this(loadManager)
+  def this(sourceListModel: MuseumSourceModel) {
+    this()
     this.sourceListModel = Option(sourceListModel)
   }
   
-  /** 転入操作に用いられる、展示物管理オブジェクト */
-  private def exhibitService = loadManager.dataService
-  
   /** ツリーを操作する対象のモデル */
   var sourceListModel: Option[MuseumSourceModel] = None
+  
+  /** ファイルの読み込み処理を行うモデル */
+  var exhibitLoadManager: Option[MuseumExhibitLoadManager] = None
+  
+  /** 転入操作に用いられる、展示物管理オブジェクト */
+  private def exhibitService = exhibitLoadManager.map(_.dataService)
   
   override def canImport(ts: TransferSupport) = {
     if (ts.isDataFlavorSupported(exhibitRoomDataFlavor)) {
@@ -99,15 +100,22 @@ class ExhibitRoomListTransferHandler(
   }
     
   override def importExhibits(exhibits: Seq[MuseumExhibit], targetRoom: UserExhibitRoom) = {
-    val service = exhibitService
-    exhibits map (_.asInstanceOf[service.ElementClass]) foreach
-      (e => service.addElement(targetRoom, e))
-    exhibits.nonEmpty
+    exhibitService match {
+      case Some(service) =>
+        exhibits map (_.asInstanceOf[service.ElementClass]) foreach
+          (e => service.addElement(targetRoom, e))
+        exhibits.nonEmpty
+      case _ => false
+    }
   }
     
   override def importFiles(files: Seq[File], targetRoom: Option[UserExhibitRoom]) = {
-    files foreach loadManager.loadExhibit
-    files.nonEmpty
+    exhibitLoadManager match {
+      case Some(loadManager) =>
+        files foreach loadManager.loadExhibit
+        files.nonEmpty
+      case _ => false
+    }
   }
   
   override def getTargetRooom(ts: TransferSupport): Option[ExhibitRoom] = {
@@ -128,7 +136,10 @@ class ExhibitRoomListTransferHandler(
   override def createTransferable(c: JComponent) = {
     (c, sourceListModel) match {
       case (tree: JTree, Some(model)) if tree.getModel == model.treeModel => model.selectedPath.flatMap(_.lastOption) match {
-        case Some(room: UserExhibitRoom) => ExhibitRoomTransferData(room, exhibitService)
+        case Some(room: UserExhibitRoom) => exhibitService match {
+          case Some(exhibitService) => ExhibitRoomTransferData(room, exhibitService)
+          case _ => null
+        }
         case _ => null
       }
       case _ => null

@@ -2,10 +2,12 @@ package jp.scid.gui
 
 import java.beans.{PropertyChangeListener, PropertyChangeEvent}
 
-import swing.Publisher
+import swing.{Publisher, Reactions}
 import event.ValueChange
 
 import com.jgoodies.binding.{value => bv}
+
+import DataModel.Connector
 
 /**
  * 一つの値を保持し、変化イベントを送出するデータモデル。
@@ -42,6 +44,15 @@ class ValueHolder[T: ClassManifest](initialValue: T) extends DataModel with Publ
     }
   }
   
+  /**
+   * イベント反応関数を追加
+   * 
+   * @return 接続オブジェクト
+   */
+  def addNewValueReaction(function: T => Unit) = {
+    new ValueHolder.ValueHolderConnector(this, function)
+  }
+  
   protected def publishValueChange(oldValue: T, newValue: T) {
     val event = ValueChange(this, oldValue, newValue)
     publish(event)
@@ -52,7 +63,6 @@ object ValueHolder {
   import com.jgoodies.binding.adapter.TextComponentConnector
   import com.jgoodies.binding.beans.PropertyConnector
   import javax.swing.{JTextField, JComponent}
-  import DataModel.Connector
   
   /**
    * String モデルと JTextField を結合する。
@@ -95,6 +105,17 @@ object ValueHolder {
   
   private class ConnectorPropertyImpl(base: PropertyConnector) extends Connector {
     def release() = base.release()
+  }
+  
+  class ValueHolderConnector[A](subject: ValueHolder[A], function: A => Unit) extends Connector {
+    val reaction: Reactions.Reaction = {
+      case ValueChange(_, _, newValue) => function(newValue.asInstanceOf[A])
+    }
+    subject.reactions += reaction
+    
+    def release() = subject.reactions -= reaction
+    
+    def update() = function(subject())
   }
   
   private class ValueHoldersConnector[A](subject: ValueHolder[A],

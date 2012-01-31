@@ -14,9 +14,13 @@ import jp.scid.genomemuseum.view.{MainFrameView, MainViewMenuBar}
  * @param application データやメッセージを取り扱うアプリケーションオブジェクト。
  * @param frameView 表示と入力を行う画面枠。
  */
-class MainFrameViewController(
-  val application: GenomeMuseumGUI
-) extends GenomeMuseumController {
+class MainFrameViewController extends GenomeMuseumController {
+  // コントローラ
+  /** アプリケーションアクションの参照 */
+  var application: Option[GenomeMuseumGUI] = None
+  /** 主画面操作機 */
+  var mainViewController: Option[MainViewController] = None
+  
   // モデル
   /** この画面枠用のタイトル */
   val title = new ValueHolder("GenomeMuseum")
@@ -36,7 +40,7 @@ class MainFrameViewController(
   }
   
   /** タイトルモデルの結合を行う */
-  def bindTitle(viewTitle: ValueHolder[String]) {
+  def connectTitle(viewTitle: ValueHolder[String]) {
     viewTitle.reactions += {
       case ValueChange(_, _, ctrlTitle: String) => ctrlTitle match {
         case "" => title := "GenomeMuseum"
@@ -45,19 +49,36 @@ class MainFrameViewController(
     }
   }
   
+  /**
+   * ビュー MainFrameView とモデルの結合を行う
+   */
+  def bind(view: MainFrameView) {
+    mainViewController.foreach(_.bind(view.mainView))
+    bindFrame(view.frame)
+    bindMenuBar(view.mainMenu)
+  }
+  
+  /**
+   * JFrame とモデルを結合する
+   */
   def bindFrame(frame: JFrame) {
     ValueHolder.connect(title, frame, "title")
     ValueHolder.connect(frameVisible, frame, "visible")
   }
   
+  /**
+   * メニューバー とアクションを結合する
+   */
   def bindMenuBar(menuBar: MainViewMenuBar) {
-    menuBar.open.action = application.openAction
-    menuBar.quit.action = application.quitAction
-    
-    menuBar.cut.action = application.cutProxyAction
-    menuBar.copy.action = application.copyProxyAction
-    menuBar.paste.action = application.pasteProxyAction
-    menuBar.selectAll.action = application.selectAllProxyAction
+    application foreach { application =>
+      menuBar.open.action = application.openAction
+      menuBar.quit.action = application.quitAction
+      
+      menuBar.cut.action = application.cutProxyAction
+      menuBar.copy.action = application.copyProxyAction
+      menuBar.paste.action = application.pasteProxyAction
+      menuBar.selectAll.action = application.selectAllProxyAction
+    }
     // 列設定メニュー
 //    menuBar.columnVisibility.action = viewSettingDialogCtrl.showAction
   }
