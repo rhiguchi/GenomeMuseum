@@ -33,6 +33,7 @@ import javax.swing.JPopupMenu;
 import javax.swing.JProgressBar;
 import javax.swing.JScrollPane;
 import javax.swing.JSplitPane;
+import javax.swing.JTabbedPane;
 import javax.swing.JTable;
 import javax.swing.JTextField;
 import javax.swing.JToggleButton;
@@ -92,10 +93,15 @@ public class MainView implements GenomeMuseumView {
     // Content Viewer
     public final FileContentView fileContentView = new FileContentView();
     
+    public final OverviewMotifView overviewMotifView = new OverviewMotifView();
+    
+    public final JTabbedPane contentsViewTabbedPane =
+            createContentsViewTabbedPane(fileContentView, overviewMotifView);
+    
     // Data and content area
     public final JSplitPane dataListContentSplit = new JSplitPane(
             JSplitPane.VERTICAL_SPLIT, true, dataTableScroll,
-            fileContentView.getContentPane());
+            contentsViewTabbedPane);
     {
         dataListContentSplit.setDividerLocation(Integer.MAX_VALUE);
         dataListContentSplit.setOneTouchExpandable(true);
@@ -373,6 +379,15 @@ public class MainView implements GenomeMuseumView {
     // view test
     public static void main(String[] args) {
         GUICheckApp.launch(args, MainView.class);
+    }
+
+    JTabbedPane createContentsViewTabbedPane(FileContentView fileContentView, OverviewMotifView overviewMotifView) {
+        JTabbedPane contentsViewTabbedPane = new JTabbedPane();
+        
+        contentsViewTabbedPane.addTab("Content", fileContentView.getContentPane());
+        contentsViewTabbedPane.addTab("MotifView", overviewMotifView.getContentPane());
+        
+        return contentsViewTabbedPane;
     }
     
     private static class SampleTableModel extends AbstractTableModel {
