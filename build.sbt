@@ -9,7 +9,8 @@ organization := "ScienceDesign"
 seq(ProguardPlugin.proguardSettings :_*)
 
 libraryDependencies ++= Seq(
-  "jp.scid" % "motifviewer" % "0.1.0",
+  "jp.scid" % "scid-gui" % "0.1.1",
+  "jp.scid" % "motifviewer" % "0.1.2",
   "org.scala-lang" % "scala-swing" % "2.9.1",
   "com.explodingpixels" % "mac_widgets" % "0.9.6-SNAPSHOT",
   "org.jdesktop.bsaf" % "bsaf" % "1.9.2",
@@ -40,7 +41,7 @@ proguardOptions ++= Seq(
   "-keep class net.sf.cglib.** {*;}",
   "-keep public class org.apache.commons.logging.impl.LogFactoryImpl",
   "-keep public class org.apache.commons.logging.impl.Jdk14Logger { *** <init>(...); }",
-  "-keep class jp.scid.**.*$anon* { *;}"
+  "-keep class jp.scid.** { *;}"
 )
 
 maxErrors := 20

@@ -144,7 +144,7 @@ class GenomeMuseumGUI extends Application {
     logger.debug("startup")
     
     val mainFrameViewCtrl = controllerFactory.createMainFrameViewController()
-//    mainFrameViewCtrl.bind(applicationViews)
+    mainFrameViewCtrl.bind(applicationViews.mainVrameView)
     
     // 表示
     mainFrameViewCtrl.show()

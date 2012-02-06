@@ -10,6 +10,7 @@ import jp.scid.genomemuseum.{view, model, gui, GenomeMuseumGUI}
 import view.MainView
 import model.{MuseumSchema, ExhibitRoom, UserExhibitRoom, MuseumExhibit,
   UserExhibitRoomService, MuseumExhibitService}
+import jp.scid.motifviewer.controller.MotifViewerController
 
 /**
  * 主画面の操作を受け付け、操作反応を実行するオブジェクト。
@@ -42,6 +43,7 @@ class MainViewController(
   }  
   /** ウェブ検索操作 */
   protected[controller] val webServiceResultController = new WebServiceResultController
+  webServiceResultController.loadManager = Some(exhibitLoadManager)
   
     /** コンテントビューワー */
 //    val contentViewer = new FileContentViewer(mainView.fileContentView)
@@ -50,6 +52,8 @@ class MainViewController(
     //  読み込み管理オブジェクトの進行表示
 //    fileLoadingProgressHandler.listenTo(loadManager)
   
+  /** 俯瞰図 */
+  val motifViewerController = new MotifViewerController
   
   // モデル
   /** データテーブルの現在適用するコントローラ */
@@ -57,6 +61,10 @@ class MainViewController(
   
   /** このコントローラを表すタイトル */
   val title = new ValueHolder("")
+  
+  /** 検索モチーフ */
+//  val searchMotif = new ValueHolder("")
+//  searchMotif.addNewValueReaction(sequenceOverviewController.setSearchMotif)
   
   /** 進捗パネルの表示モデル */
   private[controller] lazy val progressViewVisibled = new ValueHolder(false)
@@ -144,6 +152,8 @@ class MainViewController(
       }
       case _ => Iterator.empty
     }
+    
+    motifViewerController.setSequence(source.mkString)
 //    contentViewer.source = source
 //    if (mainView.isContentViewerClosed)
 //      mainView.openContentViewer(200)
@@ -179,6 +189,10 @@ class MainViewController(
     setTableSource(dataListController())
     // 進捗画面
     bindProgressView(view.fileLoadingActivityPane, view.fileLoadingProgress, view.fileLoadingStatus)
+    
+    // 俯瞰図
+    motifViewerController.bindOverviewPane(view.overviewMotifView.overviewPane);
+    motifViewerController.bindSearchMotifField(view.overviewMotifView.searchMotifField)
   }
   
   /** 進捗ビューのモデル結合 */

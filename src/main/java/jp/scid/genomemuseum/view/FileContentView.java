@@ -4,6 +4,7 @@ import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.awt.Font;
 
+import javax.swing.JComponent;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
@@ -15,6 +16,7 @@ public class FileContentView implements GenomeMuseumView {
         textArea.setFont(Font.decode("monospaced-14"));
         textArea.setText("Test Content");
     }
+    
     public final JScrollPane textAreaScroll = new JScrollPane(textArea,
             JScrollPane.VERTICAL_SCROLLBAR_ALWAYS,
             JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
@@ -26,7 +28,7 @@ public class FileContentView implements GenomeMuseumView {
         contentPane.setMinimumSize(new Dimension(200, 0));
     }
     
-    public JPanel getContentPane() {
+    public JComponent getContentPane() {
         return contentPane;
     }
     

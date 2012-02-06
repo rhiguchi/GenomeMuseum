@@ -42,7 +42,6 @@ import javax.swing.SpringLayout;
 import javax.swing.SwingConstants;
 import javax.swing.SwingWorker;
 import javax.swing.SwingWorker.StateValue;
-import javax.swing.UIManager;
 import javax.swing.event.PopupMenuEvent;
 import javax.swing.event.PopupMenuListener;
 import javax.swing.table.AbstractTableModel;
@@ -52,6 +51,7 @@ import javax.swing.tree.DefaultTreeCellEditor;
 import jp.scid.genomemuseum.model.TaskProgressModel;
 import jp.scid.gui.MessageFormatTableCell;
 import jp.scid.gui.plaf.SourceListTreeUI;
+import jp.scid.gui.view.SDDefaultTableCellRenderer;
 
 import com.explodingpixels.macwidgets.ComponentBottomBar;
 import com.explodingpixels.macwidgets.MacButtonFactory;
@@ -63,50 +63,34 @@ import com.explodingpixels.macwidgets.plaf.ITunesTableUI;
 public class MainView implements GenomeMuseumView {
     private static final Color COLOR_ACTIVITY_FOREGROUND = new Color(0f, 0f, 0f, 0.8f);
     
-    private final ComponentFactory factory = new ComponentFactory();
     private final static Icon loadingIcon = new ImageIcon(MainView.class.getResource("loading.gif"));
     
-    // Data table
-    public final JTable dataTable = new JTable(); {
-        dataTable.setUI(new ITunesTableUI());
-        TableCellRenderer defaultRenderer = dataTable.getDefaultRenderer(Object.class);
-        
-        // Taskable
-        TaskProgressTableCell remoteResourceCell = new TaskProgressTableCell(defaultRenderer);
-//        Action dlAction = createSampleDownloadingAction(remoteResourceCell);
-        Action dlAction = createSampleDownloadingAction2(dataTable);
-        remoteResourceCell.setExecuteButtonAction(dlAction);
-        dataTable.setDefaultRenderer(TaskProgressModel.class, remoteResourceCell);
-        dataTable.setDefaultEditor(TaskProgressModel.class, remoteResourceCell);
-        
-        // Integer
-        MessageFormatTableCell intValueCell = new MessageFormatTableCell(new DecimalFormat("#,##0"), defaultRenderer);
-        intValueCell.getRendererView().setHorizontalAlignment(SwingConstants.RIGHT);
-        dataTable.setDefaultRenderer(Integer.class, intValueCell);
-        
-        dataTable.setModel(new SampleTableModel());
-    }
+    // Exhibit List Table
+    public final TaskProgressTableCell taskProgressCell =
+            new TaskProgressTableCell(new SDDefaultTableCellRenderer());
+    
+    public final JTable dataTable = createTable();
     public final JScrollPane dataTableScroll = new JScrollPane(dataTable,
+            JScrollPane.VERTICAL_SCROLLBAR_ALWAYS,
+            JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+    
+    // Web Search Table
+    public final JTable websearchTable = createTable(taskProgressCell);
+    public final JScrollPane websearchTableScroll = new JScrollPane(websearchTable,
             JScrollPane.VERTICAL_SCROLLBAR_ALWAYS,
             JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
     
     // Content Viewer
     public final FileContentView fileContentView = new FileContentView();
     
-    public final OverviewMotifView overviewMotifView = new OverviewMotifView();
+    public final OverviewMotifListView overviewMotifView = new OverviewMotifListView();
     
     public final JTabbedPane contentsViewTabbedPane =
             createContentsViewTabbedPane(fileContentView, overviewMotifView);
     
     // Data and content area
-    public final JSplitPane dataListContentSplit = new JSplitPane(
-            JSplitPane.VERTICAL_SPLIT, true, dataTableScroll,
-            contentsViewTabbedPane);
-    {
-        dataListContentSplit.setDividerLocation(Integer.MAX_VALUE);
-        dataListContentSplit.setOneTouchExpandable(true);
-        dataListContentSplit.setResizeWeight(1);
-    }
+    public final JSplitPane dataListContentSplit =
+            createTableContentSplit(dataTableScroll, contentsViewTabbedPane);
     
     // Search Field
     public final JTextField quickSearchField = new JTextField(); {
@@ -119,22 +103,12 @@ public class MainView implements GenomeMuseumView {
         statusLabel.setHorizontalAlignment(SwingConstants.RIGHT);
     }
     // Loading Icon
-    public final JLabel loadingIconLabel = new JLabel(loadingIcon); {
-//        loadingIconLabel.setPreferredSize(new Dimension(24, 24));
-    }
+    public final JLabel loadingIconLabel = new JLabel(loadingIcon);
 
     // Source List Area
     public final SourceListCellEditor sourceListCellEditor = new SourceListCellEditor();
-    public final JTree sourceList = new JTree(); {
-        sourceList.setUI(new SourceListTreeUI());
-        sourceList.setCellEditor(new DefaultTreeCellEditor(sourceList,
-                null, sourceListCellEditor));
-        sourceList.setRootVisible(false);
-        sourceList.setInvokesStopCellEditing(true);
-        sourceList.setToggleClickCount(0);
-        sourceList.setEditable(true);
+    public final JTree sourceList = createSourceList(sourceListCellEditor);
 
-    }
     public final JScrollPane sourceListScroll = MacWidgetFactory.createSourceListScrollPane(sourceList); {
         sourceListScroll.setPreferredSize(new Dimension(260, 260));
         sourceListScroll.setMinimumSize(new Dimension(120, 260));
@@ -190,15 +164,6 @@ public class MainView implements GenomeMuseumView {
         parent.add(fileLoadingActivityPane);
     }
     
-    /** EAST Area */
-    public final JComponent eastAreaPane = new JPanel(new BorderLayout()); {
-        JComponent parent = eastAreaPane;
-        parent.setOpaque(false);
-        
-        parent.add(sourceListScroll, "Center");
-        parent.add(activityPane, "South");
-    }
-    
     // Top
     private final UnifiedToolBar toolBarView = new UnifiedToolBar();
     public final JComponent toolBarPane = toolBarView.getComponent(); {
@@ -206,67 +171,41 @@ public class MainView implements GenomeMuseumView {
     }
     
     // Bottom left
-    public final JMenuItem addListBox = factory.newMenuItem("addListBox");
-    public final JMenuItem addSmartBox = factory.newMenuItem("addSmartBox");
-    public final JMenuItem addBoxFolder = factory.newMenuItem("addBoxFolder");
-    public final JPopupMenu addBoxPopup = factory.createPopupMenu("addBoxPopup"); {
-        addBoxPopup.add(addListBox);
-        addBoxPopup.add(addSmartBox);
-        addBoxPopup.add(addBoxFolder);
-    }
+    public final JMenuItem addListBox = new JMenuItem("addListBox");
+    public final JMenuItem addSmartBox = new JMenuItem("addSmartBox");
+    public final JMenuItem addBoxFolder = new JMenuItem("addBoxFolder");
+    public final JPopupMenu addBoxPopup =
+            createPopupMenu("addBoxPopup", addBoxFolder, addSmartBox, addBoxFolder);
     
-    public final JMenuItem editSmartCondition = factory.newMenuItem("editSmartCondition");
-    public final JPopupMenu boxFunctionPopup = factory.createPopupMenu("boxFunctionPopup"); {
-        boxFunctionPopup.add(editSmartCondition);
-    }
+    public final JMenuItem editSmartCondition = new JMenuItem("editSmartCondition");
+    public final JPopupMenu boxFunctionPopup =
+            createPopupMenu("boxFunctionPopup", editSmartCondition);
    
-    public final JToggleButton addBoxButton = factory.newToggleButton("addBox"); {
-        addBoxButton.setBorder(BorderFactory.createEmptyBorder());
-        addBoxButton.setPreferredSize(new Dimension(32, -1));
-        addBoxButton.setText("");
-        addBoxButton.setIcon(MacIcons.PLUS);
-        factory.installPopupButton(addBoxButton, addBoxPopup);
-    }
-    public final JButton removeBoxButton = factory.newEPButton("removeBox"); {
-        removeBoxButton.setBorder(BorderFactory.createEmptyBorder());
-        removeBoxButton.setPreferredSize(new Dimension(32, -1));
-        removeBoxButton.setText("");
-        removeBoxButton.setIcon(MacIcons.MINUS);
-    }
-    public final JToggleButton boxFunctionsButton = factory.newToggleButton("boxFunctions"); {
-        boxFunctionsButton.setBorder(BorderFactory.createEmptyBorder());
-        boxFunctionsButton.setPreferredSize(new Dimension(32, -1));
-        boxFunctionsButton.setText("");
-        boxFunctionsButton.setIcon(MacIcons.GEAR);
-        factory.installPopupButton(boxFunctionsButton, boxFunctionPopup);
-    }
-    public final JButton activityPaneVisiblityButton = factory.newButton("activityPaneVisiblity");
+    public final JToggleButton addBoxButton = new JToggleButton(MacIcons.PLUS);
+    public final JButton removeBoxButton =
+            (JButton) MacButtonFactory.createGradientButton(MacIcons.MINUS, null);
+    public final JToggleButton boxFunctionsButton = new JToggleButton(MacIcons.GEAR);
     
-    private final ComponentBottomBar fComponentBottomBar = MacWidgetFactory.createComponentStatusBar(); {
-        fComponentBottomBar.getComponent().setBorder(null);
-        fComponentBottomBar.addComponentToLeftWithBorder(addBoxButton);
-        fComponentBottomBar.addComponentToLeftWithBorder(removeBoxButton);
-        fComponentBottomBar.addComponentToLeftWithBorder(boxFunctionsButton);
-        fComponentBottomBar.getComponent().setPreferredSize(new Dimension(-1, 24));
-    }
-    public final JPanel sourceListPane = new JPanel(new BorderLayout()); {
-        sourceListPane.add(eastAreaPane, "Center");
-        sourceListPane.add(fComponentBottomBar.getComponent(), "South");
-    }
+    public final JButton activityPaneVisiblityButton = new JButton("activityPaneVisiblity");
+    
+    private final ComponentBottomBar fComponentBottomBar =
+            createSourceFunctionsBar(addBoxButton, removeBoxButton, boxFunctionsButton);
+    
+    public final JPanel sourceListPane =
+            createSourceListPane(sourceListScroll, activityPane, fComponentBottomBar.getComponent());
+    
     public final JSplitPane sourceListDataTableSplit = new JSplitPane(
             JSplitPane.HORIZONTAL_SPLIT, true, sourceListPane,
             dataListContentSplit);
-    {
-        sourceListDataTableSplit.setBorder(null);
-    }
 
-    public final JPanel contentPane = new JPanel(new BorderLayout()); {
-        contentPane.add(toolBarPane, "North");
-        contentPane.add(sourceListDataTableSplit, "Center");
-        contentPane.setPreferredSize(new Dimension(600, 400));
-    }
+    public final JPanel contentPane = createContentPane(toolBarPane, sourceListDataTableSplit);
 
     public MainView() {
+        PopupToggleHandler addBoxToggleHandler = new PopupToggleHandler(addBoxPopup);
+        addBoxToggleHandler.installTo(addBoxButton);
+        
+        PopupToggleHandler functionToggleHandler = new PopupToggleHandler(boxFunctionPopup);
+        functionToggleHandler.installTo(boxFunctionsButton);
     }
     
     public JPanel getContentPane() {
@@ -288,46 +227,16 @@ public class MainView implements GenomeMuseumView {
         dataListContentSplit.setDividerLocation(dataListContentSplit.getSize().height - sizeForViewer);
     }
     
-    static class ComponentFactory {
-        private Font normalFont = UIManager.getFont("Label.font").deriveFont(11.0f);
+    static class PopupToggleHandler {
+        private final JPopupMenu popupMenu;
+        private final ActionListener toggleAction;
         
-        public JToggleButton newToggleButton(String name) {
-            JToggleButton button = new JToggleButton(name);
-            makeComponent(button, name);
-            return button;
-        }
-        
-        public JButton newButton(String name) {
-            JButton button = new JButton(name);
-            makeComponent(button, name);
-            return button;
+        public PopupToggleHandler(JPopupMenu popupMenu) {
+            this.popupMenu = popupMenu;
+            toggleAction = new PopupToggleAction(popupMenu);
         }
 
-        public JButton newEPButton(String name) {
-            JButton button = (JButton) MacButtonFactory.createGradientButton(null,null);
-            makeComponent(button, name);
-            return button;
-        }
-        
-        public JPopupMenu createPopupMenu(String name){
-            JPopupMenu popup = new JPopupMenu(name);
-            makeComponent(popup, name);
-            return popup;
-        }
-        
-        public JMenuItem newMenuItem(String name) {
-            JMenuItem item = new JMenuItem(name);
-            item.setName(name);
-            return item;
-        }
-        
-        public void makeComponent(JComponent comp, String name){
-            comp.setFont(normalFont);
-            comp.setName(name);
-        }
-        
-        public void installPopupButton(JToggleButton toggle, JPopupMenu popupMenu) {
-            ActionListener toggleAction = new PopupToggleAction(popupMenu);
+        public void installTo(JToggleButton toggle) {
             toggle.addActionListener(toggleAction);
             
             ButtonSelectionCancelHandler cancelHandler = new ButtonSelectionCancelHandler(toggle);
@@ -373,7 +282,6 @@ public class MainView implements GenomeMuseumView {
                     button.setSelected(false);
             }
         }
-
     }
 
     // view test
@@ -381,13 +289,114 @@ public class MainView implements GenomeMuseumView {
         GUICheckApp.launch(args, MainView.class);
     }
 
-    JTabbedPane createContentsViewTabbedPane(FileContentView fileContentView, OverviewMotifView overviewMotifView) {
+    JTabbedPane createContentsViewTabbedPane(FileContentView fileContentView, OverviewMotifListView overviewMotifView) {
         JTabbedPane contentsViewTabbedPane = new JTabbedPane();
         
         contentsViewTabbedPane.addTab("Content", fileContentView.getContentPane());
         contentsViewTabbedPane.addTab("MotifView", overviewMotifView.getContentPane());
         
         return contentsViewTabbedPane;
+    }
+    
+    private static JTable createTable() {
+        JTable table = new JTable();
+        
+        table.setUI(new ITunesTableUI());
+        TableCellRenderer defaultRenderer = table.getDefaultRenderer(Object.class);
+        
+        MessageFormatTableCell intValueCell = new MessageFormatTableCell(new DecimalFormat("#,##0"), defaultRenderer);
+        intValueCell.getRendererView().setHorizontalAlignment(SwingConstants.RIGHT);
+        table.setDefaultRenderer(Integer.class, intValueCell);
+        
+        return table;
+    }
+    
+    private static JTable createTable(TaskProgressTableCell taskProgressCell) {
+        JTable table = createTable();
+        
+        table.setDefaultRenderer(TaskProgressModel.class, taskProgressCell);
+        table.setDefaultEditor(TaskProgressModel.class, taskProgressCell);
+        
+        return table;
+    }
+
+    private static JSplitPane createTableContentSplit(JScrollPane dataTableScroll, JTabbedPane contentsViewTabbedPane) {
+        JSplitPane splitPane = new JSplitPane(
+                JSplitPane.VERTICAL_SPLIT, true, dataTableScroll,
+                contentsViewTabbedPane);
+        splitPane.setDividerLocation(Integer.MAX_VALUE);
+        splitPane.setOneTouchExpandable(true);
+        splitPane.setResizeWeight(1);
+        
+        return splitPane;
+    }
+    
+    private static JTree createSourceList(SourceListCellEditor cellEditor) {
+        JTree tree = new JTree();
+        tree.setUI(new SourceListTreeUI());
+        tree.setCellEditor(new DefaultTreeCellEditor(tree, null, cellEditor));
+        tree.setRootVisible(false);
+        tree.setInvokesStopCellEditing(true);
+        tree.setToggleClickCount(0);
+        tree.setEditable(true);
+        
+        return tree;
+    }
+    
+    private static JPopupMenu createPopupMenu(String name, JMenuItem... items){
+        JPopupMenu popup = new JPopupMenu(name);
+        for (JMenuItem item: items) {
+            popup.add(item);
+        }
+        return popup;
+    }
+
+    private static ComponentBottomBar createSourceFunctionsBar(
+            JToggleButton addBoxButton, JButton removeBoxButton, JToggleButton boxFunctionsButton) {
+        ComponentBottomBar bar = MacWidgetFactory.createComponentStatusBar();
+        
+        bar.getComponent().setBorder(null);
+        
+        makeComponentBottomButton(addBoxButton);
+        bar.addComponentToLeftWithBorder(addBoxButton);
+        
+        makeComponentBottomButton(removeBoxButton);
+        bar.addComponentToLeftWithBorder(removeBoxButton);
+        
+        makeComponentBottomButton(boxFunctionsButton);
+        bar.addComponentToLeftWithBorder(boxFunctionsButton);
+        bar.getComponent().setPreferredSize(new Dimension(-1, 24));
+        
+        return bar;
+    }
+    
+    private static JPanel createSourceListPane(
+            JComponent sourceListScroll, JComponent activityPane, JComponent sourceFunction) {
+        JComponent sourceTop = new JPanel(new BorderLayout());
+        sourceTop.setOpaque(false);
+
+        sourceTop.add(sourceListScroll, "Center");
+        sourceTop.add(activityPane, "South");
+        
+        JPanel sourceListPane = new JPanel(new BorderLayout());
+        sourceListPane.add(sourceTop, "Center");
+        sourceListPane.add(sourceFunction, "South");
+        
+        return sourceListPane;
+    }
+    
+    private static JPanel createContentPane(JComponent toolBarPane, JSplitPane sourceListDataTableSplit) {
+        JPanel contentPane = new JPanel(new BorderLayout());
+        contentPane.add(toolBarPane, "North");
+        contentPane.add(sourceListDataTableSplit, "Center");
+        contentPane.setPreferredSize(new Dimension(600, 400));
+        
+        return contentPane;
+    }
+    
+    private static void makeComponentBottomButton(AbstractButton button) {
+        button.setBorder(BorderFactory.createEmptyBorder());
+        button.setPreferredSize(new Dimension(32, -1));
     }
     
     private static class SampleTableModel extends AbstractTableModel {

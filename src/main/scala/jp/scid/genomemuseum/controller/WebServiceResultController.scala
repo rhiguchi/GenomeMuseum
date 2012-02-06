@@ -1,7 +1,10 @@
 package jp.scid.genomemuseum.controller
 
-import javax.swing.{JTable, JTextField, JLabel, JComponent, SwingWorker}
+import java.awt.event.ActionEvent
+import javax.swing.{JTable, JTextField, JLabel, JComponent, SwingWorker, SwingUtilities}
 import java.util.concurrent.{Executors, ScheduledFuture, TimeUnit}
+
+import org.jdesktop.application.Action
 
 import jp.scid.gui.ValueHolder
 import jp.scid.gui.event.ValueChange
@@ -38,11 +41,7 @@ class WebServiceResultController extends DataListController {
   private var scheduledSearchTask: Option[ScheduledFuture[_]] = None
   
   /** ダウンロードボタンアクション */
-  val downloadAction = swing.Action("Download") {
-    downloadBioDataOnEditingRow()
-    // プログレスバー表示の有効化と、ソース変更時にエディタが残るのを防ぐため。
-//    view.dataTable.removeEditor()
-  }
+  val downloadAction = getAction("downloadBioDataOnEditingRow")
   
   /** 指定した文字列で検索を行う */
   protected def searchTextChange(newValue: String) = scheduleSearch(newValue)
@@ -78,37 +77,42 @@ class WebServiceResultController extends DataListController {
   /**
    * クリックされたダウンロードボタンに対応するデータをダウンロードする。
    */
-  def downloadBioDataOnEditingRow() {
+  @Action
+  def downloadBioDataOnEditingRow(event: ActionEvent) {
+    val button = event.getSource().asInstanceOf[JComponent]
+    val table = SwingUtilities.getAncestorOfClass(classOf[JTable], button).asInstanceOf[JTable]
     logger.debug("ダウンロード")
     
-//    val item = tableModel.viewItem(view.dataTable.getEditingRow)
-//    val task = createDownloadTask(item)
-//    
-//    DownloadTask.propertyBind(task) { (prop, value) =>
-//      import SwingWorker.StateValue._
-//      import util.control.Exception.catching
-//      // 値の更新
-//      item.state = task.getState match {
-//        case DONE => task.isCancelled match {
-//          case true => PENDING
-//          case false =>
-//            catching(classOf[Exception]).opt(task.get) match {
-//              case Some(_) => DONE
-//              case None => PENDING
-//            }
-//        }
-//        case state => state
-//      }
-//      item.progress = task.getProgress
-//      item.label = item.state match {
-//        case STARTED => item.identifier + " is downloaing..."
-//        case _ => item.identifier
-//      }
-//      // 更新通知
-//      tableModel.updated(item)
-//    }
-//    
-//    task.execute
+    val item = tableModel.viewItem(table.getEditingRow)
+    val task = createDownloadTask(item)
+    
+    DownloadTask.propertyBind(task) { (prop, value) =>
+      import SwingWorker.StateValue._
+      import util.control.Exception.catching
+      // 値の更新
+      item.state = task.getState match {
+        case DONE => task.isCancelled match {
+          case true => PENDING
+          case false =>
+            catching(classOf[Exception]).opt(task.get) match {
+              case Some(_) => DONE
+              case None => PENDING
+            }
+        }
+        case state => state
+      }
+      item.progress = task.getProgress
+      item.label = item.state match {
+        case STARTED => item.identifier + " is downloaing..."
+        case _ => item.identifier
+      }
+      // 更新通知
+      tableModel.updated(item)
+    }
+    
+    task.execute
+    // プログレスバー表示の有効化と、ソース変更時にエディタが残るのを防ぐため。
+    table.removeEditor()
   }
   
   def createDownloadTask(item: SearchResult) = {
