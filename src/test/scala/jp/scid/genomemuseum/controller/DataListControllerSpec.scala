@@ -19,35 +19,6 @@ class DataListControllerSpec extends Specification with mock.Mockito {
     "テーブルヘッダにクリックソート" ! todo ^
     bt
   
-  def canBindSearchField(ctrl: => DataListController) =
-    "モデル -> フィールド" ! bindSearchField(ctrl).modelToField ^
-    "フィールド -> モデル" ! bindSearchField(ctrl).fieldToModel ^
-    bt
-  
-  // SearchField 結合
-  def bindSearchField(ctrl: DataListController) = new {
-    val field = new JTextField
-    val textSource = Seq("val", "", "123")
-    
-    ctrl.bindSearchField(field)
-    
-    def modelToField = {
-      val fldValues = textSource.map { value =>
-        ctrl.searchTextModel := value
-        field.getText
-      }
-      fldValues must_== textSource
-    }
-    
-    def fieldToModel = {
-      val fldValues = textSource.map { value =>
-        field setText value
-        ctrl.searchTextModel.apply
-      }
-      fldValues must_== textSource
-    }
-  }
-  
   // dataTable 結合
   def bindTableModel(ctrl: DataListController) = new {
     val parent = mock[javax.swing.JComponent]

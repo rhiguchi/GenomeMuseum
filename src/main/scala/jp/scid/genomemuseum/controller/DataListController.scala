@@ -24,18 +24,6 @@ abstract class DataListController extends GenomeMuseumController {
   protected[controller] def isTableDraggable = false
   /** テーブルモデル */
   def tableModel: DataTableModel[_] with TableColumnSortable[_]
-  /**
-   * 検索文字列モデル。
-   * 
-   * @see #searchTextChange {@code ValueChange} 発行時に呼び出される。
-   */
-  val searchTextModel: ValueHolder[String] = new ValueHolder("") {
-    reactions += {
-      case ValueChange(_, _, newValue: String) => searchTextChange(newValue)
-    }
-  }
-  /** 状態文字列モデル */
-  val statusTextModel: ValueHolder[String] = new ValueHolder("")
   
   // コントローラ
   /** 転送ハンドラ */
@@ -63,9 +51,9 @@ abstract class DataListController extends GenomeMuseumController {
    * 
    * @return 結合保持オブジェクト
    */
-  def bindSearchField(field: JTextField) = {
-    ValueHolder.connect(searchTextModel, field)
-  }
+//  def bindSearchField(field: JTextField) = {
+//    ValueHolder.connect(searchTextModel, field)
+//  }
   
   /**
    * このコントローラのテーブルモデルを JTable へ結合

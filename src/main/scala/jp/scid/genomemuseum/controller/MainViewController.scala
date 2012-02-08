@@ -9,8 +9,8 @@ import jp.scid.gui.DataModel.Connector
 import jp.scid.genomemuseum.{view, model, gui, GenomeMuseumGUI}
 import view.MainView
 import MainView.ContentsMode
-import jp.scid.gui.model.ValueModels
-import jp.scid.gui.control.ViewValueConnector
+import jp.scid.gui.model.{ProxyValueModel, ValueModels}
+import jp.scid.gui.control.{ViewValueConnector, StringPropertyBinder}
 import model.{MuseumSchema, ExhibitRoom, UserExhibitRoom, MuseumExhibit,
   UserExhibitRoomService, MuseumExhibitService, MuseumStructure}
 import jp.scid.motifviewer.controller.MotifViewerController
@@ -38,7 +38,6 @@ class MainViewController extends GenomeMuseumController {
   
   /** ウェブ検索操作 */
   protected[controller] val webServiceResultController = new WebServiceResultController
-//  webServiceResultController.loadManager = Some(exhibitLoadManager)
   
     /** ファイル読み込み表示 */
 //    fileLoadingProgressHandler.updateViews()
@@ -53,11 +52,12 @@ class MainViewController extends GenomeMuseumController {
   }
   
   /** このコントローラを表すタイトル */
-  val title = new ValueHolder("")
+  val title = new ProxyValueModel(museumExhibitController.getTitleModel)
   
-  /** 検索モチーフ */
-//  val searchMotif = new ValueHolder("")
-//  searchMotif.addNewValueReaction(sequenceOverviewController.setSearchMotif)
+  /** 検索フィールド */
+  val searchTextModel = new ProxyValueModel(museumExhibitController.getFilterTextModel)
+  
+  val searchFildBinder = new StringPropertyBinder(searchTextModel)
   
   /** ソースリストモデルを取得 */
   def museumStructure: MuseumStructure = exhibitRoomListController.getModel
@@ -69,6 +69,7 @@ class MainViewController extends GenomeMuseumController {
   def setExhibitLoadManager(manager: MuseumExhibitLoadManager) {
     exhibitRoomListController.exhibitLoadManager = Some(manager)
     museumExhibitController.loadManager = Some(manager)
+    webServiceResultController.loadManager = Some(manager)
   }
 
   
@@ -161,13 +162,18 @@ class MainViewController extends GenomeMuseumController {
   }
   
   def bind(view: MainView) {
-    // ソースリスト結合
+    // ソースリストと結合
     exhibitRoomListController.bindTree(view.sourceList)
+    // コンテンツビューと結合
+    museumExhibitController.bind(view.exhibitListView)
+    // NCBI 検索ビューと結合
+    webServiceResultController.bindTable(view.websearchTable)
+    // 検索フィールドと結合
+    searchFildBinder.bindTextField(view.quickSearchField, view.quickSearchField.getDocument)
     
     // データリストの表示モードの変更
     val contentsModeHandler = new ContentsModeHandler(view)
     contentsModeHandler.setModel(contentsMode)
-    view.setContentsMode(contentsMode.getValue)
     
     // ボタンアクションの結合
     bindAction(view.addListBox -> exhibitRoomListController.addBasicRoomAction,
@@ -177,10 +183,9 @@ class MainViewController extends GenomeMuseumController {
     
     var currentConnectors: List[Connector] = Nil
     
-    museumExhibitController.bind(view.exhibitListView)
     
-//    // 進捗画面
-//    bindProgressView(view.fileLoadingActivityPane, view.fileLoadingProgress, view.fileLoadingStatus)
+    // 進捗画面
+    bindProgressView(view.fileLoadingActivityPane, view.fileLoadingProgress, view.fileLoadingStatus)
   }
   
   /** 進捗ビューのモデル結合 */
@@ -199,6 +204,19 @@ class MainViewController extends GenomeMuseumController {
   class ContentsModeHandler(view: MainView) extends ViewValueConnector[MainView, ContentsMode](view) {
     def updateView(view: MainView, mode: ContentsMode) {
       view setContentsMode mode
+      // 検索フィールドのモデル変更
+      val newSearchTextModel = mode match {
+        case ContentsMode.LOCAL => museumExhibitController.getFilterTextModel()
+        case ContentsMode.NCBI => webServiceResultController.searchTextModel
+      }
+      searchTextModel.setSubject(newSearchTextModel)
+      
+      // 表題のモデル変更
+      val titleModel = mode match {
+        case ContentsMode.LOCAL => museumExhibitController.getTitleModel
+        case ContentsMode.NCBI => webServiceResultController.taskMessage
+      }
+      title.setSubject(titleModel)
     }
   }
 }

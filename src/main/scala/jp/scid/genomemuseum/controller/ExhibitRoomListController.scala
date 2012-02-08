@@ -7,7 +7,7 @@ import javax.swing.TransferHandler.TransferSupport
 import org.jdesktop.application.Action
 
 import jp.scid.gui.{ValueHolder, tree, event}
-import jp.scid.gui.control.TreeController
+import jp.scid.gui.control.{TreeController, TreeExpansionController}
 import jp.scid.gui.model.TreeSource
 import tree.DataTreeModel
 import DataTreeModel.Path
@@ -43,6 +43,8 @@ class ExhibitRoomListController extends TreeController[ExhibitRoom, MuseumStruct
   // コントローラ
   /** 転送ハンドラ */
   lazy val transferHandler = new ExhibitRoomListTransferHandler()
+  
+  private[controller] val expansionController = TreeExpansionController.newConstantDepthExpansionController(2)
   
   // アクション
   /** {@link addBasicRoom} のアクション */
@@ -86,6 +88,10 @@ class ExhibitRoomListController extends TreeController[ExhibitRoom, MuseumStruct
     model.basicRoomDefaultName = basicRoomDefaultNameResource()
     model.groupRoomDefaultName = groupRoomDefaultNameResource()
     model.smartRoomDefaultName = smartRoomDefaultNameResource()
+    
+    import collection.JavaConverters._
+    
+    setlectPathAsList(getModel.pathForLoalSource.asJava)
   }
   
   /**
@@ -102,8 +108,10 @@ class ExhibitRoomListController extends TreeController[ExhibitRoom, MuseumStruct
     tree.getActionMap.put("delete", removeSelectedUserRoomAction.peer)
     
     /** ツリーの展開を管理するハンドラ */
-//    new ExhibitRoomListExpansionController(tree, sourceListModel).update()
+    expansionController.bind(tree)
   }
+  
+//  def bind
   
   /**
    * 部屋をサービスに追加する。
@@ -113,11 +121,15 @@ class ExhibitRoomListController extends TreeController[ExhibitRoom, MuseumStruct
    * @see UserExhibitRoom
    */
   protected def addRoom(roomType: RoomType) {
+    import collection.JavaConverters._
+    
     val parent = selectedElementList.headOption match {
       case Some(parent: UserExhibitRoom) => Some(parent)
       case _ => None
     }
     val newRoom = getModel.addRoom(roomType, parent)
+    val newRoomPath = getModel.pathToRoot(newRoom)
+    setlectPathAsList(newRoomPath.asJava)
     startEditingForElement(newRoom)
   }
   
@@ -138,16 +150,12 @@ class ExhibitRoomListController extends TreeController[ExhibitRoom, MuseumStruct
    * @param room 削除する要素
    */
   protected def removeSelections() {
-    import collection.JavaConverters._
     selectedElementList.foreach {
       case room: UserExhibitRoom =>
         getModel.removeRoom(room)
       case _ =>
     }
   }
-  
-  /** ローカルライブラリノードへのパス */
-//  def pathForLocalLibrary: Path[ExhibitRoom] = source.pathToRoot(source.localSource)
   
   /** ローカルライブラリノードを選択状態にする */
 //  def selectPathLocalLibrary() {
@@ -156,7 +164,7 @@ class ExhibitRoomListController extends TreeController[ExhibitRoom, MuseumStruct
   
   private def selectedElementList = {
     import collection.JavaConverters._
-    getSelectedNodes.asScala
+    getSelectedNodes.asScala.toList
   }
 }
 

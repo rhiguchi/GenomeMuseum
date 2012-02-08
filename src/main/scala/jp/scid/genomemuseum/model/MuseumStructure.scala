@@ -113,7 +113,7 @@ class MuseumStructure extends EditableTreeSource[ExhibitRoom] with PropertyChang
       "node %s is not valid ExhibitRoom".format(room))
   }
   
-  override def getValue() = root
+  override def getValue(): ExhibitRoom = root
   
   override def setValue(room: ExhibitRoom) {
     // TODO
@@ -161,6 +161,11 @@ class MuseumStructure extends EditableTreeSource[ExhibitRoom] with PropertyChang
     
     getParent(node).toIndexedSeq
   }
+  
+  /**
+   * ローカルソースまでのパス
+   */
+  def pathForLoalSource = pathToRoot(localSource)
   
   /**
    * 部屋をサービスに追加する。

@@ -7,7 +7,7 @@ import org.specs2._
 import org.mockito.Matchers
 
 import jp.scid.genomemuseum.model.{UserExhibitRoomService, UserExhibitRoom,
-  MuseumExhibitService, UserExhibitRoomMock}
+  MuseumExhibitService, UserExhibitRoomMock, MuseumStructure}
 import UserExhibitRoom.RoomType._
 
 class ExhibitRoomListControllerSpec extends Specification with mock.Mockito {
@@ -15,7 +15,6 @@ class ExhibitRoomListControllerSpec extends Specification with mock.Mockito {
     "リソース" ^ resourcesSpec(createController) ^
     "プロパティ" ^ propertiesSpec(createController) ^
     "JTree と結合" ^ canBindTree(createController) ^
-    "ツリーモデル" ^ sourceListModelSpec(createController) ^
     "ツリー構造" ^ sourceStructureSpec(createController) ^
     "部屋の選択" ^ selectedRoomSpec(createController) ^
     "BasicRoom 追加" ^ canAddBasicRoom(createController) ^
@@ -50,12 +49,6 @@ class ExhibitRoomListControllerSpec extends Specification with mock.Mockito {
     "開閉ハンドラが設定される" ! todo ^
     bt
   
-  def sourceListModelSpec(f: => ExhibitRoomListController) =
-//    "ソースが設定される" ! sourceListModel(f).appliedSource ^
-//    "ローカルライブラリが選択されている" ! sourceListModel(f).localSourceSelected ^
-//    "無選択とすると、ローカルライブラリが選択される" ! sourceListModel(f).selectsLocalSourceOnSelectEmpty ^
-    bt
-  
   def selectedRoomSpec(f: => ExhibitRoomListController) =
 //    "最初はローカルライブラリ" ! selectedRoom(f).initial ^
 //    "sourceListModel の値を反映" ! selectedRoom(f).boundSourceListModel ^
@@ -69,23 +62,23 @@ class ExhibitRoomListControllerSpec extends Specification with mock.Mockito {
     bt
   
   def canAddBasicRoom(f: => ExhibitRoomListController) =
-    "roomService の addRoom を呼び出す" ! addBasicRoom(f).toRoomService ^
+    "モデルに BasicRoom を追加" ! addBasicRoom(f).toModel ^
     "新しいノードを編集開始する" ! addBasicRoom(f).startEditing ^
     bt
   
   def canAddGroupRoom(f: => ExhibitRoomListController) =
-    "roomService の addRoom を呼び出す" ! addGroupRoom(f).toRoomService ^
+    "モデルに GroupRoom を追加" ! addGroupRoom(f).toModel ^
     "新しいノードを編集開始する" ! addGroupRoom(f).startEditing ^
     bt
   
   def canAddSmartRoom(f: => ExhibitRoomListController) =
-    "roomService の addRoom を呼び出す" ! addSmartRoom(f).toRoomService ^
+    "モデルに SmartRoom を追加" ! addSmartRoom(f).toModel ^
     "新しいノードを編集開始する" ! addSmartRoom(f).startEditing ^
     bt
   
   def canDeleteSelectedRoom(f: => ExhibitRoomListController) =
     "選択ノードが削除される" ! deleteSelectedRoom(f).deletesFromService ^
-    "ローカルライブラリノードが選択される" ! deleteSelectedRoom(f).selectsLocalLibrary ^
+//    "ローカルライブラリノードが選択される" ! deleteSelectedRoom(f).selectsLocalLibrary ^
     bt
   
   def actionsSpec(f: => ExhibitRoomListController) =
@@ -155,18 +148,7 @@ class ExhibitRoomListControllerSpec extends Specification with mock.Mockito {
       ctrl.removeSelectedUserRoomAction.peer
   }
   
-  // ツリーモデル
-//  def sourceListModel(ctrl: ExhibitRoomListController) = new {
-//    def localSourceSelected = ctrl.getSelectedNodes() must
-//      beSome(ctrl.sourceListModel.pathForLocalLibrary)
-//    
-//    def appliedSource = ctrl.sourceListModel.treeSource must_== ctrl.sourceStructure
-//    
-//    def selectsLocalSourceOnSelectEmpty = {
-//      ctrl.sourceListModel.selectPaths(Nil)
-//      localSourceSelected
-//    }
-//  }
+
   
   // 選択部屋モデル
 //  def selectedRoom(ctrl: ExhibitRoomListController) = new {
@@ -189,44 +171,67 @@ class ExhibitRoomListControllerSpec extends Specification with mock.Mockito {
 //    def smartRoomDefaultName = str.smartRoomDefaultName must_== ctrl.smartRoomDefaultNameResource()
 //  }
   
-  // BasicRoom 追加
-  def addBasicRoom(f: ExhibitRoomListController) = new TestBase(f) {
+  class AddRoomSpec(ctrl: ExhibitRoomListController) {
+    val model = mock[MuseumStructure]
+    val newRoom, root = mock[UserExhibitRoom]
+    model.getValue returns root
+    model.isLeaf(root) returns false
+    model.getChildren(root) returns java.util.Arrays.asList(newRoom)
+    model.addRoom(any, any) returns newRoom
+    model.pathToRoot(newRoom) returns Vector(root, newRoom)
+    model.pathForLoalSource returns Vector.empty
+    
+    ctrl setModel model
+    
+    val tree = spy(new JTree)
+    tree.startEditingAtPath(any) answers {_ => }
     ctrl.bindTree(tree)
+  }
+  
+  // BasicRoom 追加
+  def addBasicRoom(ctrl: ExhibitRoomListController) = new AddRoomSpec(ctrl) {
     ctrl.addBasicRoom()
     
-    def toRoomService = there was one(service).addRoom(Matchers.eq(BasicRoom), anyString, any)
+    def toModel = there was one(model).addRoom(BasicRoom, None)
     
-    def startEditing = todo // there was one(tree).startEditingAtPath(new TreePath(
-//      (ctrl.sourceListModel.pathForUserRooms :+ room).toArray[Object]))
+    def startEditing =
+      there was one(tree).startEditingAtPath(new TreePath(Array[Object](root, newRoom)))
   }
   
   // GroupRoom 追加
-  def addGroupRoom(f: ExhibitRoomListController) = new TestBase(f) {
-    ctrl.bindTree(tree)
+  def addGroupRoom(ctrl: ExhibitRoomListController) = new AddRoomSpec(ctrl) {
     ctrl.addGroupRoom()
     
-    def toRoomService = there was one(service).addRoom(Matchers.eq(GroupRoom), anyString, any)
+    def toModel = there was one(model).addRoom(GroupRoom, None)
     
-    def startEditing = todo // there was one(tree).startEditingAtPath(new TreePath(
-//      (ctrl.sourceListModel.pathForUserRooms :+ room).toArray[Object]))
+    def startEditing =
+      there was one(tree).startEditingAtPath(new TreePath(Array[Object](root, newRoom)))
   }
   
   // SmartRoom 追加
-  def addSmartRoom(f: ExhibitRoomListController) = new TestBase(f) {
-    ctrl.bindTree(tree)
+  def addSmartRoom(ctrl: ExhibitRoomListController) = new AddRoomSpec(ctrl) {
     ctrl.addSmartRoom()
     
-    def toRoomService = there was one(service).addRoom(Matchers.eq(SmartRoom), anyString, any)
+    def toModel = there was one(model).addRoom(SmartRoom, None)
     
-    def startEditing = todo // there was one(tree).startEditingAtPath(new TreePath(
-//      (ctrl.sourceListModel.pathForUserRooms :+ room).toArray[Object]))
+    def startEditing =
+      there was one(tree).startEditingAtPath(new TreePath(Array[Object](root, newRoom)))
   }
   
   // 部屋削除
   def deleteSelectedRoom(ctrl: ExhibitRoomListController) = new {
+    val model = mock[MuseumStructure]
+    model.pathForLoalSource returns Vector.empty
+    ctrl setModel model
+    
+    val room1, room2, room3 = mock[UserExhibitRoom]
+    Seq(room1, room2) foreach ctrl.getSelectedNodes.add
     ctrl.deleteSelectedRoom
     
-    def deletesFromService = todo
+    def deletesFromService =
+      there was one(model).removeRoom(room1) then one(model).removeRoom(room2) then
+        no(model).removeRoom(room3)
+    
     def selectsLocalLibrary = todo // ctrl.selectedRoom() must_== ctrl.sourceStructure.localSource
   }
   
@@ -235,8 +240,8 @@ class ExhibitRoomListControllerSpec extends Specification with mock.Mockito {
     def addBasicRoom = ctrl.addBasicRoomAction.name must_== "addBasicRoom"
     def addGroupRoom = ctrl.addGroupRoomAction.name must_== "addGroupRoom"
     def addSmartRoom = ctrl.addSamrtRoomAction.name must_== "addSmartRoom"
-    def deleteSelectedRoom = ctrl.removeSelectedUserRoomAction
-      .name must_== "deleteSelectedRoom"
+    def deleteSelectedRoom =
+      ctrl.removeSelectedUserRoomAction.name must_== "deleteSelectedRoom"
     def deleteSelectedRoomNotEnabled = ctrl.removeSelectedUserRoomAction.enabled must beFalse
   }
   

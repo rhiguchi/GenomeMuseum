@@ -35,15 +35,6 @@ class MuseumExhibitListController extends MuseumExhibitController {
   /** ローカルソースの選択項目を除去するアクション */
   val removeSelectionAction = ctrl.getAction("removeSelections")
   
-  // プロパティ
-  /** 現在設定されている部屋を取得する */
-//  def userExhibitRoom = tableModel.userExhibitRoom
-  
-  /** テーブルに表示する部屋を設定する */
-//  def userExhibitRoom_=(newRoom: Option[UserExhibitRoom]) {
-//    tableModel.userExhibitRoom = newRoom
-//  }
-  
   /**
    * 選択項目を削除する
    */
@@ -57,9 +48,6 @@ class MuseumExhibitListController extends MuseumExhibitController {
       case _ =>
     }
   }
-  
-  /** テーブルフィルタリングを行う */
-//  protected def searchTextChange(newValue: String) = tableModel.filterText = newValue
   
   /** 転送ハンドラ実装 */
   private class MyTransferHandler extends MuseumExhibitListTransferHandler {

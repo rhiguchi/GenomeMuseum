@@ -45,15 +45,14 @@ class MainViewControllerSpec extends Specification with mock.Mockito {
     bt
   
   def canBindMainView(f: => MainViewController) =
-//    "ツリーが sourceListCtrl と結合される" ! bindMainView(f).exhibitRoomListController ^
-//    "museumExhibitListCtrl と結合される" ! bindMainView(f).museumExhibitListController ^
-//    "進捗画面と結合" ! bindMainView(f).bindProgressView ^
-//    "dataListController モデル変更でビューに適用される" ! bindMainView(f).dataListController ^
+    "ソースリストと結合" ! bindMainView(f).exhibitRoomListController ^
+    "コンテンツビューと結合" ! bindMainView(f).museumExhibitController ^
+    "進捗画面と結合" ! bindMainView(f).bindProgressView ^
+    "コンテンツモードを変更することができる。" ! bindMainView(f).contentsModeHandler ^
 //    "addBasicRoom ボタンアクション" ! bindMainView(f).addBasicRoom ^
 //    "addGroupRoom ボタンアクション" ! bindMainView(f).addGroupRoom ^
 //    "addSmartRoom ボタンアクション" ! bindMainView(f).addSmartRoom ^
 //    "removeRoom ボタンアクション" ! bindMainView(f).removeRoom ^
-//    "コンテントビューワーと結合" ! todo ^
     bt
   
   def selectedRoom(ctrl: MainViewController) = new {
@@ -135,40 +134,40 @@ class MainViewControllerSpec extends Specification with mock.Mockito {
   }
   
   def bindMainView(c: MainViewController) = new {
-//    val ctrl = spy(c)
-//    private val sourceListCtrl = spy(ctrl.exhibitRoomListController)
+    val ctrl = spy(c)
+    ctrl.exhibitRoomListController returns spy(ctrl.exhibitRoomListController)
+    ctrl.museumExhibitController returns spy(ctrl.museumExhibitController)
 //    private val exhibitListCtrl = spy(ctrl.museumExhibitListController)
 //    private val webResultCtrl = spy(ctrl.webServiceResultController)
 //    
-//    ctrl.exhibitRoomListController returns sourceListCtrl
+//    ctrl.exhibitRoomListController returns exhibitRoomListController
 //    ctrl.museumExhibitListController returns exhibitListCtrl
 //    ctrl.webServiceResultController returns webResultCtrl
 //    ctrl.dataListController := exhibitListCtrl
 //    doAnswer(_ => Unit).when(ctrl).bindProgressView(any, any, any)
 //    
-//    val view = new MainView
-//    ctrl.bind(view)
-//    
-//    def exhibitRoomListController = there was one(sourceListCtrl).bindTree(view.sourceList)
-//    
-//    def museumExhibitListController = there was
-//      one(exhibitListCtrl).bindTable(view.dataTable) then
-//      one(exhibitListCtrl).bindSearchField(view.quickSearchField)
-//    
-//    def dataListController = {
-//      ctrl.dataListController := webResultCtrl
-//      ctrl.dataListController := exhibitListCtrl
-//      there was
-//        one(webResultCtrl).bindTable(view.dataTable) then
-//        one(webResultCtrl).bindSearchField(view.quickSearchField) then
-//        two(exhibitListCtrl).bindTable(view.dataTable) then
-//        two(exhibitListCtrl).bindSearchField(view.quickSearchField)
-//    }
-//    
-//    def bindProgressView = {
-//      there was one(ctrl).bindProgressView(view.fileLoadingActivityPane,
-//        view.fileLoadingProgress, view.fileLoadingStatus)
-//    }
+    val view = spy(new MainView)
+    ctrl.bind(view)
+    
+    def exhibitRoomListController =
+      there was one(ctrl.exhibitRoomListController).bindTree(view.sourceList)
+    
+    def museumExhibitController =
+      there was one(ctrl.museumExhibitController).bind(view.exhibitListView)
+      
+    def bindProgressView = {
+      there was one(ctrl).bindProgressView(view.fileLoadingActivityPane,
+        view.fileLoadingProgress, view.fileLoadingStatus)
+    }
+    
+    def contentsModeHandler = {
+      ctrl.contentsMode setValue MainView.ContentsMode.LOCAL
+      ctrl.contentsMode setValue MainView.ContentsMode.NCBI
+      
+      there was
+        one(view).setContentsMode(MainView.ContentsMode.LOCAL) then
+        one(view).setContentsMode(MainView.ContentsMode.NCBI)
+    }
 //    
 //    def addBasicRoom = view.addListBox.getAction must_==
 //      sourceListCtrl.addBasicRoomAction.peer

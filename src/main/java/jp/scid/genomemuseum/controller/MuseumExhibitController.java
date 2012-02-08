@@ -1,5 +1,7 @@
 package jp.scid.genomemuseum.controller;
 
+import jp.scid.genomemuseum.gui.ExhibitTableFormat;
+
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.io.IOException;
@@ -18,16 +20,21 @@ import javax.swing.text.JTextComponent;
 
 import jp.scid.genomemuseum.controller.BioFileSequenceLoader.BioFileSource;
 import jp.scid.genomemuseum.model.MuseumExhibit;
+import jp.scid.genomemuseum.model.MuseumExhibit$;
 import jp.scid.genomemuseum.model.MuseumExhibitListModel;
 import jp.scid.genomemuseum.view.ExhibitListView;
 import jp.scid.gui.control.EventListController;
 import jp.scid.gui.control.ListHandler;
+import jp.scid.gui.control.StringPropertyBinder;
+import jp.scid.gui.control.TextMatcherEditorRefilterator;
 import jp.scid.gui.control.UriDocumentLoader;
 import jp.scid.gui.control.ViewValueConnector;
 import jp.scid.gui.model.ValueModel;
 import jp.scid.gui.model.ValueModels;
 import ca.odell.glazedlists.EventList;
+import ca.odell.glazedlists.TextFilterator;
 import ca.odell.glazedlists.gui.AdvancedTableFormat;
+import ca.odell.glazedlists.matchers.MatcherEditor;
 
 public class MuseumExhibitController extends EventListController<MuseumExhibit, MuseumExhibitListModel> {
     static enum DataViewMode {
@@ -38,7 +45,7 @@ public class MuseumExhibitController extends EventListController<MuseumExhibit, 
     private final OverviewMotifListController overviewMotifListController =
         new OverviewMotifListController();
     
-    private final MuseumExhibitTableFormat tableFormat = new MuseumExhibitTableFormat();
+    private final ExhibitTableFormat tableFormat = new ExhibitTableFormat();
     
     private final ContentViewStateListener contentViewStateListener = new ContentViewStateListener();
     
@@ -47,6 +54,13 @@ public class MuseumExhibitController extends EventListController<MuseumExhibit, 
     private final UriDocumentLoader documentLoader = new UriDocumentLoader();
     
     private final BioFileSequenceLoader documentSourceController = new BioFileSequenceLoader();
+    
+    private final StringPropertyBinder searchFieldBinder = new StringPropertyBinder();
+    
+    private final TableFilterator filterator = new TableFilterator();
+    
+    private final TextMatcherEditorRefilterator tableRefilterator =
+            new TextMatcherEditorRefilterator(filterator);
     
     // Models
     private final ValueModel<Boolean> dataViewVisibled = ValueModels.newBooleanModel(false);
@@ -57,8 +71,9 @@ public class MuseumExhibitController extends EventListController<MuseumExhibit, 
     
     private final ValueModel<BioFileSource> bioFileSource = ValueModels.newNullableValueModel();
     
-    // Binding
+    private final ValueModel<String> title = ValueModels.newValueModel("");
     
+    // Binding
     public MuseumExhibitController() {
         selectionChangeHandler.setModel(getSelectionModel().getSelected());
         
@@ -69,6 +84,10 @@ public class MuseumExhibitController extends EventListController<MuseumExhibit, 
         
         overviewMotifListController.setModel(documentSourceController.getSequence());
         documentSourceController.setModel(bioFileSource);
+        
+        // refilter
+        tableRefilterator.setModel(getFilterTextModel());
+        setMatcherEditor((MatcherEditor<? super MuseumExhibit>) tableRefilterator.getTextMatcherEditor());
     }
     
     public void bind(ExhibitListView view) {
@@ -92,6 +111,14 @@ public class MuseumExhibitController extends EventListController<MuseumExhibit, 
         
     }
     
+    public ValueModel<String> getTitleModel() {
+        return title;
+    }
+    
+    public ValueModel<String> getFilterTextModel() {
+        return searchFieldBinder.getValueModel();
+    }
+    
     void updateContents() {
         EventList<MuseumExhibit> selected = getSelectionModel().getSelected();
         if (selected.isEmpty()) {
@@ -104,13 +131,23 @@ public class MuseumExhibitController extends EventListController<MuseumExhibit, 
         @Override
         protected void processValueChange(List<MuseumExhibit> paramList) {
             final URI uri;
+            final String titleText;
+            final BioFileSource newBioFileSource;
+            
             if (paramList.isEmpty()) {
                 uri = null;
+                titleText = "";
+                newBioFileSource = null;
             }
             else {
                 uri = paramList.get(0).filePathAsURI();
+                titleText = uri.toString();
+                newBioFileSource = new SimpleBioFileSource(paramList.get(0));
             }
+            
+            title.setValue(titleText);
             selectedUri.setValue(uri);
+            bioFileSource.setValue(newBioFileSource);
         }
     }
     
@@ -135,7 +172,12 @@ public class MuseumExhibitController extends EventListController<MuseumExhibit, 
 
         @Override
         public BioFileFormat getBioFileFormat() {
-            // TODO Auto-generated method stub
+            if (exhibit.fileType().id() == 1) {
+                return BioFileFormat.GEN_BANK;
+            }
+            else if (exhibit.fileType().id() == 2) {
+                return BioFileFormat.FASTA;
+            }
             return null;
         }
         
@@ -170,72 +212,14 @@ public class MuseumExhibitController extends EventListController<MuseumExhibit, 
             updateModelFromView();
         }
     }
-}
-
-class MuseumExhibitTableFormat implements AdvancedTableFormat<MuseumExhibit> {
-    static enum Column {
-        NAME("name") {
-            @Override
-            Object getValue(MuseumExhibit e) {
-                return e.id();
-            }
-        },
-//        SEQUENCE_LENGTH,
-//        ACCESSION,
-//        IDENTIFIER,
-//        NAMESPACE,
-//        VERSION,
-//        DEFINITION,
-//        SOURCE,
-//        ORGANISM,
-//        DATE,
-        ;
-        
-        private final String columnName;
-        private final Class<?> columnClass;
-        
-        private Column(String columnName, Class<?> columnClass) {
-            this.columnName = columnName;
-            this.columnClass = columnClass;
-        }
-        
-        private Column(String columnName) {
-            this(columnName, Object.class);
-        }
-
-        public String getColumnName() {
-            return columnName;
-        }
-        
-        abstract Object getValue(MuseumExhibit e);
-    }
-
-    Column getColumn(int index) {
-        return Column.values()[index];
-    }
     
-    @Override
-    public int getColumnCount() {
-        return Column.values().length;
-    }
-
-    @Override
-    public String getColumnName(int column) {
-        return getColumn(column).name();
-    }
-
-    @Override
-    public Object getColumnValue(MuseumExhibit baseObject, int column) {
-        return getColumn(column).getValue(baseObject);
-    }
-
-    @Override
-    public Class<?> getColumnClass(int column) {
-        return getColumn(column).columnClass;
-    }
-
-    @Override
-    public Comparator<MuseumExhibit> getColumnComparator(int column) {
-        return null;
+    class TableFilterator implements TextFilterator<MuseumExhibit> {
+        @Override
+        public void getFilterStrings(List<String> baseList, MuseumExhibit element) {
+            for (int i = tableFormat.getColumnCount() - 1; i >= 0; i--) {
+                Object value = tableFormat.getColumnValue(element, i);
+                baseList.add(value.toString());
+            }
+        }
     }
 }

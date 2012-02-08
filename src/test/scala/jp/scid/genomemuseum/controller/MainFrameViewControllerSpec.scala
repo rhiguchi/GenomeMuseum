@@ -146,7 +146,7 @@ class MainFrameViewControllerSpec extends Specification with mock.Mockito {
   // タイトルモデル結合
   def connectTitle(ctrl: MainFrameViewController) = new {
     val titleModel = new ValueHolder("")
-    ctrl.connectTitle(titleModel)
+//    ctrl.connectTitle(titleModel)
     
     def empty = ctrl.title() must_== "GenomeMuseum"
     

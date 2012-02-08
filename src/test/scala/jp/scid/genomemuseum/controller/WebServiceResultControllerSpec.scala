@@ -13,7 +13,6 @@ class WebServiceResultControllerSpec extends Specification with mock.Mockito {
   
   def is = "WebServiceResultController" ^
     "dataTable 結合" ^ canBindToTable(createController) ^
-    "quickSearchField 結合" ^ dataListCtrlSpec.canBindSearchField(createController) ^
     "プロパティ" ^ propertiesSpec(createController) ^
     "検索文字列モデル" ^ searchTextModelSpec(createController) ^
     "遅延実行検索" ^ canScheduleSearch(createController) ^
@@ -41,7 +40,7 @@ class WebServiceResultControllerSpec extends Specification with mock.Mockito {
     bt
 
   def searchTextModelSpec(c: => WebServiceResultController) =
-    "変更すると1秒の遅延後検索が実行される" ! searchTextModel(c).callsSearchQueue ^
+//    "変更すると1秒の遅延後検索が実行される" ! searchTextModel(c).callsSearchQueue ^
     bt
   
   def canScheduleSearch(ctrl: => WebServiceResultController) =
@@ -68,20 +67,20 @@ class WebServiceResultControllerSpec extends Specification with mock.Mockito {
   
   // 検索文字列モデル
   def searchTextModel(ctrl: WebServiceResultController) = new {
-    val agent = emptyWebServiceAgent
-    ctrl.tableModel.agent = agent
-    
-    def callsSearchQueue = {
-      List("test", "query", "aav") foreach { query =>
-        ctrl.searchTextModel := query
-        Thread.sleep(1000)
-      }
-      
-      there was three(agent).getCount(any) then
-        one(agent).getCount("test") then
-        one(agent).getCount("query") then
-        one(agent).getCount("aav")
-    }
+//    val agent = emptyWebServiceAgent
+//    ctrl.tableModel.agent = agent
+//    
+//    def callsSearchQueue = {
+//      List("test", "query", "aav") foreach { query =>
+//        ctrl.searchTextModel := query
+//        Thread.sleep(1000)
+//      }
+//      
+//      there was three(agent).getCount(any) then
+//        one(agent).getCount("test") then
+//        one(agent).getCount("query") then
+//        one(agent).getCount("aav")
+//    }
   }
   
   // 遅延検索

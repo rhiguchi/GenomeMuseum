@@ -7,6 +7,8 @@ import java.util.concurrent.{Executors, ScheduledFuture, TimeUnit}
 import org.jdesktop.application.Action
 
 import jp.scid.gui.ValueHolder
+import jp.scid.gui.model.{ValueModels}
+import jp.scid.gui.control.{AbstractValueController}
 import jp.scid.gui.event.ValueChange
 import jp.scid.genomemuseum.{gui, view, model}
 import gui.{ExhibitTableModel, WebSearchManager, WebServiceResultsModel}
@@ -29,6 +31,11 @@ class WebServiceResultController extends DataListController {
   }
   
   // モデル
+  /** 検索文字列 */
+  val searchTextModel = ValueModels.newValueModel("")
+  /** タスクの状態文字列 */
+  val taskMessage = ValueModels.newValueModel("")
+  
   /** タスクが実行中であるかの状態を保持 */
   val isProgress = new ValueHolder(false)
   /** テーブルモデル */
@@ -44,6 +51,11 @@ class WebServiceResultController extends DataListController {
   val downloadAction = getAction("downloadBioDataOnEditingRow")
   
   /** 指定した文字列で検索を行う */
+  private val searchTextController = new AbstractValueController[String] {
+    def processValueChange(text: String) = scheduleSearch(text)
+  }
+  searchTextController setModel searchTextModel
+  
   protected def searchTextChange(newValue: String) = scheduleSearch(newValue)
   
   /**
@@ -135,20 +147,20 @@ class WebServiceResultController extends DataListController {
     case Started() =>
       currentCount = 0
       isProgress := true
-      statusTextModel := "%s - 検索中...".format(searchTextModel())
+      taskMessage setValue "%s - 検索中...".format(searchTextModel.getValue)
     case CountRetrieved(count) =>
       currentCount = count
-      statusTextModel := "%s - %d 件該当...".format(searchTextModel(), currentCount)
+      taskMessage setValue "%s - %d 件該当...".format(searchTextModel.getValue, currentCount)
     case IdentifiersRetrieved(_) =>
-      statusTextModel := "%s - %d 件の識別を取得...".format(searchTextModel(), currentCount)
+      taskMessage setValue "%s - %d 件の識別を取得...".format(searchTextModel.getValue, currentCount)
     case EntryValuesRetrieving() =>
-      statusTextModel := "%s - %d 件の情報を取得中...".format(searchTextModel(), currentCount)
+      taskMessage setValue "%s - %d 件の情報を取得中...".format(searchTextModel.getValue, currentCount)
     case RetrievingTimeOut() =>
-      statusTextModel := "%s - %d 件（Web サービスから応答が無いため切断しました）".format(searchTextModel(), currentCount)
+      taskMessage setValue "%s - %d 件（Web サービスから応答が無いため切断しました）".format(searchTextModel.getValue, currentCount)
     case Canceled() =>
-      statusTextModel := "%s - %d 件".format(searchTextModel(), currentCount)
+      taskMessage setValue "%s - %d 件".format(searchTextModel.getValue, currentCount)
     case Success() =>
-      statusTextModel := "%s - %d 件".format(searchTextModel(), currentCount)
+      taskMessage setValue "%s - %d 件".format(searchTextModel.getValue, currentCount)
     case Done() =>
       isProgress := false
   }

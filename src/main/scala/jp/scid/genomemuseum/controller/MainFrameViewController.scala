@@ -3,6 +3,8 @@ package jp.scid.genomemuseum.controller
 import javax.swing.JFrame
 
 import jp.scid.gui.ValueHolder
+import jp.scid.gui.model.ValueModel
+import jp.scid.gui.control.AbstractValueController
 import jp.scid.gui.event.ValueChange
 import jp.scid.genomemuseum.GenomeMuseumGUI
 import jp.scid.genomemuseum.view.MainFrameView
@@ -43,13 +45,14 @@ class MainFrameViewController(val mainViewController: MainViewController) extend
   }
   
   /** タイトルモデルの結合を行う */
-  def connectTitle(viewTitle: ValueHolder[String]) {
-    viewTitle.reactions += {
-      case ValueChange(_, _, ctrlTitle: String) => ctrlTitle match {
+  def connectTitle(viewTitle: ValueModel[String]) {
+    val controller = new AbstractValueController[String] {
+      def processValueChange(value: String) = value match {
         case "" => title := "GenomeMuseum"
-        case _ => title := "GenomeMuseum - " + ctrlTitle
+        case _ => title := "GenomeMuseum - " + value
       }
     }
+    controller.setModel(viewTitle)
   }
   
   /**

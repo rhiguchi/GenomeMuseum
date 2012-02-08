@@ -6,7 +6,9 @@ import javax.swing.AbstractAction;
 import javax.swing.AbstractButton;
 
 import jp.scid.genomemuseum.view.OverviewMotifListView;
+import jp.scid.gui.control.AbstractValueController;
 import jp.scid.gui.control.BooleanPropertyBinder;
+import jp.scid.gui.control.ViewValueConnector;
 import jp.scid.gui.model.ValueModel;
 import jp.scid.gui.model.ValueModels;
 import jp.scid.motifviewer.controller.MotifViewerController;
@@ -62,11 +64,14 @@ public class OverviewMotifListController extends MotifViewerController {
         bindPositionMarkerTable(view.motifListTable);
         
         bindOverviewPane(view.overviewPane);
+        
     }
     
     @Override
     public void bindOverviewPane(OverviewPane pane) {
-        // TODO Auto-generated method stub
+        OverviewPaintingStrategyAdapter strategyAdapter = new OverviewPaintingStrategyAdapter(pane);
+        strategyAdapter.setModel(paintingStrategy);
+        
         super.bindOverviewPane(pane);
     }
     
@@ -101,6 +106,7 @@ public class OverviewMotifListController extends MotifViewerController {
         @Override
         public void actionPerformed(ActionEvent e) {
             strandStyleModel.setValue(strandStyle);
+            setDoubleStranded(strandStyle == StrandStyle.DOUBLE);
         }
     }
     
@@ -114,6 +120,17 @@ public class OverviewMotifListController extends MotifViewerController {
         @Override
         public void actionPerformed(ActionEvent e) {
             paintingStrategy.setValue(shape);
+        }
+    }
+
+    class OverviewPaintingStrategyAdapter extends ViewValueConnector<OverviewPane, OverviewPaintingStrategy> {
+        public OverviewPaintingStrategyAdapter(OverviewPane targetView) {
+            super(targetView);
+        }
+
+        @Override
+        protected void updateView(OverviewPane view, OverviewPaintingStrategy newValue) {
+            view.setPaintingStrategy(newValue);
         }
     }
 }
