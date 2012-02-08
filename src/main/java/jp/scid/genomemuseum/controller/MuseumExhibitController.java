@@ -2,8 +2,13 @@ package jp.scid.genomemuseum.controller;
 
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.Reader;
+import java.io.StringReader;
 import java.net.URI;
 import java.util.Comparator;
+import java.util.List;
 
 import javax.swing.JSplitPane;
 import javax.swing.JTabbedPane;
@@ -13,8 +18,10 @@ import javax.swing.text.JTextComponent;
 
 import jp.scid.genomemuseum.controller.BioFileSequenceLoader.BioFileSource;
 import jp.scid.genomemuseum.model.MuseumExhibit;
+import jp.scid.genomemuseum.model.MuseumExhibitListModel;
 import jp.scid.genomemuseum.view.ExhibitListView;
 import jp.scid.gui.control.EventListController;
+import jp.scid.gui.control.ListHandler;
 import jp.scid.gui.control.UriDocumentLoader;
 import jp.scid.gui.control.ViewValueConnector;
 import jp.scid.gui.model.ValueModel;
@@ -22,7 +29,7 @@ import jp.scid.gui.model.ValueModels;
 import ca.odell.glazedlists.EventList;
 import ca.odell.glazedlists.gui.AdvancedTableFormat;
 
-public class MuseumExhibitController extends EventListController<MuseumExhibit> {
+public class MuseumExhibitController extends EventListController<MuseumExhibit, MuseumExhibitListModel> {
     static enum DataViewMode {
         CONTENTS, MOTIFVIEW;
     }
@@ -34,6 +41,8 @@ public class MuseumExhibitController extends EventListController<MuseumExhibit> 
     private final MuseumExhibitTableFormat tableFormat = new MuseumExhibitTableFormat();
     
     private final ContentViewStateListener contentViewStateListener = new ContentViewStateListener();
+    
+    private final SelectionChangeHandler selectionChangeHandler = new SelectionChangeHandler();
     
     private final UriDocumentLoader documentLoader = new UriDocumentLoader();
     
@@ -51,8 +60,7 @@ public class MuseumExhibitController extends EventListController<MuseumExhibit> 
     // Binding
     
     public MuseumExhibitController() {
-        // TODO selection
-//        documentSourceController.listenTo(getSelectionModel().getSelected());
+        selectionChangeHandler.setModel(getSelectionModel().getSelected());
         
         dataViewVisibled.addPropertyChangeListener(contentViewStateListener);
         dataViewMode.addPropertyChangeListener(contentViewStateListener);
@@ -88,6 +96,47 @@ public class MuseumExhibitController extends EventListController<MuseumExhibit> 
         EventList<MuseumExhibit> selected = getSelectionModel().getSelected();
         if (selected.isEmpty()) {
             return;
+        }
+        
+    }
+    
+    class SelectionChangeHandler extends ListHandler<MuseumExhibit> {
+        @Override
+        protected void processValueChange(List<MuseumExhibit> paramList) {
+            final URI uri;
+            if (paramList.isEmpty()) {
+                uri = null;
+            }
+            else {
+                uri = paramList.get(0).filePathAsURI();
+            }
+            selectedUri.setValue(uri);
+        }
+    }
+    
+    static class SimpleBioFileSource implements BioFileSource {
+        private final MuseumExhibit exhibit; 
+        
+        public SimpleBioFileSource(MuseumExhibit exhibit) {
+            this.exhibit = exhibit;
+        }
+
+        @Override
+        public Reader getReader() {
+            Reader reader = new StringReader("");
+            try {
+                reader = new InputStreamReader(exhibit.filePathAsURI().toURL().openStream());
+            }
+            catch (IOException e) {
+                e.printStackTrace();
+            }
+            return reader;
+        }
+
+        @Override
+        public BioFileFormat getBioFileFormat() {
+            // TODO Auto-generated method stub
+            return null;
         }
         
     }

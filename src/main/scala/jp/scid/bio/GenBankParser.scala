@@ -1,6 +1,7 @@
 package jp.scid.bio
 
-import java.io.InputStream
+import java.io.{InputStream, Reader, BufferedReader}
+
 import java.text.{ParseException, SimpleDateFormat}
 import java.util.Date
 import java.util.logging.{Logger, Level}
@@ -49,6 +50,15 @@ class GenBankParser extends BioFileParser[GenBank] {
     createFrom(bufferedSource)
   }
   
+  @throws(classOf[ParseException])
+  def parseFrom(source: Reader): GenBank = {
+    val bufSource = new io.BufferedSource(null)(null) {
+      override def reader() = null
+      override val bufferedReader = new BufferedReader(source)
+    }
+    parseFrom(bufSource.getLines());
+  }
+
   @throws(classOf[ParseException])
   private def createFrom(source: BufferedIterator[String]) = {
     val locus = locusFormat.parse(source.next)

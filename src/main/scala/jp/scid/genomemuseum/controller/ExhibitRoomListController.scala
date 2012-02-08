@@ -7,6 +7,8 @@ import javax.swing.TransferHandler.TransferSupport
 import org.jdesktop.application.Action
 
 import jp.scid.gui.{ValueHolder, tree, event}
+import jp.scid.gui.control.TreeController
+import jp.scid.gui.model.TreeSource
 import tree.DataTreeModel
 import DataTreeModel.Path
 import event.{ValueChange, DataTreePathsSelectionChanged}
@@ -18,45 +20,17 @@ import RoomType._
 
 /**
  * 『部屋』の一覧をツリー上に表示し、また『部屋』の追加、編集、削除を行う操作オブジェクト。
- * 
- * @param roomService 部屋のモデル
- * @param loadManager ファイルの読み込み操作管理
  */
-class ExhibitRoomListController(
-  private[controller] val roomService: UserExhibitRoomService,
-  private[controller] val loadManager: MuseumExhibitLoadManager
-) extends GenomeMuseumController {
+class ExhibitRoomListController extends TreeController[ExhibitRoom, MuseumStructure] {
+  
+  private val ctrl = GenomeMuseumController(this);
   // モデル
   /** BasicRoom 規定名リソース */
-  def basicRoomDefaultNameResource = getResource("basicRoom.defaultName")
+  def basicRoomDefaultNameResource = ctrl.getResource("basicRoom.defaultName")
   /** GroupRoom 規定名リソース */
-  def groupRoomDefaultNameResource = getResource("groupRoom.defaultName")
+  def groupRoomDefaultNameResource = ctrl.getResource("groupRoom.defaultName")
   /** SmartRoom 規定名リソース */
-  def smartRoomDefaultNameResource = getResource("smartRoom.defaultName")
-  
-  /** ソースリストのツリー構造 */
-  lazy val sourceStructure: MuseumStructure = new MuseumStructure(roomService) {
-    // リソースの適用
-    basicRoomDefaultName = basicRoomDefaultNameResource()
-    groupRoomDefaultName = groupRoomDefaultNameResource()
-    smartRoomDefaultName = smartRoomDefaultNameResource()
-  }
-  
-  /** ソースリストのモデル */
-  lazy val sourceListModel: MuseumSourceModel = new MuseumSourceModel(sourceStructure) {
-    reactions += {
-      case DataTreePathsSelectionChanged(_, _, newPaths) => newPaths.headOption match {
-        case None => selectPathLocalLibrary()
-        case Some(selection) =>
-          selectedRoom := selection.last.asInstanceOf[ExhibitRoom]
-          // ノード削除アクションの使用可不可
-          removeSelectedUserRoomAction.enabled = selectedRoom().isInstanceOf[UserExhibitRoom]
-      }
-    }
-    
-    selectPathLocalLibrary()
-    sourceListSelectionMode = true
-  }
+  def smartRoomDefaultNameResource = ctrl.getResource("smartRoom.defaultName")
   
   /** 読み込みマネージャの取得 */
   def exhibitLoadManager = transferHandler.exhibitLoadManager
@@ -66,58 +40,60 @@ class ExhibitRoomListController(
     transferHandler.exhibitLoadManager = manager
   }
   
-  /** 現在選択されているパスモデル */
-  lazy val selectedRoom = new ValueHolder[ExhibitRoom](sourceStructure.localSource)
-  /** 編集を開始するためのトリガーモデル */
-  private lazy val nodeEditTrigger = new ValueHolder[Path[ExhibitRoom]](Path.empty)
-  
   // コントローラ
   /** 転送ハンドラ */
-  lazy val transferHandler = new ExhibitRoomListTransferHandler(sourceListModel)
+  lazy val transferHandler = new ExhibitRoomListTransferHandler()
   
   // アクション
   /** {@link addBasicRoom} のアクション */
-  val addBasicRoomAction = getAction("addBasicRoom")
+  val addBasicRoomAction = ctrl.getAction("addBasicRoom")
   /** {@link addGroupRoom} のアクション */
-  val addGroupRoomAction = getAction("addGroupRoom")
+  val addGroupRoomAction = ctrl.getAction("addGroupRoom")
   /** {@link addSmartRoom} のアクション */
-  val addSamrtRoomAction = getAction("addSmartRoom")
+  val addSamrtRoomAction = ctrl.getAction("addSmartRoom")
   /** {@link deleteSelectedRoom} のアクション */
-  val removeSelectedUserRoomAction = {
-    val action = getAction("deleteSelectedRoom")
-    action.enabled = false
-    action
+  val removeSelectedUserRoomAction = ctrl.getAction("deleteSelectedRoom")
+  
+  // ノード削除アクションの使用可不可
+  private val deleteActionEnabledHandler = EventListHandler(getSelectedNodes) { nodes =>
+    removeSelectedUserRoomAction.enabled = nodes.find(_.isInstanceOf[UserExhibitRoom]).nonEmpty
   }
   
   /** BasicRoom 型の部屋を追加し、部屋名を編集開始状態にする */
   @Action(name="addBasicRoom")
-  def addBasicRoom() {
-    nodeEditTrigger := sourceListModel.addRoom(BasicRoom)
-  }
+  def addBasicRoom() = addRoom(BasicRoom)
   
   /** GroupRoom 型の部屋を追加し、部屋名を編集開始状態にする */
   @Action(name="addGroupRoom")
-  def addGroupRoom() {
-    nodeEditTrigger := sourceListModel.addRoom(GroupRoom)
-  }
+  def addGroupRoom() = addRoom(GroupRoom)
   
   /** SmartRoom 型の部屋を追加し、部屋名を編集開始状態にする */
   @Action(name="addSmartRoom")
-  def addSmartRoom() {
-    nodeEditTrigger := sourceListModel.addRoom(SmartRoom)
-  }
+  def addSmartRoom() = addRoom(SmartRoom)
   
   /** 選択中の UserExhibitRoom ノードを除去する */
   @Action(name="deleteSelectedRoom")
   def deleteSelectedRoom {
-    sourceListModel.removeSelections()
+    removeSelections()
+  }
+  
+  /**
+   * 新しいモデルには初期部屋名を設定する。
+   */
+  override protected def processPropertyChange(model: MuseumStructure, property: String) {
+    super.processPropertyChange(model, property)
+    
+    model.basicRoomDefaultName = basicRoomDefaultNameResource()
+    model.groupRoomDefaultName = groupRoomDefaultNameResource()
+    model.smartRoomDefaultName = smartRoomDefaultNameResource()
   }
   
   /**
    * JTree と操作を結合する。
    */
-  def bindTree(tree: JTree) {
-    DataTreeModel.bind(tree, sourceListModel)
+  override def bindTree(tree: JTree) {
+    super.bindTree(tree)
+    
     tree setTransferHandler transferHandler
     tree.setDragEnabled(true)
     tree.setDropMode(javax.swing.DropMode.ON)
@@ -126,21 +102,81 @@ class ExhibitRoomListController(
     tree.getActionMap.put("delete", removeSelectedUserRoomAction.peer)
     
     /** ツリーの展開を管理するハンドラ */
-    new ExhibitRoomListExpansionController(tree, sourceListModel).update()
-    
-    // ノード編集用トリガー
-    nodeEditTrigger.reactions += {
-      case ValueChange(_, _, newPath: Path[_]) =>
-        newPath.lastOption match {
-          case Some(room: UserExhibitRoom) =>
-            val treePath = DataTreeModel.convertPathToTreePath(newPath)
-            tree.startEditingAtPath(treePath)
-          case _ =>
-        }
-        nodeEditTrigger := Path.empty
+//    new ExhibitRoomListExpansionController(tree, sourceListModel).update()
+  }
+  
+  /**
+   * 部屋をサービスに追加する。
+   * 
+   * @param roomType 部屋の種類
+   * @return 新しい部屋までのパス
+   * @see UserExhibitRoom
+   */
+  protected def addRoom(roomType: RoomType) {
+    val parent = selectedElementList.headOption match {
+      case Some(parent: UserExhibitRoom) => Some(parent)
+      case _ => None
+    }
+    val newRoom = getModel.addRoom(roomType, parent)
+    startEditingForElement(newRoom)
+  }
+  
+  /**
+   * 新しい親へ移動する
+   * @param element 移動する要素
+   * @param newParent 異動先となる親要素。ルート項目にする時は None 。
+   * @throws IllegalArgumentException 指定した親が GroupRoom ではない時
+   * @throws IllegalStateException 指定した親が要素自身か、子孫である時
+   */
+  protected def moveRoom(element: UserExhibitRoom, newParent: Option[UserExhibitRoom]) {
+    getModel.moveRoom(element, newParent)
+  }
+  
+  /**
+   * 部屋を親から削除する。
+   * {@code room} に子要素が存在する時は、その要素もサービスから除外される。
+   * @param room 削除する要素
+   */
+  protected def removeSelections() {
+    import collection.JavaConverters._
+    selectedElementList.foreach {
+      case room: UserExhibitRoom =>
+        getModel.removeRoom(room)
+      case _ =>
     }
   }
   
+  /** ローカルライブラリノードへのパス */
+//  def pathForLocalLibrary: Path[ExhibitRoom] = source.pathToRoot(source.localSource)
+  
+  /** ローカルライブラリノードを選択状態にする */
+//  def selectPathLocalLibrary() {
+//    selectPath(pathForLocalLibrary)
+//  }
+  
+  private def selectedElementList = {
+    import collection.JavaConverters._
+    getSelectedNodes.asScala
+  }
+}
+
+object EventListHandler {
+  import ca.odell.glazedlists.EventList
+  import jp.scid.gui.control.ListHandler
+  
+  def apply[E](eventList: EventList[E])(function: Seq[E] => Unit): ListHandler[E] = {
+    val handler = new ListHandler[E] {
+      override def processValueChange(modelList: java.util.List[E]) {
+        import collection.JavaConverters._
+        function apply modelList.asScala
+      }
+    }
+    handler setModel eventList
+    handler
+  }
+}
+
+class EventListHandler[E] {
   
 }
 

@@ -119,6 +119,8 @@ trait ApplicationController {
   import ApplicationController.{actionMapOf, resourceMapOf, applicationContextOf,
     getAction => getApplicationAction, getResource => getApplicationResource}
   
+  private[controller] def controllerObject(): AnyRef = this
+  
   /**
    * このコントローラを利用するアプリケーションのクラス。
    * 
@@ -131,10 +133,10 @@ trait ApplicationController {
   implicit private def applicationContext = applicationContextOf(applicationClass)
 
   /** このコントローラのアクションマップ */
-  implicit protected[controller] def actionMap = actionMapOf(this)
+  implicit protected[controller] def actionMap = actionMapOf(controllerObject)
   
   /** このコントローラのリソースマップ */
-  implicit protected[controller] def resourceMap = resourceMapOf(this)
+  implicit protected[controller] def resourceMap = resourceMapOf(controllerObject)
   
   /**
    * このコントローラのアクションを取得する。

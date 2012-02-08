@@ -58,7 +58,8 @@ class UserExhibitRoomServiceSpec extends Specification {
   }
   
   def serviceOf(table: Table[UserExhibitRoom]) = {
-    new UserExhibitRoomService(table)
+    // FIXME
+    new UserExhibitRoomService(table, null)
   }
   
   def canAddRoom(f: Factory) =

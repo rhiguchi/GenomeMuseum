@@ -11,7 +11,6 @@ import controller.{GenomeMuseumController, MainViewController, MainFrameViewCont
   GenomeMuseumControllerFactory}
 import model.{MuseumSchema, MuseumExhibitService, DefaultMuseumExhibitFileLibrary,
   UriFileStorage}
-import view.ApplicationViews
 import GenomeMuseumGUI._
 import RunMode._
 
@@ -20,12 +19,10 @@ class GenomeMuseumGUISpec extends Specification with mock.Mockito {
   def is = "GenomeMuseumGUI" ^
     "初期化動作" ^ initializeSpec(appSimple) ^
     "プロパティ" ^ propertiesSpec(appSimple) ^
-    "ビューオブジェクト" ^ applicationViewsSpec(appSimple) ^
     "スキーマブジェクト" ^ museumSchemaSpec(appSimple) ^
     "アクション" ^ actionsSpec(appSimple) ^
     "ファイルライブラリオブジェクト" ^ exhibitFileLibrarySpec(appSimple) ^
     "読み込み操作オブジェクト" ^ exhibitLoadManagerSpec(appSimple) ^
-    "コントローラファクトリ" ^ controllerFactorySpec(appSimple) ^
     "起動処理" ^ startupSpec(appSimple) ^
     end
   
@@ -47,10 +44,6 @@ class GenomeMuseumGUISpec extends Specification with mock.Mockito {
     "databaseSource 設定と取得" ! properties(app).databaseSourceSet ^
     "fileStorageDir 初期値" ! properties(app).fileStorageDirGet ^
     "fileStorageDir 設定と取得" ! properties(app).fileStorageDirSet ^
-    bt
-  
-  def applicationViewsSpec(app: => GenomeMuseumGUI) =
-    "作成" ! applicationViews(app).create ^
     bt
   
   def museumSchemaSpec(app: => GenomeMuseumGUI) =
@@ -77,10 +70,6 @@ class GenomeMuseumGUISpec extends Specification with mock.Mockito {
     "作成" ! exhibitLoadManager(app).create ^
     "dataService に museumSchema のものが利用される" ! exhibitLoadManager(app).dataService ^
     "fileLibrary に exhibitFileLibrary が利用される" ! exhibitLoadManager(app).fileLibrary ^
-    bt
-  
-  def controllerFactorySpec(app: => GenomeMuseumGUI) =
-    "作成" ! controllerFactory(app).create ^
     bt
   
   def startupSpec(app: => GenomeMuseumGUI) =
@@ -125,11 +114,6 @@ class GenomeMuseumGUISpec extends Specification with mock.Mockito {
       application.fileStorageDir = Some(file)
       application.fileStorageDir must beSome(file)
     }
-  }
-  
-  /** ビューオブジェクト */
-  def applicationViews(app: GenomeMuseumGUI) = new {
-    def create = app.applicationViews must not beNull
   }
   
   /** スキーマオブジェクト */
@@ -202,11 +186,6 @@ class GenomeMuseumGUISpec extends Specification with mock.Mockito {
   }
   
   /** 起動時処理 */
-  def controllerFactory(app: GenomeMuseumGUI) = new {
-    def create = app.controllerFactory must beAnInstanceOf[GenomeMuseumControllerFactory]
-  }
-  
-  /** 起動時処理 */
   def startup(app: GenomeMuseumGUI) = new {
     val application = spy(app)
 //    val mainViewCtrl = mock[MainViewController]
@@ -214,12 +193,6 @@ class GenomeMuseumGUISpec extends Specification with mock.Mockito {
 //    mainViewCtrl.title returns mainViewTitleModel
     
     val frameCtrl = mock[MainFrameViewController]
-    
-    val controllerFactory = mock[GenomeMuseumControllerFactory]
-    controllerFactory.createMainFrameViewController returns frameCtrl
-    
-//    doAnswer(_ => mainViewCtrl).when(application).createMainViewController()
-    doAnswer(_ => controllerFactory).when(application).controllerFactory
     
     def bindTitleModel = {
       todo

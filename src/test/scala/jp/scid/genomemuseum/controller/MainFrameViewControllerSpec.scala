@@ -21,16 +21,16 @@ class MainFrameViewControllerSpec extends Specification with mock.Mockito {
   def createHandler() = new MainFrameViewController()
   
   def propertiesSpec(c: => MainFrameViewController) =
-    "application 初期値" ! properties(c).application ^
-    "application 設定" ! properties(c).applicationSet ^
-    "mainViewController 初期値" ! properties(c).mainViewController ^
-    "mainViewController 設定" ! properties(c).mainViewControllerSet ^
+//    "application 初期値" ! properties(c).application ^
+//    "application 設定" ! properties(c).applicationSet ^
+//    "mainViewController 初期値" ! properties(c).mainViewController ^
+//    "mainViewController 設定" ! properties(c).mainViewControllerSet ^
     bt
   
   def canBind(c: => MainFrameViewController) =
-    "mainView を mainViewController と結合" ! bindMainFrameView(c).mainViewController ^
-    "frame を bindFrame で結合" ! bindMainFrameView(c).bindFrame ^
-    "mainMenu を bindMenuBar で結合" ! bindMainFrameView(c).bindMenuBar ^
+//    "mainView を mainViewController と結合" ! bindMainFrameView(c).mainViewController ^
+//    "frame を bindFrame で結合" ! bindMainFrameView(c).bindFrame ^
+//    "mainMenu を bindMenuBar で結合" ! bindMainFrameView(c).bindMenuBar ^
     bt
   
   def canBindFrame(c: => MainFrameViewController) =
@@ -68,32 +68,31 @@ class MainFrameViewControllerSpec extends Specification with mock.Mockito {
   
   // プロパティ
   def properties(ctrl: MainFrameViewController) = new {
-    def application = ctrl.application must beNone
-    def applicationSet = {
-      val app = mock[GenomeMuseumGUI]
-      ctrl.application = Some(app)
-      ctrl.application must beSome(app)
-    }
-    
-    def mainViewController = ctrl.mainViewController must beNone
-    def mainViewControllerSet = {
-      val mainViewCtrl = mock[MainViewController]
-      ctrl.mainViewController = Some(mainViewCtrl)
-      ctrl.mainViewController must beSome(mainViewCtrl)
-    }
+//    def application = ctrl.application must beNone
+//    def applicationSet = {
+//      val app = mock[GenomeMuseumGUI]
+//      ctrl.application = Some(app)
+//      ctrl.application must beSome(app)
+//    }
+//    
+//    def mainViewController = ctrl.mainViewController must beNone
+//    def mainViewControllerSet = {
+//      val mainViewCtrl = mock[MainViewController]
+//      ctrl.mainViewController = Some(mainViewCtrl)
+//      ctrl.mainViewController must beSome(mainViewCtrl)
+//    }
   }
   
   // MainFrameViewと結合
   def bindMainFrameView(c: MainFrameViewController) = new {
-    val mainViewCtrl = mock[MainViewController]
-    val ctrl = spy(c)
-    ctrl.mainViewController = Some(mainViewCtrl)
-    val view = new MainFrameView
-    ctrl.bind(view)
-    
-    def mainViewController = there was one(mainViewCtrl).bind(view.mainView)
-    def bindFrame = there was one(ctrl).bindFrame(view.frame)
-    def bindMenuBar = there was one(ctrl).bindMenuBar(view.mainMenu)
+//    val mainViewCtrl = mock[MainViewController]
+//    val ctrl = spy(c)
+//    val view = new MainFrameView
+//    ctrl.bind(view)
+//    
+//    def mainViewController = there was one(ctrl.mainViewCtrl).bind(view.mainView)
+//    def bindFrame = there was one(ctrl).bindFrame(view.frame)
+//    def bindMenuBar = there was one(ctrl).bindMenuBar(view.mainMenu)
   }
   
   // フレームと結合

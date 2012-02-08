@@ -17,17 +17,17 @@ class MuseumSourceModel(val source: MuseumStructure) extends DataTreeModel(sourc
   import MuseumSourceModel._
   
   /** 変更イベントの結合 */
-  source.subscribe(new source.Sub {
-    def notify(pub: source.Pub, event: Message[ExhibitRoom]) = event match {
-      case Include(loc, room) => source.pathToRoot(room).reverse match {
-        case Seq(_, parent, _*) => sourceTreeModel.someChildrenWereInserted(parent)
-        case _ =>
-      }
-      case Update(loc, room) => sourceTreeModel.nodeChanged(room)
-      case Remove(loc, room) => sourceTreeModel.nodeRemoved(room)
-      case _ =>
-    }
-  })
+//  source.subscribe(new source.Sub {
+//    def notify(pub: source.Pub, event: Message[ExhibitRoom]) = event match {
+//      case Include(loc, room) => source.pathToRoot(room).reverse match {
+//        case Seq(_, parent, _*) => sourceTreeModel.someChildrenWereInserted(parent)
+//        case _ =>
+//      }
+//      case Update(loc, room) => sourceTreeModel.nodeChanged(room)
+//      case Remove(loc, room) => sourceTreeModel.nodeRemoved(room)
+//      case _ =>
+//    }
+//  })
   
   /** 部屋作成時の親となる部屋を返す */
   private def findInsertPath = {

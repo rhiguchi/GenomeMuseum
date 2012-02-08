@@ -34,7 +34,7 @@ case class MuseumExhibit(
   var id: Long = - MuseumExhibit.newId
   
   @Transient
-  def filePathAsURI = URI.create(filePath)
+  def filePathAsURI = sourceFile.get.toURI
   def filePathAsURI_=(uri: URI) {
     filePath = uri.toString
   }

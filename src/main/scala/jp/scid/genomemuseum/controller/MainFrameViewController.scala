@@ -14,12 +14,15 @@ import jp.scid.genomemuseum.view.{MainFrameView, MainViewMenuBar}
  * @param application データやメッセージを取り扱うアプリケーションオブジェクト。
  * @param frameView 表示と入力を行う画面枠。
  */
-class MainFrameViewController extends GenomeMuseumController {
+class MainFrameViewController(val mainViewController: MainViewController) extends GenomeMuseumController {
+  
+  def this() {
+    this(new MainViewController)
+  }
+  
   // コントローラ
   /** アプリケーションアクションの参照 */
   var application: Option[GenomeMuseumGUI] = None
-  /** 主画面操作機 */
-  var mainViewController: Option[MainViewController] = None
   
   // モデル
   /** この画面枠用のタイトル */
@@ -53,7 +56,7 @@ class MainFrameViewController extends GenomeMuseumController {
    * ビュー MainFrameView とモデルの結合を行う
    */
   def bind(view: MainFrameView) {
-    mainViewController.foreach(_.bind(view.mainView))
+    mainViewController.bind(view.mainView)
     bindFrame(view.frame)
     bindMenuBar(view.mainMenu)
   }

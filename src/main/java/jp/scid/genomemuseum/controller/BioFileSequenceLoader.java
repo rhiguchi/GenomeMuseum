@@ -65,20 +65,8 @@ public class BioFileSequenceLoader extends AbstractValueController<BioFileSequen
 
         @Override
         protected String doInBackground() throws Exception {
-            StringBuilder sb = new StringBuilder();
-            // TODO parse
-//            Reader reader = source.getReader();
-//            char[] cbuf = new char[8196];
-//            int read;
-//            
-//            while ((read = reader.read(cbuf)) != -1) {
-//                if (isCancelled())
-//                    break;
-//                String string = new String(cbuf, 0, read);
-//                sb.append(string);
-//            }
-            
-            return sb.toString();
+            String sequence = source.getBioFileFormat().getSequence(source.getReader());
+            return sequence;
         }
         
         @Override
@@ -104,6 +92,6 @@ public class BioFileSequenceLoader extends AbstractValueController<BioFileSequen
     
     public static interface BioFileSource {
         Reader getReader();
-        Object getBioFileType();
+        BioFileFormat getBioFileFormat();
     }
 }

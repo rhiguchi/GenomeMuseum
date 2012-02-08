@@ -1,13 +1,14 @@
 package jp.scid.genomemuseum
 
 import java.io.File
+import java.awt.FileDialog
 import org.jdesktop.application.{Application, Action, ProxyActions}
-import view.{ApplicationViews, MainFrameView, MainView, MainViewMenuBar, ColumnVisibilitySetting}
+import view.{MainFrameView, MainView, MainViewMenuBar, ColumnVisibilitySetting}
 import controller.{GenomeMuseumController, MainFrameViewController, MainViewController,
   MuseumExhibitLoadManager, ExhibitRoomListController, ApplicationController,
   MuseumExhibitListController, WebServiceResultController, GenomeMuseumControllerFactory}
 import model.{MuseumSchema, MuseumExhibitLoader, DefaultMuseumExhibitFileLibrary,
-  MuseumExhibitService}
+  MuseumExhibitService, MuseumStructure}
 
 /**
  * GenomeMuseum GUI アプリケーション実行クラス。
@@ -90,6 +91,8 @@ class GenomeMuseumGUI extends Application {
     museumSchema
   }
   
+  lazy val museumStructure = new MuseumStructure(museumSchema.userExhibitRoomService)
+  
   /**
    * バイオデータの読み込み操作オブジェクトを作成する。
    * 
@@ -109,13 +112,10 @@ class GenomeMuseumGUI extends Application {
    * 
    * @see #createApplicationViews()
    */
-  lazy val applicationViews = new ApplicationViews()
+  lazy val mainVrameView = new MainFrameView
   
-  // コントローラファクトリ
-  /**
-   * アプリケーションの操作オブジェクトの生成オブジェクトを作成
-   */
-  lazy val controllerFactory = new GenomeMuseumControllerFactory(this)
+  lazy val openDialog = new FileDialog(null.asInstanceOf[java.awt.Frame], "", FileDialog.LOAD)
+  
   
   // アプリケーション処理
   /**
@@ -143,8 +143,14 @@ class GenomeMuseumGUI extends Application {
   override def startup() {
     logger.debug("startup")
     
-    val mainFrameViewCtrl = controllerFactory.createMainFrameViewController()
-    mainFrameViewCtrl.bind(applicationViews.mainVrameView)
+    val mainViewCtrl = new MainViewController()
+    val mainFrameViewCtrl = new MainFrameViewController(mainViewCtrl)
+    mainFrameViewCtrl.connectTitle(mainViewCtrl.title)
+    
+    mainViewCtrl.museumStructure = museumStructure
+    mainViewCtrl setExhibitLoadManager exhibitLoadManager
+    
+    mainFrameViewCtrl.bind(mainVrameView)
     
     // 表示
     mainFrameViewCtrl.show()
@@ -162,7 +168,7 @@ class GenomeMuseumGUI extends Application {
    */
   @Action(name="open")
   def chooseAndLoadFile() {
-    val dialog = applicationViews.openDialog
+    val dialog = openDialog
     dialog.setVisible(true)
     
     Option(dialog.getFile).map(new File(dialog.getDirectory, _))

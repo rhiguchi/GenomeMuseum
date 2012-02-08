@@ -1,21 +1,28 @@
 package jp.scid.genomemuseum.model
 
 import scala.collection.mutable.Publisher
-import scala.collection.script.{Message, Update}
+import scala.collection.script.{Message, Include, Update, Remove}
 
+import jp.scid.gui.model.TreeSource
 import jp.scid.gui.tree.EditableTreeSource
 import UserExhibitRoom.RoomType
 import RoomType._
 
 /**
- * ExhibitRoom のツリーのモデル
+ * GenomeMuseum のバイオデータファイルのまとまり一覧（部屋）の構造。
+ * 
+ * バイオデータファイルはローカルで管理する物と、NCBIからアクセス可能なリモートで管理されているものがある。
+ * ローカルで管理されるファイルは、利用者の要望に応じてグループ分けができる。
+ * 
  */
-class MuseumStructure extends EditableTreeSource[ExhibitRoom] with Publisher[Message[ExhibitRoom]] {
+class MuseumStructure extends EditableTreeSource[ExhibitRoom] with PropertyChangeObservable
+    with TreeSource[ExhibitRoom] {
   import MuseumStructure._
   
   def this(roomService: UserExhibitRoomService) {
     this()
-    userExhibitRoomService = Some(roomService)
+    
+    this.roomService = Option(roomService)
   }
   
   // プロパティ
@@ -56,21 +63,32 @@ class MuseumStructure extends EditableTreeSource[ExhibitRoom] with Publisher[Mes
     roomService foreach { roomService =>
       val subscription = new roomService.Sub {
         def notify(pub: roomService.Pub, event: Message[UserExhibitRoom]) {
-          publish(event)
+          // TODO event
+          firePropertyChange("children", userRoomsRoot, userRoomsRoot)
         }
       }
       roomService.subscribe(subscription)
       roomServiceSubscriptionRemover = () => roomService.removeSubscription(subscription)
     }
     
-    publish(new Update(userRoomsRoot))
+    firePropertyChange("children", userRoomsRoot, userRoomsRoot)
   }
   
-  /** イベント発行委譲 */
-  override protected[model] def publish(event: Message[ExhibitRoom]) = super.publish(event)
+  /**
+   * 部屋の中身を取得する
+   */
+  def getContents(room: ExhibitRoom) = room match {
+    case room: UserExhibitRoom => userExhibitRoomService.get.getContents(Some(room))
+    case _ => userExhibitRoomService.get.getContents(None)
+  }
+  
+  override def getChildren(parent: ExhibitRoom): java.util.List[ExhibitRoom] = {
+    import collection.JavaConverters._
+    childrenFor(parent).asJava
+  }
   
   /** 子要素を取得 */
-  override def childrenFor(parent: ExhibitRoom) = {
+  def childrenFor(parent: ExhibitRoom) = {
     if (isLeaf(parent)) Nil
     else parent match {
       // ユーザー設定部屋ルートの時は、サービスからのルート要素取得して返す
@@ -95,6 +113,17 @@ class MuseumStructure extends EditableTreeSource[ExhibitRoom] with Publisher[Mes
       "node %s is not valid ExhibitRoom".format(room))
   }
   
+  override def getValue() = root
+  
+  override def setValue(room: ExhibitRoom) {
+    // TODO
+  }
+  
+  protected def updateNodeValue(room: ExhibitRoom, newValue: AnyRef) = room match {
+    case room: UserExhibitRoom => update(room, newValue)
+    case _ =>
+  }
+  
   /**
    * UserExhibitRoom の値を更新し、サービスへ更新を通知する。
    */
@@ -107,8 +136,8 @@ class MuseumStructure extends EditableTreeSource[ExhibitRoom] with Publisher[Mes
   }
   
   /** 値の更新 */
-  override def update(path: IndexedSeq[ExhibitRoom], newValue: AnyRef) = path.lastOption match {
-    case Some(element: UserExhibitRoom) => update(element, newValue)
+  def update(path: IndexedSeq[ExhibitRoom], newValue: AnyRef): Unit = path.lastOption match {
+    case Some(element: ExhibitRoom) => updateNodeValue(element, newValue)
     case None =>
   }
   
@@ -139,28 +168,18 @@ class MuseumStructure extends EditableTreeSource[ExhibitRoom] with Publisher[Mes
    * @param roomType 部屋の種類
    * @param parent 親要素
    * @return 追加に成功した場合、そのオブジェクトが返る。
-   * @throws IllegalArgumentException
-   *         {@code parent#roomType} が {@code GroupRoom} 以外の時
    * @see UserExhibitRoom
    */
   def addRoom(roomType: RoomType, parent: Option[UserExhibitRoom]): UserExhibitRoom = {
-    parent match {
-      case Some(elm) if elm.roomType != GroupRoom =>
-        throw new IllegalArgumentException("roomType of parent must be GroupRoom")
-      case _ =>
-    }
-    
     val name = findRoomNewName(roomType match {
       case BasicRoom => basicRoomDefaultName
       case GroupRoom => groupRoomDefaultName
       case SmartRoom => smartRoomDefaultName
     })
     
-    userExhibitRoomService match {
-      case Some(service) => service.addRoom(roomType, name, parent)
-      case _ => throw new IllegalArgumentException(
-        "need an userExhibitRoomService to add room")
-    }
+    val newRoom = userExhibitRoomService.get.addRoom(roomType, name, parent)
+    fireElementInserted(parent.getOrElse(userRoomsRoot))
+    newRoom
   }
   
   /**
@@ -183,18 +202,26 @@ class MuseumStructure extends EditableTreeSource[ExhibitRoom] with Publisher[Mes
    * @throws IllegalStateException 指定した親が要素自身か、子孫である時
    */
   def moveRoom(source: UserExhibitRoom, newParent: Option[UserExhibitRoom]) {
-    newParent match {
-      case Some(dest @ RoomType(GroupRoom)) =>
-        val sourcePath = pathToRoot(source)
-        val destPath = pathToRoot(dest)
-        destPath.startsWith(sourcePath) match {
-          case true => throw new IllegalStateException(
-            "'%s' is not allowed to move to '%s'".format(sourcePath, destPath))
-          case false => userExhibitRoomService.foreach(_.setParent(source, newParent))
-        }
-      case None => userExhibitRoomService.foreach(_.setParent(source, None))
-      case _ => throw new IllegalArgumentException("parent must be a GroupRoom")
+    val parent = newParent match {
+      case Some(dest @ RoomType(GroupRoom)) => newParent
+      case Some(nonGroupRoom) => userExhibitRoomService.get.getParent(nonGroupRoom) match {
+        case parent @ Some(_  @ RoomType(GroupRoom)) => parent
+        case _ => None
+      }
+      case None => None
     }
+    
+    fireElementRemoved(source)
+    userExhibitRoomService.get.setParent(source, parent)
+    fireElementInserted(parent.getOrElse(userRoomsRoot))
+  }
+  
+  protected def fireElementRemoved(room: ExhibitRoom) {
+    firePropertyChange("value", room, null)
+  }
+  
+  protected def fireElementInserted(parent: ExhibitRoom) {
+    firePropertyChange("children", parent, parent)
   }
   
   /**
@@ -202,6 +229,7 @@ class MuseumStructure extends EditableTreeSource[ExhibitRoom] with Publisher[Mes
    */
   def removeRoom(room: UserExhibitRoom) {
     userExhibitRoomService.foreach(_.remove(room))
+    fireElementRemoved(room)
   }
   
   /**
@@ -225,6 +253,22 @@ class MuseumStructure extends EditableTreeSource[ExhibitRoom] with Publisher[Mes
       case _ => baseName
     }
   }
+  
+}
+
+trait PropertyChangeObservable {
+  import java.beans.{PropertyChangeListener, PropertyChangeSupport}
+  
+  lazy val propertyChangeSupport = new PropertyChangeSupport(this)
+  
+  def addPropertyChangeListener(listener: PropertyChangeListener) =
+    propertyChangeSupport.addPropertyChangeListener(listener)
+    
+  def removePropertyChangeListener(listener: PropertyChangeListener) =
+    propertyChangeSupport.removePropertyChangeListener(listener)
+  
+  def firePropertyChange(propertyName: String, oldValue: Any, newValue: Any) =
+    propertyChangeSupport.firePropertyChange(propertyName, oldValue, newValue)
 }
 
 object MuseumStructure {

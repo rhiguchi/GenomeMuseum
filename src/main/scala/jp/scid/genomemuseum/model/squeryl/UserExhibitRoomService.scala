@@ -3,17 +3,21 @@ package jp.scid.genomemuseum.model.squeryl
 import java.util.Date
 
 import org.squeryl.{Table, KeyedEntity}
+import org.squeryl.dsl.OneToManyRelation
 import org.squeryl.PrimitiveTypeMode._
 
 import jp.scid.genomemuseum.model.{UserExhibitRoom => IUserExhibitRoom,
   UserExhibitRoomService => IUserExhibitRoomService}
-import IUserExhibitRoom.RoomType._
+import IUserExhibitRoom.RoomType
+import RoomType._
 
 /**
  * GenomeMuseum データソースの Squeryl 実装
  */
-private[squeryl] class UserExhibitRoomService(private[squeryl] val table: Table[UserExhibitRoom])
-    extends IUserExhibitRoomService with UserExhibitRoomPublisher {
+private[squeryl] class UserExhibitRoomService(
+  private[squeryl] val table: Table[UserExhibitRoom],
+  exhibitRelation: OneToManyRelation[MuseumExhibit, RoomExhibit]
+) extends IUserExhibitRoomService with UserExhibitRoomPublisher {
   type Node = UserExhibitRoom
   
   def userExhibitRoomTablePublisher = SquerylTriggerAdapter.connect(table, 2)
@@ -67,6 +71,12 @@ private[squeryl] class UserExhibitRoomService(private[squeryl] val table: Table[
       case element: UserExhibitRoom => table.update(element)
       case _ =>
     }
+  }
+  
+  def getContents(room: Option[IUserExhibitRoom]) = room match {
+    case Some(RoomType(BasicRoom)) | None =>
+      new MutableMuseumExhibitListModel(exhibitRelation, table, room)
+    case _ => new MuseumExhibitListModel(exhibitRelation, table, room)
   }
   
   /**

@@ -40,4 +40,9 @@ trait UserExhibitRoomService extends TreeDataService[UserExhibitRoom]
    * @param parent 新しい親の要素。ルート項目にするには None。
    */
   def setParent(element: UserExhibitRoom, parent: Option[UserExhibitRoom])
+  
+  /**
+   * 展示物を取得する
+   */
+  def getContents(room: Option[UserExhibitRoom]): MuseumExhibitListModel
 }

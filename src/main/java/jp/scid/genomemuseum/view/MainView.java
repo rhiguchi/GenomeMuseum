@@ -4,6 +4,7 @@ import static javax.swing.BorderFactory.*;
 import static javax.swing.SpringLayout.*;
 
 import java.awt.BorderLayout;
+import java.awt.CardLayout;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
@@ -61,18 +62,19 @@ import com.explodingpixels.macwidgets.UnifiedToolBar;
 import com.explodingpixels.macwidgets.plaf.ITunesTableUI;
 
 public class MainView implements GenomeMuseumView {
+    public static enum ContentsMode {
+        LOCAL, NCBI;
+    }
+    
     private static final Color COLOR_ACTIVITY_FOREGROUND = new Color(0f, 0f, 0f, 0.8f);
     
     private final static Icon loadingIcon = new ImageIcon(MainView.class.getResource("loading.gif"));
     
     // Exhibit List Table
+    public final ExhibitListView exhibitListView = new ExhibitListView();
+    
     public final TaskProgressTableCell taskProgressCell =
             new TaskProgressTableCell(new SDDefaultTableCellRenderer());
-    
-    public final JTable dataTable = createTable();
-    public final JScrollPane dataTableScroll = new JScrollPane(dataTable,
-            JScrollPane.VERTICAL_SCROLLBAR_ALWAYS,
-            JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
     
     // Web Search Table
     public final JTable websearchTable = createTable(taskProgressCell);
@@ -80,18 +82,10 @@ public class MainView implements GenomeMuseumView {
             JScrollPane.VERTICAL_SCROLLBAR_ALWAYS,
             JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
     
-    // Content Viewer
-    public final FileContentView fileContentView = new FileContentView();
-    
-    public final OverviewMotifListView overviewMotifView = new OverviewMotifListView();
-    
-    public final JTabbedPane contentsViewTabbedPane =
-            createContentsViewTabbedPane(fileContentView, overviewMotifView);
-    
-    // Data and content area
-    public final JSplitPane dataListContentSplit =
-            createTableContentSplit(dataTableScroll, contentsViewTabbedPane);
-    
+    private final CardLayout dataListPaneLayout = new CardLayout();
+    private final JPanel dataListPane = createDataListPane(
+            dataListPaneLayout, exhibitListView.getContainer(), websearchTableScroll);
+
     // Search Field
     public final JTextField quickSearchField = new JTextField(); {
         quickSearchField.setPreferredSize(new Dimension(200, 28));
@@ -196,7 +190,7 @@ public class MainView implements GenomeMuseumView {
     
     public final JSplitPane sourceListDataTableSplit = new JSplitPane(
             JSplitPane.HORIZONTAL_SPLIT, true, sourceListPane,
-            dataListContentSplit);
+            dataListPane);
 
     public final JPanel contentPane = createContentPane(toolBarPane, sourceListDataTableSplit);
 
@@ -212,19 +206,8 @@ public class MainView implements GenomeMuseumView {
         return contentPane;
     }
     
-    /**
-     * @return whether viewer is closed
-     */
-    public boolean isContentViewerClosed() {
-        return dataListContentSplit.getDividerLocation() >= dataListContentSplit.getMaximumDividerLocation();
-    }
-    
-    /**
-     * set the size for the viewer
-     * @param sizeForViewer
-     */
-    public void openContentViewer(int sizeForViewer) {
-        dataListContentSplit.setDividerLocation(dataListContentSplit.getSize().height - sizeForViewer);
+    public void setContentsMode(ContentsMode mode) {
+        dataListPaneLayout.show(dataListPane, mode.name());
     }
     
     static class PopupToggleHandler {
@@ -289,15 +272,6 @@ public class MainView implements GenomeMuseumView {
         GUICheckApp.launch(args, MainView.class);
     }
 
-    JTabbedPane createContentsViewTabbedPane(FileContentView fileContentView, OverviewMotifListView overviewMotifView) {
-        JTabbedPane contentsViewTabbedPane = new JTabbedPane();
-        
-        contentsViewTabbedPane.addTab("Content", fileContentView.getContentPane());
-        contentsViewTabbedPane.addTab("MotifView", overviewMotifView.getContentPane());
-        
-        return contentsViewTabbedPane;
-    }
-    
     private static JTable createTable() {
         JTable table = new JTable();
         
@@ -310,6 +284,15 @@ public class MainView implements GenomeMuseumView {
         
         return table;
     }
+
+    private static JPanel createDataListPane(CardLayout layout, JComponent exhibitListView, JComponent websearchView) {
+        JPanel pane = new JPanel(layout);
+        pane.add(exhibitListView, ContentsMode.LOCAL.name());
+        pane.add(websearchView, ContentsMode.NCBI.name());
+        layout.show(pane, ContentsMode.LOCAL.name());
+        
+        return pane;
+    }
     
     private static JTable createTable(TaskProgressTableCell taskProgressCell) {
         JTable table = createTable();
@@ -320,17 +303,6 @@ public class MainView implements GenomeMuseumView {
         return table;
     }
 
-    private static JSplitPane createTableContentSplit(JScrollPane dataTableScroll, JTabbedPane contentsViewTabbedPane) {
-        JSplitPane splitPane = new JSplitPane(
-                JSplitPane.VERTICAL_SPLIT, true, dataTableScroll,
-                contentsViewTabbedPane);
-        splitPane.setDividerLocation(Integer.MAX_VALUE);
-        splitPane.setOneTouchExpandable(true);
-        splitPane.setResizeWeight(1);
-        
-        return splitPane;
-    }
-    
     private static JTree createSourceList(SourceListCellEditor cellEditor) {
         JTree tree = new JTree();
         tree.setUI(new SourceListTreeUI());

@@ -8,8 +8,11 @@ import jp.scid.gui.event.ValueChange
 import jp.scid.gui.DataModel.Connector
 import jp.scid.genomemuseum.{view, model, gui, GenomeMuseumGUI}
 import view.MainView
+import MainView.ContentsMode
+import jp.scid.gui.model.ValueModels
+import jp.scid.gui.control.ViewValueConnector
 import model.{MuseumSchema, ExhibitRoom, UserExhibitRoom, MuseumExhibit,
-  UserExhibitRoomService, MuseumExhibitService}
+  UserExhibitRoomService, MuseumExhibitService, MuseumStructure}
 import jp.scid.motifviewer.controller.MotifViewerController
 
 /**
@@ -21,43 +24,33 @@ import jp.scid.motifviewer.controller.MotifViewerController
  * @param application データやメッセージを取り扱うアプリケーションオブジェクト。
  * @param mainView 表示と入力を行う画面。
  */
-class MainViewController(
-  userExhibitRoomService: UserExhibitRoomService,
-  museumExhibitService: MuseumExhibitService,
-  exhibitLoadManager: MuseumExhibitLoadManager
-) extends GenomeMuseumController {
+class MainViewController extends GenomeMuseumController {
   // コントローラ
   /** 部屋リスト操作 */
-  protected[controller] val exhibitRoomListController = {
-    val ctrl = new ExhibitRoomListController(userExhibitRoomService, exhibitLoadManager)
-    ctrl.selectedRoom.addNewValueReaction(updateRoomContents)
-    ctrl
-  }
+  protected[controller] val exhibitRoomListController = new ExhibitRoomListController
+//    ctrl.selectedRoom.addNewValueReaction(updateRoomContents)
   
   /** 展示物リスト操作 */
-  protected[controller] val museumExhibitListController = {
-    val ctrl = new MuseumExhibitListController(museumExhibitService, exhibitLoadManager)
-    // ファイルソース表示
-    ctrl.tableSelection.addNewValueReaction(updateExhibitViewContent)
-    ctrl
-  }  
+  val museumExhibitController = new MuseumExhibitListController
+  
+  // ファイルソース表示
+  val contentsMode = ValueModels.newValueModel(ContentsMode.LOCAL)
+  
   /** ウェブ検索操作 */
   protected[controller] val webServiceResultController = new WebServiceResultController
-  webServiceResultController.loadManager = Some(exhibitLoadManager)
+//  webServiceResultController.loadManager = Some(exhibitLoadManager)
   
-    /** コンテントビューワー */
-//    val contentViewer = new FileContentViewer(mainView.fileContentView)
     /** ファイル読み込み表示 */
 //    fileLoadingProgressHandler.updateViews()
     //  読み込み管理オブジェクトの進行表示
 //    fileLoadingProgressHandler.listenTo(loadManager)
   
-  /** 俯瞰図 */
-  val motifViewerController = new MotifViewerController
-  
   // モデル
-  /** データテーブルの現在適用するコントローラ */
-  lazy protected[controller] val dataListController = new ValueHolder[DataListController](museumExhibitListController)
+  /** データテーブルの現在適用するモデル */
+  private val sourceSelectionHandler = EventListHandler(exhibitRoomListController.getSelectedNodes) {
+    case Seq(room, _*) => updateRoomContents(room)
+    case _ =>
+  }
   
   /** このコントローラを表すタイトル */
   val title = new ValueHolder("")
@@ -65,6 +58,19 @@ class MainViewController(
   /** 検索モチーフ */
 //  val searchMotif = new ValueHolder("")
 //  searchMotif.addNewValueReaction(sequenceOverviewController.setSearchMotif)
+  
+  /** ソースリストモデルを取得 */
+  def museumStructure: MuseumStructure = exhibitRoomListController.getModel
+  
+  /** ソースリストモデルを設定 */
+  def museumStructure_=(newModel: MuseumStructure) = exhibitRoomListController setModel newModel
+  
+  /** 読み込みマネージャの設定 */
+  def setExhibitLoadManager(manager: MuseumExhibitLoadManager) {
+    exhibitRoomListController.exhibitLoadManager = Some(manager)
+    museumExhibitController.loadManager = Some(manager)
+  }
+
   
   /** 進捗パネルの表示モデル */
   private[controller] lazy val progressViewVisibled = new ValueHolder(false)
@@ -125,16 +131,14 @@ class MainViewController(
    * 通常は、ソースリストの選択項目となる
    */
   private def updateRoomContents(newRoom: ExhibitRoom) {
+    val webSource = museumStructure.webSource
     newRoom match {
-      case exhibitRoomListController.sourceStructure.webSource =>
-        dataListController := webServiceResultController
+      case `webSource` => contentsMode.setValue(ContentsMode.NCBI)
       case _ =>
         //ソースリスト項目選択
-        museumExhibitListController.userExhibitRoom = newRoom match {
-          case newRoom: UserExhibitRoom => Some(newRoom)
-          case _ =>  None
-        }
-        dataListController := museumExhibitListController
+        val exhibits = museumStructure.getContents(newRoom)
+        museumExhibitController setModel exhibits
+        contentsMode.setValue(ContentsMode.LOCAL)
     }
   }
   
@@ -153,15 +157,17 @@ class MainViewController(
       case _ => Iterator.empty
     }
     
-    motifViewerController.setSequence(source.mkString)
-//    contentViewer.source = source
-//    if (mainView.isContentViewerClosed)
-//      mainView.openContentViewer(200)
+//    motifViewerController.setSequence(source.mkString)
   }
   
   def bind(view: MainView) {
     // ソースリスト結合
     exhibitRoomListController.bindTree(view.sourceList)
+    
+    // データリストの表示モードの変更
+    val contentsModeHandler = new ContentsModeHandler(view)
+    contentsModeHandler.setModel(contentsMode)
+    view.setContentsMode(contentsMode.getValue)
     
     // ボタンアクションの結合
     bindAction(view.addListBox -> exhibitRoomListController.addBasicRoomAction,
@@ -171,28 +177,10 @@ class MainViewController(
     
     var currentConnectors: List[Connector] = Nil
     
-    /** データテーブルの表示状態を変更する */
-    // TODO プライベートクラスにリファクタリング
-    def setTableSource(ctrl: DataListController) {
-      // 結合解除
-      currentConnectors.foreach(_.release())
-      
-      currentConnectors = ValueHolder.connect(ctrl.statusTextModel, title) ::
-        ctrl.bindSearchField(view.quickSearchField) ::
-        ctrl.bindTable(view.dataTable) ::: Nil
-    }
+    museumExhibitController.bind(view.exhibitListView)
     
-    // データリストの表示モードの変更
-    dataListController.reactions += {
-      case ValueChange(_, _, ctrl) => setTableSource(ctrl.asInstanceOf[DataListController])
-    }
-    setTableSource(dataListController())
-    // 進捗画面
-    bindProgressView(view.fileLoadingActivityPane, view.fileLoadingProgress, view.fileLoadingStatus)
-    
-    // 俯瞰図
-    motifViewerController.bindOverviewPane(view.overviewMotifView.overviewPane);
-    motifViewerController.bindSearchMotifField(view.overviewMotifView.searchMotifField)
+//    // 進捗画面
+//    bindProgressView(view.fileLoadingActivityPane, view.fileLoadingProgress, view.fileLoadingStatus)
   }
   
   /** 進捗ビューのモデル結合 */
@@ -203,6 +191,15 @@ class MainViewController(
     progressValue.addNewValueReaction(progressBar.setValue).update()
     progressMessage.addNewValueReaction(statusLabel.setText).update()
     progressIndeterminate.addNewValueReaction(progressBar.setIndeterminate).update()
+  }
+  
+  /**
+   * コンテンツモードを更新するハンドラ
+   */
+  class ContentsModeHandler(view: MainView) extends ViewValueConnector[MainView, ContentsMode](view) {
+    def updateView(view: MainView, mode: ContentsMode) {
+      view setContentsMode mode
+    }
   }
 }
 

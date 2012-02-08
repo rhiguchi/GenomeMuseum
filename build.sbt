@@ -9,7 +9,7 @@ organization := "ScienceDesign"
 seq(ProguardPlugin.proguardSettings :_*)
 
 libraryDependencies ++= Seq(
-  "jp.scid" % "scid-gui" % "0.1.1",
+  "jp.scid" % "scid-gui" % "0.1.3",
   "jp.scid" % "motifviewer" % "0.1.2",
   "org.scala-lang" % "scala-swing" % "2.9.1",
   "com.explodingpixels" % "mac_widgets" % "0.9.6-SNAPSHOT",

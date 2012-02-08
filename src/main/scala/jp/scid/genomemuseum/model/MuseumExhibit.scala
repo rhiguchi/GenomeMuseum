@@ -9,13 +9,32 @@ import java.io.File
  */
 trait MuseumExhibit {
   def id: Long
-  var name: String
-  var sequenceLength: Int
+  
+  def name: String
+  def name_=(name: String)
+  
+  def sequenceLength: Int
+  def sequenceLength_=(length: Int)
+  
+  def filePathAsURI: URI
+  def filePathAsURI_=(uri: URI)
+  
+  def sourceFile: Option[File]
+  def sourceFile_=(file: Option[File])
+  
+  def fileType: MuseumExhibit.FileType.Value
+  def fileType_=(fileType: MuseumExhibit.FileType.Value)
+
   var accession: String
+  
   var identifier: String
+  
   var namespace: String
+  
   var version: Option[Int]
+  
   var definition: String
+  
   var source: String
   var organism: String
   var date: Option[Date]
@@ -23,13 +42,8 @@ trait MuseumExhibit {
   var moleculeType: String
   var filePath: String
   var fileSize: Long
-  var fileType: MuseumExhibit.FileType.Value
-  var filePathAsURI: URI
   
   var dataSourceUri: String
-  
-  def sourceFile: Option[File]
-  def sourceFile_=(file: Option[File])
 }
 
 object MuseumExhibit {

@@ -10,7 +10,7 @@ import jp.scid.gui.control.BooleanPropertyBinder;
 import jp.scid.gui.model.ValueModel;
 import jp.scid.gui.model.ValueModels;
 import jp.scid.motifviewer.controller.MotifViewerController;
-import jp.scid.motifviewer.view.OverviewPaintingStrategy;
+import jp.scid.motifviewer.paint.OverviewPaintingStrategy;
 import jp.scid.motifviewer.view.OverviewPane;
 
 public class OverviewMotifListController extends MotifViewerController {

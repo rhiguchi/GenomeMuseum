@@ -1,5 +1,7 @@
 package jp.scid.bio
 
+import java.io.{InputStream, Reader, BufferedReader}
+
 import java.text.ParseException
 import collection.mutable.{ListBuffer, Buffer}
 import Fasta._
@@ -29,6 +31,15 @@ class FastaParser extends BioFileParser[Fasta] {
       throw new ParseException("It is not FASTA source", 0)
     
     createFrom(bufferedSource)
+  }
+  
+  @throws(classOf[ParseException])
+  def parseFrom(source: Reader): Fasta = {
+    val bufSource = new io.BufferedSource(null)(null) {
+      override def reader() = null
+      override val bufferedReader = new BufferedReader(source)
+    }
+    parseFrom(bufSource.getLines());
   }
   
   @throws(classOf[ParseException])
