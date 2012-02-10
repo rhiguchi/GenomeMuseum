@@ -91,7 +91,10 @@ class ExhibitRoomListController extends TreeController[ExhibitRoom, MuseumStruct
     
     import collection.JavaConverters._
     
-    setlectPathAsList(getModel.pathForLoalSource.asJava)
+    property match {
+      case null => setlectPathAsList(model.pathForLoalSource.asJava)
+      case _ =>
+    }
   }
   
   /**

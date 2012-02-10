@@ -64,14 +64,14 @@ class MuseumStructure extends EditableTreeSource[ExhibitRoom] with PropertyChang
       val subscription = new roomService.Sub {
         def notify(pub: roomService.Pub, event: Message[UserExhibitRoom]) {
           // TODO event
-          firePropertyChange("children", userRoomsRoot, userRoomsRoot)
+          firePropertyChange("children", null, userRoomsRoot)
         }
       }
       roomService.subscribe(subscription)
       roomServiceSubscriptionRemover = () => roomService.removeSubscription(subscription)
     }
     
-    firePropertyChange("children", userRoomsRoot, userRoomsRoot)
+    firePropertyChange("children", null, userRoomsRoot)
   }
   
   /**
@@ -226,7 +226,7 @@ class MuseumStructure extends EditableTreeSource[ExhibitRoom] with PropertyChang
   }
   
   protected def fireElementInserted(parent: ExhibitRoom) {
-    firePropertyChange("children", parent, parent)
+    firePropertyChange("children", null, parent)
   }
   
   /**
