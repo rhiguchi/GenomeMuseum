@@ -5,6 +5,7 @@ import static javax.swing.BorderFactory.*;
 import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Dimension;
+import java.awt.Font;
 
 import javax.swing.AbstractButton;
 import javax.swing.Box;
@@ -80,7 +81,8 @@ public class OverviewMotifListView {
     // Contents area
     public final OverviewPane overviewPane = new OverviewPane();
     
-    public final JTable motifListTable = new JTable(0, 3);
+    public final JTable motifListTable = createMotifListTable();
+
     public final JScrollPane motifListTableScroll = new JScrollPane(motifListTable);
     
     public final JPanel motifSearchPanel = createMotifSearchPanel(motifListTableScroll);
@@ -141,6 +143,12 @@ public class OverviewMotifListView {
         return button;
     }
 
+    static JTable createMotifListTable() {
+        JTable table = new JTable(0, 3);
+        table.setFont(new Font("monospaced", Font.PLAIN, 13));
+        return table;
+    }
+    
     static JPanel createToolsPane(
             JComponent strandButtonsPane, JComponent shapeButtonsPane, JPanel zoomSliderPane,
             JComponent searchMotifFieldPane) {

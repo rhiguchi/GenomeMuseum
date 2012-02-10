@@ -147,10 +147,13 @@ class GenomeMuseumGUI extends Application {
     val mainFrameViewCtrl = new MainFrameViewController(mainViewCtrl)
     mainFrameViewCtrl.connectTitle(mainViewCtrl.title)
     
+    mainFrameViewCtrl.application = Some(this)
     mainViewCtrl.museumStructure = museumStructure
     mainViewCtrl setExhibitLoadManager exhibitLoadManager
     
     mainFrameViewCtrl.bind(mainVrameView)
+    mainFrameViewCtrl.bindMenuBar(mainVrameView.mainMenu);
+    mainVrameView.frame.setDefaultCloseOperation(javax.swing.JFrame.EXIT_ON_CLOSE);
     
     // 表示
     mainFrameViewCtrl.show()
