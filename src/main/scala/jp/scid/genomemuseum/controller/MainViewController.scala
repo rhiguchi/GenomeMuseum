@@ -13,7 +13,7 @@ import jp.scid.gui.model.{ProxyValueModel, ValueModels}
 import jp.scid.gui.control.{ViewValueConnector, StringPropertyBinder}
 import model.{MuseumSchema, ExhibitRoom, UserExhibitRoom, MuseumExhibit,
   UserExhibitRoomService, MuseumExhibitService, MuseumStructure}
-import jp.scid.motifviewer.controller.MotifViewerController
+import jp.scid.motifviewer.gui.MotifViewerController
 
 /**
  * 主画面の操作を受け付け、操作反応を実行するオブジェクト。

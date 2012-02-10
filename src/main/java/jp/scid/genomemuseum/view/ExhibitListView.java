@@ -12,6 +12,7 @@ import javax.swing.table.TableCellRenderer;
 import javax.swing.text.JTextComponent;
 
 import jp.scid.gui.MessageFormatTableCell;
+import jp.scid.motifviewer.gui.OverviewMotifListView;
 
 import com.explodingpixels.macwidgets.plaf.ITunesTableUI;
 

@@ -23,6 +23,8 @@ import jp.scid.genomemuseum.model.MuseumExhibit;
 import jp.scid.genomemuseum.model.MuseumExhibit$;
 import jp.scid.genomemuseum.model.MuseumExhibitListModel;
 import jp.scid.genomemuseum.view.ExhibitListView;
+import jp.scid.motifviewer.gui.MotifViewerController;
+import jp.scid.motifviewer.gui.OverviewMotifListView;
 import jp.scid.gui.control.EventListController;
 import jp.scid.gui.control.ListHandler;
 import jp.scid.gui.control.StringPropertyBinder;
@@ -42,8 +44,8 @@ public class MuseumExhibitController extends EventListController<MuseumExhibit, 
     }
     
     // Controllers
-    private final OverviewMotifListController overviewMotifListController =
-        new OverviewMotifListController();
+    private final MotifViewerController motifViewerController =
+        new MotifViewerController();
     
     private final ExhibitTableFormat tableFormat = new ExhibitTableFormat();
     
@@ -82,7 +84,7 @@ public class MuseumExhibitController extends EventListController<MuseumExhibit, 
         
         documentLoader.setModel(selectedUri);
         
-        overviewMotifListController.setModel(documentSourceController.getSequence());
+        motifViewerController.setModel(documentSourceController.getSequence());
         documentSourceController.setModel(bioFileSource);
         
         // refilter
@@ -91,7 +93,7 @@ public class MuseumExhibitController extends EventListController<MuseumExhibit, 
     }
     
     public void bind(ExhibitListView view) {
-        overviewMotifListController.bind(view.overviewMotifView);
+        motifViewerController.bind(view.overviewMotifView);
         
         bindTable(view.dataTable, tableFormat);
         bindDataViewsTab(view.contentsViewTabbedPane);
