@@ -226,6 +226,40 @@ object MuseumExhibitLoadManager {
   case class SubjectChange(task: SwingWorker[_, _], subject: String) extends TaskEvent
   case class MessageChange(task: SwingWorker[_, _], message: String) extends TaskEvent
   case class Done(task: SwingWorker[_, _]) extends TaskEvent
+  
+  /**
+   * ディレクトリ内に含まれる全てのファイルを探索し、取得する。
+   */
+  private[controller] def getAllFiles(files: Seq[File]) = {
+    import collection.mutable.{Buffer, ListBuffer, HashSet}
+    // 探索済みディレクトリ
+    val checkedDirs = HashSet.empty[String]
+    // ディレクトリがすでに探索済みであるか
+    def alreadyChecked(dir: File) = checkedDirs contains dir.getCanonicalPath
+    // 探索済みに追加
+    def addCheckedDir(dir: File) = checkedDirs += dir.getCanonicalPath
+    
+    @annotation.tailrec
+    def collectFiles(files: List[File], accume: Buffer[File] = ListBuffer.empty[File]): List[File] = {
+      files match {
+        case head :: tail =>
+          if (head.isHidden) {
+            collectFiles(tail, accume)
+          }
+          else if (head.isDirectory && !alreadyChecked(head)) {
+            addCheckedDir(head)
+            collectFiles(head.listFiles.toList ::: tail, accume)
+          }
+          else {
+            accume += head
+            collectFiles(tail, accume)
+          }
+        case Nil => accume.toList
+      }
+    }
+    
+    collectFiles(files.toList)
+  }
 }
 
 

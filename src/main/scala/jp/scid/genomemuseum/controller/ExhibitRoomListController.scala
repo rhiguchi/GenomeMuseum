@@ -1,20 +1,13 @@
 package jp.scid.genomemuseum.controller
 
-import java.io.File
 import javax.swing.{JTree, JComponent}
-import javax.swing.TransferHandler.TransferSupport
+import javax.swing.tree.TreePath
 
 import org.jdesktop.application.Action
 
-import jp.scid.gui.{ValueHolder, tree, event}
 import jp.scid.gui.control.{TreeController, TreeExpansionController}
-import jp.scid.gui.model.TreeSource
-import tree.DataTreeModel
-import DataTreeModel.Path
-import event.{ValueChange, DataTreePathsSelectionChanged}
 import jp.scid.genomemuseum.model.{ExhibitRoom, UserExhibitRoom, MuseumExhibit,
-  MuseumStructure, UserExhibitRoomService, ExhibitRoomTransferData, MuseumExhibitService}
-import jp.scid.genomemuseum.gui.MuseumSourceModel
+  MuseumStructure, MuseumExhibitListModel}
 import UserExhibitRoom.RoomType
 import RoomType._
 
@@ -42,7 +35,7 @@ class ExhibitRoomListController extends TreeController[ExhibitRoom, MuseumStruct
   
   // コントローラ
   /** 転送ハンドラ */
-  val transferHandler = new ExhibitRoomListTransferHandler()
+  val transferHandler = new ExhibitRoomListTransferHandler(this)
   
   private[controller] val expansionController = TreeExpansionController.newConstantDepthExpansionController(2)
   
@@ -93,8 +86,20 @@ class ExhibitRoomListController extends TreeController[ExhibitRoom, MuseumStruct
       import collection.JavaConverters._
       setlectPathAsList(model.pathForLoalSource.asJava)
     }
-    
-    transferHandler.museumStructure = Option(model)
+  }
+  
+  /** ローカルライブラリの部屋コンテンツを返す */
+  protected[controller] def getLocalLibraryContent: Option[MuseumExhibitListModel] =
+    Option(getModel).flatMap(str => str.getRoomContents(str.localSource))
+  
+  /** パスのコンテンツを返す */
+  protected[controller] def getContent(path: TreePath): Option[MuseumExhibitListModel] = {
+    Option(getModel) flatMap { structure =>
+      path.getLastPathComponent match {
+        case room: ExhibitRoom => structure.getRoomContents(room)
+        case _ => None
+      }
+    }
   }
   
   /**

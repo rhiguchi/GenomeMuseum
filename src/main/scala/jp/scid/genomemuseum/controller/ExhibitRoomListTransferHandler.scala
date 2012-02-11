@@ -4,17 +4,11 @@ import javax.swing.{JTree, TransferHandler, JComponent}
 import javax.swing.tree.TreePath
 import java.awt.datatransfer.{Transferable, DataFlavor}
 import TransferHandler.TransferSupport
-import DataFlavor.javaFileListFlavor
-import java.io.File
 
 import jp.scid.genomemuseum.model.{MuseumExhibitService, ExhibitRoomTransferData}
 import jp.scid.genomemuseum.model.{ExhibitRoom, UserExhibitRoom, MuseumExhibit,
-  MuseumStructure, UserExhibitRoomService, GroupRoomContentsModel, MuseumExhibitListModel,
+  GroupRoomContentsModel, MuseumExhibitListModel,
   MutableMuseumExhibitListModel}
-import jp.scid.genomemuseum.gui.MuseumSourceModel
-import UserExhibitRoom.RoomType
-import RoomType._
-import MuseumExhibitListTransferHandler.getAllFiles
 
 /**
  * ExhibitRoomListController 用転送ハンドラ
@@ -22,24 +16,23 @@ import MuseumExhibitListTransferHandler.getAllFiles
  * {@code #sourceListModel} を指定することで、部屋の移動が可能になる。
  * @param loadManager 読み込み操作管理オブジェクト
  */
-class ExhibitRoomListTransferHandler extends TransferHandler {
+class ExhibitRoomListTransferHandler extends MuseumExhibitTransferHandler {
   import ExhibitRoomTransferData.{dataFlavor => exhibitRoomDataFlavor}
+  import MuseumExhibitTransferHandler.getTransferRoomContents
   
-  /** ツリーを操作する対象のモデル */
-  var museumStructure: Option[MuseumStructure] = None
+  def this(controller: ExhibitRoomListController) {
+    this()
+    this.controller = Option(controller)
+  }
   
-  /** ファイルの読み込み処理を行うモデル */
-  var exhibitLoadManager: Option[MuseumExhibitLoadManager] = None
+  /** ツリーを操作する対象のコントローラ */
+  var controller: Option[ExhibitRoomListController] = None
   
-  /**
-   * パスのコンテンツを取得する
-   */
-  protected def getPathRoomContents(path: TreePath): Option[MuseumExhibitListModel] = {
-    val room = path.getLastPathComponent match {
-      case room: ExhibitRoom => Some(room)
-      case _ => None
+  /** 展示物の転入が可能な部屋を返す */
+  def getExhibitTransferTarget(ts: TransferSupport) = {
+    getTargetRoomContents(ts) collect {
+      case room: MutableMuseumExhibitListModel => room
     }
-    room.flatMap(room => museumStructure.flatMap(_.getRoomContents(room)))
   }
   
   /**
@@ -51,22 +44,11 @@ class ExhibitRoomListTransferHandler extends TransferHandler {
         val loc = ts.getDropLocation.getDropPoint
         
         tree.getPathForLocation(loc.x, loc.y) match {
-          case null =>
-            museumStructure.flatMap(str => str.getRoomContents(str.localSource))
-          case path => getPathRoomContents(path)
+          case null => controller.flatMap(_.getLocalLibraryContent)
+          case path => controller.flatMap(_.getContent(path))
         }
       case _ => None
     }
-  }
-  
-  /** 転送の部屋オブジェクトを返す。 */
-  private def getTransferRoomContents(ts: TransferSupport): MuseumExhibitListModel =
-    ts.getTransferable.getTransferData(exhibitRoomDataFlavor).asInstanceOf[MuseumExhibitListModel]
-  
-  /** 転送するファイルを返す。 */
-  private def getTransferFiles(ts: TransferSupport): List[File] = {
-    import collection.JavaConverters._
-    ts.getTransferable.getTransferData(javaFileListFlavor).asInstanceOf[java.util.List[File]].asScala.toList
   }
   
   /**
@@ -87,15 +69,6 @@ class ExhibitRoomListTransferHandler extends TransferHandler {
         // BasicRoom には MuseumExhibit を転入できる
         case Some(basicRoom: MutableMuseumExhibitListModel) =>
           true
-        case _ => false
-      }
-    }
-    // ファイルの転入
-    else if (ts.isDataFlavorSupported(javaFileListFlavor)) {
-      targetRoom match {
-        // BasicRoom には転入できる
-        // LocalLibrary にも転入できる（MutableMuseumExhibitListModel を実装する）
-        case Some(basicRoom: MutableMuseumExhibitListModel) => true
         case _ => false
       }
     }
@@ -126,34 +99,24 @@ class ExhibitRoomListTransferHandler extends TransferHandler {
         case _ => false
       }
     }
-    // ファイルの転入
-    else if (ts.isDataFlavorSupported(javaFileListFlavor) && exhibitLoadManager.nonEmpty) {
-      targetRoom match {
-        case Some(basicRoom: MutableMuseumExhibitListModel) =>
-          val fileList = getTransferFiles(ts)
-          fileList.foreach(file => exhibitLoadManager.get.loadExhibit(basicRoom, file))
-          true
-        case _ => false
-      }
-    }
     else {
       super.importData(ts)
     }
   }
   
   override def getSourceActions(c: JComponent) =
-    TransferHandler.COPY_OR_MOVE
+    TransferHandler.COPY
   
   override def createTransferable(c: JComponent): Transferable = {
     c match {
       case tree: JTree =>
         val contentsOp = tree.getSelectionPath match {
           case null => None
-          case path => getPathRoomContents(path)
+          case path => controller.flatMap(_.getContent(path))
         }
         
         contentsOp collect { case t: Transferable => t } getOrElse null
-      case _ => null
+      case _ => super.createTransferable(c)
     }
   }
 }
