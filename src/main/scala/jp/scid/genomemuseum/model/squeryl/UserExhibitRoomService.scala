@@ -24,9 +24,11 @@ private[squeryl] class UserExhibitRoomService(
   
   def addRoom(roomType: RoomType, name: String,
       parent: Option[IUserExhibitRoom]) = {
-    ensureParentAllowed(parent)
+    val parentIdOp = parent flatMap {
+      case RoomType(GroupRoom) => parent
+      case elm => getParent(elm)
+    } map {p => p.id}
     
-    val parentIdOp = parent.map(_.id)
     val newRoom = UserExhibitRoom(name, roomType, parentIdOp)
     
     inTransaction {

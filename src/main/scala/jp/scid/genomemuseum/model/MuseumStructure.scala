@@ -4,6 +4,8 @@ import scala.collection.mutable.Publisher
 import scala.collection.script.{Message, Include, Update, Remove}
 
 import jp.scid.gui.model.TreeSource
+import TreeSource.{TreeSourceChildrenInsertedEvent, TreeSourceElementRemovedEvent,
+  TreeSourceElementChangeEvent}
 import jp.scid.gui.tree.EditableTreeSource
 import UserExhibitRoom.RoomType
 import RoomType._
@@ -63,15 +65,22 @@ class MuseumStructure extends EditableTreeSource[ExhibitRoom] with PropertyChang
     roomService foreach { roomService =>
       val subscription = new roomService.Sub {
         def notify(pub: roomService.Pub, event: Message[UserExhibitRoom]) {
-          // TODO event
-          firePropertyChange("children", null, userRoomsRoot)
+          event match {
+            case Remove(_, elm) => fireElementRemoved(elm)
+            case Include(_, elm) =>
+              val parent = roomService.getParent(elm).getOrElse(userRoomsRoot)
+              fireElementInserted(parent)
+            case Update(_, elm) =>
+              firePropertyChange(new TreeSourceElementChangeEvent(MuseumStructure.this, elm))
+            case _ => firePropertyChange("value", null, userRoomsRoot)
+          }
         }
       }
       roomService.subscribe(subscription)
       roomServiceSubscriptionRemover = () => roomService.removeSubscription(subscription)
     }
     
-    firePropertyChange("children", null, userRoomsRoot)
+    firePropertyChange("value", null, userRoomsRoot)
   }
   
   /**
@@ -222,11 +231,11 @@ class MuseumStructure extends EditableTreeSource[ExhibitRoom] with PropertyChang
   }
   
   protected def fireElementRemoved(room: ExhibitRoom) {
-    firePropertyChange("value", room, null)
+    firePropertyChange(new TreeSourceElementRemovedEvent(this, room))
   }
   
   protected def fireElementInserted(parent: ExhibitRoom) {
-    firePropertyChange("children", null, parent)
+    firePropertyChange(new TreeSourceChildrenInsertedEvent(this, parent))
   }
   
   /**
@@ -262,7 +271,7 @@ class MuseumStructure extends EditableTreeSource[ExhibitRoom] with PropertyChang
 }
 
 trait PropertyChangeObservable {
-  import java.beans.{PropertyChangeListener, PropertyChangeSupport}
+  import java.beans.{PropertyChangeListener, PropertyChangeSupport, PropertyChangeEvent}
   
   lazy val propertyChangeSupport = new PropertyChangeSupport(this)
   
@@ -274,6 +283,9 @@ trait PropertyChangeObservable {
   
   def firePropertyChange(propertyName: String, oldValue: Any, newValue: Any) =
     propertyChangeSupport.firePropertyChange(propertyName, oldValue, newValue)
+  
+  def firePropertyChange(event: PropertyChangeEvent) =
+    propertyChangeSupport.firePropertyChange(event)
 }
 
 object MuseumStructure {

@@ -82,19 +82,15 @@ class ExhibitRoomListController extends TreeController[ExhibitRoom, MuseumStruct
   /**
    * 新しいモデルには初期部屋名を設定する。
    */
-  override protected def processPropertyChange(model: MuseumStructure, property: String) {
-    super.processPropertyChange(model, property)
+  override def setModel(model: MuseumStructure) {
+    super.setModel(model)
     
     model.basicRoomDefaultName = basicRoomDefaultNameResource()
     model.groupRoomDefaultName = groupRoomDefaultNameResource()
     model.smartRoomDefaultName = smartRoomDefaultNameResource()
     
     import collection.JavaConverters._
-    
-    property match {
-      case null => setlectPathAsList(model.pathForLoalSource.asJava)
-      case _ =>
-    }
+    setlectPathAsList(model.pathForLoalSource.asJava)
   }
   
   /**
