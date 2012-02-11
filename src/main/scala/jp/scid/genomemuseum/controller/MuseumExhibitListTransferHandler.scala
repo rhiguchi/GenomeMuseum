@@ -8,10 +8,10 @@ import DataFlavor.javaFileListFlavor
 import TransferHandler.TransferSupport
 
 import jp.scid.genomemuseum.model.{MuseumExhibit, MutableMuseumExhibitListModel, RoomContentExhibits,
-  ExhibitRoomTransferData, MuseumExhibitListModel, UserExhibitRoom}
+  MuseumExhibitListModel, UserExhibitRoom}
 
 private[controller] object MuseumExhibitTransferHandler {
-  private[controller] object TransferData {
+  object TransferData {
     val dataFlavor =
       new DataFlavor(classOf[RoomContentExhibits], "RoomContentExhibits")
     
@@ -26,7 +26,17 @@ private[controller] object MuseumExhibitTransferHandler {
     }
   }
 
-  private[controller] class TransferData(contents: RoomContentExhibits) extends Transferable {
+  /**
+   * MuseumExhibit 転送データ
+   * 
+   * 展示物オブジェクトと、展示物にファイルが設定されている時はファイルも転送される。
+   * 文字列も転送可能であり、展示物の {@code toString()} から作成される。
+   * 転送文字列の形式を変えたい時は、{@link #stringConverter} プロパティを変更する。
+   * 
+   * @param exhibits 転送する展示物。
+   * @param sourceRoom 展示物が存在していた部屋。部屋からの転出ではない時は {@code None} 。
+   */
+  class TransferData(contents: RoomContentExhibits) extends Transferable {
     def getTransferDataFlavors(): Array[DataFlavor] =
       Array(TransferData.dataFlavor, javaFileListFlavor)
     

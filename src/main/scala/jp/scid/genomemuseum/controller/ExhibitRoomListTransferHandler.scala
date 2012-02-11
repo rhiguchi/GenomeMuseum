@@ -10,7 +10,7 @@ import jp.scid.genomemuseum.model.{ExhibitRoom, UserExhibitRoom, MuseumExhibit,
   GroupRoomContentsModel, MuseumExhibitListModel,
   MutableMuseumExhibitListModel}
 
-object ExhibitRoomListTransferHandler {
+private[controller] object ExhibitRoomListTransferHandler {
   object ExhibitRoomTransferData {
     val dataFlavor = new DataFlavor(classOf[MuseumExhibitListModel],
         "MuseumExhibitListModel")
