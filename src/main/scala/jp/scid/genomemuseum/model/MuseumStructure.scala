@@ -91,6 +91,8 @@ class MuseumStructure extends EditableTreeSource[ExhibitRoom] with PropertyChang
     case _ => userExhibitRoomService.get.getContents(None)
   }
   
+  def getRoomContents(room: ExhibitRoom): Option[MuseumExhibitListModel] = None // TODO
+  
   override def getChildren(parent: ExhibitRoom): java.util.List[ExhibitRoom] = {
     import collection.JavaConverters._
     childrenFor(parent).asJava
@@ -215,7 +217,7 @@ class MuseumStructure extends EditableTreeSource[ExhibitRoom] with PropertyChang
    * @throws IllegalArgumentException 指定した親が GroupRoom ではない時
    * @throws IllegalStateException 指定した親が要素自身か、子孫である時
    */
-  def moveRoom(source: UserExhibitRoom, newParent: Option[UserExhibitRoom]) {
+  def moveRoom(source: UserExhibitRoom, newParent: Option[UserExhibitRoom])  {
     val parent = newParent match {
       case Some(dest @ RoomType(GroupRoom)) => newParent
       case Some(nonGroupRoom) => userExhibitRoomService.get.getParent(nonGroupRoom) match {

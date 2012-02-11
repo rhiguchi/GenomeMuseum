@@ -13,3 +13,12 @@ trait MuseumExhibitListModel extends ValueModel[java.util.List[MuseumExhibit]]
    */
   def getRoom: Option[UserExhibitRoom]
 }
+
+/**
+ * 親子関係を構築できる部屋の構造適宜
+ */
+trait GroupRoomContentsModel extends MuseumExhibitListModel {
+  def canMove(contentsModel: MuseumExhibitListModel): Boolean
+  
+  def moveRoom(contentsModel: MuseumExhibitListModel)
+}

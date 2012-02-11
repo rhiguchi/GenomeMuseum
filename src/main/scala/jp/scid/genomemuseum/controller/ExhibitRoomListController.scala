@@ -42,7 +42,7 @@ class ExhibitRoomListController extends TreeController[ExhibitRoom, MuseumStruct
   
   // コントローラ
   /** 転送ハンドラ */
-  lazy val transferHandler = new ExhibitRoomListTransferHandler()
+  val transferHandler = new ExhibitRoomListTransferHandler()
   
   private[controller] val expansionController = TreeExpansionController.newConstantDepthExpansionController(2)
   
@@ -85,12 +85,16 @@ class ExhibitRoomListController extends TreeController[ExhibitRoom, MuseumStruct
   override def setModel(model: MuseumStructure) {
     super.setModel(model)
     
-    model.basicRoomDefaultName = basicRoomDefaultNameResource()
-    model.groupRoomDefaultName = groupRoomDefaultNameResource()
-    model.smartRoomDefaultName = smartRoomDefaultNameResource()
+    Option(model) foreach { model =>
+      model.basicRoomDefaultName = basicRoomDefaultNameResource()
+      model.groupRoomDefaultName = groupRoomDefaultNameResource()
+      model.smartRoomDefaultName = smartRoomDefaultNameResource()
+      
+      import collection.JavaConverters._
+      setlectPathAsList(model.pathForLoalSource.asJava)
+    }
     
-    import collection.JavaConverters._
-    setlectPathAsList(model.pathForLoalSource.asJava)
+    transferHandler.museumStructure = Option(model)
   }
   
   /**

@@ -11,7 +11,7 @@ import swing.Publisher
 import util.control.Exception.allCatch
 
 import jp.scid.genomemuseum.model.{MuseumExhibit, MuseumExhibitLoader, MuseumExhibitFileLibrary,
-  MuseumExhibitService}
+  MuseumExhibitService, MutableMuseumExhibitListModel}
 
 import SwingTaskService._
 
@@ -64,6 +64,10 @@ class MuseumExhibitLoadManager(
         case _ =>
       }
     }
+  }
+  
+  def loadExhibit(targetRoom: MutableMuseumExhibitListModel, file: File) {
+    // TODO
   }
   
   /**
