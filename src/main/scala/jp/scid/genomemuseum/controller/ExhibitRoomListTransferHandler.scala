@@ -30,7 +30,7 @@ object ExhibitRoomListTransferHandler {
    * 部屋用転送オブジェクト
    */
   class ExhibitRoomTransferData(roomContents: MuseumExhibitListModel)
-      extends MuseumExhibitListTransferHandler.RoomContentExhibitsTransferData(roomContents) {
+      extends MuseumExhibitTransferHandler.TransferData(roomContents) {
     override def getTransferDataFlavors(): Array[DataFlavor] =
       ExhibitRoomTransferData.dataFlavor +: super.getTransferDataFlavors
     
