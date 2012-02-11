@@ -2,18 +2,25 @@ package jp.scid.genomemuseum.model
 
 import java.awt.datatransfer.{Transferable, DataFlavor}
 
-object MuseumExhibitTransferData {
-  /** データフレーバー */
-  val dataFlavor = new DataFlavor(MuseumExhibitTransferData.getClass,
-    "MuseumExhibitTransferData")
+object RoomContentExhibits {
+  def apply(exhibits: List[MuseumExhibit], room: Option[UserExhibitRoom]): RoomContentExhibits =
+    RoomContentExhibitsImpl(exhibits, room)
+  
+  /**
+   * 単純実装
+   */
+  private case class RoomContentExhibitsImpl(
+    exhibitList: List[MuseumExhibit],
+    userExhibitRoom: Option[UserExhibitRoom]
+  ) extends RoomContentExhibits
 }
 
 /**
- * MuseumExhibit が転送される時の転送データインターフェイス。
+ * MuseumExhibit のリストとその所属元を保持するデータ構造定義
  */
-trait MuseumExhibitTransferData extends Transferable {
+trait RoomContentExhibits {
   /** 転送する展示物 */
-  def museumExhibits: List[MuseumExhibit]
+  def exhibitList: List[MuseumExhibit]
   /** 展示物のもとの部屋 */
-  def sourceRoom: Option[UserExhibitRoom]
+  def userExhibitRoom: Option[UserExhibitRoom]
 }

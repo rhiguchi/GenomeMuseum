@@ -5,10 +5,46 @@ import javax.swing.tree.TreePath
 import java.awt.datatransfer.{Transferable, DataFlavor}
 import TransferHandler.TransferSupport
 
-import jp.scid.genomemuseum.model.{MuseumExhibitService, ExhibitRoomTransferData}
+import jp.scid.genomemuseum.model.{MuseumExhibitService}
 import jp.scid.genomemuseum.model.{ExhibitRoom, UserExhibitRoom, MuseumExhibit,
   GroupRoomContentsModel, MuseumExhibitListModel,
   MutableMuseumExhibitListModel}
+
+object ExhibitRoomListTransferHandler {
+  object ExhibitRoomTransferData {
+    val dataFlavor = new DataFlavor(classOf[MuseumExhibitListModel],
+        "MuseumExhibitListModel")
+    
+    def unapply(ts: TransferSupport): Option[MuseumExhibitListModel] = {
+      ts.isDataFlavorSupported(dataFlavor) match {
+        case true =>
+          val data = ts.getTransferable.getTransferData(dataFlavor)
+            .asInstanceOf[MuseumExhibitListModel]
+          Some(data)
+        case false => None
+      }
+    }
+  }
+  
+  /**
+   * 部屋用転送オブジェクト
+   */
+  class ExhibitRoomTransferData(roomContents: MuseumExhibitListModel)
+      extends MuseumExhibitListTransferHandler.RoomContentExhibitsTransferData(roomContents) {
+    override def getTransferDataFlavors(): Array[DataFlavor] =
+      ExhibitRoomTransferData.dataFlavor +: super.getTransferDataFlavors
+    
+    override def getTransferData(flavor: DataFlavor) = flavor match {
+      case ExhibitRoomTransferData.dataFlavor => roomContents
+      case _ => super.getTransferData(flavor)
+    }
+    
+    override def isDataFlavorSupported(flavor: DataFlavor) = flavor match {
+      case ExhibitRoomTransferData.dataFlavor => true
+      case _ => super.isDataFlavorSupported(flavor)
+    }
+  }
+}
 
 /**
  * ExhibitRoomListController 用転送ハンドラ
@@ -17,8 +53,7 @@ import jp.scid.genomemuseum.model.{ExhibitRoom, UserExhibitRoom, MuseumExhibit,
  * @param loadManager 読み込み操作管理オブジェクト
  */
 class ExhibitRoomListTransferHandler extends MuseumExhibitTransferHandler {
-  import ExhibitRoomTransferData.{dataFlavor => exhibitRoomDataFlavor}
-  import MuseumExhibitTransferHandler.getTransferRoomContents
+  import ExhibitRoomListTransferHandler._
   
   def this(controller: ExhibitRoomListController) {
     this()
@@ -54,69 +89,48 @@ class ExhibitRoomListTransferHandler extends MuseumExhibitTransferHandler {
   /**
    * 部屋の転入操作の可能性を返す。
    */
-  override def canImport(ts: TransferSupport) = {
-    lazy val targetRoom = getTargetRoomContents(ts)
-    
-    // 部屋の転入
-    if (ts.isDataFlavorSupported(exhibitRoomDataFlavor)) {
-      val contentsModel = getTransferRoomContents(ts)
-      
-      targetRoom match {
+  override def canImport(ts: TransferSupport) = ts match {
+    case ExhibitRoomTransferData(transferData) =>
+      getTargetRoomContents(ts) match {
         // GroupRoom はRoomを転入できる
         // LocalLibrary にも転入できる（GroupRoomContentsModel を実装する）
         case Some(groupRoom: GroupRoomContentsModel) =>
-          groupRoom.canMove(contentsModel)
+          transferData.userExhibitRoom map groupRoom.canAddChild getOrElse false
         // BasicRoom には MuseumExhibit を転入できる
-        case Some(basicRoom: MutableMuseumExhibitListModel) =>
-          true
+        case Some(basicRoom: MutableMuseumExhibitListModel) => true 
         case _ => false
       }
-    }
-    else {
-      super.canImport(ts)
-    }
+    case _ => super.canImport(ts)
   }
   
   /**
    * 部屋の転入操作をする。
    */
-  override def importData(ts: TransferSupport) = {
-    lazy val targetRoom = getTargetRoomContents(ts)
-    
-    // 部屋の転入
-    if (ts.isDataFlavorSupported(exhibitRoomDataFlavor)) {
-      val contentsModel = getTransferRoomContents(ts)
-      
-      targetRoom match {
-        case Some(groupRoom: GroupRoomContentsModel) if groupRoom.canMove(contentsModel) =>
-          groupRoom.moveRoom(contentsModel)
-          true
+  override def importData(ts: TransferSupport) = ts match {
+    case ExhibitRoomTransferData(transferData) =>
+      getTargetRoomContents(ts) match {
+        case Some(groupRoom: GroupRoomContentsModel) =>
+          transferData.userExhibitRoom filter groupRoom.canAddChild map
+            { room => groupRoom.addChild(room); true } getOrElse false
         case Some(basicRoom: MutableMuseumExhibitListModel) =>
-          import collection.JavaConverters._
-          
-          contentsModel.getValue.asScala.toList foreach basicRoom.add
+          transferData.exhibitList foreach basicRoom.add
           true
         case _ => false
       }
-    }
-    else {
-      super.importData(ts)
-    }
+    case _ => super.importData(ts)
   }
   
   override def getSourceActions(c: JComponent) =
     TransferHandler.COPY
   
-  override def createTransferable(c: JComponent): Transferable = {
-    c match {
-      case tree: JTree =>
-        val contentsOp = tree.getSelectionPath match {
-          case null => None
-          case path => controller.flatMap(_.getContent(path))
-        }
-        
-        contentsOp collect { case t: Transferable => t } getOrElse null
-      case _ => super.createTransferable(c)
-    }
+  override def createTransferable(c: JComponent): Transferable = c match {
+    case tree: JTree =>
+      val contentsOp = tree.getSelectionPath match {
+        case null => None
+        case path => controller.flatMap(_.getContent(path))
+      }
+      
+      contentsOp.map(c => new ExhibitRoomTransferData(c)) getOrElse null
+    case _ => super.createTransferable(c)
   }
 }
