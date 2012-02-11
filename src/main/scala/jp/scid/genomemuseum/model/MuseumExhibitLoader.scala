@@ -79,6 +79,32 @@ class MuseumExhibitLoader {
   // 対応するファイル形式の構文解析オブジェクト
   private val parsers = List(GenBnakSource, FastaSource)
   
+  private var exhibitServcie: Option[MuseumExhibitService] = None
+  
+  def loadFromUri(source: URL): Option[MuseumExhibit] = {
+    val reader = new InputStreamReader(source.openStream)
+    // ファイルの先頭部分の一部の文字列
+    val pushBackReader = new PushbackReader(reader, 2048)
+    val cbuf = new Array[Char](2048)
+    val read = pushBackReader.read(cbuf)
+    val headString = if (read <= 0) "" else new String(cbuf, 0, read)
+    
+    /** ファイルの先頭部分の文字列から Source オブジェクトを作成 */
+    def headSource = io.Source.fromString(headString).getLines
+    
+    parsers.find(_.canParse(headSource)).map { parser =>
+      pushBackReader.unread(cbuf, 0, read)
+      val servcie = exhibitServcie.get
+      
+      val bufSource = io.Source.fromURL(source)
+      val exhibit = servcie.create
+      parser.makeExhibitFromFile(exhibit, bufSource.getLines)
+      servcie.save(exhibit)
+      exhibit
+    }
+  }
+  
+  
   /**
    * ソースから展示物を作成する。
    * @throws IOException ファイルのアクセスに不正状態が発生した時。
@@ -86,6 +112,7 @@ class MuseumExhibitLoader {
    */
   @throws(classOf[ParseException])
   @throws(classOf[IOException])
+  @deprecated("2012/02/11", "use loadFromUri")
   def makeMuseumExhibit[E <: MuseumExhibit](exhibitFactory: => E, source: Reader): Option[E] = {
     // ファイルの先頭部分の一部の文字列
     val pushBackReader = new PushbackReader(source, 2048)

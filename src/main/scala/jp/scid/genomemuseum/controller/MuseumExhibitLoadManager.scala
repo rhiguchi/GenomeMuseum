@@ -125,13 +125,7 @@ class MuseumExhibitLoadManager(
    */
   private class SourceLoadingTask(source: URL) extends LoadTask {
     def call() = {
-      val exhibitOpt = using(getReader(source)) { reader =>
-        loader.makeMuseumExhibit(dataService.create, reader)
-      }
-      exhibitOpt.foreach { exhibit =>
-        exhibit.dataSourceUri = source.toURI.toString
-        dataService.save(exhibit)
-      }
+      val exhibitOpt = loader.loadFromUri(source)
       exhibitOpt
     }
     
@@ -145,15 +139,7 @@ class MuseumExhibitLoadManager(
    */
   private class FileLoadingTask(file: File) extends LoadTask {
     def call() = {
-      val exhibitOpt = using(getReader(file)) { reader =>
-        loader.makeMuseumExhibit(dataService.create, reader)
-      }
-      exhibitOpt.foreach { exhibit =>
-        exhibit.dataSourceUri = file.toURI.toString
-        // ファイルをライブラリに保管
-        fileLibrary foreach { lib => exhibit.sourceFile = Some(lib.store(file, exhibit)) }
-        dataService.save(exhibit)
-      }
+      val exhibitOpt = loader.loadFromUri(file.toURI.toURL)
       exhibitOpt
     }
     
