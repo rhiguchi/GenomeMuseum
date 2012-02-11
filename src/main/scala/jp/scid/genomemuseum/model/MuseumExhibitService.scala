@@ -6,14 +6,8 @@ import collection.script.Message
 /**
  * MuseumExhibit データ提供サービスのインターフェイス。
  */
-trait MuseumExhibitService extends Publisher[Message[_ <: MuseumExhibit]] {
+trait MuseumExhibitService {
   type ElementClass <: MuseumExhibit
-  
-  /**
-   * このサービスが持つ全ての要素を取得する。
-   * @return 全ての要素の {@code List} 。
-   */
-  def allElements: List[ElementClass]
   
   /**
    * 展示物オブジェクトを作成する。
@@ -37,15 +31,5 @@ trait MuseumExhibitService extends Publisher[Message[_ <: MuseumExhibit]] {
    * @return 削除に成功した場合は {@code true} 。
    *         項目が存在しなかったなどでサービス内に変更が発生しなかった時は {@code false} 。
    */
-  def remove(element: ElementClass): Boolean
-  
-  /**
-   * 指定した部屋の要素を取得する。
-   */
-  def getExhibits(room: UserExhibitRoom): List[ElementClass]
-  
-  /**
-   * 部屋の要素を追加する。
-   */
-  def addElement(room: UserExhibitRoom, item: ElementClass)
+  def remove(element: MuseumExhibit): Boolean
 }

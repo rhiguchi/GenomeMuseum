@@ -95,7 +95,7 @@ class ExhibitRoomListController extends TreeController[ExhibitRoom, MuseumStruct
   /** パスのコンテンツを返す */
   protected[controller] def getContent(path: TreePath): Option[MuseumExhibitListModel] = {
     path.getLastPathComponent match {
-      case listModel: MuseumExhibitListModel => Some(listModel)
+      case room: UserExhibitRoom => Some(room.exhibitListModel)
       case _ => None
     }
   }
@@ -160,11 +160,6 @@ class ExhibitRoomListController extends TreeController[ExhibitRoom, MuseumStruct
       case _ =>
     }
   }
-  
-  /** ローカルライブラリノードを選択状態にする */
-//  def selectPathLocalLibrary() {
-//    selectPath(pathForLocalLibrary)
-//  }
   
   private def selectedElementList = {
     import collection.JavaConverters._

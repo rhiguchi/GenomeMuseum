@@ -12,7 +12,7 @@ import MainView.ContentsMode
 import jp.scid.gui.model.{ProxyValueModel, ValueModels}
 import jp.scid.gui.control.{ViewValueConnector, StringPropertyBinder}
 import model.{MuseumSchema, ExhibitRoom, UserExhibitRoom, MuseumExhibit,
-  UserExhibitRoomService, MuseumExhibitService, MuseumStructure, MuseumExhibitListModel}
+  UserExhibitRoomService, MuseumExhibitService, MuseumStructure}
 import jp.scid.motifviewer.gui.MotifViewerController
 
 /**
@@ -137,11 +137,11 @@ class MainViewController extends GenomeMuseumController {
       case `webSource` => contentsMode.setValue(ContentsMode.NCBI)
       case _ =>
         //ソースリスト項目選択
-        newRoom match {
-          case contents: MuseumExhibitListModel => 
-            museumExhibitController setModel contents
-          case _ =>
+        val exhibits = newRoom match {
+          case room: UserExhibitRoom => room.exhibitListModel
+          case _ => museumStructure.localLibraryContent
         }
+        museumExhibitController setModel exhibits
         contentsMode.setValue(ContentsMode.LOCAL)
     }
   }

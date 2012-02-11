@@ -64,6 +64,5 @@ trait UserExhibitRoomService extends Publisher[Message[UserExhibitRoom]] {
    * ローカルライブラリ用の部屋を返す
    * @param 名前などのプロキシ接続用ノード
    */
-  def localLibraryExhibitRoom(libraryNode: ExhibitRoom): ExhibitRoom
-    with GroupRoomContentsModel with MutableMuseumExhibitListModel
+  def localLibraryExhibitRoom: GroupRoomContentsModel with MutableMuseumExhibitListModel
 }

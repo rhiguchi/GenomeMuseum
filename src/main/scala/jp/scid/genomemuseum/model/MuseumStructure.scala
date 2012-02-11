@@ -65,12 +65,16 @@ class MuseumStructure extends EditableTreeSource[ExhibitRoom] with PropertyChang
     roomService foreach { roomService =>
       val subscription = new roomService.Sub {
         def notify(pub: roomService.Pub, event: Message[UserExhibitRoom]) {
+          println("publish: " + event)
           event match {
             case Remove(_, elm) => fireElementRemoved(elm)
             case Include(_, elm) =>
               val parent = roomService.getParent(elm).getOrElse(userRoomsRoot)
               fireElementInserted(parent)
             case Update(_, elm) =>
+              val parent = roomService.getParent(elm).getOrElse(userRoomsRoot)
+              fireElementRemoved(elm)
+              fireElementInserted(parent)
               firePropertyChange(new TreeSourceElementChangeEvent(MuseumStructure.this, elm))
             case _ => firePropertyChange("value", null, userRoomsRoot)
           }
@@ -87,7 +91,7 @@ class MuseumStructure extends EditableTreeSource[ExhibitRoom] with PropertyChang
    * ローカルライブラリの中身を取得する
    */
   def localLibraryContent =
-    userExhibitRoomService.map(_.localLibraryExhibitRoom(localSource)) getOrElse
+    userExhibitRoomService.map(_.localLibraryExhibitRoom) getOrElse
       MuseumExhibitListModel.empty
   
   override def getChildren(parent: ExhibitRoom): java.util.List[ExhibitRoom] = {

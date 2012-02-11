@@ -11,7 +11,7 @@ import jp.scid.gui.model.{ValueModels}
 import jp.scid.gui.control.{AbstractValueController}
 import jp.scid.gui.event.ValueChange
 import jp.scid.genomemuseum.{gui, view, model}
-import gui.{ExhibitTableModel, WebSearchManager, WebServiceResultsModel}
+import gui.{WebSearchManager, WebServiceResultsModel}
 import view.TaskProgressTableCell
 import model.{SearchResult, HttpDownloader, TaskProgressModel}
 import WebSearchManager._

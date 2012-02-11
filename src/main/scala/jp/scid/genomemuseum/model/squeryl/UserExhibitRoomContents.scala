@@ -11,23 +11,12 @@ import jp.scid.genomemuseum.model.{MuseumExhibitListModel => IMuseumExhibitListM
 /**
  * UserExhibitRoom の展示物を取得するプロクシクラス
  */
-abstract class UserExhibitRoomContents(room: IUserExhibitRoom)
-    extends IUserExhibitRoom with IMuseumExhibitListModel {
-  // プロキシメソッド
+abstract class UserExhibitRoomContents(room: IUserExhibitRoom) extends IMuseumExhibitListModel {
   /** {@inheritDoc} */
-  override def id = room.id
-  
-  /** {@inheritDoc} */
-  override def roomType = room.roomType
-  
-  /** {@inheritDoc} */
-  override def name: String = room.name
-  
-  /** {@inheritDoc} */
-  override def name_=(newName: String) = room.name = newName
+  def id = room.id
   
   /** もとの部屋 */
-  val userExhibitRoom = Some(room)
+  def userExhibitRoom = Some(room)
 }
 
 /**

@@ -7,6 +7,7 @@ import org.squeryl.Table
 import jp.scid.genomemuseum.model.{UserExhibitRoom => IUserExhibitRoom}
 import IUserExhibitRoom.RoomType._
 
+@deprecated("2012/02/12", "not use")
 private[squeryl] object RoomElementService {
   /** 部屋の子を取得する */
   private[squeryl] def getChildren(room: UserExhibitRoom, roomTable: Table[UserExhibitRoom]) =
@@ -40,12 +41,14 @@ private[squeryl] object RoomElementService {
 /**
  * 部屋の中身を取得する
  */
+@deprecated("2012/02/12", "not use")
 private[squeryl] trait RoomElementService {
   import RoomElementService._
   
   /**
    * 部屋の要素を取得する。
    */
+  @deprecated("2012/02/12", "not use")
   def getExhibits(room: IUserExhibitRoom) = inTransaction {
     val exhibitIdList = getLeafs(room, roomTable)
       .flatMap(r => getElementIds(r, relationTable))
@@ -59,6 +62,7 @@ private[squeryl] trait RoomElementService {
    * 部屋に要素を追加する。
    * BasicRoom のみ追加可能
    */
+  @deprecated("2012/02/12", "not use")
   def addElement(room: IUserExhibitRoom, item: MuseumExhibit) {
     if (room.roomType != BasicRoom)
       throw new IllegalArgumentException("Cannot add element to %s.".format(room))

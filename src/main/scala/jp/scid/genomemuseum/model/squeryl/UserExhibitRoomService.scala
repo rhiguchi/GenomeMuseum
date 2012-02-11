@@ -8,6 +8,7 @@ import org.squeryl.PrimitiveTypeMode._
 
 import jp.scid.genomemuseum.model.{UserExhibitRoom => IUserExhibitRoom,
   UserExhibitRoomService => IUserExhibitRoomService, ExhibitRoom,
+  MuseumExhibitService => IMuseumExhibitService, UriFileStorage,
   MuseumExhibit => IMuseumExhibit, MutableMuseumExhibitListModel => IMutableMuseumExhibitListModel,
   MuseumExhibitListModel => IMuseumExhibitListModel, GroupRoomContentsModel}
 import IUserExhibitRoom.RoomType
@@ -67,19 +68,15 @@ private[squeryl] class UserExhibitRoomService(
    * ローカルライブラリ用の部屋を返す
    * @param 名前などのプロキシ接続用ノード
    */
-  def localLibraryExhibitRoom(libraryNode: ExhibitRoom) =
-    new LocalLibraryExhibitRoom(libraryNode, table, exhibitRelation.leftTable)
+  def localLibraryExhibitRoom() =
+    new LocalLibraryExhibitRoom(exhibitRelation.leftTable, table)
   
   /**
    * 部屋をコンテンツ付きに変換する。
    */
-  protected[squeryl] def roomContents(room: UserExhibitRoom) = room.roomType match {
-    case BasicRoom =>
-      new UserExhibitBasicRoomContentsProxy(room, exhibitTable, relationTable)
-    case GroupRoom =>
-      new UserExhibitGroupRoomContentsProxy(room, exhibitTable, relationTable, table)
-    case SmartRoom =>
-      new UserExhibitSmartRoomContentsProxy(room, exhibitTable, relationTable, table)
+  protected[squeryl] def roomContents(room: UserExhibitRoom) = {
+    room.exhibitListModel = getContents(room)
+    room
   }
   
   def addRoom(roomType: RoomType, name: String, parent: Option[IUserExhibitRoom]) = {
@@ -135,11 +132,17 @@ private[squeryl] class UserExhibitRoomService(
     }
   }
   
-  def getContents(room: Option[IUserExhibitRoom]) = null // room match {
-//    case Some(RoomType(BasicRoom)) | None =>
-//      new MutableMuseumExhibitListModel(exhibitRelation, table, room)
-//    case _ => new MuseumExhibitListModel(exhibitRelation, table, room)
-//  }
+  /**
+   * コンテンツを取得する
+   */
+  def getContents(room: UserExhibitRoom) = room.roomType match {
+    case BasicRoom =>
+      new UserExhibitBasicRoomContentsProxy(room, exhibitTable, relationTable)
+    case GroupRoom =>
+      new UserExhibitGroupRoomContentsProxy(room, exhibitTable, relationTable, table)
+    case SmartRoom =>
+      new UserExhibitSmartRoomContentsProxy(room, exhibitTable, relationTable, table)
+  }
   
   /**
    * ID から親要素を取得する
@@ -171,18 +174,13 @@ private[squeryl] class UserExhibitRoomService(
  * 全ローカルファイル所有クラス
  */
 class LocalLibraryExhibitRoom(
-  room: ExhibitRoom,
-  roomTable: Table[UserExhibitRoom],
-  exhibitTable: Table[MuseumExhibit]
-) extends ExhibitRoom with GroupRoomContentsModel with IMutableMuseumExhibitListModel {
+  exhibitTable: Table[MuseumExhibit],
+  roomTable: Table[UserExhibitRoom]
+) extends IMuseumExhibitService with GroupRoomContentsModel with IMutableMuseumExhibitListModel {
   import UserExhibitRoomService.getParentId
+  /** 作成するエンティティクラス */
+  type ElementClass = MuseumExhibit
   
-  // プロキシメソッド
-  /** {@inheritDoc} */
-  def name: String = room.name
-  
-  // RoomContentExhibits 実装
-  /** 展示物のもとの部屋 */
   def userExhibitRoom = None
   
   /** 展示物 */
@@ -230,5 +228,24 @@ class LocalLibraryExhibitRoom(
     }
     case _ => false
   }
+  
+  /**
+   * Squeryl MuseumExhibit エンティティを作成する。
+   * 永続化はされないが、 {@link allElements} では要素が返される。
+   */
+  def create(): ElementClass = MuseumExhibit("")
+  
+  /**
+   * 要素の更新をサービスに通知する。
+   * 要素がまだサービスに永続化されていない時は、永続化される。
+   * 要素がこのサービスに存在しない時は無視される。
+   * @param element 保存を行う要素。
+   */
+  def save(element: ElementClass) = inTransaction {
+    exhibitTable.insertOrUpdate(element)
+  }
+  
+  /** MuseumExhibit のローカルファイル管理オブジェクト */
+  var localFileStorage: Option[UriFileStorage] = None
 }
 

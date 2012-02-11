@@ -9,7 +9,6 @@ import jp.scid.gui.ValueHolder
 import jp.scid.gui.event.{ValueChange, DataListSelectionChanged}
 import jp.scid.gui.table.{DataTableModel, TableColumnSortable}
 import jp.scid.genomemuseum.{view, model, gui}
-import gui.{ExhibitTableModel, PublisherScheduleTaskAdapter}
 import model.{UserExhibitRoom, MuseumExhibit,
   MutableMuseumExhibitListModel, MuseumExhibitListModel}
 

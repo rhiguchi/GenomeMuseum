@@ -14,10 +14,6 @@ object MuseumExhibitServiceMock extends org.specs2.mock.Mockito {
 class EmptyMuseumExhibitService extends MuseumExhibitService {
   type ElementClass = MuseumExhibit
   
-  override def publish(event: Message[_ <: MuseumExhibit]) {
-    super.publish(event)
-  }
-  
   def allElements: List[MuseumExhibit] = Nil
   def create() = MuseumExhibitMock.of("mock")
   def save(element: MuseumExhibit) {}

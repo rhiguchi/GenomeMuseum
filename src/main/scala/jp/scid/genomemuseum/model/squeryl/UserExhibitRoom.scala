@@ -3,7 +3,8 @@ package jp.scid.genomemuseum.model.squeryl
 import org.squeryl.KeyedEntity
 import org.squeryl.annotations.Column
 
-import jp.scid.genomemuseum.model.{UserExhibitRoom => IUserExhibitRoom}
+import jp.scid.genomemuseum.model.{UserExhibitRoom => IUserExhibitRoom,
+  MuseumExhibitListModel => IMuseumExhibitListModel}
 import IUserExhibitRoom.RoomType
 
 /**
@@ -29,4 +30,7 @@ case class UserExhibitRoom(
   
   /** Squeryl のための値付きの標準コンストラクタ */
   def this() = this("", parentId = Some(0))
+  
+  @transient
+  var exhibitListModel: IMuseumExhibitListModel = IMuseumExhibitListModel.empty
 }

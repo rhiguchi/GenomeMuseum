@@ -13,6 +13,9 @@ trait UserExhibitRoom extends ExhibitRoom {
   
   /** この部屋の表示名を設定する */
   def name_=(newName: String)
+  
+  /** この部屋が保持する展示物を返す */
+  def exhibitListModel: MuseumExhibitListModel
 }
 
 object UserExhibitRoom {
@@ -33,19 +36,8 @@ object UserExhibitRoom {
     }
   }
   
-  def apply(name: String, roomType: RoomType.Value = RoomType.BasicRoom,
-      id: Long = 0L, parentId: Option[Long] = None): UserExhibitRoom =
-    UserExhibitRoomImpl(name, roomType, id, parentId)
-  
   def unapply(room: ExhibitRoom): Option[(UserExhibitRoom)] = room match {
     case room: UserExhibitRoom => Some(room)
     case _ => None
   }
-  
-  private case class UserExhibitRoomImpl(
-    var name: String,
-    roomType: RoomType.Value,
-    id: Long,
-    parentId: Option[Long]
-  ) extends UserExhibitRoom
 }

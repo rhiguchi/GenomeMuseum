@@ -12,7 +12,6 @@ import java.net.URL
 
 import jp.scid.genomemuseum.model.{MuseumExhibit, MuseumExhibitLoader, MuseumExhibitService,
   MuseumExhibitFileLibrary}
-import jp.scid.genomemuseum.gui.ExhibitTableModel
 import MuseumExhibitLoadManager._
 
 class MuseumExhibitLoadManagerSpec extends Specification with mock.Mockito {
