@@ -8,8 +8,7 @@ import UserExhibitRoom.RoomType._
 /**
  * UserExhibitRoom データ提供サービスのインターフェイス。
  */
-trait UserExhibitRoomService extends TreeDataService[UserExhibitRoom]
-    with Publisher[Message[UserExhibitRoom]] {
+trait UserExhibitRoomService extends Publisher[Message[UserExhibitRoom]] {
   /**
    * 部屋をサービスに追加する。
    * @param roomType 部屋の種類
@@ -17,8 +16,7 @@ trait UserExhibitRoomService extends TreeDataService[UserExhibitRoom]
    * @param parent 親要素
    * @see UserExhibitRoom
    */
-  def addRoom(roomType: RoomType, name: String,
-    parent: Option[UserExhibitRoom]): UserExhibitRoom
+  def addRoom(roomType: RoomType, name: String, parent: Option[UserExhibitRoom]): UserExhibitRoom
   
   /**
    * この名前をもつ部屋が存在するか。
@@ -35,6 +33,27 @@ trait UserExhibitRoomService extends TreeDataService[UserExhibitRoom]
   def remove(element: UserExhibitRoom): Boolean
   
   /**
+   * 子要素を返す。
+   * @param parent 親要素。{@code None} で、ルート要素（どの親にも属さない要素）を返す。
+   * @return 子要素。
+   */
+  def getChildren(parent: Option[UserExhibitRoom]): Iterable[UserExhibitRoom]
+  
+  /**
+   * 親要素を取得する
+   * @param element 子要素
+   * @return 親要素。属する親が無いの時は {@code None} 。
+   */
+  def getParent(element: UserExhibitRoom): Option[UserExhibitRoom]
+  
+  /**
+   * 要素の更新を通知する。
+   * @param element 削除する要素。
+   * @return 削除された要素数。
+   */
+  def save(element: UserExhibitRoom)
+  
+  /**
    * 親要素を変更する
    * @param element 要素
    * @param parent 新しい親の要素。ルート項目にするには None。
@@ -42,7 +61,9 @@ trait UserExhibitRoomService extends TreeDataService[UserExhibitRoom]
   def setParent(element: UserExhibitRoom, parent: Option[UserExhibitRoom])
   
   /**
-   * 展示物を取得する
+   * ローカルライブラリ用の部屋を返す
+   * @param 名前などのプロキシ接続用ノード
    */
-  def getContents(room: Option[UserExhibitRoom]): MuseumExhibitListModel
+  def localLibraryExhibitRoom(libraryNode: ExhibitRoom): ExhibitRoom
+    with GroupRoomContentsModel with MutableMuseumExhibitListModel
 }

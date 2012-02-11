@@ -8,7 +8,6 @@ import IUserExhibitRoom.RoomType
 
 /**
  * ユーザーが中身を設定できる展示室オブジェクトの、Squeryl 実装
- * TreeDataService 上で、ソースリストの一つのノードとなる。
  * @param name 表示名。
  * @param boxType この部屋のタイプ
  * @param parentId 親子構造を示すときの、親の識別子。

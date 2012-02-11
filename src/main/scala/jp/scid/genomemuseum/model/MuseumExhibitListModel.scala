@@ -2,6 +2,13 @@ package jp.scid.genomemuseum.model
 
 import jp.scid.gui.model.ValueModel
 
+object MuseumExhibitListModel {
+  val empty = new MuseumExhibitListModel {
+    def exhibitList = Nil
+    def userExhibitRoom = None
+  }
+}
+
 /**
  * 展示物を取得できる構造定義
  */

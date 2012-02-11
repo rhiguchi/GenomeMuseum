@@ -182,12 +182,3 @@ class MainViewControllerSpec extends Specification with mock.Mockito {
 //      sourceListCtrl.removeSelectedUserRoomAction.peer
   }
 }
-
-object MainViewControllerSpec extends mock.Mockito {
-  import jp.scid.genomemuseum.model.TreeDataService
-  
-  def makeTreeDataServiceMock[A](service: TreeDataService[A]) {
-    service.getChildren(any) returns Nil
-    service.getParent(any) returns None
-  }
-}

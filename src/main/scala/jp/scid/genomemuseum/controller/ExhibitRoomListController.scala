@@ -90,15 +90,13 @@ class ExhibitRoomListController extends TreeController[ExhibitRoom, MuseumStruct
   
   /** ローカルライブラリの部屋コンテンツを返す */
   protected[controller] def getLocalLibraryContent: Option[MuseumExhibitListModel] =
-    Option(getModel).flatMap(str => str.getRoomContents(str.localSource))
+    Option(getModel).map(str => str.localLibraryContent)
   
   /** パスのコンテンツを返す */
   protected[controller] def getContent(path: TreePath): Option[MuseumExhibitListModel] = {
-    Option(getModel) flatMap { structure =>
-      path.getLastPathComponent match {
-        case room: ExhibitRoom => structure.getRoomContents(room)
-        case _ => None
-      }
+    path.getLastPathComponent match {
+      case listModel: MuseumExhibitListModel => Some(listModel)
+      case _ => None
     }
   }
   
@@ -118,8 +116,6 @@ class ExhibitRoomListController extends TreeController[ExhibitRoom, MuseumStruct
     /** ツリーの展開を管理するハンドラ */
     expansionController.bind(tree)
   }
-  
-//  def bind
   
   /**
    * 部屋をサービスに追加する。

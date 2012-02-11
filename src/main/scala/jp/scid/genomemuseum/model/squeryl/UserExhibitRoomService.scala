@@ -94,7 +94,7 @@ private[squeryl] class UserExhibitRoomService(
       table.insert(newRoom)
     }
     
-    newRoom
+    roomContents(newRoom)
   }
   
   def nameExists(name: String): Boolean = inTransaction {
