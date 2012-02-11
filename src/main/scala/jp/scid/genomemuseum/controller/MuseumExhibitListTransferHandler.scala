@@ -37,6 +37,10 @@ private[controller] object MuseumExhibitTransferHandler {
    * @param sourceRoom 展示物が存在していた部屋。部屋からの転出ではない時は {@code None} 。
    */
   class TransferData(contents: RoomContentExhibits) extends Transferable {
+    def this(exhibits: List[MuseumExhibit], room: Option[UserExhibitRoom]) {
+      this(RoomContentExhibitsImpl(exhibits, room))
+    }
+    
     def getTransferDataFlavors(): Array[DataFlavor] =
       Array(TransferData.dataFlavor, javaFileListFlavor)
     
@@ -55,6 +59,14 @@ private[controller] object MuseumExhibitTransferHandler {
       case _ => false
     }
   }
+  
+  /**
+   * 単純実装
+   */
+  private case class RoomContentExhibitsImpl(
+    exhibitList: List[MuseumExhibit],
+    userExhibitRoom: Option[UserExhibitRoom]
+  ) extends RoomContentExhibits
 }
 
 abstract class MuseumExhibitTransferHandler extends TransferHandler {
@@ -167,8 +179,7 @@ class MuseumExhibitListTransferHandler extends MuseumExhibitTransferHandler {
     
     controllerModel match {
       case Some(room) =>
-        val contents = RoomContentExhibits(selectedElements, room.getRoom)
-        new MuseumExhibitTransferHandler.TransferData(contents)
+        new MuseumExhibitTransferHandler.TransferData(selectedElements, room.getRoom)
       case _ => super.createTransferable(c)
     }
   }
