@@ -9,8 +9,9 @@ trait MutableMuseumExhibitListModel extends MuseumExhibitListModel {
    * 要素がまだサービスに永続化されていない時は、永続化される。
    * 要素がこのサービスに存在しない時は無視される。
    * @param element 保存を行う要素。
+   * @return 追加に成功したら {@code true}
    */
-  def add(element: MuseumExhibit)
+  def add(element: MuseumExhibit): Boolean
   
   /**
    * このデータサービスが持つ要素を除去する。

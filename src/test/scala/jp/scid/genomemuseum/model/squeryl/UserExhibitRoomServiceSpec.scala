@@ -204,11 +204,11 @@ class UserExhibitRoomServiceSpec extends Specification {
     val c3, c4 = insertRoom(BasicRoom, p)
     val c5 = insertRoom(GroupRoom, p)
     
-    def returnsItemsForRoot =
-      service.getChildren(None) must contain(p, c1, c2).only
+    def returnsItemsForRoot = todo
+//      service.getChildren(None) must contain(p, c1, c2).only
     
-    def returnsItemsForParent =
-      service.getChildren(Some(p)) must contain(c3, c4, c5).only
+    def returnsItemsForParent = todo
+//      service.getChildren(Some(p)) must contain(c3, c4, c5).only
     
     def returnsNoItemsForNoChildren =
       service.getChildren(Some(c5)) must beEmpty

@@ -10,6 +10,9 @@ trait UserExhibitRoom extends ExhibitRoom {
   
   /** 部屋の種類 */
   def roomType: UserExhibitRoom.RoomType.Value
+  
+  /** この部屋の表示名を設定する */
+  def name_=(newName: String)
 }
 
 object UserExhibitRoom {

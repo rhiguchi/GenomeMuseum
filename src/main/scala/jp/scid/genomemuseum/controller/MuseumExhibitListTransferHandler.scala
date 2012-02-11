@@ -81,7 +81,7 @@ abstract class MuseumExhibitTransferHandler extends TransferHandler {
   
   private[controller] def canImportExhibits(target: MutableMuseumExhibitListModel, source: Option[UserExhibitRoom]) = {
     // 同一部屋とLocalLibraryへは展示物の転送をしない
-    target.getRoom.nonEmpty && target.getRoom != source
+    target.userExhibitRoom.nonEmpty && target.userExhibitRoom != source
   }
 
   /**
@@ -179,7 +179,7 @@ class MuseumExhibitListTransferHandler extends MuseumExhibitTransferHandler {
     
     controllerModel match {
       case Some(room) =>
-        new MuseumExhibitTransferHandler.TransferData(selectedElements, room.getRoom)
+        new MuseumExhibitTransferHandler.TransferData(selectedElements, room.userExhibitRoom)
       case _ => super.createTransferable(c)
     }
   }
