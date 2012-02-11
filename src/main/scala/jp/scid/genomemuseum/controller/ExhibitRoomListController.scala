@@ -191,11 +191,3 @@ object EventListHandler {
     handler
   }
 }
-
-class EventListHandler[E] {
-  
-}
-
-private object ExhibitRoomListController {
-}
-

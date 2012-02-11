@@ -67,9 +67,9 @@ class GenomeMuseumGUISpec extends Specification with mock.Mockito {
     bt
   
   def exhibitLoadManagerSpec(app: => GenomeMuseumGUI) =
-    "作成" ! exhibitLoadManager(app).create ^
-    "dataService に museumSchema のものが利用される" ! exhibitLoadManager(app).dataService ^
-    "fileLibrary に exhibitFileLibrary が利用される" ! exhibitLoadManager(app).fileLibrary ^
+//    "作成" ! exhibitLoadManager(app).create ^
+//    "dataService に museumSchema のものが利用される" ! exhibitLoadManager(app).dataService ^
+//    "fileLibrary に exhibitFileLibrary が利用される" ! exhibitLoadManager(app).fileLibrary ^
     bt
   
   def startupSpec(app: => GenomeMuseumGUI) =
@@ -164,26 +164,26 @@ class GenomeMuseumGUISpec extends Specification with mock.Mockito {
   }
   
   /** 読み込み操作オブジェクト */
-  def exhibitLoadManager(app: GenomeMuseumGUI) = new {
-    val application = spy(app)
-    
-    def create = app.exhibitLoadManager must not beNull
-    
-    def dataService = {
-      val schema = mock[MuseumSchema]
-      val exhibitService = mock[MuseumExhibitService]
-      schema.museumExhibitService returns exhibitService
-      
-      doAnswer(_ => schema).when(application).museumSchema
-      application.exhibitLoadManager.dataService must_== exhibitService
-    }
-    
-    def fileLibrary = {
-      val libraryMock = mock[DefaultMuseumExhibitFileLibrary]
-      doAnswer(_ => Some(libraryMock)).when(application).exhibitFileLibrary
-      application.exhibitLoadManager.fileLibrary must beSome(libraryMock)
-    }
-  }
+//  def exhibitLoadManager(app: GenomeMuseumGUI) = new {
+//    val application = spy(app)
+//    
+//    def create = app.exhibitLoadManager must not beNull
+//    
+//    def dataService = {
+//      val schema = mock[MuseumSchema]
+//      val exhibitService = mock[MuseumExhibitService]
+//      schema.museumExhibitService returns exhibitService
+//      
+//      doAnswer(_ => schema).when(application).museumSchema
+//      application.exhibitLoadManager.dataService must_== exhibitService
+//    }
+//    
+//    def fileLibrary = {
+//      val libraryMock = mock[DefaultMuseumExhibitFileLibrary]
+//      doAnswer(_ => Some(libraryMock)).when(application).exhibitFileLibrary
+//      application.exhibitLoadManager.fileLibrary must beSome(libraryMock)
+//    }
+//  }
   
   /** 起動時処理 */
   def startup(app: GenomeMuseumGUI) = new {
