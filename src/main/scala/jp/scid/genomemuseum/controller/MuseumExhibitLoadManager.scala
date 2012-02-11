@@ -21,14 +21,12 @@ import SwingTaskService._
  * @param museumExhibitStorage ファイル格納管理オブジェクト
  */
 class MuseumExhibitLoadManager(
-  val dataService: MuseumExhibitService,
-  loader: MuseumExhibitLoader,
-  var fileLibrary: Option[MuseumExhibitFileLibrary] = None
+  loader: MuseumExhibitLoader
 ) extends GenomeMuseumController with Publisher {
   import MuseumExhibitLoadManager._
   
-  def this(dataService: MuseumExhibitService) {
-    this(dataService, new MuseumExhibitLoader)
+  def this() {
+    this(new MuseumExhibitLoader)
   }
   
   // リソース

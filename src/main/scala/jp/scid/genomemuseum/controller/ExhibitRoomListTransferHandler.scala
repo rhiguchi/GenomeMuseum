@@ -34,9 +34,6 @@ class ExhibitRoomListTransferHandler extends MuseumExhibitListTransferHandler {
   /** ファイルの読み込み処理を行うモデル */
   var exhibitLoadManager: Option[MuseumExhibitLoadManager] = None
   
-  /** 転入操作に用いられる、展示物管理オブジェクト */
-  private def exhibitService = exhibitLoadManager.map(_.dataService)
-  
   override def canImport(ts: TransferSupport) = {
     if (ts.isDataFlavorSupported(exhibitRoomDataFlavor)) {
       getImportRoomFunction(getTargetRooom(ts), ts.getTransferable).nonEmpty
@@ -100,13 +97,16 @@ class ExhibitRoomListTransferHandler extends MuseumExhibitListTransferHandler {
   }
     
   override def importExhibits(exhibits: Seq[MuseumExhibit], targetRoom: UserExhibitRoom) = {
-    exhibitService match {
-      case Some(service) =>
-        exhibits map (_.asInstanceOf[service.ElementClass]) foreach
-          (e => service.addElement(targetRoom, e))
-        exhibits.nonEmpty
-      case _ => false
-    }
+    // TDOO
+//    exhibitLoadManager match {
+//      case Some(manager) =>
+//        
+//        exhibits map (_.asInstanceOf[service.ElementClass]) foreach
+//          (e => service.addElement(targetRoom, e))
+//        exhibits.nonEmpty
+//      case _ => false
+//    }
+    false
   }
     
   override def importFiles(files: Seq[File], targetRoom: Option[UserExhibitRoom]) = {
@@ -134,15 +134,17 @@ class ExhibitRoomListTransferHandler extends MuseumExhibitListTransferHandler {
   }
     
   override def createTransferable(c: JComponent) = {
-    (c, sourceListModel) match {
-      case (tree: JTree, Some(model)) if tree.getModel == model.treeModel => model.selectedPath.flatMap(_.lastOption) match {
-        case Some(room: UserExhibitRoom) => exhibitService match {
-          case Some(exhibitService) => ExhibitRoomTransferData(room, exhibitService)
-          case _ => null
-        }
-        case _ => null
-      }
-      case _ => null
-    }
+    // TODO
+//    (c, sourceListModel) match {
+//      case (tree: JTree, Some(model)) if tree.getModel == model.treeModel => model.selectedPath.flatMap(_.lastOption) match {
+//        case Some(room: UserExhibitRoom) => exhibitService match {
+//          case Some(exhibitService) => ExhibitRoomTransferData(room, exhibitService)
+//          case _ => null
+//        }
+//        case _ => null
+//      }
+//      case _ => null
+//    }
+    null: Transferable
   }
 }

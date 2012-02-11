@@ -76,6 +76,11 @@ private[model] object MuseumExhibitLoader {
 class MuseumExhibitLoader {
   import MuseumExhibitLoader._
   
+  def this(exhibitServcie: MuseumExhibitService) {
+    this()
+    this.exhibitServcie = Option(exhibitServcie)
+  }
+  
   // 対応するファイル形式の構文解析オブジェクト
   private val parsers = List(GenBnakSource, FastaSource)
   

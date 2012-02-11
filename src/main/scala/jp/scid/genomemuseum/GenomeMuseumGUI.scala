@@ -93,6 +93,8 @@ class GenomeMuseumGUI extends Application {
   
   lazy val museumStructure = new MuseumStructure(museumSchema.userExhibitRoomService)
   
+  lazy val exhibitLoader = new MuseumExhibitLoader(museumSchema.museumExhibitService)
+  
   /**
    * バイオデータの読み込み操作オブジェクトを作成する。
    * 
@@ -100,11 +102,7 @@ class GenomeMuseumGUI extends Application {
    * @see #museumSchema
    * @see #loadManager
    */
-  lazy val exhibitLoadManager = {
-    val loadManager = new MuseumExhibitLoadManager(museumSchema.museumExhibitService)
-    loadManager.fileLibrary = exhibitFileLibrary
-    loadManager
-  }
+  lazy val exhibitLoadManager = new MuseumExhibitLoadManager(exhibitLoader)
   
   // ビュー
   /**
