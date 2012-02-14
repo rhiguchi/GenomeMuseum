@@ -6,7 +6,7 @@ object MuseumSchemaMock extends Mockito {
   def of(roomService: UserExhibitRoomService, exhibitService: MuseumExhibitService) = {
     val schema = mock[MuseumSchema]
     schema.userExhibitRoomService returns roomService
-    schema.museumExhibitService returns exhibitService
+//    schema.museumExhibitService returns exhibitService
     schema
   }
 }

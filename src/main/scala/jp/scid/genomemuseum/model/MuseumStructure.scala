@@ -21,10 +21,11 @@ class MuseumStructure extends EditableTreeSource[ExhibitRoom] with PropertyChang
     with TreeSource[ExhibitRoom] {
   import MuseumStructure._
   
-  def this(roomService: UserExhibitRoomService) {
+  def this(roomService: UserExhibitRoomService, localLibraryContent: MuseumExhibitListModel) {
     this()
     
     this.roomService = Option(roomService)
+    this.localLibraryContent = localLibraryContent
   }
   
   // プロパティ
@@ -90,9 +91,7 @@ class MuseumStructure extends EditableTreeSource[ExhibitRoom] with PropertyChang
   /**
    * ローカルライブラリの中身を取得する
    */
-  def localLibraryContent =
-    userExhibitRoomService.map(_.localLibraryExhibitRoom) getOrElse
-      MuseumExhibitListModel.empty
+  var localLibraryContent: MuseumExhibitListModel = MuseumExhibitListModel.empty
   
   override def getChildren(parent: ExhibitRoom): java.util.List[ExhibitRoom] = {
     import collection.JavaConverters._

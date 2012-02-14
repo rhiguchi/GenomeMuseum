@@ -269,11 +269,11 @@ class MuseumSourceModelSpec extends Specification with mock.Mockito {
   }
   
   /** イベント発行が外部から可能な MuseumStructure */
-  class PublishableMuseumStructure(r: UserExhibitRoomService) extends MuseumStructure(r) {
+//  class PublishableMuseumStructure(r: UserExhibitRoomService) extends MuseumStructure(r) {
 //    override def publish(event: Message[ExhibitRoom]) {
 ////      super.publish(event)
 //    }
-  }
+//  }
   
   /** ソースイベント */
   def sourceEvent(f: Factory) = new {

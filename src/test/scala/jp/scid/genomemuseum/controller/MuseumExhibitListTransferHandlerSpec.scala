@@ -8,7 +8,6 @@ import javax.swing.{TransferHandler, JComponent}
 import org.specs2._
 import mock._
 
-import jp.scid.genomemuseum.gui.ExhibitTableModel
 import jp.scid.genomemuseum.model.{MuseumExhibit, UserExhibitRoom,
   UserExhibitRoomMock, MuseumExhibitMock}
 import UserExhibitRoom.RoomType._

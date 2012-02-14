@@ -9,7 +9,6 @@ import jp.scid.genomemuseum.{view, gui, model, GenomeMuseumGUI}
 import model.{ExhibitRoom, UserExhibitRoom, MuseumSchema, UserExhibitRoomService, MuseumExhibitService}
 import model.{UserExhibitRoomServiceMock, MuseumExhibitServiceMock}
 import view.MainView
-import gui.ExhibitTableModel
 
 class MainViewControllerSpec extends Specification with mock.Mockito {
   def is = "MainViewController" ^

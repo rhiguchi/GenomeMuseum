@@ -91,7 +91,7 @@ class GenomeMuseumGUI extends Application {
     museumSchema
   }
   
-  lazy val museumStructure = new MuseumStructure(museumSchema.userExhibitRoomService)
+  lazy val museumStructure = new MuseumStructure(museumSchema.userExhibitRoomService, museumSchema.museumExhibitService)
   
   lazy val exhibitLoader = new MuseumExhibitLoader(museumSchema.museumExhibitService)
   
