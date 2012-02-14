@@ -100,8 +100,10 @@ public class MainView implements GenomeMuseumView {
     public final JLabel loadingIconLabel = new JLabel(loadingIcon);
 
     // Source List Area
+    public final ExhibitRoomListTreeCellRendererProxy sourceListCellRenderer =
+            new ExhibitRoomListTreeCellRendererProxy();
     public final SourceListCellEditor sourceListCellEditor = new SourceListCellEditor();
-    public final JTree sourceList = createSourceList(sourceListCellEditor);
+    public final JTree sourceList = createSourceList(sourceListCellRenderer, sourceListCellEditor);
 
     public final JScrollPane sourceListScroll = MacWidgetFactory.createSourceListScrollPane(sourceList); {
         sourceListScroll.setPreferredSize(new Dimension(260, 260));
@@ -303,10 +305,15 @@ public class MainView implements GenomeMuseumView {
         return table;
     }
 
-    private static JTree createSourceList(SourceListCellEditor cellEditor) {
+    private static JTree createSourceList(
+            ExhibitRoomListTreeCellRendererProxy sourceListCellRenderer,
+            SourceListCellEditor cellEditor) {
         JTree tree = new JTree();
         tree.setUI(new SourceListTreeUI());
         tree.setCellEditor(new DefaultTreeCellEditor(tree, null, cellEditor));
+        sourceListCellRenderer.setRenderer(tree.getCellRenderer());
+        tree.setCellRenderer(sourceListCellRenderer);
+        
         tree.setRootVisible(false);
         tree.setInvokesStopCellEditing(true);
         tree.setToggleClickCount(0);
