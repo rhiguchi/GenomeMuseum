@@ -222,8 +222,8 @@ class LocalLibraryExhibitRoom(
    * @param element 保存を行う要素。
    */
   def add(element: IMuseumExhibit) = element match {
-    case exhibit: MuseumExhibit if !exhibit.isPersisted => inTransaction {
-      exhibitTable.insert(exhibit)
+    case exhibit: MuseumExhibit => inTransaction {
+      exhibitTable.insertOrUpdate(exhibit)
       true
     }
     case _ => false

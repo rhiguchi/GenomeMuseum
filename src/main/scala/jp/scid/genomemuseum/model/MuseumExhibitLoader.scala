@@ -104,6 +104,7 @@ class MuseumExhibitLoader {
       val bufSource = io.Source.fromURL(source)
       val exhibit = servcie.create
       parser.makeExhibitFromFile(exhibit, bufSource.getLines)
+      exhibit.dataSourceUri = source.toURI.toString
       servcie.save(exhibit)
       exhibit
     }

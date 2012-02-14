@@ -11,6 +11,7 @@ import jp.scid.gui.table.{DataTableModel, TableColumnSortable}
 import jp.scid.genomemuseum.{view, model, gui}
 import model.{UserExhibitRoom, MuseumExhibit,
   MutableMuseumExhibitListModel, MuseumExhibitListModel}
+import view.ExhibitListView
 
 /**
  * 展示物のテーブル表示と、フィルタリング、テーブルに表示されている項目の
@@ -49,4 +50,19 @@ class MuseumExhibitListController extends MuseumExhibitController {
   /** 読み込みマネージャを設定する */
   def loadManager_=(manager: Option[MuseumExhibitLoadManager]) =
     tableTransferHandler.exhibitLoadManager = manager
+  
+  /** ビューに結合処理を追加するため */
+  override def bind(view: ExhibitListView) {
+    super.bind(view)
+    bindTable(view.dataTable)
+  }
+  
+  /** 転送ハンドラを結合 */
+  def bindTable(table: JTable) {
+    table.setTransferHandler(tableTransferHandler)
+    table.getParent match {
+      case parent: JComponent => parent.setTransferHandler(tableTransferHandler)
+      case _ =>
+    }
+  }
 }

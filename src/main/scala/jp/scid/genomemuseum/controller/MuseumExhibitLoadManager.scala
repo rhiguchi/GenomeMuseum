@@ -67,7 +67,8 @@ class MuseumExhibitLoadManager(
   }
   
   def loadExhibit(targetRoom: MutableMuseumExhibitListModel, file: File) {
-    // TODO
+    val task = new FileLoadingTask(file, targetRoom)
+    addQuery(task)
   }
   
   /**
@@ -140,8 +141,16 @@ class MuseumExhibitLoadManager(
    * 管理オブジェクトの指定する位置に移動される。
    */
   private class FileLoadingTask(file: File) extends LoadTask {
+    var targetRoom: Option[MutableMuseumExhibitListModel] = None
+    
+    def this(file: File, targetRoom: MutableMuseumExhibitListModel) {
+      this(file)
+      this.targetRoom = Option(targetRoom)
+    }
+    
     def call() = {
       val exhibitOpt = loader.loadFromUri(file.toURI.toURL)
+      targetRoom foreach (room => exhibitOpt foreach room.add)
       exhibitOpt
     }
     
