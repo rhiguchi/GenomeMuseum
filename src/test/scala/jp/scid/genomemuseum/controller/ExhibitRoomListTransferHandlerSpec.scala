@@ -11,7 +11,6 @@ import DataFlavor.javaFileListFlavor
 
 import jp.scid.genomemuseum.model.{ExhibitRoom, UserExhibitRoom, MuseumExhibitService,
   MuseumStructure, MuseumExhibit}
-import jp.scid.genomemuseum.gui.{MuseumSourceModel}
 import UserExhibitRoom.RoomType._
 
 class ExhibitRoomListTransferHandlerSpec extends Specification with mock.Mockito {
