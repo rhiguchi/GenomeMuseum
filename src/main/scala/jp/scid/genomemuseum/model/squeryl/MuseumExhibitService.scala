@@ -21,14 +21,14 @@ class MuseumExhibitService(
   /** 作成するエンティティクラス */
   type ElementClass = MuseumExhibit
   
-  private var exhibitListRef = new WeakReference(IndexedSeq.empty[MuseumExhibit])
+  private var exhibitListRef = new WeakReference(null: IndexedSeq[MuseumExhibit])
   
   override def userExhibitRoom = None
   
   /** 展示物 */
   def exhibitList = getExhibits.toList
   
-  protected def getExhibits() = exhibitListRef.get match {
+  private def getExhibits() = exhibitListRef.get match {
     case Some(list) => list
     case None =>
       val list = retrieve()
@@ -69,19 +69,21 @@ class MuseumExhibitService(
    */
   def remove(element: IMuseumExhibit): Boolean = {
     val exhibits = getExhibits
+        
+    val removed = inTransaction {
+      exhibitTable.delete(element.id)
+    }
     exhibits.indexOf(element) match {
       case -1 => false
       case index =>
         val newExhibits = exhibits.take(index) ++ exhibits.drop(index + 1)
         updateExhibitsReference(newExhibits)
         
-        inTransaction {
-          exhibitTable.delete(element.id)
-        }
-        
         fireValueIndexedPropertyChange(index, exhibits, null)
         true
     }
+    
+    removed
   }
   
   /**
