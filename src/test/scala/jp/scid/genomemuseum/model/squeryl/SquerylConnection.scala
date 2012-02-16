@@ -11,9 +11,8 @@ object SquerylConnection {
     val session = createSession
     session.bindToCurrentThread
     schema.name.foreach { schemaName =>
-      val conn = Session.currentSession.connection
       val sql = """create schema %s""".format(schemaName)
-      conn.createStatement.execute(sql)
+      session.connection.createStatement.execute(sql)
     }
     schema.create
     session
