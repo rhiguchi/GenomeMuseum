@@ -6,11 +6,13 @@ import org.squeryl.{Table, KeyedEntity}
 import org.squeryl.dsl.OneToManyRelation
 import org.squeryl.PrimitiveTypeMode._
 
+import jp.scid.gui.model.TreeSource.MappedPropertyChangeEvent
 import jp.scid.genomemuseum.model.{UserExhibitRoom => IUserExhibitRoom,
   UserExhibitRoomService => IUserExhibitRoomService, ExhibitRoom,
   MuseumExhibitService => IMuseumExhibitService, UriFileStorage,
   MuseumExhibit => IMuseumExhibit, MutableMuseumExhibitListModel => IMutableMuseumExhibitListModel,
-  MuseumExhibitListModel => IMuseumExhibitListModel, GroupRoomContentsModel}
+  MuseumExhibitListModel => IMuseumExhibitListModel, GroupRoomContentsModel,
+  ExhibitRoomContentsService}
 import IUserExhibitRoom.RoomType
 import RoomType._
 
@@ -59,26 +61,10 @@ object UserExhibitRoomService {
 private[squeryl] class UserExhibitRoomService(
   private[squeryl] val table: Table[UserExhibitRoom],
   exhibitRelation: OneToManyRelation[MuseumExhibit, RoomExhibit]
-) extends IUserExhibitRoomService with UserExhibitRoomPublisher {
-  type Node = UserExhibitRoom
-  
-  def userExhibitRoomTablePublisher = SquerylTriggerAdapter.connect(table, 2)
-  
-  /**
-   * ローカルライブラリ用の部屋を返す
-   * @param 名前などのプロキシ接続用ノード
-   */
-  def localLibraryExhibitRoom() =
-    new LocalLibraryExhibitRoom(exhibitRelation.leftTable, table)
-  
-  /**
-   * 部屋をコンテンツ付きに変換する。
-   */
-  protected[squeryl] def roomContents(room: UserExhibitRoom) = {
-    room.exhibitListModel = getContents(room)
-    room
-  }
-  
+) extends IUserExhibitRoomService {
+  /** 子要素のキャッシュ */
+  //
+  // ノード
   def addRoom(roomType: RoomType, name: String, parent: Option[IUserExhibitRoom]) = {
     val parentIdOp = parent flatMap {
       case RoomType(GroupRoom) => parent
@@ -86,12 +72,13 @@ private[squeryl] class UserExhibitRoomService(
     } map {p => p.id}
     
     val newRoom = UserExhibitRoom(name, roomType, parentIdOp)
-    
     inTransaction {
       table.insert(newRoom)
     }
     
-    roomContents(newRoom)
+    fireChildrenChange(parent)
+    
+    newRoom
   }
   
   def nameExists(name: String): Boolean = inTransaction {
@@ -99,30 +86,43 @@ private[squeryl] class UserExhibitRoomService(
   }
   
   def getParent(element: IUserExhibitRoom) = {
-    parentFor(element.id) map roomContents
+    parentFor(element.id)
   }
   
   def setParent(element: IUserExhibitRoom, parent: Option[IUserExhibitRoom]) {
     ensureParentAllowed(parent)
     
     val parentId = parent.map(_.id)
+    val oldParent = parentFor(element.id)
+    
     inTransaction {
       update(table) ( e =>
         where(e.id === element.id)
         set(e.parentId := parentId)
       )
     }
+    
+    fireMappedPropertyChangeEvent("parent", element, oldParent, parent)
   }
   
-  def getChildren(parent: Option[IUserExhibitRoom]) = {
-    val rooms = inTransaction {
-      table.where(e => nvl(e.parentId, 0L) === parent.map(_.id).getOrElse(0L)).toList
+  def getChildren(parent: Option[IUserExhibitRoom]) =
+    retrieveChildren(parent.map(_.id).getOrElse(0L)).toList
+  
+  private def retrieveChildren(parentId: Long) = inTransaction {
+    table.where(e => nvl(e.parentId, 0L) === parentId).toIndexedSeq
+  }
+  
+  def remove(element: IUserExhibitRoom) = {
+    val parent = parentFor(element.id)
+    
+    val result = inTransaction {
+      table.delete(element.id)
     }
-    rooms map roomContents
-  }
-  
-  def remove(element: IUserExhibitRoom) = inTransaction {
-    table.delete(element.id)
+    result match {
+      case true =>
+      case false => fireChildrenChange(parent)
+    }
+    result
   }
   
   def save(element: IUserExhibitRoom) = inTransaction {
@@ -132,16 +132,63 @@ private[squeryl] class UserExhibitRoomService(
     }
   }
   
+  private def fireChildrenChange(parent: Option[IUserExhibitRoom]) {
+    fireMappedPropertyChangeEvent("children", parent, null, null)
+  }
+  
+  private def fireMappedPropertyChangeEvent(
+      propertyName: String, key: AnyRef, oldValue: AnyRef, newValue: AnyRef) {
+    val pce = new MappedPropertyChangeEvent(this, propertyName, key, oldValue, newValue)
+    firePropertyChange(pce)
+  }
+  
+  //
+  // コンテンツ
   /**
-   * コンテンツを取得する
+   * 要素を追加する。
+   * 
+   * 要素を ID で DB からルックアップし、存在するときは追加される。
+   * 要素が存在しない時は無視される。
+   * @param element 保存を行う要素。
    */
-  def getContents(room: UserExhibitRoom) = room.roomType match {
-    case BasicRoom =>
-      new UserExhibitBasicRoomContentsProxy(room, exhibitTable, relationTable)
-    case GroupRoom =>
-      new UserExhibitGroupRoomContentsProxy(room, exhibitTable, relationTable, table)
-    case SmartRoom =>
-      new UserExhibitSmartRoomContentsProxy(room, exhibitTable, relationTable, table)
+  def addExhibit(room: IUserExhibitRoom, element: IMuseumExhibit) = inTransaction {
+    exhibitTable.lookup(element.id) match {
+      case Some(exhibit) =>
+        relationTable.insert(RoomExhibit(room.id, exhibit.id))
+        fireMappedPropertyChangeEvent("exhibitList", room, null, null)
+        true
+      case None => false
+    }
+  }
+  
+  /**
+   * 要素を除去する。
+   * 
+   * 要素の ID が存在するとき、この部屋から除去される。
+   * 要素が存在しない時は無視される。
+   * @param element 保存を行う要素。
+   */
+  def removeExhibit(room: IUserExhibitRoom, element: IMuseumExhibit) = inTransaction {
+    val relations = relationTable.where(e =>
+        e.exhibitId === element.id and e.roomId === room.id).toList
+    relations.headOption map { relation => relationTable delete relation.id } match {
+      case Some(true) =>
+        fireMappedPropertyChangeEvent("exhibitList", room, null, null)
+        true
+      case _ => false
+    }
+  }
+  
+  /**
+   * 部屋のコンテンツを表示する
+   */
+  def getExhibitList(room: IUserExhibitRoom) = inTransaction {
+    val exhibitIdList = UserExhibitRoomService.getLeafs(room.id, table)
+      .flatMap(r => UserExhibitRoomService.getElementIds(r.id, relationTable))
+    
+    val elements = exhibitTable.where(e => e.id in exhibitIdList).toIndexedSeq
+    val elmMap = elements.view.map(e => (e.id, e)).toMap
+    exhibitIdList.view.flatMap(id => elmMap.get(id)).toList
   }
   
   /**
@@ -165,87 +212,6 @@ private[squeryl] class UserExhibitRoomService(
     }
   }
   
-  private def relationTable = exhibitRelation.rightTable
-  private def exhibitTable = exhibitRelation.leftTable
+  private def exhibitTable: Table[MuseumExhibit] = exhibitRelation.leftTable
+  private def relationTable: Table[RoomExhibit] = exhibitRelation.rightTable
 }
-
-
-/**
- * 全ローカルファイル所有クラス
- */
-class LocalLibraryExhibitRoom(
-  exhibitTable: Table[MuseumExhibit],
-  roomTable: Table[UserExhibitRoom]
-) extends IMuseumExhibitService with GroupRoomContentsModel with IMutableMuseumExhibitListModel {
-  import UserExhibitRoomService.getParentId
-  /** 作成するエンティティクラス */
-  type ElementClass = MuseumExhibit
-  
-  def userExhibitRoom = None
-  
-  /** 展示物 */
-  def exhibitList = inTransaction {
-    from(exhibitTable)( e => select(e) orderBy(e.id asc)).toList
-  }
-  
-  /**
-   * 親IDが存在する部屋は {@code true} 。
-   */
-  def canAddChild(target: IUserExhibitRoom) = {
-    getParentId(target.id, roomTable).nonEmpty
-  }
-  
-  /**
-   * 親IDを除去する
-   */
-  def addChild(element: IUserExhibitRoom) = inTransaction {
-    update(roomTable) ( e =>
-      where(e.id === element.id)
-      set(e.parentId := None)
-    )
-  }
-  
-  /**
-   * このデータサービスが持つ要素を除去する。
-   * 要素がこのサービスに存在しない時は無視される。
-   * @return 削除に成功した場合は {@code true} 。
-   *         項目が存在しなかったなどでサービス内に変更が発生しなかった時は {@code false} 。
-   */
-  def remove(element: IMuseumExhibit): Boolean = inTransaction {
-    exhibitTable.delete(element.id)
-  }
-  
-  /**
-   * 要素の更新をサービスに通知する。
-   * 要素がまだサービスに永続化されていない時は、永続化される。
-   * 要素がこのサービスに存在しない時は無視される。
-   * @param element 保存を行う要素。
-   */
-  def add(element: IMuseumExhibit) = element match {
-    case exhibit: MuseumExhibit => inTransaction {
-      exhibitTable.insertOrUpdate(exhibit)
-      true
-    }
-    case _ => false
-  }
-  
-  /**
-   * Squeryl MuseumExhibit エンティティを作成する。
-   * 永続化はされないが、 {@link allElements} では要素が返される。
-   */
-  def create(): ElementClass = MuseumExhibit("")
-  
-  /**
-   * 要素の更新をサービスに通知する。
-   * 要素がまだサービスに永続化されていない時は、永続化される。
-   * 要素がこのサービスに存在しない時は無視される。
-   * @param element 保存を行う要素。
-   */
-  def save(element: ElementClass) = inTransaction {
-    exhibitTable.insertOrUpdate(element)
-  }
-  
-  /** MuseumExhibit のローカルファイル管理オブジェクト */
-  var localFileStorage: Option[UriFileStorage] = None
-}
-

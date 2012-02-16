@@ -132,14 +132,16 @@ class MainViewController extends GenomeMuseumController {
    * 通常は、ソースリストの選択項目となる
    */
   private def updateRoomContents(newRoom: ExhibitRoom) {
+    implicit def roomService = museumStructure.userExhibitRoomService.get
+    
     val webSource = museumStructure.webSource
     newRoom match {
       case `webSource` => contentsMode.setValue(ContentsMode.NCBI)
       case _ =>
         //ソースリスト項目選択
         val exhibits = newRoom match {
-          case room: UserExhibitRoom => room.exhibitListModel
-          case _ => museumStructure.localLibraryContent
+          case room: UserExhibitRoom => museumStructure getContent room
+          case _ => museumStructure.museumExhibitService.getOrElse(null)
         }
         museumExhibitController setModel exhibits
         contentsMode.setValue(ContentsMode.LOCAL)

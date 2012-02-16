@@ -1,11 +1,11 @@
 package jp.scid.genomemuseum.model
 
-import scala.collection.mutable.Publisher
-import scala.collection.script.{Message, Include, Update, Remove}
+import java.beans.{PropertyChangeListener, PropertyChangeEvent}
+
+import collection.mutable.Publisher
+import collection.script.{Message, Include, Update, Remove}
 
 import jp.scid.gui.model.TreeSource
-import TreeSource.{TreeSourceChildrenInsertedEvent, TreeSourceElementRemovedEvent,
-  TreeSourceElementChangeEvent}
 import jp.scid.gui.tree.EditableTreeSource
 import UserExhibitRoom.RoomType
 import RoomType._
@@ -21,11 +21,11 @@ class MuseumStructure extends EditableTreeSource[ExhibitRoom] with PropertyChang
     with TreeSource[ExhibitRoom] {
   import MuseumStructure._
   
-  def this(roomService: UserExhibitRoomService, localLibraryContent: MuseumExhibitListModel) {
+  def this(roomService: UserExhibitRoomService, localLibraryContent: MuseumExhibitService) {
     this()
     
     this.roomService = Option(roomService)
-    this.localLibraryContent = localLibraryContent
+    this.museumExhibitService = Option(localLibraryContent)
   }
   
   // プロパティ
@@ -38,8 +38,9 @@ class MuseumStructure extends EditableTreeSource[ExhibitRoom] with PropertyChang
   
   /** ユーザー部屋 */
   private var roomService: Option[UserExhibitRoomService] = None
-  /** ユーザー部屋結合解除関数 */
-  private var roomServiceSubscriptionRemover = () => {}
+  
+  /** ローカルライブラリ用展示物サービス */
+  private var exhibitService: Option[MuseumExhibitService] = None
   
   // 規定ノード
   /** ローカルソースの要素を取得 */
@@ -53,45 +54,59 @@ class MuseumStructure extends EditableTreeSource[ExhibitRoom] with PropertyChang
   /** ルート要素 */
   val root = MuseumFloor("Museum", sourcesRoot, userRoomsRoot)
   
+  /** サービスの要素変化監視 */
+  val roomServiceChangeListener = new PropertyChangeListener {
+    private def getOptionRoom(room: AnyRef): ExhibitRoom = room.asInstanceOf[Option[_]] match {
+      case Some(parent) => parent.asInstanceOf[UserExhibitRoom]
+      case None => userRoomsRoot
+    }
+    
+    def propertyChange(evt: PropertyChangeEvent) = evt match {
+      case MappedPropertyChangeEvent("children", key, _, _) =>
+        val parent = getOptionRoom(key)
+        fireChildrenChange(parent)
+      case MappedPropertyChangeEvent("parent", room, oldValue, newValue) =>
+        val oldParent = getOptionRoom(oldValue)
+        val newParent = getOptionRoom(newValue)
+        fireChildrenChange(oldParent)
+        if (oldParent != newParent)
+          fireChildrenChange(newParent)
+      case MappedPropertyChangeEvent("exhibitList", room, _, _) =>
+        // TODO
+    }
+  }
+  
   /** ユーザー部屋の取得 */
   def userExhibitRoomService = roomService
   
   /** ユーザー部屋の設定 */
   def userExhibitRoomService_=(roomService: Option[UserExhibitRoomService]) {
     // 結合解除
-    roomServiceSubscriptionRemover()
-    
+    this.roomService.foreach(_.removePropertyChangeListener(roomServiceChangeListener))
     this.roomService = roomService
-    // 変更イベントの結合
-    roomService foreach { roomService =>
-      val subscription = new roomService.Sub {
-        def notify(pub: roomService.Pub, event: Message[UserExhibitRoom]) {
-          println("publish: " + event)
-          event match {
-            case Remove(_, elm) => fireElementRemoved(elm)
-            case Include(_, elm) =>
-              val parent = roomService.getParent(elm).getOrElse(userRoomsRoot)
-              fireElementInserted(parent)
-            case Update(_, elm) =>
-              val parent = roomService.getParent(elm).getOrElse(userRoomsRoot)
-              fireElementRemoved(elm)
-              fireElementInserted(parent)
-              firePropertyChange(new TreeSourceElementChangeEvent(MuseumStructure.this, elm))
-            case _ => firePropertyChange("value", null, userRoomsRoot)
-          }
-        }
-      }
-      roomService.subscribe(subscription)
-      roomServiceSubscriptionRemover = () => roomService.removeSubscription(subscription)
-    }
+    roomService.foreach(_.addPropertyChangeListener(roomServiceChangeListener))
     
-    firePropertyChange("value", null, userRoomsRoot)
+    val event = new TreeSource.MappedPropertyChangeEvent(this, "children", userRoomsRoot, null, null)
+    firePropertyChange(event)
+  }
+  
+  /** 展示物サービスを取得する */
+  def museumExhibitService = exhibitService
+  
+  /**
+   * 展示物サービスを設定する。
+   * 
+   * TODO ローカルライブラリとして、ツリー構造に追加される。
+   */
+  def museumExhibitService_=(exhibitService: Option[MuseumExhibitService]) {
+    this.exhibitService = exhibitService
   }
   
   /**
-   * ローカルライブラリの中身を取得する
+   * 部屋の中身を取得する
    */
-  var localLibraryContent: MuseumExhibitListModel = MuseumExhibitListModel.empty
+  def getContent(room: UserExhibitRoom) =
+    room.exhibitListModel(userExhibitRoomService.get)
   
   override def getChildren(parent: ExhibitRoom): java.util.List[ExhibitRoom] = {
     import collection.JavaConverters._
@@ -194,7 +209,6 @@ class MuseumStructure extends EditableTreeSource[ExhibitRoom] with PropertyChang
     })
     
     val newRoom = userExhibitRoomService.get.addRoom(roomType, name, parent)
-    fireElementInserted(parent.getOrElse(userRoomsRoot))
     newRoom
   }
   
@@ -227,17 +241,7 @@ class MuseumStructure extends EditableTreeSource[ExhibitRoom] with PropertyChang
       case None => None
     }
     
-    fireElementRemoved(source)
     userExhibitRoomService.get.setParent(source, parent)
-    fireElementInserted(parent.getOrElse(userRoomsRoot))
-  }
-  
-  protected def fireElementRemoved(room: ExhibitRoom) {
-    firePropertyChange(new TreeSourceElementRemovedEvent(this, room))
-  }
-  
-  protected def fireElementInserted(parent: ExhibitRoom) {
-    firePropertyChange(new TreeSourceChildrenInsertedEvent(this, parent))
   }
   
   /**
@@ -245,7 +249,11 @@ class MuseumStructure extends EditableTreeSource[ExhibitRoom] with PropertyChang
    */
   def removeRoom(room: UserExhibitRoom) {
     userExhibitRoomService.foreach(_.remove(room))
-    fireElementRemoved(room)
+  }
+  
+  private def fireChildrenChange(parent: ExhibitRoom) {
+    val event = new TreeSource.MappedPropertyChangeEvent(this, "children", parent, null, null)
+    firePropertyChange(event)
   }
   
   /**
@@ -269,26 +277,10 @@ class MuseumStructure extends EditableTreeSource[ExhibitRoom] with PropertyChang
       case _ => baseName
     }
   }
-  
 }
 
-trait PropertyChangeObservable {
-  import java.beans.{PropertyChangeListener, PropertyChangeSupport, PropertyChangeEvent}
-  
-  lazy val propertyChangeSupport = new PropertyChangeSupport(this)
-  
-  def addPropertyChangeListener(listener: PropertyChangeListener) =
-    propertyChangeSupport.addPropertyChangeListener(listener)
-    
-  def removePropertyChangeListener(listener: PropertyChangeListener) =
-    propertyChangeSupport.removePropertyChangeListener(listener)
-  
-  def firePropertyChange(propertyName: String, oldValue: Any, newValue: Any) =
-    propertyChangeSupport.firePropertyChange(propertyName, oldValue, newValue)
-  
-  def firePropertyChange(event: PropertyChangeEvent) =
-    propertyChangeSupport.firePropertyChange(event)
-}
+import java.beans.PropertyChangeEvent
+import TreeSource.{MappedPropertyChangeEvent => MappedEvent}
 
 object MuseumStructure {
   /**
@@ -311,6 +303,14 @@ object MuseumStructure {
       val floor = MuseumFloor(name, children.toList)
       children foreach (_.parent = Some(floor))
       floor
+    }
+  }
+  
+  private object MappedPropertyChangeEvent {
+    def unapply(event: PropertyChangeEvent): Option[(String, AnyRef, AnyRef, AnyRef)] = event match{
+      case event: MappedEvent =>
+        Some(event.getPropertyName, event.getKey, event.getOldValue, event.getNewValue)
+      case _ => None
     }
   }
 }

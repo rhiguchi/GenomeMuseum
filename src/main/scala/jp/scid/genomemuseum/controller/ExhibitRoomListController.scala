@@ -35,7 +35,7 @@ class ExhibitRoomListController extends TreeController[ExhibitRoom, MuseumStruct
   
   // コントローラ
   /** 転送ハンドラ */
-  val transferHandler = new ExhibitRoomListTransferHandler(this)
+  val transferHandler = new ExhibitRoomListTransferHandler()
   
   private[controller] val expansionController = TreeExpansionController.newConstantDepthExpansionController(2)
   
@@ -86,18 +86,8 @@ class ExhibitRoomListController extends TreeController[ExhibitRoom, MuseumStruct
       import collection.JavaConverters._
       setlectPathAsList(model.pathForLoalSource.asJava)
     }
-  }
-  
-  /** ローカルライブラリの部屋コンテンツを返す */
-  protected[controller] def getLocalLibraryContent: Option[MuseumExhibitListModel] =
-    Option(getModel).map(str => str.localLibraryContent)
-  
-  /** パスのコンテンツを返す */
-  protected[controller] def getContent(path: TreePath): Option[MuseumExhibitListModel] = {
-    path.getLastPathComponent match {
-      case room: UserExhibitRoom => Some(room.exhibitListModel)
-      case _ => None
-    }
+    
+    transferHandler.structure = Option(model)
   }
   
   /**

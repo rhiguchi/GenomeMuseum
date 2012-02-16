@@ -8,7 +8,8 @@ import UserExhibitRoom.RoomType._
 /**
  * UserExhibitRoom データ提供サービスのインターフェイス。
  */
-trait UserExhibitRoomService extends Publisher[Message[UserExhibitRoom]] {
+trait UserExhibitRoomService extends ExhibitRoomContentsService
+    with PropertyChangeObservable with Publisher[Message[UserExhibitRoom]] {
   /**
    * 部屋をサービスに追加する。
    * @param roomType 部屋の種類
@@ -59,10 +60,13 @@ trait UserExhibitRoomService extends Publisher[Message[UserExhibitRoom]] {
    * @param parent 新しい親の要素。ルート項目にするには None。
    */
   def setParent(element: UserExhibitRoom, parent: Option[UserExhibitRoom])
+}
+
+
+trait ExhibitRoomContentsService {
+  def getExhibitList(room: UserExhibitRoom): List[MuseumExhibit]
   
-  /**
-   * ローカルライブラリ用の部屋を返す
-   * @param 名前などのプロキシ接続用ノード
-   */
-  def localLibraryExhibitRoom: GroupRoomContentsModel with MutableMuseumExhibitListModel
+  def addExhibit(room: UserExhibitRoom, element: MuseumExhibit): Boolean
+  
+  def removeExhibit(room: UserExhibitRoom, element: MuseumExhibit): Boolean
 }

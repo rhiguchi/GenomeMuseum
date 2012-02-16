@@ -5,7 +5,7 @@ import javax.swing.tree.TreePath
 import java.awt.datatransfer.{Transferable, DataFlavor}
 import TransferHandler.TransferSupport
 
-import jp.scid.genomemuseum.model.{MuseumExhibitService}
+import jp.scid.genomemuseum.model.{MuseumStructure}
 import jp.scid.genomemuseum.model.{ExhibitRoom, UserExhibitRoom, MuseumExhibit,
   GroupRoomContentsModel, MuseumExhibitListModel,
   MutableMuseumExhibitListModel}
@@ -54,14 +54,8 @@ private[controller] object ExhibitRoomListTransferHandler {
  */
 class ExhibitRoomListTransferHandler extends MuseumExhibitTransferHandler {
   import ExhibitRoomListTransferHandler._
-  
-  def this(controller: ExhibitRoomListController) {
-    this()
-    this.controller = Option(controller)
-  }
-  
-  /** ツリーを操作する対象のコントローラ */
-  var controller: Option[ExhibitRoomListController] = None
+  /** モデル */
+  var structure: Option[MuseumStructure] = None
   
   /** 展示物の転入が可能な部屋を返す */
   def getExhibitTransferTarget(ts: TransferSupport) = {
@@ -73,14 +67,14 @@ class ExhibitRoomListTransferHandler extends MuseumExhibitTransferHandler {
   /**
    * 転入先の部屋オブジェクトを取得する。
    */
-  def getTargetRoomContents(ts: TransferSupport): Option[MuseumExhibitListModel] = {
+  protected[controller] def getTargetRoomContents(ts: TransferSupport): Option[MuseumExhibitListModel] = {
     ts.getComponent match {
       case tree: JTree =>
         val loc = ts.getDropLocation.getDropPoint
         
         tree.getPathForLocation(loc.x, loc.y) match {
-          case null => controller.flatMap(_.getLocalLibraryContent)
-          case path => controller.flatMap(_.getContent(path))
+          case null => structure.flatMap(_.museumExhibitService)
+          case path => getContent(path)
         }
       case _ => None
     }
@@ -127,10 +121,18 @@ class ExhibitRoomListTransferHandler extends MuseumExhibitTransferHandler {
     case tree: JTree =>
       val contentsOp = tree.getSelectionPath match {
         case null => None
-        case path => controller.flatMap(_.getContent(path))
+        case path => getContent(path)
       }
       
       contentsOp.map(c => new ExhibitRoomTransferData(c)) getOrElse null
     case _ => super.createTransferable(c)
+  }
+  
+  /** パスのコンテンツを返す */
+  private def getContent(path: TreePath): Option[MuseumExhibitListModel] = {
+    path.getLastPathComponent match {
+      case room: UserExhibitRoom => structure.map(_.getContent(room))
+      case _ => None
+    }
   }
 }

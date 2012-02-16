@@ -6,7 +6,7 @@ import collection.script.Message
 /**
  * MuseumExhibit データ提供サービスのインターフェイス。
  */
-trait MuseumExhibitService {
+trait MuseumExhibitService extends MuseumExhibitListModel {
   type ElementClass <: MuseumExhibit
   
   /**
@@ -23,7 +23,7 @@ trait MuseumExhibitService {
    * 要素がこのサービスに存在しない時は無視される。
    * @param element 保存を行う要素。
    */
-  def save(element: ElementClass)
+  def save(element: MuseumExhibit)
   
   /**
    * このデータサービスが持つ要素を除去する。
@@ -32,4 +32,9 @@ trait MuseumExhibitService {
    *         項目が存在しなかったなどでサービス内に変更が発生しなかった時は {@code false} 。
    */
   def remove(element: MuseumExhibit): Boolean
+  
+  /** {@inheritDoc} */
+  def userExhibitRoom = None
+  
+  def exhibitList: List[ElementClass]
 }
