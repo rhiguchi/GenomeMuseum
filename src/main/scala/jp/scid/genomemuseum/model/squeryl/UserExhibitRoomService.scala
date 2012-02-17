@@ -59,8 +59,9 @@ object UserExhibitRoomService {
  * GenomeMuseum データソースの Squeryl 実装
  */
 private[squeryl] class UserExhibitRoomService(
-  private[squeryl] val table: Table[UserExhibitRoom],
-  exhibitRelation: OneToManyRelation[MuseumExhibit, RoomExhibit]
+  table: Table[UserExhibitRoom],
+  exhibitTable: Table[MuseumExhibit],
+  relationTable: Table[RoomExhibit]
 ) extends IUserExhibitRoomService {
   /** 子要素のキャッシュ */
   //
@@ -90,7 +91,7 @@ private[squeryl] class UserExhibitRoomService(
   }
   
   def setParent(element: IUserExhibitRoom, parent: Option[IUserExhibitRoom]) {
-    ensureParentAllowed(parent)
+    parent foreach ensureParentAllowed
     
     val parentId = parent.map(_.id)
     val oldParent = parentFor(element.id)
@@ -195,23 +196,17 @@ private[squeryl] class UserExhibitRoomService(
    * ID から親要素を取得する
    */
   private[squeryl] def parentFor(roomId: Long) = inTransaction {
-    table.where(e =>
-      e.id === from(table)(e =>
-        where(e.id === roomId) select(e.parentId)).head)
-      .headOption
+    from(table)(e => where(e.id === roomId) select(e.parentId))
+        .headOption.flatMap(id => id).flatMap(id => table.lookup(id))
   }
   
   /**
    * 親として設定できる要素であるか
    */
-  private def ensureParentAllowed(value: Option[IUserExhibitRoom]) {
-    value match {
-      case Some(elm) if elm.roomType != GroupRoom =>
-        throw new IllegalArgumentException()
-      case _ =>
+  private def ensureParentAllowed(room: IUserExhibitRoom) {
+    room match {
+      case RoomType(GroupRoom) =>
+      case _ => throw new IllegalArgumentException("parent must be a GroupRoom")
     }
   }
-  
-  private def exhibitTable: Table[MuseumExhibit] = exhibitRelation.leftTable
-  private def relationTable: Table[RoomExhibit] = exhibitRelation.rightTable
 }
