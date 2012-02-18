@@ -28,7 +28,6 @@ class MainViewController extends GenomeMuseumController {
   // コントローラ
   /** 部屋リスト操作 */
   protected[controller] val exhibitRoomListController = new ExhibitRoomListController
-//    ctrl.selectedRoom.addNewValueReaction(updateRoomContents)
   
   /** 展示物リスト操作 */
   val museumExhibitController = new MuseumExhibitListController
@@ -38,11 +37,6 @@ class MainViewController extends GenomeMuseumController {
   
   /** ウェブ検索操作 */
   protected[controller] val webServiceResultController = new WebServiceResultController
-  
-    /** ファイル読み込み表示 */
-//    fileLoadingProgressHandler.updateViews()
-    //  読み込み管理オブジェクトの進行表示
-//    fileLoadingProgressHandler.listenTo(loadManager)
   
   // モデル
   /** データテーブルの現在適用するモデル */
@@ -72,61 +66,6 @@ class MainViewController extends GenomeMuseumController {
     webServiceResultController.loadManager = Some(manager)
   }
 
-  
-  /** 進捗パネルの表示モデル */
-  private[controller] lazy val progressViewVisibled = new ValueHolder(false)
-  private[controller] lazy val progressMessage = new ValueHolder("")
-  private[controller] lazy val progressMaximum = new ValueHolder(0)
-  private[controller] lazy val progressValue = new ValueHolder(0)
-  private[controller] lazy val progressIndeterminate = new ValueHolder(false)
-  
-  class FileLoadingProgressViewHandler(contentPane: JComponent, progressBar: JProgressBar, statusLabel: JLabel) extends swing.Reactor {
-    import MuseumExhibitLoadManager._
-    import swing.Reactions.Reaction
-    import swing.event.Event
-    import java.io.File
-    
-    private var inProgress = false
-    private var progressMax = 0
-    private var progressValue = 0
-    private var subject = ""
-    private var message = ""
-    
-    reactions += {
-      case Started(task) =>
-        progressMax = 0
-        progressValue = 0
-        subject = ""
-        message = ""
-        inProgress = true
-        updateViews()
-      case ProgressChange(task, max, value) =>
-        progressMax = max
-        progressValue = value
-        updateViews()
-      case MessageChange(task, message) =>
-        this.message = message
-        updateViews()
-      case SubjectChange(task, subject) =>
-        this.subject = subject
-        updateViews()
-      case Done(task) =>
-        inProgress = false
-        updateViews()
-    }
-    
-    def updateViews() {
-      contentPane.setVisible(inProgress)
-      statusLabel.setText(message)
-      
-      progressBar.setMaximum(progressMax)
-      progressBar.setValue(progressValue)
-      progressBar.setIndeterminate(isIndeterminate)
-    }
-    
-    protected def isIndeterminate =  inProgress && progressMax <= progressValue
-  }
-  
   /**
    * データテーブル領域に表示するコンテンツを設定する
    * 通常は、ソースリストの選択項目となる
@@ -162,8 +101,6 @@ class MainViewController extends GenomeMuseumController {
       }
       case _ => Iterator.empty
     }
-    
-//    motifViewerController.setSequence(source.mkString)
   }
   
   def bind(view: MainView) {
@@ -187,20 +124,6 @@ class MainViewController extends GenomeMuseumController {
       view.removeBoxButton -> exhibitRoomListController.removeSelectedUserRoomAction)
     
     var currentConnectors: List[Connector] = Nil
-    
-    
-    // 進捗画面
-    bindProgressView(view.fileLoadingActivityPane, view.fileLoadingProgress, view.fileLoadingStatus)
-  }
-  
-  /** 進捗ビューのモデル結合 */
-  protected[controller] def bindProgressView(contentPane: JComponent,
-      progressBar: JProgressBar, statusLabel: JLabel) {
-    progressViewVisibled.addNewValueReaction(contentPane.setVisible).update()
-    progressMaximum.addNewValueReaction(progressBar.setMaximum).update()
-    progressValue.addNewValueReaction(progressBar.setValue).update()
-    progressMessage.addNewValueReaction(statusLabel.setText).update()
-    progressIndeterminate.addNewValueReaction(progressBar.setIndeterminate).update()
   }
   
   /**

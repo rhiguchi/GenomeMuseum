@@ -5,11 +5,12 @@ import java.text.ParseException
 import java.io.{File, IOException}
 import java.beans.{PropertyChangeListener, PropertyChangeEvent}
 import java.util.concurrent.{Executors, Future}
-import javax.swing.SwingWorker
+import javax.swing.{SwingWorker, JComponent, JProgressBar, JLabel}
 import SwingWorker.StateValue
 
 import collection.mutable.{ListBuffer, SynchronizedQueue}
 
+import jp.scid.genomemuseum.view.MainView
 import jp.scid.genomemuseum.model.{MuseumExhibit, MuseumExhibitLoader, MuseumExhibitFileLibrary,
   MuseumExhibitService, MutableMuseumExhibitListModel}
 import jp.scid.gui.model.ValueModels
@@ -201,6 +202,23 @@ class MuseumExhibitLoadManager {
     TaskPropertyChangeHandler listenTo task
     loadingTaskExecutor execute task
   }
+  
+  // バインディング
+  def bind(view: MainView) {
+    // 進捗画面
+    bindProgressView(view.fileLoadingActivityPane, view.fileLoadingProgress, view.fileLoadingStatus)
+  }
+  
+  /** 進捗ビューのモデル結合 */
+  protected[controller] def bindProgressView(contentPane: JComponent,
+      progressBar: JProgressBar, statusLabel: JLabel) {
+//    progressViewVisibled.addNewValueReaction(contentPane.setVisible).update()
+//    progressMaximum.addNewValueReaction(progressBar.setMaximum).update()
+//    progressValue.addNewValueReaction(progressBar.setValue).update()
+//    progressMessage.addNewValueReaction(statusLabel.setText).update()
+//    progressIndeterminate.addNewValueReaction(progressBar.setIndeterminate).update()
+  }
+
   
   // 読み込み通知
   /**

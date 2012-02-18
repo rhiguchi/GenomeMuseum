@@ -44,10 +44,10 @@ class MainViewControllerSpec extends Specification with mock.Mockito {
     bt
   
   def canBindMainView(f: => MainViewController) =
-    "ソースリストと結合" ! bindMainView(f).exhibitRoomListController ^
-    "コンテンツビューと結合" ! bindMainView(f).museumExhibitController ^
-    "進捗画面と結合" ! bindMainView(f).bindProgressView ^
-    "コンテンツモードを変更することができる。" ! bindMainView(f).contentsModeHandler ^
+//    "ソースリストと結合" ! bindMainView(f).exhibitRoomListController ^
+//    "コンテンツビューと結合" ! bindMainView(f).museumExhibitController ^
+//    "進捗画面と結合" ! bindMainView(f).bindProgressView ^
+//    "コンテンツモードを変更することができる。" ! bindMainView(f).contentsModeHandler ^
 //    "addBasicRoom ボタンアクション" ! bindMainView(f).addBasicRoom ^
 //    "addGroupRoom ボタンアクション" ! bindMainView(f).addGroupRoom ^
 //    "addSmartRoom ボタンアクション" ! bindMainView(f).addSmartRoom ^
@@ -92,44 +92,44 @@ class MainViewControllerSpec extends Specification with mock.Mockito {
   }
   
   def bindProgressView(ctrl: MainViewController) = new {
-    val contentPane = mock[JComponent]
-    val progressBar = mock[JProgressBar]
-    val statusLabel = mock[JLabel]
-    ctrl.bindProgressView(contentPane, progressBar, statusLabel)
-    
-    def progressViewVisibled = there was one(contentPane).setVisible(false)
-    
-    def progressViewVisibledBind = {
-      List(true, false) foreach ctrl.progressViewVisibled.:=
-      there was two(contentPane).setVisible(false) then one(contentPane).setVisible(true)
-    }
-    
-    def progressMessage = there was one(statusLabel).setText("")
-    
-    def progressMessageBind = {
-      List("text", "text2") foreach ctrl.progressMessage.:=
-      there was one(statusLabel).setText("text") then one(statusLabel).setText("text2")
-    }
-    
-    def progressMaximum = there was one(progressBar).setMaximum(0)
-    
-    def progressMaximumBind = {
-      List(20, 50) foreach ctrl.progressMaximum.:=
-      there was one(progressBar).setMaximum(20) then one(progressBar).setMaximum(50)
-    }
-    
-    def progressValue = there was one(progressBar).setValue(0)
-    def progressValueBind = {
-      List(10, 20) foreach ctrl.progressValue.:=
-      there was one(progressBar).setValue(10) then one(progressBar).setValue(20)
-    }
-    
-    def progressIndeterminate = there was one(progressBar).setIndeterminate(false)
-    def progressIndeterminateBind = {
-      List(true, false) foreach ctrl.progressIndeterminate.:=
-      there was two(progressBar).setIndeterminate(false) then
-        one(progressBar).setIndeterminate(true)
-    }
+//    val contentPane = mock[JComponent]
+//    val progressBar = mock[JProgressBar]
+//    val statusLabel = mock[JLabel]
+//    ctrl.bindProgressView(contentPane, progressBar, statusLabel)
+//    
+//    def progressViewVisibled = there was one(contentPane).setVisible(false)
+//    
+//    def progressViewVisibledBind = {
+//      List(true, false) foreach ctrl.progressViewVisibled.:=
+//      there was two(contentPane).setVisible(false) then one(contentPane).setVisible(true)
+//    }
+//    
+//    def progressMessage = there was one(statusLabel).setText("")
+//    
+//    def progressMessageBind = {
+//      List("text", "text2") foreach ctrl.progressMessage.:=
+//      there was one(statusLabel).setText("text") then one(statusLabel).setText("text2")
+//    }
+//    
+//    def progressMaximum = there was one(progressBar).setMaximum(0)
+//    
+//    def progressMaximumBind = {
+//      List(20, 50) foreach ctrl.progressMaximum.:=
+//      there was one(progressBar).setMaximum(20) then one(progressBar).setMaximum(50)
+//    }
+//    
+//    def progressValue = there was one(progressBar).setValue(0)
+//    def progressValueBind = {
+//      List(10, 20) foreach ctrl.progressValue.:=
+//      there was one(progressBar).setValue(10) then one(progressBar).setValue(20)
+//    }
+//    
+//    def progressIndeterminate = there was one(progressBar).setIndeterminate(false)
+//    def progressIndeterminateBind = {
+//      List(true, false) foreach ctrl.progressIndeterminate.:=
+//      there was two(progressBar).setIndeterminate(false) then
+//        one(progressBar).setIndeterminate(true)
+//    }
   }
   
   def bindMainView(c: MainViewController) = new {
@@ -145,28 +145,28 @@ class MainViewControllerSpec extends Specification with mock.Mockito {
 //    ctrl.dataListController := exhibitListCtrl
 //    doAnswer(_ => Unit).when(ctrl).bindProgressView(any, any, any)
 //    
-    val view = spy(new MainView)
-    ctrl.bind(view)
-    
-    def exhibitRoomListController =
-      there was one(ctrl.exhibitRoomListController).bindTree(view.sourceList)
-    
-    def museumExhibitController =
-      there was one(ctrl.museumExhibitController).bind(view.exhibitListView)
-      
-    def bindProgressView = {
-      there was one(ctrl).bindProgressView(view.fileLoadingActivityPane,
-        view.fileLoadingProgress, view.fileLoadingStatus)
-    }
-    
-    def contentsModeHandler = {
-      ctrl.contentsMode setValue MainView.ContentsMode.LOCAL
-      ctrl.contentsMode setValue MainView.ContentsMode.NCBI
-      
-      there was
-        one(view).setContentsMode(MainView.ContentsMode.LOCAL) then
-        one(view).setContentsMode(MainView.ContentsMode.NCBI)
-    }
+//    val view = spy(new MainView)
+//    ctrl.bind(view)
+//    
+//    def exhibitRoomListController =
+//      there was one(ctrl.exhibitRoomListController).bindTree(view.sourceList)
+//    
+//    def museumExhibitController =
+//      there was one(ctrl.museumExhibitController).bind(view.exhibitListView)
+//      
+//    def bindProgressView = {
+//      there was one(ctrl).bindProgressView(view.fileLoadingActivityPane,
+//        view.fileLoadingProgress, view.fileLoadingStatus)
+//    }
+//    
+//    def contentsModeHandler = {
+//      ctrl.contentsMode setValue MainView.ContentsMode.LOCAL
+//      ctrl.contentsMode setValue MainView.ContentsMode.NCBI
+//      
+//      there was
+//        one(view).setContentsMode(MainView.ContentsMode.LOCAL) then
+//        one(view).setContentsMode(MainView.ContentsMode.NCBI)
+//    }
 //    
 //    def addBasicRoom = view.addListBox.getAction must_==
 //      sourceListCtrl.addBasicRoomAction.peer
