@@ -10,120 +10,57 @@ import jp.scid.bio.{BioFileParser, GenBankParser, FastaParser, BioData,
   GenBank, Fasta}
 import MuseumExhibit.FileType
 
-private[model] object MuseumExhibitLoader {
+object MuseumExhibitLoader {
   /**
-   * BioData のファイルから MuseumExhibit を構成する抽象オブジェクト。
-   * 継承クラスは {@code makeExhibit} を実装する。
+   * バイオデータから展示物を構築する処理の構造定義。
    */
-  abstract private[model] class ExhibitFileLoader[A <: BioData] {
-    /** パーサー */
-    def parser: BioFileParser[A]
+  trait BioDataExhibitLoader {
+    /**
+     * このクラスが指定した文字列から始まるファイルを読み込めるかどうか
+     */
+    @throws(classOf[IOException])
+    def canParse(dataText: String): Boolean
     
     /**
-     * ファイルから生成された BioData オブジェクトを {@code MuseumExhibit} に適用する。
+     * バイオデータを読み込み、展示物に適用する
      */
-    protected def makeExhibit(e: MuseumExhibit, data: List[A])
-    
-    /**
-     * ファイルが、このオブジェクトが対応する形式として読み込み可能か。
-     */
-    def canParse(source: Iterator[String]): Boolean
-    
-    /**
-     * 文字列ソースから展示物データを構成する。
-     * @throws ParseException ソースに解析不能な文字列が含まれていた時
-     */
+    @throws(classOf[IOException])
     @throws(classOf[ParseException])
-    def makeExhibitFromFile(target: MuseumExhibit, source: Iterator[String]) {
-      
-      /** ソースから全てのセクションを読み込む */
-      def loadSections(sections: Buffer[A]): Buffer[A] = {
-        source.hasNext match {
-          case true =>
-            sections += parser.parseFrom(source)
-            loadSections(sections)
-          case false =>
-            sections
-        }
-      }
-      
-      makeExhibit(target, loadSections(ListBuffer.empty[A]).toList)
-    }
-  }
-  
-  /** 指定したバイト数分、ストリームの先頭を読み込む */
-  @throws(classOf[IOException])
-  private def readHeadFrom(source: URL, length: Int = 2048) = {
-    val cbuf = new Array[Char](length)
-    val read = using(source.openStream) { inst =>
-      val reader = new InputStreamReader(inst)
-      reader.read(cbuf)
-    }
-    read match {
-      case -1 => ""
-      case read => new String(cbuf, 0, read)
-    }
-  }
- 
-  private def using[A <% java.io.Closeable, B](s: A)(f: A => B) = {
-    try f(s) finally s.close()
-  }
-}
-
-/**
- * BioData のファイルから MuseumExhibit を構成するクラス。
- */
-class MuseumExhibitLoader {
-  import MuseumExhibitLoader._
-  
-  def this(exhibitServcie: MuseumExhibitService) {
-    this()
-    this.exhibitServcie = Option(exhibitServcie)
-  }
-  
-  // 対応するファイル形式の構文解析オブジェクト
-  private val parsers = List(GenBnakSource, FastaSource)
-  
-  private var exhibitServcie: Option[MuseumExhibitService] = None
-  
-  def loadFromUri(source: URL): Option[MuseumExhibit] = {
-    val reader = new InputStreamReader(source.openStream)
-    // ファイルの先頭部分の一部の文字列
-    val pushBackReader = new PushbackReader(reader, 2048)
-    val cbuf = new Array[Char](2048)
-    val read = pushBackReader.read(cbuf)
-    val headString = if (read <= 0) "" else new String(cbuf, 0, read)
-    
-    /** ファイルの先頭部分の文字列から Source オブジェクトを作成 */
-    def headSource = io.Source.fromString(headString).getLines
-    
-    parsers.find(_.canParse(headSource)).map { parser =>
-      pushBackReader.unread(cbuf, 0, read)
-      val servcie = exhibitServcie.get
-      
-      val bufSource = io.Source.fromURL(source)
-      val exhibit = servcie.create
-      parser.makeExhibitFromFile(exhibit, bufSource.getLines)
-      exhibit.dataSourceUri = source.toURI.toString
-      servcie.save(exhibit)
-      exhibit
-    }
+    def loadTo(exhibit: MuseumExhibit, source: URL)
   }
   
   /**
    * GenBank 形式ファイルから MuseumExhibit を構成する。
    */
-  private[model] object GenBnakSource extends ExhibitFileLoader[GenBank] {
-    val parser = new GenBankParser
+  class GenBnakExhibitLoader(parser: GenBankParser) extends BioDataExhibitLoader {
+    def this() = this(new GenBankParser)
     
     /**
      * Locus 行が存在するかで判断
      */
-    def canParse(source: Iterator[String]) =
+    @throws(classOf[IOException])
+    def canParse(dataText: String) = {
+      val source = io.Source.fromString(dataText).getLines
       source.find(parser.locusFormat.Head.unapply).nonEmpty
+    }
     
-    protected def makeExhibit(e: MuseumExhibit, sections: List[GenBank]) {
-      val data = sections.head
+    /**
+     * GenBnak 形式ファイルから読み込み
+     */
+    @throws(classOf[IOException])
+    @throws(classOf[ParseException])
+    def loadTo(exhibit: MuseumExhibit, source: URL) {
+      val lines = io.Source.fromURL(source).getLines
+      if (lines.hasNext) {
+        val section = parser.parseFrom(lines)
+        makeExhibit(exhibit, section)
+      }
+    }
+    
+    /**
+     * GenBank データから展示物を構築
+     */
+    protected def makeExhibit(e: MuseumExhibit, data: GenBank) {
       e.name = data.locus.name
       e.sequenceLength = data.locus.sequenceLength
       e.accession = data.accession.primary
@@ -141,17 +78,31 @@ class MuseumExhibitLoader {
   /**
    * FASTA 形式ファイルから MuseumExhibit を構成する。
    */
-  private[model] object FastaSource extends ExhibitFileLoader[Fasta] {
-    val parser = new FastaParser
+  class FastaExhibitLoader(parser: FastaParser) extends BioDataExhibitLoader {
+    def this() = this(new FastaParser)
     
     /**
-     * Locus 行が存在するかで判断
+     * 「>」開始行が存在するかで判断
      */
-    def canParse(source: Iterator[String]) =
+    def canParse(dataText: String) = {
+      val source = io.Source.fromString(dataText).getLines
       source.find(parser.headerParser.Head.unapply).nonEmpty
+    }
     
-    protected def makeExhibit(e: MuseumExhibit, sections: List[Fasta]) {
-      val data = sections.head
+    /**
+     * FASTA 形式ファイルから読み込み
+     */
+    @throws(classOf[IOException])
+    @throws(classOf[ParseException])
+    def loadTo(exhibit: MuseumExhibit, source: URL) {
+      val lines = io.Source.fromURL(source).getLines
+      if (lines.hasNext) {
+        val section = parser.parseFrom(lines)
+        makeExhibit(exhibit, section)
+      }
+    }
+    
+    protected def makeExhibit(e: MuseumExhibit, data: Fasta) {
       e.name = data.header.name
       e.sequenceLength = data.sequence.value.length
       e.accession = data.header.accession
@@ -163,7 +114,58 @@ class MuseumExhibitLoader {
     }
   }
   
+  /** 指定したバイト数分、ストリームの先頭を読み込む */
+  @throws(classOf[IOException])
+  private[model] def readHeadFrom(source: URL, length: Int = 2048) = {
+    val cbuf = new Array[Char](length)
+    val read = using(source.openStream) { inst =>
+      val reader = new BufferedReader(new InputStreamReader(inst), length)
+      reader.read(cbuf)
+    }
+    read match {
+      case -1 => ""
+      case read => new String(cbuf, 0, read)
+    }
+  }
+  
   /** バージョン値 */
-  private def getVersionNumber(value: Int) =
-    if (value == 0) None else Some(value)
+  private def getVersionNumber(value: Int) = if (value == 0) None else Some(value)
+ 
+  private def using[A <% java.io.Closeable, B](s: A)(f: A => B) = {
+    try f(s) finally s.close()
+  }
+}
+
+/**
+ * BioData のファイルから MuseumExhibit を構成するクラス。
+ */
+class MuseumExhibitLoader {
+  import MuseumExhibitLoader._
+  
+  /** 展示物を作成するパーサー */
+  private val parserMap = Map(
+    FileType.GenBank -> new GenBnakExhibitLoader,
+    FileType.FASTA -> new FastaExhibitLoader)
+  
+  /**
+   * 形式を検索する。
+   * 
+   * @return ソースのファイル形式
+   */
+  @throws(classOf[IOException])
+  def findFormat(source: URL): FileType.Value = {
+    val headString = readHeadFrom(source)
+    parserMap find (e => e._2.canParse(headString)) map (_._1) getOrElse FileType.Unknown
+  }
+  
+  /**
+   * 展示物を、バイオデータから指定した形式で読み込み、構築する。
+   */
+  @throws(classOf[IOException])
+  @throws(classOf[ParseException])
+  def loadMuseumExhibit(exhibit: MuseumExhibit, source: URL, format: FileType.Value) {
+    parserMap(format).loadTo(exhibit, source)
+    exhibit.filePathAsURI = source.toURI
+    exhibit.fileType = format
+  }
 }

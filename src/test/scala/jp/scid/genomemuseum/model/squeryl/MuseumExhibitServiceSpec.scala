@@ -167,5 +167,4 @@ class MuseumExhibitServiceSpec extends Specification with mock.Mockito {
     
     def toTable = roomTable.lookup(room.id).get.parentId must beNone
   }
-  
 }

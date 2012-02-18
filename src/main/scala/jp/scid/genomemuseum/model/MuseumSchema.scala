@@ -11,9 +11,6 @@ trait MuseumSchema {
   
   /** 『展示物』データのテーブルデータサービス */
   def museumExhibitService: MuseumExhibitListModel with MuseumExhibitService
-  
-  /** 展示物のデータファイルをライブラリからの相対パスに変換するオブジェクト */
-  var localFileStorage: Option[UriFileStorage]
 }
 
 object MuseumSchema {

@@ -15,7 +15,6 @@ class DefaultMuseumExhibitFileLibrarySpec extends Specification with mock.Mockit
     end
   
   val fileResource = getClass.getResource("sample-file1.gbk")
-  lazy val testFile = MuseumExhibitLoaderSpec.download(fileResource)
   
   def createTempFile = File.createTempFile("LibraryFileManagerSpec", "")
   
@@ -64,11 +63,11 @@ class DefaultMuseumExhibitFileLibrarySpec extends Specification with mock.Mockit
     
     private def defaultDest = new File(tempDir, "path/to/file.txt")
     
-    def returnsFile = library.store(testFile, exhibit) must_== defaultDest
+    def returnsFile = library.store(exhibit, fileResource) must_== defaultDest
     
     def copies = {
-      val file = library.store(testFile, exhibit)
-      file.length must_== testFile.length
+      val file = library.store(exhibit, fileResource)
+      new File(file).length must_== 4306
     }
     
     def seqNumedFile = {
@@ -76,8 +75,8 @@ class DefaultMuseumExhibitFileLibrarySpec extends Specification with mock.Mockit
       defaultDest.createNewFile
       new File(tempDir, "path/to/file 1.txt").createNewFile
       new File(tempDir, "path/to/file 2.txt").createNewFile
-      val file = library.store(testFile, exhibit)
-      new File(tempDir, "path/to/file 3.txt").length must_== testFile.length
+      val file = library.store(exhibit, fileResource)
+      new File(tempDir, "path/to/file 3.txt").length must_== 4306
     }
   }
   

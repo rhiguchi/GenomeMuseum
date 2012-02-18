@@ -1,9 +1,11 @@
 package jp.scid.genomemuseum.model
 
 import java.io.{File, IOException}
-import java.net.URI
+import java.net.{URL, URI}
 
 private object DefaultMuseumExhibitFileLibrary {
+  import java.io.{BufferedOutputStream, BufferedInputStream, FileOutputStream, FileInputStream}
+  
   private val logger = org.slf4j.LoggerFactory.getLogger(classOf[DefaultMuseumExhibitFileLibrary])
   
   /**
@@ -39,7 +41,6 @@ private object DefaultMuseumExhibitFileLibrary {
   /** ファイルを複製 */
   @throws(classOf[IOException])
   private def copyFile(src: File, dest: File) {
-    import java.io.{FileInputStream, FileOutputStream}
     import java.nio.channels.FileChannel
     
     val srcChannel = new FileInputStream(src).getChannel()
@@ -55,6 +56,35 @@ private object DefaultMuseumExhibitFileLibrary {
         destChannel.close()
       }
     }
+  }
+  
+  /**
+   * ファイルへデータをコピーする。
+   */
+  @throws(classOf[IOException])
+  private def copyFile(dest: File, source: URL) {
+    if ("file" == source.getProtocol) {
+      copyFile(new File(source.toURI), dest)
+    }
+    else {
+      using(new FileOutputStream(dest)) { out =>
+        val dest = new BufferedOutputStream(out)
+        
+        using(source.openStream) { inst =>
+          val buf = new Array[Byte](8196)
+          val source = new BufferedInputStream(inst, buf.length)
+          
+          Iterator.continually(source.read(buf)).takeWhile(_ != -1)
+            .foreach(dest.write(buf, 0, _))
+        }
+        
+        dest.flush
+      }
+    }
+  }
+  
+  private def using[A <% java.io.Closeable, B](s: A)(f: A => B) = {
+    try f(s) finally s.close()
   }
 }
 
@@ -77,12 +107,12 @@ class DefaultMuseumExhibitFileLibrary(val baseDir: File) extends MuseumExhibitFi
    * ファイル名は {@code #getDefaultStorePath} より作成される。
    * ファイルが既に存在する時は、拡張子前に連番が付与されたファイルに保管される。
    * 
-   * @return 保管されたファイル
+   * @return 保管されたファイルの場所
    * @throws IOException ファイル操作時に読み書き例外が発生したとき
    * @see #getDefaultStorePath(MuseumExhibit)
    */
   @throws(classOf[IOException])
-  def store(source: File, exhibit: MuseumExhibit): File = {
+  def store(exhibit: MuseumExhibit, source: URL): URI = {
     logger.debug("ソース保存 {}", exhibit)
     // 標準の出力先を取得
     val relativePath = getDefaultStorePath(exhibit).toString
@@ -91,9 +121,9 @@ class DefaultMuseumExhibitFileLibrary(val baseDir: File) extends MuseumExhibitFi
     val dest = createNewDestFile(new File(baseDir, relativePath))
     
     // 複製
-    copyFile(source, dest)
+    copyFile(dest, source)
     
-    dest
+    uriFileStorage getUri dest
   }
   
   /**

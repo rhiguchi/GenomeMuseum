@@ -10,6 +10,7 @@ import java.text.ParseException
 
 import jp.scid.bio.BioData
 import MuseumExhibit.FileType._
+import MuseumExhibitLoader.{GenBnakExhibitLoader, FastaExhibitLoader}
 
 object MuseumExhibitLoaderSpec {
   def download(source: URL) = {
@@ -41,124 +42,158 @@ class MuseumExhibitLoaderSpec extends Specification with Mockito {
   import MuseumExhibitLoaderSpec._
   
   def is = "MuseumExhibitLoader" ^
-//    "MuseumExhibitの作成" ^ canMakeMuseumExhibit(defaultParsers) ^
-//    "genbank ファイル" ^ canParseGenBankFile(defaultParsers) ^ bt ^
-//    "FASTA ファイル" ^ canParseFastaFile(defaultParsers) ^ bt ^
+    "ファイル形式を探索" ^ canFindFormat(loader) ^
+    "GenBankFileLoader" ^
+      "読み込み可能判断" ^ gbCanParseSpec(new GenBnakExhibitLoader) ^
+      "読み込み" ^ gbLoadToSpec(new GenBnakExhibitLoader) ^
+    bt ^
+    "FastaExhibitLoader" ^
+      "読み込み可能判断" ^ faCanParseSpec(new FastaExhibitLoader) ^
+      "読み込み" ^ faLoadToSpec(new FastaExhibitLoader) ^
+    bt ^
+    "MuseumExhibitの作成" ^ canLoadMuseumExhibit(loader) ^
     end
   
-  def defaultParsers = new MuseumExhibitLoader()
+  def loader = new MuseumExhibitLoader()
   
   val gbkResource = getClass.getResource("sample-file1.gbk")
   val fastaResource = getClass.getResource("sample-file2.fna")
-  val invalidResourceResource = getClass.getResource("invalid.data")
+  val emptyResource = File.createTempFile("empty", ".txt").toURI.toURL
+  val invalidResource = getClass.getResource("invalid.data")
   
-  lazy val genBankFile = download(gbkResource)
-  lazy val fastaFile = download(fastaResource)
-  lazy val emptyFile = File.createTempFile("empty", ".txt")
-  lazy val invalidFile = download(invalidResourceResource)
+  implicit def urlToString(url: URL): String = MuseumExhibitLoader.readHeadFrom(url)
   
-//  def canMakeMuseumExhibit(l: => MuseumExhibitLoader) =
-//    "GenBank 形式ファイルから作成" ! makeMuseumExhibit(l).fromGenBank ^
-//    "FASTA 形式ファイルから作成" ! makeMuseumExhibit(l).fromFasta ^
-//    "空ファイルから取得できない" ! makeMuseumExhibit(l).fromEmpty ^
-//    "不正形式ファイルから取得できない" ! makeMuseumExhibit(l).fromINvalid
-//    bt
+  def canFindFormat(l: => MuseumExhibitLoader) =
+    "GenBank 形式ファイルを探索" ! findFormat(l).genbank ^
+    "FASTA 形式ファイルを探索" ! findFormat(l).fasta ^
+    "空ファイルは Unknown" ! findFormat(l).empty ^
+    "不明形式は Unknown" ! findFormat(l).invalid ^
+    bt
   
-//  def canParseGenBankFile(parsers: => MuseumExhibitLoader) =
-//    "name" ! fromGenBank(parsers).name ^
-//    "sequenceLength" ! fromGenBank(parsers).sequenceLength ^
-//    "accession" ! fromGenBank(parsers).accession ^
-//    "identifier" ! fromGenBank(parsers).identifier ^
-//    "namespace" ! fromGenBank(parsers).namespace ^
-//    "version" ! fromGenBank(parsers).version ^
-//    "definition" ! fromGenBank(parsers).definition ^
-//    "source" ! fromGenBank(parsers).source
-//  
-//  def canParseFastaFile(parsers: => MuseumExhibitLoader) =
-//    "name" ! fromFasta(parsers).name ^
-//    "sequenceLength" ! fromFasta(parsers).sequenceLength ^
-//    "accession" ! fromFasta(parsers).accession ^
-//    "identifier" ! fromFasta(parsers).identifier ^
-//    "namespace" ! fromFasta(parsers).namespace ^
-//    "version" ! fromFasta(parsers).version ^
-//    "definition" ! fromFasta(parsers).definition
-//  
-//  private def using[A <% java.io.Closeable, B](s: A)(f: A => B) = {
-//    try f(s) finally s.close()
-//  }
-//  
-//  class TestBase(loader: MuseumExhibitLoader) {
-//    val exhibit = mock[MuseumExhibit]
-//    
-//    def makeFromGenBankFile = using(new InputStreamReader(gbkResource.openStream)) { reader => 
-//      loader.makeMuseumExhibit(exhibit, reader)
-//    }
-//    
-//    def makeFromFastaFile = using(new InputStreamReader(fastaResource.openStream)) { reader => 
-//      loader.makeMuseumExhibit(exhibit, reader)
-//    }
-//  }
-//  
-//  def makeMuseumExhibit(loader: MuseumExhibitLoader) = new TestBase(loader) {
-//    def fromGenBank = makeFromGenBankFile must beSome(exhibit) and
-//        (there was one(exhibit).fileType_=(GenBank))
-//    
-//    def fromFasta = makeFromFastaFile must beSome(exhibit) and
-//        (there was one(exhibit).fileType_=(FASTA))
-//    
-//    def fromEmpty = {
-//      val result = using(new FileReader(emptyFile)) { reader => 
-//        loader.makeMuseumExhibit(exhibit, reader)
-//      }
-//      result must beNone
-//    }
-//    
-//    def fromINvalid = {
-//      val result = using(new InputStreamReader(invalidResourceResource.openStream)) { reader => 
-//        loader.makeMuseumExhibit(exhibit, reader)
-//      }
-//      result must beNone
-//    }
-//  }
-//  
-//  def fromGenBank(parsers: MuseumExhibitLoader) = new TestBase(parsers) {
-//    makeFromGenBankFile
-//    
-//    def name = there was one(exhibit).name_=("NC_009347")
-//      
-//    def sequenceLength = there was one(exhibit).sequenceLength_=(2101)
-//      
-//    def accession = there was one(exhibit).accession_=("NC_009347")
-//    
-//    def identifier = there was one(exhibit).identifier_=("145294040")
-//    
-//    def namespace = there was one(exhibit).namespace_=("BCT")
-//    
-//    def version = there was one(exhibit).version_=(Some(1))
-//    
-//    def definition = there was one(exhibit).definition_=(
-//      "Shigella sonnei Ss046 plasmid pSS046_spC, complete sequence.")
-//    
-//    def source = there was one(exhibit).source_=(
-//      "Shigella sonnei Ss046")
-//  }
-//  
-//  def fromFasta(l: MuseumExhibitLoader) = new TestBase(l) {
-//    makeFromFastaFile
-//    
-//    def name = there was one(exhibit).name_=("")
-//    
-//    def sequenceLength = there was one(exhibit).sequenceLength_=(5629)
-//    
-//    def accession = there was one(exhibit).accession_=("NC_009473")
-//    
-//    def identifier = there was one(exhibit).identifier_=("148244127")
-//    
-//    def namespace = there was one(exhibit).namespace_=("ref")
-//    
-//    def version = there was one(exhibit).version_=(Some(1))
-//    
-//    def definition = there was one(exhibit).definition_=(
-//      "Acidiphilium cryptum JF-5 plasmid pACRY07, complete sequence")
-//  }
+  def gbCanParseSpec(l: => GenBnakExhibitLoader) =
+    "GenBank 形式ファイルは true" ! gbCanParse(l).genbank ^
+    "FASTA 形式ファイルは false" ! gbCanParse(l).fasta ^
+    "空ファイルは false" ! gbCanParse(l).empty ^
+    "不正形式ファイルは false" ! gbCanParse(l).invalid ^
+    bt
+  
+  def gbLoadToSpec(l: => GenBnakExhibitLoader) =
+    "name" ! gbLoadTo(l).name ^
+    "sequenceLength" ! gbLoadTo(l).sequenceLength ^
+    "accession" ! gbLoadTo(l).accession ^
+    "identifier" ! gbLoadTo(l).identifier ^
+    "namespace" ! gbLoadTo(l).namespace ^
+    "version" ! gbLoadTo(l).version ^
+    "definition" ! gbLoadTo(l).definition ^
+    "source" ! gbLoadTo(l).source ^
+    bt
+  
+  def faCanParseSpec(l: => FastaExhibitLoader) =
+    "FASTA 形式ファイルは true" ! faCanParse(l).fasta ^
+    "GenBank 形式ファイルは false" ! faCanParse(l).genbank ^
+    "空ファイルは false" ! faCanParse(l).empty ^
+    "不正形式ファイルは false" ! faCanParse(l).invalid ^
+    bt
+  
+  def faLoadToSpec(l: => FastaExhibitLoader) =
+    "name" ! faLoadTo(l).name ^
+    "sequenceLength" ! faLoadTo(l).sequenceLength ^
+    "accession" ! faLoadTo(l).accession ^
+    "identifier" ! faLoadTo(l).identifier ^
+    "namespace" ! faLoadTo(l).namespace ^
+    "version" ! faLoadTo(l).version ^
+    "definition" ! faLoadTo(l).definition ^
+    bt
+  
+  def canLoadMuseumExhibit(l: => MuseumExhibitLoader) =
+    "GenBank 形式ファイルから作成" ! loadMuseumExhibit(l).genbank ^
+    "FASTA 形式ファイルから作成" ! loadMuseumExhibit(l).fasta ^
+    bt
+  
+  def findFormat(loader: MuseumExhibitLoader) = new {
+    def genbank = loader.findFormat(gbkResource) must_== GenBank
+
+    def fasta = loader.findFormat(fastaResource) must_== FASTA
+    
+    def empty = loader.findFormat(emptyResource) must_== Unknown
+    
+    def invalid = loader.findFormat(invalidResource) must_== Unknown
+  }
+  
+  def loadMuseumExhibit(loader: MuseumExhibitLoader) = new {
+    val exhibit = mock[MuseumExhibit]
+    
+    def genbank = {
+      val result = loader.loadMuseumExhibit(exhibit, gbkResource, GenBank)
+      there was one(exhibit).name_=("NC_009347")
+    }
+    
+    def fasta = {
+      val result = loader.loadMuseumExhibit(exhibit, fastaResource, FASTA)
+      there was one(exhibit).accession_=("NC_009473")
+    }
+  }
+  
+  // GenBnakExhibitLoader
+  /** GenBnakExhibitLoader 読み込み判断 */
+  def gbCanParse(loader: GenBnakExhibitLoader) = new {
+    def genbank = loader.canParse(gbkResource) must beTrue
+    def fasta = loader.canParse(fastaResource) must beFalse
+    def empty = loader.canParse(emptyResource) must beFalse
+    def invalid = loader.canParse(invalidResource) must beFalse
+  }
+  
+  /** GenBnakExhibitLoader 読み込み */
+  def gbLoadTo(loader: GenBnakExhibitLoader) = new {
+    val exhibit = mock[MuseumExhibit]
+    loader.loadTo(exhibit, gbkResource)
+    
+    def name = there was one(exhibit).name_=("NC_009347")
+      
+    def sequenceLength = there was one(exhibit).sequenceLength_=(2101)
+      
+    def accession = there was one(exhibit).accession_=("NC_009347")
+    
+    def identifier = there was one(exhibit).identifier_=("145294040")
+    
+    def namespace = there was one(exhibit).namespace_=("BCT")
+    
+    def version = there was one(exhibit).version_=(Some(1))
+    
+    def definition = there was one(exhibit).definition_=(
+      "Shigella sonnei Ss046 plasmid pSS046_spC, complete sequence.")
+    
+    def source = there was one(exhibit).source_=(
+      "Shigella sonnei Ss046")
+  }
+  
+  // FastaExhibitLoader
+  /** FastaExhibitLoader 読み込み判断 */
+  def faCanParse(loader: FastaExhibitLoader) = new {
+    def fasta = loader.canParse(fastaResource) must beTrue
+    def genbank = loader.canParse(gbkResource) must beFalse
+    def empty = loader.canParse(emptyResource) must beFalse
+    def invalid = loader.canParse(invalidResource) must beFalse
+  }
+  
+  /** FastaExhibitLoader 読み込み */
+  def faLoadTo(loader: FastaExhibitLoader) = new {
+    val exhibit = mock[MuseumExhibit]
+    loader.loadTo(exhibit, fastaResource)
+    
+    def name = there was one(exhibit).name_=("")
+    
+    def sequenceLength = there was one(exhibit).sequenceLength_=(5629)
+    
+    def accession = there was one(exhibit).accession_=("NC_009473")
+    
+    def identifier = there was one(exhibit).identifier_=("148244127")
+    
+    def namespace = there was one(exhibit).namespace_=("ref")
+    
+    def version = there was one(exhibit).version_=(Some(1))
+    
+    def definition = there was one(exhibit).definition_=(
+      "Acidiphilium cryptum JF-5 plasmid pACRY07, complete sequence")
+  }
 }

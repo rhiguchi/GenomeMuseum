@@ -3,21 +3,13 @@ package jp.scid.genomemuseum.model.squeryl
 import org.squeryl.{Schema, Session}
 import org.squeryl.PrimitiveTypeMode._
 
-import jp.scid.genomemuseum.model.{UriFileStorage, MuseumSchema => IMuseumSchema}
+import jp.scid.genomemuseum.model.{MuseumSchema => IMuseumSchema}
 
 
 /**
  * GenomeMuseum データソースの Squeryl 実装
  */
 class MuseumSchema extends Schema with IMuseumSchema {
-  /**
-   * ローカルファイル管理オブジェクトを指定してインスタンスを作成
-   */
-  def this(storage: UriFileStorage) {
-    this()
-    localFileStorage = Option(storage)
-  }
-  
   // 文字列格納長
   override def defaultLengthOfString = Integer.MAX_VALUE
   
@@ -44,13 +36,6 @@ class MuseumSchema extends Schema with IMuseumSchema {
     conn.createStatement.execute(schemaCreationSql(name.get))
     super.create
   }
-  
-  /** ローカルファイルをライブラリからの相対パスに変換するオブジェクトを取得する */
-  def localFileStorage = museumExhibitService.localFileStorage
-  
-  /** ローカルファイルをライブラリからの相対パスに変換するオブジェクトを設定する*/
-  def localFileStorage_=(newStorage: Option[UriFileStorage]) =
-    museumExhibitService.localFileStorage = newStorage
   
   // user_exhibit_room
   /** UserExhibitRoom のテーブルオブジェクト */

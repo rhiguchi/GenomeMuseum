@@ -3,18 +3,19 @@ package jp.scid.genomemuseum.controller
 import javax.swing.JFrame
 
 import jp.scid.gui.ValueHolder
-import jp.scid.gui.model.ValueModel
-import jp.scid.gui.control.AbstractValueController
+import jp.scid.gui.model.{ValueModel, ValueModels, TransformValueModel}
+import jp.scid.gui.control.{StringPropertyBinder, AbstractValueController, BooleanPropertyBinder}
 import jp.scid.gui.event.ValueChange
 import jp.scid.genomemuseum.GenomeMuseumGUI
 import jp.scid.genomemuseum.view.MainFrameView
 import jp.scid.genomemuseum.view.{MainFrameView, MainViewMenuBar}
 
+import ValueModels.{newValueModel, newBooleanModel}
+
 /**
  * 主画面と、その画面枠の操作を受け付け、操作反応を実行するオブジェクト。
  * 
- * @param application データやメッセージを取り扱うアプリケーションオブジェクト。
- * @param frameView 表示と入力を行う画面枠。
+ * @param mainViewController この画面枠に使用する主画面操作器
  */
 class MainFrameViewController(val mainViewController: MainViewController) extends GenomeMuseumController {
   
@@ -22,18 +23,24 @@ class MainFrameViewController(val mainViewController: MainViewController) extend
     this(new MainViewController)
   }
   
-  // コントローラ
-  /** アプリケーションアクションの参照 */
-  var application: Option[GenomeMuseumGUI] = None
+  // プロパティモデル
+  /** 画面枠の表示プロパティ */
+  val visible = ValueModels.newBooleanModel(false)
   
-  // モデル
-  /** この画面枠用のタイトル */
-  val title = new ValueHolder("GenomeMuseum")
-  /** 画面枠の表示モデル */
-  val frameVisible = new ValueHolder(false)
+  /** 画面枠タイトルプロパティ */
+  val title = new TransformValueModel[String, String](mainViewController.title, new TitleTransformer)
+  
+  // コントローラ
   /** 列設定用コントローラ */
 //  val viewSettingDialogCtrl = new ViewSettingDialogController(
 //      frameView.columnConfigPane, frameView.columnConfigDialog)
+  
+  // 結合
+  /** この画面枠用のタイトルプロパティ */
+  private val titleBinder = new StringPropertyBinder(title)
+  
+  /** この画面枠用の表示プロパティ */
+  private val visibleBinder = new BooleanPropertyBinder(visible)
   
   /**
    * フレームの表示を行う。
@@ -41,18 +48,7 @@ class MainFrameViewController(val mainViewController: MainViewController) extend
    * @see MainFrameView#frame
    */
   def show() {
-    frameVisible := true
-  }
-  
-  /** タイトルモデルの結合を行う */
-  def connectTitle(viewTitle: ValueModel[String]) {
-    val controller = new AbstractValueController[String] {
-      def processValueChange(value: String) = value match {
-        case "" => title := "GenomeMuseum"
-        case _ => title := "GenomeMuseum - " + value
-      }
-    }
-    controller.setModel(viewTitle)
+    visible setValue true
   }
   
   /**
@@ -68,24 +64,25 @@ class MainFrameViewController(val mainViewController: MainViewController) extend
    * JFrame とモデルを結合する
    */
   def bindFrame(frame: JFrame) {
-    ValueHolder.connect(title, frame, "title")
-    ValueHolder.connect(frameVisible, frame, "visible")
+    /** タイトルモデルの結合を行う */
+    titleBinder.bindFrameTitle(frame)
+    visibleBinder.bindVisible(frame)
+    
+    frame.setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE)
   }
   
   /**
    * メニューバー とアクションを結合する
    */
   def bindMenuBar(menuBar: MainViewMenuBar) {
-    application foreach { application =>
-      menuBar.open.action = application.openAction
-      menuBar.quit.action = application.quitAction
-      
-      menuBar.cut.action = application.cutProxyAction
-      menuBar.copy.action = application.copyProxyAction
-      menuBar.paste.action = application.pasteProxyAction
-      menuBar.selectAll.action = application.selectAllProxyAction
-    }
     // 列設定メニュー
 //    menuBar.columnVisibility.action = viewSettingDialogCtrl.showAction
+  }
+  
+  class TitleTransformer extends TransformValueModel.Transformer[String, String] {
+    def apply(subject: String) = subject match {
+      case "" => "GenomeMuseum"
+      case title => "GenomeMuseum - " + title
+    }
   }
 }

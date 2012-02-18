@@ -7,10 +7,10 @@ import org.specs2._
 
 import jp.scid.gui.ValueHolder
 import controller.{GenomeMuseumController, MainViewController, MainFrameViewController,
-  ExhibitRoomListController, MuseumExhibitListController, WebServiceResultController,
-  GenomeMuseumControllerFactory}
+  ExhibitRoomListController, MuseumExhibitListController, WebServiceResultController}
 import model.{MuseumSchema, MuseumExhibitService, DefaultMuseumExhibitFileLibrary,
   UriFileStorage}
+import view.{MainFrameView, MainViewMenuBar}
 import GenomeMuseumGUI._
 import RunMode._
 
@@ -23,6 +23,9 @@ class GenomeMuseumGUISpec extends Specification with mock.Mockito {
     "アクション" ^ actionsSpec(appSimple) ^
     "ファイルライブラリオブジェクト" ^ exhibitFileLibrarySpec(appSimple) ^
     "読み込み操作オブジェクト" ^ exhibitLoadManagerSpec(appSimple) ^
+    "メニューバーと結合" ^ canBindMenuBar(appSimple) ^
+    "主画面操作の作成" ^ canCreateMainViewController(appSimple) ^
+    "主画面操作の作成" ^ canCreateMainFrameViewController(appSimple) ^
     "起動処理" ^ startupSpec(appSimple) ^
     end
   
@@ -49,7 +52,6 @@ class GenomeMuseumGUISpec extends Specification with mock.Mockito {
   def museumSchemaSpec(app: => GenomeMuseumGUI) =
     "作成" ! museumSchema(app).create ^
     "ローカルファイルに作成" ! museumSchema(app).toFile ^
-    "ファイル管理オブジェクトが設定" ! museumSchema(app).localFileStorage ^
     bt
   
   def actionsSpec(app: => GenomeMuseumGUI) =
@@ -71,9 +73,36 @@ class GenomeMuseumGUISpec extends Specification with mock.Mockito {
 //    "dataService に museumSchema のものが利用される" ! exhibitLoadManager(app).dataService ^
 //    "fileLibrary に exhibitFileLibrary が利用される" ! exhibitLoadManager(app).fileLibrary ^
     bt
+
+  def canBindMenuBar(c: => GenomeMuseumGUI) =
+    "ファイルメニュー" ^ canBindFileMenu(c) ^
+    "編集メニュー" ^ canBindEditMenu(c) ^
+    bt
+  
+  def canBindFileMenu(c: => GenomeMuseumGUI) = 
+    "開く" ! bindFileMenu(c).open ^
+    "終了" ! bindFileMenu(c).quit ^
+    bt
+  
+  def canBindEditMenu(c: => GenomeMuseumGUI) = 
+    "カット" ! bindEditMenu(c).cut ^
+    "コピー" ! bindEditMenu(c).copy ^
+    "ペースト" ! bindEditMenu(c).paste ^
+    "全てを選択" ! bindEditMenu(c).selectAll ^
+    bt
+  
+  def canCreateMainViewController(app: => GenomeMuseumGUI) =
+    "モデルと結合される" ! createMainViewController(app).setMuseumStructure ^
+    "読み込みマネージャと結合される" ! createMainViewController(app).setExhibitLoadManager ^
+    bt
+  
+  def canCreateMainFrameViewController(app: => GenomeMuseumGUI) =
+    "主画面操作を使って構築" ! createMainFrameViewController(app).usesMainViewCtrlFactory ^
+    bt
   
   def startupSpec(app: => GenomeMuseumGUI) =
-    "タイトルモデルの結合" ! startup(app).bindTitleModel ^
+    "主画面枠と結合" ! startup(app).bindView ^
+    "メニューバーと結合" ! startup(app).bindMenuBar ^
     "画面枠を表示" ! startup(app).showsFrame ^
     bt
   
@@ -127,16 +156,6 @@ class GenomeMuseumGUISpec extends Specification with mock.Mockito {
       tempFile.delete
       new File(tempFile.getPath + ".h2.db").exists must beTrue
     }
-    
-    def localFileStorage = {
-      val application = spy(app)
-      val storageMock = mock[UriFileStorage]
-      val libraryMock = mock[DefaultMuseumExhibitFileLibrary]
-      libraryMock.uriFileStorage returns storageMock
-      doAnswer(_ => Some(libraryMock)).when(application).exhibitFileLibrary
-      
-      application.museumSchema.localFileStorage must beSome(storageMock)
-    }
   }
   
   /** スキーマオブジェクト */
@@ -185,24 +204,65 @@ class GenomeMuseumGUISpec extends Specification with mock.Mockito {
 //    }
 //  }
   
+  /** 主画面操作の作成 */
+  def createMainViewController(app: GenomeMuseumGUI) = new {
+    val ctrl = app.createMainViewController
+    
+    def setMuseumStructure = ctrl.museumStructure must_== app.museumStructure
+    def setExhibitLoadManager = todo
+  }
+  
+  /** 主画面枠操作の作成 */
+  def createMainFrameViewController(app: GenomeMuseumGUI) = new {
+    val mainViewCtrl = app.createMainViewController
+    
+    val application = spy(app)
+    application.createMainViewController returns mainViewCtrl
+    
+    val ctrl = application.createMainFrameViewController
+    
+    def usesMainViewCtrlFactory = ctrl.mainViewController must_== mainViewCtrl
+  }
+  
   /** 起動時処理 */
   def startup(app: GenomeMuseumGUI) = new {
+    val mainFrameViewCtrl = mock[MainFrameViewController]
+    val mainFrameView = app.createMainFrameView
+    
     val application = spy(app)
-//    val mainViewCtrl = mock[MainViewController]
-//    val mainViewTitleModel = new ValueHolder("")
-//    mainViewCtrl.title returns mainViewTitleModel
+    application.createMainFrameViewController returns mainFrameViewCtrl
+    application.createMainFrameView returns mainFrameView
     
-    val frameCtrl = mock[MainFrameViewController]
+    application.startup()
     
-    def bindTitleModel = {
-      todo
-//      application.startup()
-//      there was one(frameCtrl).bindTitle(application.applicationViews.mainFrameView)
-    }
+    def bindView = there was one(mainFrameViewCtrl).bind(mainFrameView)
     
-    def showsFrame = {
-      application.startup()
-      there was one(frameCtrl).show()
-    }
+    def bindMenuBar = there was one(application).bindMenuBar(mainFrameView.mainMenu)
+    
+    def showsFrame = there was one(mainFrameViewCtrl).show()
+  }
+  
+  /** ファイルメニュー */
+  def bindFileMenu(application: GenomeMuseumGUI) = new {
+    val menuBar = new MainViewMenuBar
+    application.bindMenuBar(menuBar)
+    
+    def open = menuBar.open.action must_== application.openAction
+    
+    def quit = menuBar.quit.action must_== application.quitAction
+  }
+  
+  /** 編集メニュー */
+  def bindEditMenu(application: GenomeMuseumGUI) = new {
+    val menuBar = new MainViewMenuBar
+    application.bindMenuBar(menuBar)
+    
+    def cut = menuBar.cut.action must_== application.cutProxyAction
+    
+    def copy = menuBar.copy.action must_== application.copyProxyAction
+    
+    def paste = menuBar.paste.action must_== application.pasteProxyAction
+    
+    def selectAll = menuBar.selectAll.action must_== application.selectAllProxyAction
   }
 }

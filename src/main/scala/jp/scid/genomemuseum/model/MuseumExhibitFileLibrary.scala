@@ -1,6 +1,6 @@
 package jp.scid.genomemuseum.model
 
-import java.net.URL
+import java.net.{URL, URI}
 import java.io.{File, IOException}
 
 trait MuseumExhibitFileLibrary {
@@ -12,5 +12,5 @@ trait MuseumExhibitFileLibrary {
    * @throws IOException ファイル操作時に読み書き例外が発生したとき
    */
   @throws(classOf[IOException])
-  def store(source: File, exhibit: MuseumExhibit): File
+  def store(exhibit: MuseumExhibit, source: URL): URI
 }

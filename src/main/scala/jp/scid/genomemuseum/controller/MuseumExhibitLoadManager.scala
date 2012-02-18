@@ -1,212 +1,243 @@
 package jp.scid.genomemuseum.controller
 
-import java.net.URL
-import java.io.{File, FileOutputStream, IOException, Reader, FileReader, InputStreamReader}
+import java.net.{URL, URI}
+import java.text.ParseException
+import java.io.{File, IOException}
 import java.beans.{PropertyChangeListener, PropertyChangeEvent}
-import java.util.concurrent.{Callable, Executors}
+import java.util.concurrent.{Executors, Future}
 import javax.swing.SwingWorker
 import SwingWorker.StateValue
 
-import swing.Publisher
-import util.control.Exception.allCatch
+import collection.mutable.{ListBuffer, SynchronizedQueue}
 
 import jp.scid.genomemuseum.model.{MuseumExhibit, MuseumExhibitLoader, MuseumExhibitFileLibrary,
   MuseumExhibitService, MutableMuseumExhibitListModel}
+import jp.scid.gui.model.ValueModels
 
-import SwingTaskService._
+import MuseumExhibit.FileType._
 
 /**
  * ファイルから展示物を作成するマネージャ
- * @param loader ファイルから MuseumExhibit を読み込む処理を行う処理の移譲先。
- * @param museumExhibitStorage ファイル格納管理オブジェクト
+ * 
+ * ファイルライブラリが指定されている時は、読み込んだファイルはライブラリ指定ディレクトリに保管される。
  */
-class MuseumExhibitLoadManager(
-  loader: MuseumExhibitLoader
-) extends GenomeMuseumController with Publisher {
+class MuseumExhibitLoadManager {
+  private val ctrl = GenomeMuseumController(this)
+  
   import MuseumExhibitLoadManager._
   
-  def this() {
-    this(new MuseumExhibitLoader)
-  }
+  // モデル
+  /** 読み込み処理 */
+  var museumExhibitLoader: MuseumExhibitLoader = new MuseumExhibitLoader
+  
+  /** 展示物保管サービス */
+  var museumExhibitService: Option[MuseumExhibitService] = None
+  
+  /** ファイル保管ライブラリ */
+  var fileLibrary: Option[MuseumExhibitFileLibrary] = None
+  
+  /** タスク実行器 */
+  private val loadingTaskExecutor = Executors.newSingleThreadExecutor
+  
+  /** タスク実行結果キュー */
+  private val loadingTaskResults = new SynchronizedQueue[TaskResult]
   
   // リソース
   /** 読み込み時の形式不良メッセージ */
-  def invalidFormatMessage = getResource("alertInvalidFormat.message")
+  def invalidFormatMessage = ctrl.getResource("alertInvalidFormat.message")
   /** 読み込み時の形式不良メッセージ */
-  def failToLoadMessage = getResource("alertFailToLoad.message")
+  def failToLoadMessage = ctrl.getResource("alertFailToLoad.message")
+  
+  // モデル
+  /** タスクが実行中であるか */
+  val isRunning = ValueModels.newBooleanModel(false)
+  
+  /** 連続実行中のタスクの最大値 */
+  val maxmumTaskCount = ValueModels.newIntegerModel(0)
+  
+  /** 連続実行中の完了タスクの数 */
+  val finishedTaskCount = ValueModels.newIntegerModel(0)
   
   // コントローラ
   /** メッセージ出力 */
   var optionDialogManager: Option[OptionDialogManager] = None
   
-  /** 現在実行中のタスク */
-  private[controller] var currentLoadTask = createLoadTask()
-  
-  /** SwingWorker の PCL と scala.swing.Event の接続 */
-  private object TaskPropertyChangeHandler extends PropertyChangeListener {
-    def propertyChange(e: PropertyChangeEvent) = {
-      val task = e.getSource.asInstanceOf[SwingTaskService[_, _]]
-      
+  /** 現在実行中のタスク数を管理 */
+  private[controller] object TaskPropertyChangeHandler extends PropertyChangeListener {
+    def propertyChange(e: PropertyChangeEvent) = synchronized {
       e.getPropertyName match {
         case "state" => e.getNewValue match {
-          case StateValue.STARTED => publish(Started(task))
-          case StateValue.DONE => publish(Done(task))
+          case StateValue.STARTED =>
+            isRunning := true
+          case StateValue.DONE =>
+            finishedTaskCount := (finishedTaskCount() + 1)
+            if (maxmumTaskCount() == finishedTaskCount()) {
+              isRunning := false
+              maxmumTaskCount := 0
+              finishedTaskCount := 0
+            }
           case _ =>
         }
-        case "target" =>
-          publish(ProgressChange(task, task.getFinishedCount, task.getTaskCount))
-          
-          val loadTask = e.getNewValue.asInstanceOf[LoadTask]
-          val message = "%s 読み込み中... [%d / %d]"
-            .format(loadTask.fileName, task.getFinishedCount, task.getTaskCount)
-          
-          publish(MessageChange(task, message))
-        case _ =>
       }
     }
-  }
-  
-  def loadExhibit(targetRoom: MutableMuseumExhibitListModel, file: File) {
-    val task = new FileLoadingTask(file, targetRoom)
-    addQuery(task)
-  }
-  
-  /**
-   * ファイルから展示物の読み込みを非同期で行う
-   * 
-   * {@code fileLibrary} が設定されているとき、このファイルはライブラリへ保管される。
-   * @param file 読み込みもとのファイル
-   */
-  def loadExhibit(file: File) = {
-    val task = new FileLoadingTask(file)
-    addQuery(task)
+    
+    def listenTo(task: SwingWorker[_, _]) = synchronized {
+      task addPropertyChangeListener this
+      maxmumTaskCount := (maxmumTaskCount() + 1)
+    }
   }
   
   /**
-   * ソースから展示物の読み込みを非同期で行う
-   * 
-   * {@code #loadExhibit(File)} と異なり、{@code fileLibrary} が設定されていても
-   * ファイルはライブラリに保管されない。
-   * @param file 読み込みもとのファイル
+   * 展示物の読み込みタスク
    */
-  def loadExhibit(source: URL) = {
-    val task = new SourceLoadingTask(source)
-    addQuery(task)
-  }
-  
-  /**
-   * 読み込みタスクを追加する。タスクサービスが停止しているときは、実行する。
-   */
-  protected def addQuery(task: LoadTask) = {
-    val feature = currentLoadTask.trySubmit(task) match {
-      case Some(f) => f
-      case None =>
-        allCatch(currentLoadTask.get)
-        currentLoadTask = createLoadTask
-        currentLoadTask.trySubmit(task).get
+  private class MuseumExhibitLoadingTask(source: URL) extends SwingWorker[Option[MuseumExhibit], Unit] {
+    def this(source: URL, listModel: MutableMuseumExhibitListModel) {
+      this(source)
+      this.listModel = Option(listModel)
     }
     
-    if (currentLoadTask.getState == StateValue.PENDING) {
-      currentLoadTask.addPropertyChangeListener(TaskPropertyChangeHandler)
-      currentLoadTask.execute()
-    }
+    /** 展示物の作成サービス */
+    val service = museumExhibitService.get
     
-    feature
-  }
-  
-  /**
-   * 展示物データの読み込みタスク
-   */
-  abstract class LoadTask extends Callable[Option[MuseumExhibit]] {
-    def fileName: String
-  }
-  
-  /**
-   * 展示物読み込みの処理を行う。
-   * ファイル格納管理オブジェクトが有効の時、ファイルはコピーされ
-   * 管理オブジェクトの指定する位置に移動される。
-   */
-  private class SourceLoadingTask(source: URL) extends LoadTask {
-    def call() = {
-      val exhibitOpt = loader.loadFromUri(source)
-      exhibitOpt
-    }
+    /** 読み込み完了後に追加されるモデル */
+    var listModel: Option[MutableMuseumExhibitListModel] = None
     
-    def fileName = source.toString
-  }
-  
-  /**
-   * 展示物読み込みの処理を行う。
-   * ファイル格納管理オブジェクトが有効の時、ファイルはコピーされ
-   * 管理オブジェクトの指定する位置に移動される。
-   */
-  private class FileLoadingTask(file: File) extends LoadTask {
-    var targetRoom: Option[MutableMuseumExhibitListModel] = None
-    
-    def this(file: File, targetRoom: MutableMuseumExhibitListModel) {
-      this(file)
-      this.targetRoom = Option(targetRoom)
-    }
-    
-    def call() = {
-      val exhibitOpt = loader.loadFromUri(file.toURI.toURL)
-      targetRoom foreach (room => exhibitOpt foreach room.add)
-      exhibitOpt
-    }
-    
-    def fileName = file.toString
-  }
-  
-  /** ファイルから読み込みオブジェクトを作成 */
-  protected[controller] def getReader(file: File): Reader =
-    new FileReader(file)
-  
-  /** URL から読み込みオブジェクトを作成 */
-  protected[controller] def getReader(url: URL): Reader =
-    new InputStreamReader(url.openStream)
-  
-  private def using[A <% java.io.Closeable, B](s: A)(f: A => B) = {
-    try f(s) finally s.close()
-  }
-  
-  /**
-   * 読み込みを行う Swing タスクを作成
-   */
-  private def createLoadTask() = new SwingTaskService[Option[MuseumExhibit], LoadTask](
-      Executors.newSingleThreadExecutor) {
-    /**
-     * 警告の出力
-     */
-    override def process(chunks: java.util.List[ResultChunk]) {
-      import scala.collection.JavaConverters._
-      val chunkList = chunks.asScala.toList
-      // エラーファイルを取得
-      val invalidFiles = chunkList.collect{case ExceptionThrown(q, c) => (q, c)}
-      if (invalidFiles.nonEmpty)
-        alertFailToLoad(invalidFiles)
+    def doInBackground() = {
+      val exhibit = service.create
+      listModel foreach (_.add(exhibit))
       
-      // 形式不正の警告表示
-      val invalidFormatQueries = chunkList.collect{case Success(q, None) => q}
-      if (invalidFormatQueries.nonEmpty)
-        alertInvalidFormat(invalidFormatQueries)
+      // 読み込み処理
+      val result = try {
+        loadMuseumExhibit(exhibit, source) match {
+          case true =>
+            // ファイルのコピーとライブラリ登録
+            val dataSourceUri = fileLibrary map (_.store(exhibit, source)) getOrElse source.toURI
+            exhibit.dataSourceUri = dataSourceUri.toString
+            true
+          case false =>
+            loadingTaskResults += InvalidFormat(source)
+            false
+        }
+      }
+      catch {
+        case e: IOException =>
+          loadingTaskResults += ThrowedIOException(e, source)
+          false
+        case e: ParseException =>
+          loadingTaskResults += ThrowedParseException(e, source)
+          false
+      }
+      
+      // ライブラリへの保存
+      result match {
+        case true =>
+          service save exhibit
+          Some(exhibit)
+        case false =>
+          listModel foreach (_.remove(exhibit))
+          None
+      }
     }
     
-    /**
-     * 全読み込み完了
-     */
-    override def done {
+    override def done() {
+      // アラート表示中に次のタスクをブロックしないために次のイベントで実行
+      java.awt.EventQueue.invokeLater(new Runnable {
+        def run() {
+          processResultMessages()
+        }
+      })
     }
+  }
+  
+  /**
+   * ソースから展示物を作成する。
+   * @return ファイルから読み込みが成功したら {@code true}
+   */
+  @throws(classOf[IOException])
+  @throws(classOf[ParseException])
+  protected[controller] def loadMuseumExhibit(exhibit: MuseumExhibit, source: URL) = {
+    museumExhibitLoader.findFormat(source) match {
+      case Unknown => false
+      case format =>
+        museumExhibitLoader.loadMuseumExhibit(exhibit, source, format)
+        true
+    }
+  }
+  
+  // 読み込み実行
+  /**
+   * URLから展示物を読み込み、コピーしたファイルをライブラリへコピーして追加する。
+   */
+  def loadExhibit(source: URL): Future[Option[MuseumExhibit]] = {
+    val task = new MuseumExhibitLoadingTask(source)
+    execute(task)
+    task
+  }
+  
+  /**
+   * ファイルから展示物を読み込み、リストに追加する。
+   */
+  def loadExhibit(targetRoom: MutableMuseumExhibitListModel, file: File): Future[Option[MuseumExhibit]] = {
+    val task = new MuseumExhibitLoadingTask(file.toURI.toURL, targetRoom)
+    execute(task)
+    task
+  }
+  
+  /**
+   * ファイルから展示物を読み込み、ファイルをライブラリへコピーして追加する。
+   * 
+   * @param file 読み込みもとのファイル
+   */
+  def loadExhibit(file: File): Future[Option[MuseumExhibit]] = {
+    val task = new MuseumExhibitLoadingTask(file.toURI.toURL)
+    execute(task)
+    task
+  }
+  
+  /**
+   * タスクを実行する
+   */
+  protected[controller] def execute(task: SwingWorker[_, _]) {
+    TaskPropertyChangeHandler listenTo task
+    loadingTaskExecutor execute task
+  }
+  
+  // 読み込み通知
+  /**
+   * 読み込み処理が正常に終わらなかった時の処理
+   */
+  private[controller] def processResultMessages() = synchronized {
+    var invalidfResults = ListBuffer.empty[InvalidFormat]
+    var ioeResults = ListBuffer.empty[ThrowedIOException]
+    var parseeResults = ListBuffer.empty[ThrowedParseException]
+    
+    def collect(): Unit = loadingTaskResults.isEmpty match {
+      case true =>
+      case false =>
+        loadingTaskResults.dequeue match {
+          case r: InvalidFormat => invalidfResults += r
+          case r: ThrowedIOException => ioeResults += r
+          case r: ThrowedParseException => parseeResults += r
+        }
+        collect()
+    }
+    
+    collect()
+    
+    alertInvalidFormat(invalidfResults)
+    alertIOException(ioeResults)
+    alertParseException(parseeResults)
   }
   
   /**
    * 読み込み中の失敗を通知する。
    */
-  protected[controller] def alertInvalidFormat(tasks: Seq[LoadTask]) {
+  protected[controller] def alertInvalidFormat(results: Seq[InvalidFormat]) {
     if (logger.isDebugEnabled)
-      tasks.foreach(task => logger.debug("invalid format", task.fileName))
+      results.foreach(result => logger.info("Loading failed because invalid format {}", result.source))
     
     optionDialogManager foreach { manager =>
-      val description = tasks.map(_.fileName).mkString("<br>\n")
+      val description = results.map(_.source).mkString("<br>\n")
       manager.showMessage(invalidFormatMessage(), Some(description))
     }
   }
@@ -214,14 +245,42 @@ class MuseumExhibitLoadManager(
   /**
    * 読み込み中の失敗を通知する。
    */
-  protected[controller] def alertFailToLoad(results: Seq[(LoadTask, Exception)]) {
-    results.foreach{ case (task, exp) => logger.info("fail to load: " + task.fileName, exp) }
+  protected[controller] def alertIOException(results: Seq[ThrowedIOException]) {
+    if (logger.isDebugEnabled)
+      results.foreach(result =>
+        logger.info("Loading failed with thrown %s".format(result.source), result.cause))
     
     optionDialogManager foreach { manager =>
-      val description = results.map(_._1.fileName).mkString("<br>\n")
+      val description = results.map(_.source).mkString("<br>\n")
       manager.showMessage(failToLoadMessage(), Some(description))
     }
   }
+  
+  /**
+   * 読み込み中の失敗を通知する。
+   */
+  protected[controller] def alertParseException(results: Seq[ThrowedParseException]) {
+    if (logger.isDebugEnabled)
+      results.foreach(result =>
+        logger.info("Loading failed with thrown %s".format(result.source), result.cause))
+    
+    optionDialogManager foreach { manager =>
+      val description = results.map(_.source).mkString("<br>\n")
+      manager.showMessage(failToLoadMessage(), Some(description))
+    }
+  }
+  
+  /** 読み込み処理の完了状態を表すクラスの抽象定義 */
+  private sealed abstract class TaskResult
+  
+  /** 読み込みができないファイル形式の結果表現 */
+  private case class InvalidFormat(source: URL) extends TaskResult
+  
+  /** 読み込み中にIO例外が発生した時の結果表現 */
+  private case class ThrowedIOException(cause: IOException, source: URL) extends TaskResult
+  
+  /** 読み込み中に解釈例外が発生した時の結果表現 */
+  private case class ThrowedParseException(cause: ParseException, source: URL) extends TaskResult
 }
 
 object MuseumExhibitLoadManager {

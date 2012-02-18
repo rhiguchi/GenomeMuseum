@@ -6,7 +6,7 @@ import org.jdesktop.application.{Application, Action, ProxyActions}
 import view.{MainFrameView, MainView, MainViewMenuBar, ColumnVisibilitySetting}
 import controller.{GenomeMuseumController, MainFrameViewController, MainViewController,
   MuseumExhibitLoadManager, ExhibitRoomListController, ApplicationController,
-  MuseumExhibitListController, WebServiceResultController, GenomeMuseumControllerFactory}
+  MuseumExhibitListController, WebServiceResultController}
 import model.{MuseumSchema, MuseumExhibitLoader, DefaultMuseumExhibitFileLibrary,
   MuseumExhibitService, MuseumStructure}
 
@@ -87,33 +87,18 @@ class GenomeMuseumGUI extends Application {
   lazy val museumSchema = {
     logger.info("Library on {}", databaseSource)
     val museumSchema = MuseumSchema.on(databaseSource)
-    museumSchema.localFileStorage = exhibitFileLibrary.map(_.uriFileStorage)
     museumSchema
   }
   
   lazy val museumStructure = new MuseumStructure(museumSchema.userExhibitRoomService, museumSchema.museumExhibitService)
   
-  lazy val exhibitLoader = new MuseumExhibitLoader(museumSchema.museumExhibitService)
+  lazy val exhibitLoader = new MuseumExhibitLoader()
   
-  /**
-   * バイオデータの読み込み操作オブジェクトを作成する。
-   * 
-   * ファイルライブラリとして {@code loadManager} が利用される。
-   * @see #museumSchema
-   * @see #loadManager
-   */
-  lazy val exhibitLoadManager = new MuseumExhibitLoadManager(exhibitLoader)
+  /** バイオデータの読み込み操作 */
+  lazy val exhibitLoadManager = craeteMuseumExhibitLoadManager()
   
   // ビュー
-  /**
-   * このアプリケーションの画面オブジェクト
-   * 
-   * @see #createApplicationViews()
-   */
-  lazy val mainVrameView = new MainFrameView
-  
   lazy val openDialog = new FileDialog(null.asInstanceOf[java.awt.Frame], "", FileDialog.LOAD)
-  
   
   // アプリケーション処理
   /**
@@ -141,17 +126,11 @@ class GenomeMuseumGUI extends Application {
   override def startup() {
     logger.debug("startup")
     
-    val mainViewCtrl = new MainViewController()
-    val mainFrameViewCtrl = new MainFrameViewController(mainViewCtrl)
-    mainFrameViewCtrl.connectTitle(mainViewCtrl.title)
+    val mainFrameViewCtrl = createMainFrameViewController()
     
-    mainFrameViewCtrl.application = Some(this)
-    mainViewCtrl.museumStructure = museumStructure
-    mainViewCtrl setExhibitLoadManager exhibitLoadManager
-    
-    mainFrameViewCtrl.bind(mainVrameView)
-    mainFrameViewCtrl.bindMenuBar(mainVrameView.mainMenu);
-    mainVrameView.frame.setDefaultCloseOperation(javax.swing.JFrame.EXIT_ON_CLOSE);
+    val mainFrameView = createMainFrameView()
+    mainFrameViewCtrl.bind(mainFrameView)
+    bindMenuBar(mainFrameView.mainMenu)
     
     // 表示
     mainFrameViewCtrl.show()
@@ -160,6 +139,60 @@ class GenomeMuseumGUI extends Application {
   override protected def ready() {
     logger.info("ready")
   }
+  
+  /**
+   * メニューバーにアクションを設定する
+   */
+  def bindMenuBar(menuBar: MainViewMenuBar) {
+    menuBar.open.action = openAction
+    menuBar.quit.action = quitAction
+    
+    menuBar.cut.action = cutProxyAction
+    menuBar.copy.action = copyProxyAction
+    menuBar.paste.action = pasteProxyAction
+    menuBar.selectAll.action = selectAllProxyAction
+  }
+  
+  // 画面の作成
+  /**
+   * @return 主画面枠
+   */
+  private[genomemuseum] def createMainFrameView() = new MainFrameView
+  
+  // 操作器の作成
+  /**
+   * バイオデータの読み込み操作オブジェクトを作成する。
+   * 
+   * ファイルライブラリとして {@code loadManager} が利用される。
+   * @see #museumSchema
+   * @see #loadManager
+   */
+  protected[genomemuseum] def craeteMuseumExhibitLoadManager() = {
+    val manager = new MuseumExhibitLoadManager
+    manager.museumExhibitLoader = exhibitLoader
+    manager.museumExhibitService = Some(museumSchema.museumExhibitService)
+    manager.fileLibrary = exhibitFileLibrary
+    manager
+  }
+  
+  /**
+   * 主画面操作器を作成する。
+   */
+  protected[genomemuseum] def createMainViewController() = {
+    val ctrl = new MainViewController()
+    ctrl.museumStructure = museumStructure
+    ctrl setExhibitLoadManager exhibitLoadManager
+    ctrl
+  }
+  
+  /**
+   * 主画面枠操作器を作成する。
+   * 
+   * @see #createMainViewController()
+   */
+  protected[genomemuseum] def createMainFrameViewController() =
+    new MainFrameViewController(createMainViewController())
+  
   
   // アクションメソッド
   /**

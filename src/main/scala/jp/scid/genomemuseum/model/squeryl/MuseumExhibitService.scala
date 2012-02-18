@@ -132,7 +132,4 @@ class MuseumExhibitService(
       }
     case _ =>
   }
-  
-  /** MuseumExhibit のローカルファイル管理オブジェクト */
-  var localFileStorage: Option[UriFileStorage] = None
 }

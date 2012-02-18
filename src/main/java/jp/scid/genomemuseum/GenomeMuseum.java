@@ -30,7 +30,7 @@ public class GenomeMuseum {
             
             Logger guilogger = Logger.getLogger("jp.scid.gui");
             guilogger.addHandler(h);
-            guilogger.setLevel(Level.FINEST);
+            guilogger.setLevel(Level.INFO);
             guilogger.fine("GUI logger is prepared.");
         }
         
