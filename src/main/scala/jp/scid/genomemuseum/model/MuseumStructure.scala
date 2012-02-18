@@ -6,7 +6,6 @@ import collection.mutable.Publisher
 import collection.script.{Message, Include, Update, Remove}
 
 import jp.scid.gui.model.TreeSource
-import jp.scid.gui.tree.EditableTreeSource
 import UserExhibitRoom.RoomType
 import RoomType._
 
@@ -17,8 +16,7 @@ import RoomType._
  * ローカルで管理されるファイルは、利用者の要望に応じてグループ分けができる。
  * 
  */
-class MuseumStructure extends EditableTreeSource[ExhibitRoom] with PropertyChangeObservable
-    with TreeSource[ExhibitRoom] {
+class MuseumStructure extends TreeSource[ExhibitRoom] with PropertyChangeObservable {
   import MuseumStructure._
   
   def this(roomService: UserExhibitRoomService, localLibraryContent: MuseumExhibitService) {
@@ -114,7 +112,7 @@ class MuseumStructure extends EditableTreeSource[ExhibitRoom] with PropertyChang
   }
   
   /** 子要素を取得 */
-  def childrenFor(parent: ExhibitRoom) = {
+  def childrenFor(parent: ExhibitRoom): List[ExhibitRoom] = {
     if (isLeaf(parent)) Nil
     else parent match {
       // ユーザー設定部屋ルートの時は、サービスからのルート要素取得して返す
