@@ -10,54 +10,63 @@ import jp.scid.genomemuseum.{view, model, gui, GenomeMuseumGUI}
 import view.MainView
 import MainView.ContentsMode
 import jp.scid.gui.model.{ProxyValueModel, ValueModels}
-import jp.scid.gui.control.{ViewValueConnector, StringPropertyBinder}
+import jp.scid.gui.control.{ViewValueConnector, StringPropertyBinder, DocumentTextController}
 import model.{MuseumSchema, ExhibitRoom, UserExhibitRoom, MuseumExhibit,
   UserExhibitRoomService, MuseumExhibitService, MuseumStructure}
 import jp.scid.motifviewer.gui.MotifViewerController
 
 /**
- * 主画面の操作を受け付け、操作反応を実行するオブジェクト。
+ * 主画面の操作を担うクラスです。
  * 
- * @param sourceListCtrl ソースリスト 表示コントローラ
- * @param museumExhibitListCtrl MuseumExhibit 表示コントローラ
- * @param webServiceResultCtrl WebService 表示ントローラ
- * @param application データやメッセージを取り扱うアプリケーションオブジェクト。
- * @param mainView 表示と入力を行う画面。
+ * 主画面は [[jp.scid.genomemuseum.controller.ExhibitRoomListController]] でソースリストを、
+ * [[jp.scid.genomemuseum.controller.MuseumExhibitListController]] でデータリストをそれぞれ管理します。
+ * `bind()` によって、[[jp.scid.genomemuseum.view.MainView]] はこれらコントローラとも結合されます。
+ * 
+ * ソースリストの選択項目に応じて、データリストの表示が変化します。
+ * ローカルに保存された展示物を表示する `LOCAL` モードと、ウェブから検索を行う `NCBI` モードがあります。
+ * これら表示モードは `setContentsMode(MainView.ContentsMode)` で変更できます。
  */
 class MainViewController extends GenomeMuseumController {
+  import MainViewController._
+  
+  // プロパティ
+  /** 検索フィールド文字列 */
+  val searchText = new ProxyValueModel[String]
+  
+  /** このコントローラの表題 */
+  val title = new ProxyValueModel[String]
+  
+  /** 現在のデータビューの表示モード */
+  val contentsMode = ValueModels.newValueModel(ContentsMode.LOCAL)
+  
   // コントローラ
+  /** 検索フィールドコントローラ */
+  protected[controller] val searchTextController = new DocumentTextController(searchText)
+  
   /** 部屋リスト操作 */
   protected[controller] val exhibitRoomListController = new ExhibitRoomListController
   
   /** 展示物リスト操作 */
-  val museumExhibitController = new MuseumExhibitListController
-  
-  // ファイルソース表示
-  val contentsMode = ValueModels.newValueModel(ContentsMode.LOCAL)
+  protected[controller] val museumExhibitController = new MuseumExhibitListController
   
   /** ウェブ検索操作 */
   protected[controller] val webServiceResultController = new WebServiceResultController
   
-  // モデル
   /** データテーブルの現在適用するモデル */
   private val sourceSelectionHandler = EventListHandler(exhibitRoomListController.getSelectedNodes) {
     case Seq(room, _*) => updateRoomContents(room)
-    case _ =>
+    case _ => // TODO ローカルライブラリを選択する
   }
   
-  /** このコントローラを表すタイトル */
-  val title = new ProxyValueModel(museumExhibitController.getTitleModel)
-  
-  /** 検索フィールド */
-  val searchTextModel = new ProxyValueModel(museumExhibitController.getFilterTextModel)
-  
-  val searchFildBinder = new StringPropertyBinder(searchTextModel)
-  
+  // プロパティアクセサ
   /** ソースリストモデルを取得 */
   def museumStructure: MuseumStructure = exhibitRoomListController.getModel
   
   /** ソースリストモデルを設定 */
-  def museumStructure_=(newModel: MuseumStructure) = exhibitRoomListController setModel newModel
+  def setMuseumStructure(newModel: MuseumStructure) {
+    setContentsMode(ContentsMode.LOCAL)
+    exhibitRoomListController.setModel(newModel)
+  }
   
   /** 読み込みマネージャの設定 */
   def setExhibitLoadManager(manager: MuseumExhibitLoadManager) {
@@ -70,12 +79,12 @@ class MainViewController extends GenomeMuseumController {
    * データテーブル領域に表示するコンテンツを設定する
    * 通常は、ソースリストの選択項目となる
    */
-  private def updateRoomContents(newRoom: ExhibitRoom) {
+  def updateRoomContents(newRoom: ExhibitRoom) {
     implicit def roomService = museumStructure.userExhibitRoomService.get
     
     val webSource = museumStructure.webSource
     newRoom match {
-      case `webSource` => contentsMode.setValue(ContentsMode.NCBI)
+      case `webSource` => setContentsMode(ContentsMode.NCBI)
       case _ =>
         //ソースリスト項目選択
         val exhibits = newRoom match {
@@ -83,7 +92,7 @@ class MainViewController extends GenomeMuseumController {
           case _ => museumStructure.museumExhibitService.getOrElse(null)
         }
         museumExhibitController setModel exhibits
-        contentsMode.setValue(ContentsMode.LOCAL)
+        setContentsMode(ContentsMode.LOCAL)
     }
   }
   
@@ -111,7 +120,8 @@ class MainViewController extends GenomeMuseumController {
     // NCBI 検索ビューと結合
     webServiceResultController.bindTable(view.websearchTable)
     // 検索フィールドと結合
-    searchFildBinder.bindTextField(view.quickSearchField, view.quickSearchField.getDocument)
+    searchTextController.setModel(view.quickSearchField.getDocument)
+    searchTextController.bindTextComponent(view.quickSearchField)
     
     // データリストの表示モードの変更
     val contentsModeHandler = new ContentsModeHandler(view)
@@ -122,32 +132,40 @@ class MainViewController extends GenomeMuseumController {
       view.addSmartBox -> exhibitRoomListController.addSamrtRoomAction,
       view.addBoxFolder -> exhibitRoomListController.addGroupRoomAction,
       view.removeBoxButton -> exhibitRoomListController.removeSelectedUserRoomAction)
-    
-    var currentConnectors: List[Connector] = Nil
   }
   
+  /**
+   * コンテンツモードを変更する。
+   * 
+   * 関連するモデルやデータビューの表示が変化する。
+   */
+  def setContentsMode(newMode: ContentsMode) {
+    // 検索フィールドのモデル変更
+    val newSearchTextModel = newMode match {
+      case ContentsMode.LOCAL => museumExhibitController.getFilterTextModel
+      case ContentsMode.NCBI => webServiceResultController.searchTextModel
+    }
+    searchText.setSubject(newSearchTextModel)
+    
+    // 表題のモデル変更
+    val titleModel = newMode match {
+      case ContentsMode.LOCAL => museumExhibitController.getTitleModel
+      case ContentsMode.NCBI => webServiceResultController.taskMessage
+    }
+    title.setSubject(titleModel)
+    
+    // プロパティへ適用
+    contentsMode.setValue(newMode)
+  }
+}
+
+object MainViewController {
   /**
    * コンテンツモードを更新するハンドラ
    */
   class ContentsModeHandler(view: MainView) extends ViewValueConnector[MainView, ContentsMode](view) {
     def updateView(view: MainView, mode: ContentsMode) {
       view setContentsMode mode
-      // 検索フィールドのモデル変更
-      val newSearchTextModel = mode match {
-        case ContentsMode.LOCAL => museumExhibitController.getFilterTextModel()
-        case ContentsMode.NCBI => webServiceResultController.searchTextModel
-      }
-      searchTextModel.setSubject(newSearchTextModel)
-      
-      // 表題のモデル変更
-      val titleModel = mode match {
-        case ContentsMode.LOCAL => museumExhibitController.getTitleModel
-        case ContentsMode.NCBI => webServiceResultController.taskMessage
-      }
-      title.setSubject(titleModel)
     }
   }
-}
-
-object MainViewController {
 }

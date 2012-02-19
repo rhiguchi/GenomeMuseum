@@ -180,8 +180,8 @@ class GenomeMuseumGUI extends Application {
    */
   protected[genomemuseum] def createMainViewController() = {
     val ctrl = new MainViewController()
-    ctrl.museumStructure = museumStructure
-    ctrl setExhibitLoadManager exhibitLoadManager
+    ctrl.setMuseumStructure(museumStructure)
+    ctrl.setExhibitLoadManager(exhibitLoadManager)
     ctrl
   }
   

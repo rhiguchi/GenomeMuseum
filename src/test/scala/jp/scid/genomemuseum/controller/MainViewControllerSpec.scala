@@ -1,22 +1,42 @@
 package jp.scid.genomemuseum.controller
 
-import javax.swing.{JComponent, JProgressBar, JLabel}
-
 import org.specs2._
 
 import jp.scid.gui.event.ValueChange
-import jp.scid.genomemuseum.{view, gui, model, GenomeMuseumGUI}
-import model.{ExhibitRoom, UserExhibitRoom, MuseumSchema, UserExhibitRoomService, MuseumExhibitService}
-import model.{UserExhibitRoomServiceMock, MuseumExhibitServiceMock}
+import jp.scid.genomemuseum.{view, model}
+import model.{ExhibitRoom, UserExhibitRoom, MuseumSchema}
 import view.MainView
+import MainView.ContentsMode
 
 class MainViewControllerSpec extends Specification with mock.Mockito {
   def is = "MainViewController" ^
+    "データビューの表示モード" ^ contentsModeSpec(new MainViewController) ^
+    "データビューの表示モードの変更" ^ canSetContentsMode(new MainViewController) ^
+    "検索フィールド文字列" ^ searchTextModelSpec(new MainViewController) ^
+    "タイトル文字列" ^ titleSpec(new MainViewController) ^
     "展示物リスト操作機" ^ museumExhibitListControllerSpec(new MainViewController) ^
-    "ソース選択モデル" ^ dataListControllerSpec(new MainViewController) ^
-    "進捗ビュー結合" ^ canBindProgressView(new MainViewController) ^
     "ビュー結合" ^ canBindMainView(new MainViewController) ^
     end
+  
+  def contentsModeSpec(c: => MainViewController) =
+    "初期値はローカルデータ表示モード" ! contentsMode(c).initial ^
+    bt
+  
+  def canSetContentsMode(c: => MainViewController) =
+    "プロパティが変更される" ! setContentsMode(c).contentsMode ^
+    bt
+  
+  def searchTextModelSpec(c: => MainViewController) =
+    "最初はモデル結合なし" ! searchTextModel(c).initial ^
+    "LOCAL モードでは local と結合" ! searchTextModel(c).localMode ^
+    "NCBI モードでは web と結合" ! searchTextModel(c).ncbiMode ^
+    bt
+  
+  def titleSpec(c: => MainViewController) =
+    "最初はモデル結合なし" ! title(c).initial ^
+    "LOCAL モードでは local と結合" ! title(c).localMode ^
+    "NCBI モードでは web と結合" ! title(c).ncbiMode ^
+    bt
   
   def museumExhibitListControllerSpec(f: => MainViewController) =
 //    "ソースの UserExhibitRoom が userExhibitRoom に適用" ! selectedRoom(f).userExhibitRoom ^
@@ -24,35 +44,72 @@ class MainViewControllerSpec extends Specification with mock.Mockito {
 //    "ウェブソースを選択しても userExhibitRoom は変化しない" ! selectedRoom(f).webSource ^
     bt
   
-  def dataListControllerSpec(f: => MainViewController) =
-//    "初期値は exhibitList" ! dataListController(f).init ^
-//    "exhibitRoomListController で webSource を選択すると webResult" ! dataListController(f).webSource ^
-//    "exhibitRoomListController で UserExhibitRoom を選択すると exhibitList" ! dataListController(f).userRoom ^
-    bt
-
-  def canBindProgressView(f: => MainViewController) =
-//    "表示・非表示結合" ! bindProgressView(f).progressViewVisibled ^
-//    "表示・非表示切り替え" ! bindProgressView(f).progressViewVisibledBind ^
-//    "メッセージ表示" ! bindProgressView(f).progressMessage ^
-//    "メッセージ変化" ! bindProgressView(f).progressMessageBind ^
-//    "最大値設定" ! bindProgressView(f).progressMaximum ^
-//    "最大値変化" ! bindProgressView(f).progressMaximumBind ^
-//    "現在値設定" ! bindProgressView(f).progressValue ^
-//    "現在値変化" ! bindProgressView(f).progressValueBind ^
-//    "不定状態設定" ! bindProgressView(f).progressIndeterminate ^
-//    "不定状態変化" ! bindProgressView(f).progressIndeterminateBind ^
+  def canBindMainView(f: => MainViewController) =
+    "ソースリストと結合" ! bindMainView(f).exhibitRoomListController ^
+    "コンテンツビューと結合" ! bindMainView(f).museumExhibitController ^
+    "ウェブ検索と結合" ! bindMainView(f).webServiceResultController ^
+    "検索フィールドの結合" ! bindMainView(f).searchTextController ^
+    "コンテンツモードを変更することができる。" ! bindMainView(f).contentsModeHandler ^
+    "addBasicRoom ボタンアクション" ! bindMainView(f).addBasicRoom ^
+    "addGroupRoom ボタンアクション" ! bindMainView(f).addGroupRoom ^
+    "addSmartRoom ボタンアクション" ! bindMainView(f).addSmartRoom ^
+    "removeRoom ボタンアクション" ! bindMainView(f).removeRoom ^
     bt
   
-  def canBindMainView(f: => MainViewController) =
-//    "ソースリストと結合" ! bindMainView(f).exhibitRoomListController ^
-//    "コンテンツビューと結合" ! bindMainView(f).museumExhibitController ^
-//    "進捗画面と結合" ! bindMainView(f).bindProgressView ^
-//    "コンテンツモードを変更することができる。" ! bindMainView(f).contentsModeHandler ^
-//    "addBasicRoom ボタンアクション" ! bindMainView(f).addBasicRoom ^
-//    "addGroupRoom ボタンアクション" ! bindMainView(f).addGroupRoom ^
-//    "addSmartRoom ボタンアクション" ! bindMainView(f).addSmartRoom ^
-//    "removeRoom ボタンアクション" ! bindMainView(f).removeRoom ^
-    bt
+  /** データビューの表示モード */
+  def contentsMode(ctrl: MainViewController) = new {
+    private def model = ctrl.contentsMode
+    
+    def initial = model() must_== ContentsMode.LOCAL
+  }
+  
+  /** データビューの表示モードの変更 */
+  def setContentsMode(ctrl: MainViewController) = new {
+    private def setNcbi() = ctrl.setContentsMode(ContentsMode.NCBI)
+    private def setLocal() = ctrl.setContentsMode(ContentsMode.LOCAL)
+    
+    def contentsMode = {
+      setNcbi()
+      val a = ctrl.contentsMode()
+      setLocal()
+      val b = ctrl.contentsMode()
+      Seq(b, a) must_== Seq(ContentsMode.LOCAL, ContentsMode.NCBI)
+    }
+  }
+  
+  /** 検索フィールド文字列 */
+  def searchTextModel(ctrl: MainViewController) = new {
+    private def model = ctrl.searchText
+    
+    def initial = model.getSubject must beNull
+    
+    def localMode = {
+      ctrl.setContentsMode(ContentsMode.LOCAL)
+      model.getSubject must_== ctrl.museumExhibitController.getFilterTextModel
+    }
+    
+    def ncbiMode = {
+      ctrl.setContentsMode(ContentsMode.NCBI)
+      model.getSubject must_== ctrl.webServiceResultController.searchTextModel
+    }
+  }
+  
+  /** タイトル文字列 */
+  def title(ctrl: MainViewController) = new {
+    private def model = ctrl.title
+    
+    def initial = model.getSubject must beNull
+    
+    def localMode = {
+      ctrl.setContentsMode(ContentsMode.LOCAL)
+      model.getSubject must_== ctrl.museumExhibitController.getTitleModel
+    }
+    
+    def ncbiMode = {
+      ctrl.setContentsMode(ContentsMode.NCBI)
+      model.getSubject must_== ctrl.webServiceResultController.taskMessage
+    }
+  }
   
   def selectedRoom(ctrl: MainViewController) = new {
 //    private def roomCtrl = ctrl.exhibitRoomListController
@@ -77,107 +134,51 @@ class MainViewControllerSpec extends Specification with mock.Mockito {
 //    }
   }
   
-  def dataListController(ctrl: MainViewController) = new {
-//    def init = ctrl.dataListController() must_== ctrl.museumExhibitListController
-//    
-//    def webSource = {
-//      ctrl.exhibitRoomListController.selectedRoom := ctrl.exhibitRoomListController.sourceStructure.webSource
-//      ctrl.dataListController() must_== ctrl.webServiceResultController
-//    }
-//    
-//    def userRoom = {
-//      ctrl.exhibitRoomListController.selectedRoom := mock[UserExhibitRoom]
-//      init
-//    }
-  }
   
-  def bindProgressView(ctrl: MainViewController) = new {
-//    val contentPane = mock[JComponent]
-//    val progressBar = mock[JProgressBar]
-//    val statusLabel = mock[JLabel]
-//    ctrl.bindProgressView(contentPane, progressBar, statusLabel)
-//    
-//    def progressViewVisibled = there was one(contentPane).setVisible(false)
-//    
-//    def progressViewVisibledBind = {
-//      List(true, false) foreach ctrl.progressViewVisibled.:=
-//      there was two(contentPane).setVisible(false) then one(contentPane).setVisible(true)
-//    }
-//    
-//    def progressMessage = there was one(statusLabel).setText("")
-//    
-//    def progressMessageBind = {
-//      List("text", "text2") foreach ctrl.progressMessage.:=
-//      there was one(statusLabel).setText("text") then one(statusLabel).setText("text2")
-//    }
-//    
-//    def progressMaximum = there was one(progressBar).setMaximum(0)
-//    
-//    def progressMaximumBind = {
-//      List(20, 50) foreach ctrl.progressMaximum.:=
-//      there was one(progressBar).setMaximum(20) then one(progressBar).setMaximum(50)
-//    }
-//    
-//    def progressValue = there was one(progressBar).setValue(0)
-//    def progressValueBind = {
-//      List(10, 20) foreach ctrl.progressValue.:=
-//      there was one(progressBar).setValue(10) then one(progressBar).setValue(20)
-//    }
-//    
-//    def progressIndeterminate = there was one(progressBar).setIndeterminate(false)
-//    def progressIndeterminateBind = {
-//      List(true, false) foreach ctrl.progressIndeterminate.:=
-//      there was two(progressBar).setIndeterminate(false) then
-//        one(progressBar).setIndeterminate(true)
-//    }
-  }
-  
+  /** ビュー結合 */
   def bindMainView(c: MainViewController) = new {
     val ctrl = spy(c)
-    ctrl.exhibitRoomListController returns spy(ctrl.exhibitRoomListController)
-    ctrl.museumExhibitController returns spy(ctrl.museumExhibitController)
-//    private val exhibitListCtrl = spy(ctrl.museumExhibitListController)
-//    private val webResultCtrl = spy(ctrl.webServiceResultController)
-//    
-//    ctrl.exhibitRoomListController returns exhibitRoomListController
-//    ctrl.museumExhibitListController returns exhibitListCtrl
-//    ctrl.webServiceResultController returns webResultCtrl
-//    ctrl.dataListController := exhibitListCtrl
-//    doAnswer(_ => Unit).when(ctrl).bindProgressView(any, any, any)
-//    
-//    val view = spy(new MainView)
-//    ctrl.bind(view)
-//    
-//    def exhibitRoomListController =
-//      there was one(ctrl.exhibitRoomListController).bindTree(view.sourceList)
-//    
-//    def museumExhibitController =
-//      there was one(ctrl.museumExhibitController).bind(view.exhibitListView)
-//      
-//    def bindProgressView = {
-//      there was one(ctrl).bindProgressView(view.fileLoadingActivityPane,
-//        view.fileLoadingProgress, view.fileLoadingStatus)
-//    }
-//    
-//    def contentsModeHandler = {
-//      ctrl.contentsMode setValue MainView.ContentsMode.LOCAL
-//      ctrl.contentsMode setValue MainView.ContentsMode.NCBI
-//      
-//      there was
-//        one(view).setContentsMode(MainView.ContentsMode.LOCAL) then
-//        one(view).setContentsMode(MainView.ContentsMode.NCBI)
-//    }
-//    
-//    def addBasicRoom = view.addListBox.getAction must_==
-//      sourceListCtrl.addBasicRoomAction.peer
-//    
-//    def addGroupRoom = view.addSmartBox.getAction must_==
-//      sourceListCtrl.addSamrtRoomAction.peer
-//    
-//    def addSmartRoom = view.addBoxFolder.getAction must_==
-//      sourceListCtrl.addGroupRoomAction.peer
-//    
-//    def removeRoom = view.removeBoxButton.getAction must_==
-//      sourceListCtrl.removeSelectedUserRoomAction.peer
+    ctrl.exhibitRoomListController returns spy(c.exhibitRoomListController)
+    ctrl.museumExhibitController returns spy(c.museumExhibitController)
+    ctrl.webServiceResultController returns spy(c.webServiceResultController)
+    ctrl.searchTextController returns spy(c.searchTextController)
+    
+    private def sourceListCtrl = ctrl.exhibitRoomListController
+    
+    val view = spy(new MainView)
+    ctrl.bind(view)
+    
+    def exhibitRoomListController =
+      there was one(ctrl.exhibitRoomListController).bindTree(view.sourceList)
+    
+    def museumExhibitController =
+      there was one(ctrl.museumExhibitController).bind(view.exhibitListView)
+    
+    def webServiceResultController =
+      there was one(ctrl.webServiceResultController).bindTable(view.websearchTable)
+    
+    def searchTextController =
+      there was one(ctrl.searchTextController).bindTextComponent(view.quickSearchField) then
+        one(ctrl.searchTextController).setModel(view.quickSearchField.getDocument)
+    
+    def contentsModeHandler = {
+      ctrl.setContentsMode(ContentsMode.NCBI)
+      ctrl.setContentsMode(ContentsMode.LOCAL)
+      there was
+        atLeastOne(view).setContentsMode(MainView.ContentsMode.LOCAL) then
+        atLeastOne(view).setContentsMode(MainView.ContentsMode.NCBI)
+    }
+    
+    def addBasicRoom = view.addListBox.getAction must_==
+      sourceListCtrl.addBasicRoomAction.peer
+    
+    def addGroupRoom = view.addSmartBox.getAction must_==
+      sourceListCtrl.addSamrtRoomAction.peer
+    
+    def addSmartRoom = view.addBoxFolder.getAction must_==
+      sourceListCtrl.addGroupRoomAction.peer
+    
+    def removeRoom = view.removeBoxButton.getAction must_==
+      sourceListCtrl.removeSelectedUserRoomAction.peer
   }
 }
