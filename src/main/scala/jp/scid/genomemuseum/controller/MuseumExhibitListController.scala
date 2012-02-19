@@ -1,7 +1,8 @@
 package jp.scid.genomemuseum.controller
 
 import java.io.File
-import javax.swing.{JTable, JTextField, JComponent, TransferHandler}
+
+import javax.swing.{JTable, JTextField, JComponent, TransferHandler, DropMode}
 
 import org.jdesktop.application.Action
 
@@ -60,6 +61,7 @@ class MuseumExhibitListController extends MuseumExhibitController {
   /** 転送ハンドラを結合 */
   def bindTable(table: JTable) {
     table.setTransferHandler(tableTransferHandler)
+    table.setDropMode(DropMode.INSERT_ROWS)
     table.getParent match {
       case parent: JComponent => parent.setTransferHandler(tableTransferHandler)
       case _ =>

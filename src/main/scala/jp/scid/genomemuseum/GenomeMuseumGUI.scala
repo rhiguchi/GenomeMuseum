@@ -131,6 +131,7 @@ class GenomeMuseumGUI extends Application {
     val mainFrameView = createMainFrameView()
     mainFrameViewCtrl.bind(mainFrameView)
     bindMenuBar(mainFrameView.mainMenu)
+    bindLoadProgress(mainFrameView.mainView)
     
     // 表示
     mainFrameViewCtrl.show()
@@ -151,6 +152,11 @@ class GenomeMuseumGUI extends Application {
     menuBar.copy.action = copyProxyAction
     menuBar.paste.action = pasteProxyAction
     menuBar.selectAll.action = selectAllProxyAction
+  }
+  
+  def bindLoadProgress(view: MainView) {
+    exhibitLoadManager.bindProgressView(
+      view.fileLoadingActivityPane, view.fileLoadingProgress, view.fileLoadingStatus)
   }
   
   // 画面の作成

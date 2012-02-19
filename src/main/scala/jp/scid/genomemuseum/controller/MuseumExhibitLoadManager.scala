@@ -14,6 +14,7 @@ import jp.scid.genomemuseum.view.MainView
 import jp.scid.genomemuseum.model.{MuseumExhibit, MuseumExhibitLoader, MuseumExhibitFileLibrary,
   MuseumExhibitService, MutableMuseumExhibitListModel}
 import jp.scid.gui.model.ValueModels
+import jp.scid.gui.control.ComponentPropertyConnector
 
 import MuseumExhibit.FileType._
 
@@ -45,9 +46,11 @@ class MuseumExhibitLoadManager {
   
   // リソース
   /** 読み込み時の形式不良メッセージ */
-  def invalidFormatMessage = ctrl.getResource("alertInvalidFormat.message")
+  lazy val invalidFormatMessage = ctrl.getResource("alertInvalidFormat.message")
   /** 読み込み時の形式不良メッセージ */
-  def failToLoadMessage = ctrl.getResource("alertFailToLoad.message")
+  lazy val failToLoadMessage = ctrl.getResource("alertFailToLoad.message")
+  /** 読み込み進行中メッセージ */
+  lazy val progressMessageInProgress = ctrl.getResource("progressMessage.inprogress")
   
   // モデル
   /** タスクが実行中であるか */
@@ -59,17 +62,28 @@ class MuseumExhibitLoadManager {
   /** 連続実行中の完了タスクの数 */
   val finishedTaskCount = ValueModels.newIntegerModel(0)
   
+  /** タスクメッセージ */
+  val progressMessage = ValueModels.newValueModel("Message")
+  
+  /** 現在読み込み中のファイル */
+  private var currentLoadingFile = ""
+  
   // コントローラ
   /** メッセージ出力 */
   var optionDialogManager: Option[OptionDialogManager] = None
   
-  /** 現在実行中のタスク数を管理 */
+  /** 現在実行中のタスク数やメッセージを更新する */
   private[controller] object TaskPropertyChangeHandler extends PropertyChangeListener {
     def propertyChange(e: PropertyChangeEvent) = synchronized {
       e.getPropertyName match {
         case "state" => e.getNewValue match {
           case StateValue.STARTED =>
             isRunning := true
+            e.getSource match {
+              case task: MuseumExhibitLoadingTask =>
+                currentLoadingFile = task.source.getFile
+              case _ =>
+            }
           case StateValue.DONE =>
             finishedTaskCount := (finishedTaskCount() + 1)
             if (maxmumTaskCount() == finishedTaskCount()) {
@@ -79,7 +93,9 @@ class MuseumExhibitLoadManager {
             }
           case _ =>
         }
+        case _ =>
       }
+      updateProgressMessage()
     }
     
     def listenTo(task: SwingWorker[_, _]) = synchronized {
@@ -91,7 +107,7 @@ class MuseumExhibitLoadManager {
   /**
    * 展示物の読み込みタスク
    */
-  private class MuseumExhibitLoadingTask(source: URL) extends SwingWorker[Option[MuseumExhibit], Unit] {
+  private class MuseumExhibitLoadingTask(val source: URL) extends SwingWorker[Option[MuseumExhibit], Unit] {
     def this(source: URL, listModel: MutableMuseumExhibitListModel) {
       this(source)
       this.listModel = Option(listModel)
@@ -103,35 +119,17 @@ class MuseumExhibitLoadManager {
     /** 読み込み完了後に追加されるモデル */
     var listModel: Option[MutableMuseumExhibitListModel] = None
     
+    private lazy val exhibit = service.create
+    
     def doInBackground() = {
-      val exhibit = service.create
       listModel foreach (_.add(exhibit))
       
       // 読み込み処理
-      val result = try {
-        loadMuseumExhibit(exhibit, source) match {
-          case true =>
-            // ファイルのコピーとライブラリ登録
-            val dataSourceUri = fileLibrary map (_.store(exhibit, source)) getOrElse source.toURI
-            exhibit.dataSourceUri = dataSourceUri.toString
-            true
-          case false =>
-            loadingTaskResults += InvalidFormat(source)
-            false
-        }
-      }
-      catch {
-        case e: IOException =>
-          loadingTaskResults += ThrowedIOException(e, source)
-          false
-        case e: ParseException =>
-          loadingTaskResults += ThrowedParseException(e, source)
-          false
-      }
-      
-      // ライブラリへの保存
-      result match {
+      loadMuseumExhibit(exhibit, source) match {
         case true =>
+          // ファイルのコピーとライブラリ登録
+          val dataSourceUri = fileLibrary map (_.store(exhibit, source)) getOrElse source.toURI
+          exhibit.dataSourceUri = dataSourceUri.toString
           service save exhibit
           Some(exhibit)
         case false =>
@@ -141,6 +139,31 @@ class MuseumExhibitLoadManager {
     }
     
     override def done() {
+      import java.util.concurrent.ExecutionException
+      import util.control.Exception.catching
+      
+      val save = isCancelled match {
+        case false => catching(classOf[ExecutionException]) either get() match {
+          case Right(Some(_)) => true
+          case Right(None) =>
+            loadingTaskResults += InvalidFormat(source)
+            false
+          case Left(e: ExecutionException) =>
+            e.getCause match {
+              case e: IOException => loadingTaskResults += ThrowedIOException(e, source)
+              case e: ParseException => loadingTaskResults += ThrowedParseException(e, source)
+              case _ =>
+            }
+            false
+        }
+        case true => false
+      }
+      
+      save match {
+        case true => service save exhibit
+        case false => listModel foreach (_.remove(exhibit))
+      }
+      
       // アラート表示中に次のタスクをブロックしないために次のイベントで実行
       java.awt.EventQueue.invokeLater(new Runnable {
         def run() {
@@ -210,17 +233,34 @@ class MuseumExhibitLoadManager {
   }
   
   /** 進捗ビューのモデル結合 */
-  protected[controller] def bindProgressView(contentPane: JComponent,
+  def bindProgressView(contentPane: JComponent,
       progressBar: JProgressBar, statusLabel: JLabel) {
-//    progressViewVisibled.addNewValueReaction(contentPane.setVisible).update()
-//    progressMaximum.addNewValueReaction(progressBar.setMaximum).update()
-//    progressValue.addNewValueReaction(progressBar.setValue).update()
-//    progressMessage.addNewValueReaction(statusLabel.setText).update()
-//    progressIndeterminate.addNewValueReaction(progressBar.setIndeterminate).update()
+    new ComponentPropertyConnector(contentPane, "visible").setModel(isRunning)
+    
+    // progressBar
+    progressBar.setMinimum(0)
+    new ComponentPropertyConnector(progressBar, "maximum").setModel(maxmumTaskCount)
+    new ComponentPropertyConnector(progressBar, "value").setModel(finishedTaskCount)
+    
+    // message
+    new ComponentPropertyConnector(statusLabel, "text").setModel(progressMessage)
   }
 
   
   // 読み込み通知
+  /**
+   * 処理メッセージの更新
+   */
+  def updateProgressMessage() {
+    val message = Boolean unbox isRunning() match {
+      case true => 
+        "Loading %s [%s / %s]".format(currentLoadingFile, finishedTaskCount(), maxmumTaskCount())
+      case false => ""
+    }
+    println(message)
+    progressMessage := message
+  }
+  
   /**
    * 読み込み処理が正常に終わらなかった時の処理
    */
