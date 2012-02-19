@@ -96,6 +96,7 @@ public class MuseumExhibitController extends EventListController<MuseumExhibit, 
         motifViewerController.bind(view.overviewMotifView);
         
         bindTable(view.dataTable, tableFormat);
+        bindTableHeader(view.dataTable.getTableHeader(), tableFormat);
         bindDataViewsTab(view.contentsViewTabbedPane);
         bindDataViewSplit(view.dataListContentSplit);
         
