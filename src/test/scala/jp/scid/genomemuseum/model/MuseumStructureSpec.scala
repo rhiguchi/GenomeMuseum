@@ -16,7 +16,6 @@ class MuseumStructureSpec extends Specification with mock.Mockito {
     "部屋の移動可能判定" ^ canMoveSpec(createStructure) ^
     "部屋の移動" ^ canMoveRoom(createStructure) ^
     "部屋の削除" ^ canRemoveRoom(createStructure) ^
-    "サービスのイベント委譲" ^ canDelegateEvent(createStructure) ^
     end
   
   def createStructure() = new MuseumStructure()
@@ -24,9 +23,6 @@ class MuseumStructureSpec extends Specification with mock.Mockito {
   def userExhibitRoomServiceSpec(s: => MuseumStructure) =
     "初期値" ! userExhibitRoomService(s).init ^
     "設定" ! userExhibitRoomService(s).setting ^
-    "監視" ! userExhibitRoomService(s).subscribe ^
-    "監視解除" ! userExhibitRoomService(s).removeSubscription ^
-//    "ノード変更イベント発行" ! userExhibitRoomService(s).publishEvent ^
     bt
   
   def isLeafSpec(s: => MuseumStructure) =
@@ -86,13 +82,6 @@ class MuseumStructureSpec extends Specification with mock.Mockito {
     "サービスに処理を委譲" ! removeRoom(s).callsService ^
     bt
   
-  def canDelegateEvent(s: => MuseumStructure) =
-//    "Include" ! delegateEvent(s).include ^
-//    "Update" ! delegateEvent(s).udpate ^
-//    "Remove" ! delegateEvent(s).remove ^
-//    "service を変更すると発行されない" ! delegateEvent(s).unsubscribe ^
-    bt
-  
   /** userExhibitRoomService プロパティ */
   def userExhibitRoomService(structure: MuseumStructure) = new {
     val roomService = UserExhibitRoomServiceMock.of()
@@ -101,21 +90,6 @@ class MuseumStructureSpec extends Specification with mock.Mockito {
     def setting = {
       structure.userExhibitRoomService = Some(roomService)
       structure.userExhibitRoomService must beSome(roomService)
-    }
-    def subscribe = {
-      structure.userExhibitRoomService = Some(roomService)
-      there was one(roomService).subscribe(any)
-    }
-    def removeSubscription = {
-      structure.userExhibitRoomService = Some(roomService)
-      structure.userExhibitRoomService = None
-      there was one(roomService).removeSubscription(any)
-    }
-    
-    def publishEvent = {
-      val spiedStructure = spy(structure)
-      spiedStructure.userExhibitRoomService = Some(roomService)
-//      there was one(spiedStructure).publish(new Update(spiedStructure.userRoomsRoot))
     }
   }
   
@@ -357,45 +331,5 @@ class MuseumStructureSpec extends Specification with mock.Mockito {
     structure.removeRoom(room)
     
     def callsService = there was one(roomService).remove(room)
-  }
-  
-  /** サービスのイベント委譲 */
-  def delegateEvent(structure: MuseumStructure) = new {
-//    val roomService = UserExhibitRoomServiceMock.canPublish()
-//    val room = UserExhibitRoomMock.of(BasicRoom)
-//    
-//    structure.userExhibitRoomService = Some(roomService)
-//    
-//    var published = IndexedSeq.empty[Message[ExhibitRoom]]
-////    private val sub = new structure.Sub {
-////      def notify(pub: structure.Pub, event: Message[ExhibitRoom]) {
-////        published = published :+ event
-////      }
-////    }
-////    structure.subscribe(sub)
-//    
-//    def include = {
-//      val event = new Include(room)
-//      roomService.publish(event)
-//      published must_== Seq(event)
-//    }
-//    def udpate = {
-//      val event = new Update(room)
-//      roomService.publish(event)
-//      published must_== Seq(event)
-//    }
-//    def remove = {
-//      val event = new Remove(room)
-//      roomService.publish(event)
-//      published must_== Seq(event)
-//    }
-//    
-//    def unsubscribe = {
-//      structure.userExhibitRoomService = None
-//      published = IndexedSeq.empty
-//      List(new Include(room), new Update(room), new Remove(room)) foreach
-//        (roomService.publish)
-//      published must beEmpty
-//    }
   }
 }

@@ -70,6 +70,9 @@ class MainFrameViewControllerSpec extends Specification with mock.Mockito {
     
     def visibleModel = {
       ctrl.show()
+      java.awt.EventQueue.invokeAndWait(new Runnable {
+        def run() {}
+      })
       there was one(frame).setVisible(true)
     }
     
