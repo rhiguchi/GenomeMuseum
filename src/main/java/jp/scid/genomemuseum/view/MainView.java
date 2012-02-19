@@ -167,11 +167,11 @@ public class MainView implements GenomeMuseumView {
     }
     
     // Bottom left
-    public final JMenuItem addListBox = new JMenuItem("addListBox");
-    public final JMenuItem addSmartBox = new JMenuItem("addSmartBox");
-    public final JMenuItem addBoxFolder = new JMenuItem("addBoxFolder");
+    public final JMenuItem addListBox = new JMenuItem("addBasicRoom");
+    public final JMenuItem addSmartBox = new JMenuItem("addSmartRoom");
+    public final JMenuItem addBoxFolder = new JMenuItem("addGroupRoom");
     public final JPopupMenu addBoxPopup =
-            createPopupMenu("addBoxPopup", addBoxFolder, addSmartBox, addBoxFolder);
+            createPopupMenu("addBoxPopup", addBoxFolder, addListBox, addBoxFolder);
     
     public final JMenuItem editSmartCondition = new JMenuItem("editSmartCondition");
     public final JPopupMenu boxFunctionPopup =
@@ -283,6 +283,7 @@ public class MainView implements GenomeMuseumView {
         MessageFormatTableCell intValueCell = new MessageFormatTableCell(new DecimalFormat("#,##0"), defaultRenderer);
         intValueCell.getRendererView().setHorizontalAlignment(SwingConstants.RIGHT);
         table.setDefaultRenderer(Integer.class, intValueCell);
+        table.getTableHeader().setReorderingAllowed(true);
         
         return table;
     }
