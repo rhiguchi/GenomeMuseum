@@ -3,6 +3,7 @@ package jp.scid.genomemuseum.model
 import org.specs2._
 
 import java.io.File
+import java.net.URI
 import MuseumExhibit.FileType._
 
 class DefaultMuseumExhibitFileLibrarySpec extends Specification with mock.Mockito {
@@ -63,11 +64,12 @@ class DefaultMuseumExhibitFileLibrarySpec extends Specification with mock.Mockit
     
     private def defaultDest = new File(tempDir, "path/to/file.txt")
     
-    def returnsFile = library.store(exhibit, fileResource) must_== defaultDest
+    def returnsFile = library.store(exhibit, fileResource) must_== new URI("file://gmlib/path/to/file.txt")
     
     def copies = {
-      val file = library.store(exhibit, fileResource)
-      new File(file).length must_== 4306
+      val uri = library.store(exhibit, fileResource)
+      val file = library.uriFileStorage.getFile(uri)
+      file.length must_== 5728
     }
     
     def seqNumedFile = {
@@ -76,7 +78,7 @@ class DefaultMuseumExhibitFileLibrarySpec extends Specification with mock.Mockit
       new File(tempDir, "path/to/file 1.txt").createNewFile
       new File(tempDir, "path/to/file 2.txt").createNewFile
       val file = library.store(exhibit, fileResource)
-      new File(tempDir, "path/to/file 3.txt").length must_== 4306
+      new File(tempDir, "path/to/file 3.txt").length must_== 5728
     }
   }
   
