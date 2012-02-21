@@ -5,18 +5,25 @@ import ref.WeakReference
 import org.squeryl.Table
 import org.squeryl.PrimitiveTypeMode._
 
+import ca.odell.glazedlists.GlazedLists
+
 import jp.scid.genomemuseum.model.{UserExhibitRoom => IUserExhibitRoom,
   MuseumExhibitService => IMuseumExhibitService, UriFileStorage,
   MuseumExhibit => IMuseumExhibit, MutableMuseumExhibitListModel => IMutableMuseumExhibitListModel,
   GroupRoomContentsModel}
+import jp.scid.gui.model.AbstractPersistentEventList
+
 
 /**
  * 全ローカルファイル所有クラス
  */
 class MuseumExhibitService(
-  exhibitTable: Table[MuseumExhibit],
-  roomTable: Table[UserExhibitRoom]
-) extends IMuseumExhibitService with GroupRoomContentsModel with IMutableMuseumExhibitListModel {
+    exhibitTable: Table[MuseumExhibit],
+    roomTable: Table[UserExhibitRoom])
+    extends AbstractPersistentEventList[MuseumExhibit](GlazedLists.comparableComparator())
+    with IMuseumExhibitService
+    with GroupRoomContentsModel
+    with IMutableMuseumExhibitListModel {
   import UserExhibitRoomService.getParentId
   /** 作成するエンティティクラス */
   type ElementClass = MuseumExhibit
@@ -68,22 +75,12 @@ class MuseumExhibitService(
    *         項目が存在しなかったなどでサービス内に変更が発生しなかった時は {@code false} 。
    */
   def remove(element: IMuseumExhibit): Boolean = {
-    val exhibits = getExhibits
-        
-    val removed = inTransaction {
-      exhibitTable.delete(element.id)
-    }
-    exhibits.indexOf(element) match {
+    indexOf(element) match {
       case -1 => false
       case index =>
-        val newExhibits = exhibits.take(index) ++ exhibits.drop(index + 1)
-        updateExhibitsReference(newExhibits)
-        
-        fireValueIndexedPropertyChange(index, exhibits, null)
+        super.remove(index)
         true
     }
-    
-    removed
   }
   
   /**
@@ -94,22 +91,14 @@ class MuseumExhibitService(
    */
   def add(element: IMuseumExhibit) = element match {
     case exhibit: ElementClass if !exhibit.isPersisted =>
-      val exhibits = getExhibits
-      val newExhibits = exhibits :+ exhibit
-      updateExhibitsReference(newExhibits)
-      
-      inTransaction {
-        exhibitTable.insert(exhibit)
-      }
-      
-      fireValueIndexedPropertyChange(exhibits.size, null, newExhibits)
-      true
+      super.add(exhibit)
     case _ => false
   }
   
   /**
    * Squeryl MuseumExhibit エンティティを作成する。
    * 永続化はされないが、 {@link allElements} では要素が返される。
+   * @deprecated add で追加と永続化が行われる。
    */
   def create(): ElementClass = MuseumExhibit("")
   
@@ -121,15 +110,30 @@ class MuseumExhibitService(
    */
   def save(element: IMuseumExhibit) = element match {
     case exhibit: ElementClass if exhibit.isPersisted =>
-      val index = getExhibits.indexOf(exhibit)
-      inTransaction {
-        exhibitTable.update(exhibit)
-      }
-      
-      index match {
-        case -1 =>
-        case index => fireValueIndexedPropertyChange(index, null, null)
-      }
+      elementChanged(exhibit)
     case _ =>
+  }
+  
+  override def getValue() = this.asInstanceOf[java.util.List[IMuseumExhibit]]
+  
+  // Read
+  override def fetch() = inTransaction {
+    import collection.JavaConverters._
+    from(exhibitTable)( e => select(e) orderBy(e.id asc)).toIndexedSeq.asJava
+  }
+  
+  // Insert
+  override def insertToTable(index: Int, element: MuseumExhibit) = inTransaction {
+    exhibitTable.insert(element)
+  }
+  
+  // Update
+  override def updateToTable(element: MuseumExhibit) = inTransaction {
+    exhibitTable.update(element)
+  }
+  
+  // Delete
+  override def deleteFromTable(entity: MuseumExhibit) = inTransaction {
+    exhibitTable.delete(entity.id)
   }
 }

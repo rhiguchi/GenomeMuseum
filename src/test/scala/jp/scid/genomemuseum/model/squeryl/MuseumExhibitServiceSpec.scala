@@ -98,7 +98,7 @@ class MuseumExhibitServiceSpec extends Specification with mock.Mockito {
   
   def add(f: Factory) = new TestBase(f) {
     val element = MuseumExhibit("")
-    service.add(element)
+    service.add(element: IMuseumExhibit)
     
     def toTable = {
       there was one(exhibitTable).insert(element)
@@ -108,7 +108,7 @@ class MuseumExhibitServiceSpec extends Specification with mock.Mockito {
     
     def multiple = {
       val element2 = MuseumExhibit("")
-      service.add(element2)
+      service.add(element2: IMuseumExhibit)
       service.exhibitList must contain(element, element2).only.inOrder
     }
     
@@ -118,7 +118,7 @@ class MuseumExhibitServiceSpec extends Specification with mock.Mockito {
     }
     
     def alreadyEntered = {
-      service.add(element)
+      service.add(element: IMuseumExhibit)
       (there was one(exhibitTable).insert(element)) and
       andGet
     }

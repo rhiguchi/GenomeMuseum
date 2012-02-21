@@ -130,7 +130,6 @@ class MuseumExhibitLoadManager {
           // ファイルのコピーとライブラリ登録
           val dataSourceUri = fileLibrary map (_.store(exhibit, source)) getOrElse source.toURI
           exhibit.dataSourceUri = dataSourceUri.toString
-          service save exhibit
           Some(exhibit)
         case false =>
           listModel foreach (_.remove(exhibit))
@@ -160,7 +159,7 @@ class MuseumExhibitLoadManager {
       }
       
       save match {
-        case true => service save exhibit
+        case true => service elementChanged exhibit
         case false => listModel foreach (_.remove(exhibit))
       }
       

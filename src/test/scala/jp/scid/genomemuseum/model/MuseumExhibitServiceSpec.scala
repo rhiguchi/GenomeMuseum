@@ -20,4 +20,5 @@ class EmptyMuseumExhibitService extends MuseumExhibitService {
   def remove(element: MuseumExhibit) = false
   def getExhibits(room: UserExhibitRoom): List[MuseumExhibit] = Nil
   def addElement(room: UserExhibitRoom, item: MuseumExhibit) {}
+  def elementChanged(item: MuseumExhibit) {}
 }

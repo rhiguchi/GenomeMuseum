@@ -29,7 +29,7 @@ case class MuseumExhibit(
   var filePath: String = "",
   var fileSize: Long = 0,
   var fileType: FileType.Value = FileType.Unknown
-) extends IMuseumExhibit with KeyedEntity[Long] {
+) extends IMuseumExhibit with KeyedEntity[Long] with Comparable[MuseumExhibit] {
   def this() = this("", version = Some(0))
   var id: Long = - MuseumExhibit.newId
   
@@ -80,6 +80,28 @@ case class MuseumExhibit(
   @transient
   @Transient
   var exhibitFileStorage: Option[UriFileStorage] = MuseumExhibit.defaultStorage
+  
+  /**
+   * ID 比較
+   */
+  def compareTo(target: MuseumExhibit) = {
+    target match {
+      case null => -1
+      case _ => this.id == 0 && target.id == 0 match {
+        case true => this == target match {
+          case true => 0
+          case false =>
+            val o1 = this.hashCode
+            val o2 = target.hashCode
+            if (o1 < o2) -1 else 1
+        }
+        case false => this.id == target.id match {
+          case true => 0
+          case false => if (this.id < target.id) -1 else 1
+        }
+      }
+    }
+  }
 }
 
 object MuseumExhibit {
