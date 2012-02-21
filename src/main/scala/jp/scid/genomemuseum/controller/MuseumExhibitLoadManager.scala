@@ -14,7 +14,7 @@ import jp.scid.genomemuseum.view.MainView
 import jp.scid.genomemuseum.model.{MuseumExhibit, MuseumExhibitLoader, MuseumExhibitFileLibrary,
   MuseumExhibitService, MutableMuseumExhibitListModel}
 import jp.scid.gui.model.ValueModels
-import jp.scid.gui.control.ComponentPropertyConnector
+import jp.scid.gui.control.{ComponentPropertyConnector, OptionPaneController}
 
 import MuseumExhibit.FileType._
 
@@ -70,7 +70,7 @@ class MuseumExhibitLoadManager {
   
   // コントローラ
   /** メッセージ出力 */
-  var optionDialogManager: Option[OptionDialogManager] = None
+  var optionDialogManager = new OptionPaneController
   
   /** 現在実行中のタスク数やメッセージを更新する */
   private[controller] object TaskPropertyChangeHandler extends PropertyChangeListener {
@@ -152,7 +152,7 @@ class MuseumExhibitLoadManager {
             e.getCause match {
               case e: IOException => loadingTaskResults += ThrowedIOException(e, source)
               case e: ParseException => loadingTaskResults += ThrowedParseException(e, source)
-              case _ =>
+              case e => e.printStackTrace
             }
             false
         }
@@ -164,7 +164,7 @@ class MuseumExhibitLoadManager {
         case false => listModel foreach (_.remove(exhibit))
       }
       
-      // アラート表示中に次のタスクをブロックしないために次のイベントで実行
+      // アラート表示中に次のタスクをブロックさせないために次のイベントで実行
       java.awt.EventQueue.invokeLater(new Runnable {
         def run() {
           processResultMessages()
@@ -244,6 +244,9 @@ class MuseumExhibitLoadManager {
     
     // message
     new ComponentPropertyConnector(statusLabel, "text").setModel(progressMessage)
+    
+    // owner for option dialog
+    optionDialogManager.setParentComponent(contentPane)
   }
 
   
@@ -257,7 +260,6 @@ class MuseumExhibitLoadManager {
         "Loading %s [%s / %s]".format(currentLoadingFile, finishedTaskCount(), maxmumTaskCount())
       case false => ""
     }
-    println(message)
     progressMessage := message
   }
   
@@ -282,50 +284,44 @@ class MuseumExhibitLoadManager {
     
     collect()
     
-    alertInvalidFormat(invalidfResults)
-    alertIOException(ioeResults)
-    alertParseException(parseeResults)
+    if (invalidfResults.nonEmpty)
+      alertInvalidFormat(invalidfResults)
+    if (ioeResults.nonEmpty)
+      alertIOException(ioeResults)
+    if (parseeResults.nonEmpty)
+      alertParseException(parseeResults)
   }
   
   /**
    * 読み込み中の失敗を通知する。
    */
   protected[controller] def alertInvalidFormat(results: Seq[InvalidFormat]) {
-    if (logger.isDebugEnabled)
-      results.foreach(result => logger.info("Loading failed because invalid format {}", result.source))
+    results.foreach(result => logger.info("Loading failed because invalid format {}", result.source))
     
-    optionDialogManager foreach { manager =>
-      val description = results.map(_.source).mkString("<br>\n")
-      manager.showMessage(invalidFormatMessage(), Some(description))
-    }
+    val description = results.map(_.source.toString).mkString("<br>\n")
+    optionDialogManager.showMessage(invalidFormatMessage(), description)
   }
   
   /**
    * 読み込み中の失敗を通知する。
    */
   protected[controller] def alertIOException(results: Seq[ThrowedIOException]) {
-    if (logger.isDebugEnabled)
-      results.foreach(result =>
-        logger.info("Loading failed with thrown %s".format(result.source), result.cause))
+    results.foreach(result =>
+      logger.info("Loading failed with thrown %s".format(result.source), result.cause))
     
-    optionDialogManager foreach { manager =>
-      val description = results.map(_.source).mkString("<br>\n")
-      manager.showMessage(failToLoadMessage(), Some(description))
-    }
+    val description = results.map(_.source.toString).mkString("<br>\n")
+    optionDialogManager.showMessage(failToLoadMessage(), description)
   }
   
   /**
    * 読み込み中の失敗を通知する。
    */
   protected[controller] def alertParseException(results: Seq[ThrowedParseException]) {
-    if (logger.isDebugEnabled)
-      results.foreach(result =>
-        logger.info("Loading failed with thrown %s".format(result.source), result.cause))
+    results.foreach(result =>
+      logger.info("Loading failed with thrown %s".format(result.source), result.cause))
     
-    optionDialogManager foreach { manager =>
-      val description = results.map(_.source).mkString("<br>\n")
-      manager.showMessage(failToLoadMessage(), Some(description))
-    }
+    val description = results.map(_.source.toString).mkString("<br>\n")
+    optionDialogManager.showMessage(failToLoadMessage(), description)
   }
   
   /** 読み込み処理の完了状態を表すクラスの抽象定義 */
