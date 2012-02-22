@@ -20,24 +20,22 @@ import jp.scid.gui.model.AbstractPersistentEventList
  */
 class MuseumExhibitService(
     exhibitTable: Table[MuseumExhibit])
-    extends AbstractPersistentEventList[MuseumExhibit](GlazedLists.comparableComparator())
-    with IMuseumExhibitService
+    extends IMuseumExhibitService
 //    with IExhibitFloorModel
     with IMutableMuseumExhibitListModel {
   import UserExhibitRoomService.getParentId
   /** 作成するエンティティクラス */
   type ElementClass = MuseumExhibit
   
+  /** 全展示物リスト */
+  val exhibitEventList = new KeyedEntityEventList(exhibitTable)
+  
   override def userExhibitRoom = None
   
   /** 展示物 */
   def exhibitList = {
     import collection.JavaConverters._
-    this.asScala.toIndexedSeq
-  }
-  
-  private def retrieve() = inTransaction {
-    from(exhibitTable)( e => select(e) orderBy(e.id asc)).toIndexedSeq
+    exhibitEventList.asScala.toIndexedSeq
   }
   
   /**
@@ -47,10 +45,10 @@ class MuseumExhibitService(
    *         項目が存在しなかったなどでサービス内に変更が発生しなかった時は {@code false} 。
    */
   def remove(element: IMuseumExhibit): Boolean = {
-    indexOf(element) match {
+    exhibitEventList.indexOf(element) match {
       case -1 => false
       case index =>
-        super.remove(index)
+        exhibitEventList.remove(index)
         true
     }
   }
@@ -63,7 +61,7 @@ class MuseumExhibitService(
    */
   def add(element: IMuseumExhibit) = element match {
     case exhibit: ElementClass if !exhibit.isPersisted =>
-      super.add(exhibit)
+      exhibitEventList.add(exhibit)
     case _ => false
   }
   
@@ -82,30 +80,9 @@ class MuseumExhibitService(
    */
   def save(element: IMuseumExhibit) = element match {
     case exhibit: ElementClass if exhibit.isPersisted =>
-      elementChanged(exhibit)
+      exhibitEventList.elementChanged(exhibit)
     case _ =>
   }
   
-  override def getValue() = this.asInstanceOf[java.util.List[IMuseumExhibit]]
-  
-  // Read
-  override def fetch() = inTransaction {
-    import collection.JavaConverters._
-    from(exhibitTable)( e => select(e) orderBy(e.id asc)).toIndexedSeq.asJava
-  }
-  
-  // Insert
-  override def insertToTable(index: Int, element: MuseumExhibit) = inTransaction {
-    exhibitTable.insert(element)
-  }
-  
-  // Update
-  override def updateToTable(element: MuseumExhibit) = inTransaction {
-    exhibitTable.update(element)
-  }
-  
-  // Delete
-  override def deleteFromTable(entity: MuseumExhibit) = inTransaction {
-    exhibitTable.delete(entity.id)
-  }
+  override def getValue() = exhibitEventList.asInstanceOf[java.util.List[IMuseumExhibit]]
 }

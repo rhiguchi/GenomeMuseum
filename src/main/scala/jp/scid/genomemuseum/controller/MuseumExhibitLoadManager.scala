@@ -159,7 +159,7 @@ class MuseumExhibitLoadManager {
       }
       
       save match {
-        case true => service elementChanged exhibit
+        case true => service save exhibit
         case false => listModel foreach (_.remove(exhibit))
       }
       

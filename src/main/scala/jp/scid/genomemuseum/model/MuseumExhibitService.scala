@@ -17,8 +17,6 @@ trait MuseumExhibitService extends MuseumExhibitListModel {
    */
   def create(): ElementClass
   
-  def elementChanged(element: ElementClass)
-  
   /**
    * 要素の更新をサービスに通知する。
    * 要素がまだサービスに永続化されていない時は、永続化される。
