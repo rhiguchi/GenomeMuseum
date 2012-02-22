@@ -5,7 +5,7 @@ package jp.scid.genomemuseum.model
  */
 trait RoomContentExhibits {
   /** 転送する展示物 */
-  def exhibitList: List[MuseumExhibit]
+  def exhibitList: Seq[MuseumExhibit]
   /** 展示物のもとの部屋 */
   def userExhibitRoom: Option[UserExhibitRoom]
 }

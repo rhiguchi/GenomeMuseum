@@ -38,5 +38,5 @@ trait MuseumExhibitService extends MuseumExhibitListModel {
   /** {@inheritDoc} */
   def userExhibitRoom = None
   
-  def exhibitList: List[ElementClass]
+  def exhibitList: Seq[ElementClass]
 }

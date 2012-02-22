@@ -4,7 +4,7 @@ import jp.scid.gui.model.ValueModel
 
 object MuseumExhibitListModel {
   val empty = new MuseumExhibitListModel {
-    def exhibitList = Nil
+    def exhibitList = Seq.empty[MuseumExhibit]
     def userExhibitRoom = None
   }
 }
@@ -26,7 +26,7 @@ trait MuseumExhibitListModel extends ValueModel[java.util.List[MuseumExhibit]]
   }
   
   /** {@inheritDoc} */
-  def exhibitList: List[MuseumExhibit]
+  def exhibitList: Seq[MuseumExhibit]
   
   /**
    * 指定した部屋の要素を取得する。
