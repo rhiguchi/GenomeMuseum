@@ -7,7 +7,7 @@ import org.squeryl.KeyedEntity
  */
 private[squeryl] case class RoomExhibit(
   roomId: Long,
-  exhibitId: Long
+  var exhibitId: Long
 ) extends KeyedEntity[Long] {
   def this() = this(0, 0)
   var id: Long = 0
