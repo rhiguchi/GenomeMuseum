@@ -10,7 +10,6 @@ import jp.scid.genomemuseum.model.{MuseumExhibit => IMuseumExhibit,
   UserExhibitRoom => IUserExhibitRoom, ExhibitRoomModel => IExhibitRoomModel}
 
 object ExhibitRoomModel {
-  
   /**
    * 展示物を取得する関数
    */
@@ -27,24 +26,28 @@ object ExhibitRoomModel {
  * @param contentList 部屋の内容データリスト
  * @param contanerToExhibitFunction 部屋の内容から展示物を取得する関数
  */
-class ExhibitRoomModel(
-    room: IUserExhibitRoom,
-    contentList: EventList[RoomExhibit],
-    contanerToExhibitFunction: Function[RoomExhibit, MuseumExhibit])
-    extends IExhibitRoomModel {
-  /** transform */
-  private val exhibitEventList = new FunctionList(contentList, contanerToExhibitFunction)
+class ExhibitRoomModel extends IExhibitRoomModel {
+  def this(exhibitList: EventList[IMuseumExhibit]) {
+    this()
+  }
+  private var value: EventList[_ <: IMuseumExhibit] = null
+  
+  def exhibitEventList = value
+  
+  def exhibitEventList_=(newList: EventList[_ <: IMuseumExhibit]) {
+    this.value = newList
+    setValue(newList.asInstanceOf[java.util.List[IMuseumExhibit]])
+  }
   
   def getValue() = exhibitEventList.asInstanceOf[EventList[IMuseumExhibit]]
   
+  override def setValue(newExhibitList: java.util.List[IMuseumExhibit]) {
+    firePropertyChange("value", null, newExhibitList)
+  }
+  
   def get(index: Int) = exhibitEventList get index
   
-  def sourceRoom = room
+  var sourceRoom: Option[IUserExhibitRoom] = None
   
-  private[squeryl] def roomId = room.id
-}
-
-/** クエリから中身リストを作成 */
-class QueryContentList(table: Table[RoomExhibit])
-    extends KeyedEntityEventList(table) {
+  private[squeryl] def roomId = sourceRoom.get.id
 }

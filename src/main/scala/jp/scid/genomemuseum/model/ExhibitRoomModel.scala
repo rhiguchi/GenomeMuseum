@@ -20,5 +20,5 @@ trait ExhibitRoomModel extends ValueModel[java.util.List[MuseumExhibit]]
   }
   
   /** このデータの部屋 */
-  def sourceRoom: ExhibitRoom
+  def sourceRoom: Option[ExhibitRoom]
 }

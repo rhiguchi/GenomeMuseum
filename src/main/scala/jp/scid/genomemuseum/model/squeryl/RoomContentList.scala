@@ -10,36 +10,22 @@ import jp.scid.genomemuseum.model.{FreeExhibitRoomModel => IFreeExhibitRoomModel
   MuseumExhibit => IMuseumExhibit, ExhibitFloorModel => IExhibitFloorModel,
   UserExhibitRoom => IUserExhibitRoom}
 
-object FreeExhibitRoomModel {
-  
-  /** テーブルオブジェクトから変換関数を作成 */
-  class RoomContentEventList(roomId: Long, table: Table[RoomExhibit])
-      extends KeyedEntityEventList(table) {
-    /** 部屋 ID が `roomId` であるコンテンツを取得するクエリを返す */
-    override def getFetchQuery(e: RoomExhibit) = where(e.roomId === roomId) select(e)
-  }
-}
-
 /**
  * 自由に展示物を入れ替えできる部屋のモデル
  * 
  * @param roomId 部屋の ID
  * @param table 部屋内容テーブル
  */
-class FreeExhibitRoomModel(
-    room: IUserExhibitRoom, contentList: EventList[RoomExhibit],
-    contanerToExhibitFunction: FunctionList.Function[RoomExhibit, MuseumExhibit])
-    extends ExhibitRoomModel(room, contentList, contanerToExhibitFunction)
-    with IFreeExhibitRoomModel {
-  
-  /** テーブルオブジェクトから構築 */
-  def this(room: IUserExhibitRoom, contentTable: Table[RoomExhibit],
-      contanerToExhibitFunction: FunctionList.Function[RoomExhibit, MuseumExhibit]) {
-    this(room, new FreeExhibitRoomModel.RoomContentEventList(room.id, contentTable), contanerToExhibitFunction)
+class FreeExhibitRoomModel extends ExhibitRoomModel with IFreeExhibitRoomModel {
+  /** 部屋の中身 */
+  var contentList: EventList[RoomExhibit] = null
+
+  /** 部屋の中身を指定して初期化 */
+  def this(contentList: EventList[RoomExhibit]) {
+    this()
+    this.contentList = contentList
   }
   
-  //
-  // コンテンツ
   /**
    * 要素を追加する。
    * 
@@ -78,58 +64,39 @@ class FreeExhibitRoomModel(
 /**
  * 部屋と展示物データリストのアダプター
  * 
- * @param roomId 部屋の ID
- * @param table 部屋内容テーブル
- * @todo SmartRoom 用構築
+ * @param contentList 部屋内容
+ * @param contanerToExhibitFunction 部屋内容と展示物の変換関数
  */
-class CompositeRoomList(
-    parentRoom: IUserExhibitRoom,
-    contentList: EventList[RoomExhibit],
-    contanerToExhibitFunction: FunctionList.Function[RoomExhibit, MuseumExhibit],
-    roomService: UserExhibitRoomService)
-    extends ExhibitRoomModel(parentRoom, contentList, contanerToExhibitFunction)
-    with IExhibitFloorModel {
-//  /** 管理用のシングルトンリスト */
-//  private val parentRoomList = Glazedlists.eventListOf(parentRoom)
+class ExhibitFloorModel extends ExhibitRoomModel with IExhibitFloorModel {
+  /** 部屋サービスとともに構築 */
+  def this(roomService: UserExhibitRoomService) {
+    this()
+    
+    this.roomService = roomService
+  }
+
+  /** 部屋サービス */
+  private var roomService: UserExhibitRoomService = null
   
-//  /** 配下にあるすべての部屋のリスト */
-//  val childRoomList = new CollectionList(parentRoomList, ChildRoomModel)
-//  
-//  /** 配下にあるすべての部屋のリスト */
-//  val childRoomList = new CollectionList(parentRoomList, ChildRoomModel)
   
+  /** {@inheritDoc} */
   def canAddRoom(target: IUserExhibitRoom) = {
     // 循環参照にならないように、祖先に子要素候補がいないか調べる
     def ancester(room: IUserExhibitRoom): Boolean = {
       roomService.getParent(room) match {
         case None => true
-        case Some(`parentRoom` | `target`) => false
+        case Some(`room` | `target`) => false
         case Some(parent) => ancester(parent)
       }
     }
     
-    parentRoom == target match {
-      case true => false
-      case false => ancester(parentRoom)
+    sourceRoom match {
+      case Some(`target`) | None => false
+      case Some(parentRoom) => ancester(parentRoom)
     }
   }
   
   /** {@inheritDoc} */
   def addRoom(element: IUserExhibitRoom) =
-    roomService.setParent(element, Some(parentRoom))
-  
-//  /** この部屋以下すべての部屋を返す変換モデル */
-//  private object ChildRoomModel extends CollectionList.Model[IUserExhibitRoom, IUserExhibitRoom] {
-//    override def getChildren(parentRoom: IUserExhibitRoom) = {
-//      import collection.JavaConverters._
-//      
-//      roomService.getAllLeafs(parentRoom).asJava
-//    }
-//  }
-//  
-//  /** コンテンツリストを返す関数 */
-//  private object RoomContentListFunction extends FunctionList.Function[IUserExhibitRoom, EventList[RoomExhibit]] {
-//    def evaluate(room: IUserExhibitRoom) =
-//      new RoomContentList(room, table)
-//  }
+    roomService.setParent(element, Some(sourceRoom.get))
 }
