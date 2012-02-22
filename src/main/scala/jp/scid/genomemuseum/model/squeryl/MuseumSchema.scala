@@ -1,6 +1,6 @@
 package jp.scid.genomemuseum.model.squeryl
 
-import org.squeryl.{Schema, Session}
+import org.squeryl.{Schema, Session, Table}
 import org.squeryl.PrimitiveTypeMode._
 
 import ca.odell.glazedlists.FunctionList
@@ -76,7 +76,7 @@ class MuseumSchema extends Schema with IMuseumSchema {
   
   /** 部屋の中身から展示物を取得する、共通に使用される関数 */
   private lazy val containerToExhibitFunction =
-    new ExhibitRoomModel.ContanerToExhibitFunction(museumExhibit)
+    new ContanerToExhibitFunction(museumExhibit)
   
   /** 部屋のコンテンツを返す */
   def getRoomExhibitList(room: IUserExhibitRoom) = {
@@ -91,6 +91,13 @@ class MuseumSchema extends Schema with IMuseumSchema {
     roomModel.exhibitEventList = exhibitEventList
     roomModel.sourceRoom = Some(room)
     roomModel
+  }
+  
+  class ContanerToExhibitFunction(table: Table[MuseumExhibit])
+      extends FunctionList.Function[RoomExhibit, MuseumExhibit] {
+    def evaluate(container: RoomExhibit) = inTransaction {
+      table.lookup(container.exhibitId).get
+    }
   }
 }
 

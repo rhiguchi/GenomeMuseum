@@ -1,25 +1,9 @@
 package jp.scid.genomemuseum.model.squeryl
 
-import org.squeryl.Table
-import org.squeryl.PrimitiveTypeMode._
-
-import ca.odell.glazedlists.{EventList, FunctionList}
-import ca.odell.glazedlists.FunctionList.Function
+import ca.odell.glazedlists.EventList
 
 import jp.scid.genomemuseum.model.{MuseumExhibit => IMuseumExhibit,
   UserExhibitRoom => IUserExhibitRoom, ExhibitRoomModel => IExhibitRoomModel}
-
-object ExhibitRoomModel {
-  /**
-   * 展示物を取得する関数
-   */
-  class ContanerToExhibitFunction(table: Table[MuseumExhibit])
-      extends FunctionList.Function[RoomExhibit, MuseumExhibit] {
-    def evaluate(container: RoomExhibit) = inTransaction {
-      table.lookup(container.exhibitId).get
-    }
-  }
-}
 
 /**
  * 部屋と展示物データリストのアダプター
@@ -27,23 +11,17 @@ object ExhibitRoomModel {
  * @param contanerToExhibitFunction 部屋の内容から展示物を取得する関数
  */
 class ExhibitRoomModel extends IExhibitRoomModel {
-  def this(exhibitList: EventList[IMuseumExhibit]) {
-    this()
-  }
+  /** 現在の値（展示物リスト） */
   private var value: EventList[_ <: IMuseumExhibit] = null
   
   def exhibitEventList = value
   
   def exhibitEventList_=(newList: EventList[_ <: IMuseumExhibit]) {
     this.value = newList
-    setValue(newList.asInstanceOf[java.util.List[IMuseumExhibit]])
+    setValue(newList)
   }
   
-  def getValue() = exhibitEventList.asInstanceOf[EventList[IMuseumExhibit]]
-  
-  override def setValue(newExhibitList: java.util.List[IMuseumExhibit]) {
-    firePropertyChange("value", null, newExhibitList)
-  }
+  override def getValue() = exhibitEventList
   
   def get(index: Int) = exhibitEventList get index
   
