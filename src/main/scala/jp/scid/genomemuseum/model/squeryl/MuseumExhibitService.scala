@@ -8,6 +8,7 @@ import org.squeryl.PrimitiveTypeMode._
 import ca.odell.glazedlists.GlazedLists
 
 import jp.scid.genomemuseum.model.{UserExhibitRoom => IUserExhibitRoom,
+  ExhibitFloorModel => IExhibitFloorModel,
   MuseumExhibitService => IMuseumExhibitService, UriFileStorage,
   MuseumExhibit => IMuseumExhibit, MutableMuseumExhibitListModel => IMutableMuseumExhibitListModel,
   GroupRoomContentsModel}
@@ -22,50 +23,22 @@ class MuseumExhibitService(
     roomTable: Table[UserExhibitRoom])
     extends AbstractPersistentEventList[MuseumExhibit](GlazedLists.comparableComparator())
     with IMuseumExhibitService
-    with GroupRoomContentsModel
+//    with IExhibitFloorModel
     with IMutableMuseumExhibitListModel {
   import UserExhibitRoomService.getParentId
   /** 作成するエンティティクラス */
   type ElementClass = MuseumExhibit
   
-  private var exhibitListRef = new WeakReference(null: IndexedSeq[MuseumExhibit])
-  
   override def userExhibitRoom = None
   
   /** 展示物 */
-  def exhibitList = getExhibits.toList
-  
-  private def getExhibits() = exhibitListRef.get match {
-    case Some(list) => list
-    case None =>
-      val list = retrieve()
-      updateExhibitsReference(list)
-      list
-  }
-  
-  private def updateExhibitsReference(exhibits: IndexedSeq[MuseumExhibit]) {
-    exhibitListRef = new WeakReference(exhibits)
+  def exhibitList = {
+    import collection.JavaConverters._
+    this.asScala.toIndexedSeq
   }
   
   private def retrieve() = inTransaction {
     from(exhibitTable)( e => select(e) orderBy(e.id asc)).toIndexedSeq
-  }
-  
-  /**
-   * 親IDが存在する部屋は {@code true} 。
-   */
-  def canAddChild(target: IUserExhibitRoom) = {
-    getParentId(target.id, roomTable).nonEmpty
-  }
-  
-  /**
-   * 親IDを除去する
-   */
-  def addChild(element: IUserExhibitRoom) = inTransaction {
-    update(roomTable) ( e =>
-      where(e.id === element.id)
-      set(e.parentId := None)
-    )
   }
   
   /**

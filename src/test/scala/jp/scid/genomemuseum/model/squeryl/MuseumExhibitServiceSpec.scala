@@ -22,8 +22,8 @@ class MuseumExhibitServiceSpec extends Specification with mock.Mockito {
     "Exhibit を追加する" ^ canAdd(museumExhibitService) ^
     "Exhibit を除去する" ^ canRemove(museumExhibitService) ^
     "Exhibit を更新する" ^ canSave(museumExhibitService) ^
-    "Room が追加可能か調べる" ^ canAddChildSpec(museumExhibitService) ^
-    "Room を追加する" ^ addChildSpec(museumExhibitService) ^
+//    "Room が追加可能か調べる" ^ canAddChildSpec(museumExhibitService) ^
+//    "Room を追加する" ^ addChildSpec(museumExhibitService) ^
     end
   
   def museumExhibitService(
@@ -58,14 +58,14 @@ class MuseumExhibitServiceSpec extends Specification with mock.Mockito {
     "データベーステーブルに更新が伝えられる" ! save(f).toTable ^
     bt
   
-  def canAddChildSpec(f: Factory) =
-    "部屋がなにかの子になっている時は true" ! canAddChild(f).withParentReturnsTrue ^
-    "部屋が子になっていない時は false" ! canAddChild(f).rootReturnsFalse ^
-    bt
-  
-  def addChildSpec(f: Factory) =
-    "データベーステーブルへ更新される" ! addChild(f).toTable ^
-    bt
+//  def canAddChildSpec(f: Factory) =
+//    "部屋がなにかの子になっている時は true" ! canAddChild(f).withParentReturnsTrue ^
+//    "部屋が子になっていない時は false" ! canAddChild(f).rootReturnsFalse ^
+//    bt
+//  
+//  def addChildSpec(f: Factory) =
+//    "データベーステーブルへ更新される" ! addChild(f).toTable ^
+//    bt
   
   // テストメソッド
   // ベースクラス
@@ -148,23 +148,23 @@ class MuseumExhibitServiceSpec extends Specification with mock.Mockito {
     
     def toTable = there was one(exhibitTable).update(element) 
   }
-  
-  def canAddChild(f: Factory) = new TestBase(f) {
-    val parent = roomTable insert UserExhibitRoom()
-    val room = roomTable insert UserExhibitRoom(parentId = Some(parent.id))
-    
-    def withParentReturnsTrue = service canAddChild room must beTrue
-    
-    def rootReturnsFalse = service canAddChild parent must beFalse
-  }
-  
-  def addChild(f: Factory) = new TestBase(f) {
-    import org.squeryl.PrimitiveTypeMode._
-    val parent = roomTable insert UserExhibitRoom()
-    val room = roomTable insert UserExhibitRoom(parentId = Some(parent.id))
-    
-    service addChild room
-    
-    def toTable = roomTable.lookup(room.id).get.parentId must beNone
-  }
+// TODO MuseumExhibitContentService へ移動  
+//  def canAddChild(f: Factory) = new TestBase(f) {
+//    val parent = roomTable insert UserExhibitRoom()
+//    val room = roomTable insert UserExhibitRoom(parentId = Some(parent.id))
+//    
+//    def withParentReturnsTrue = service canAddRoom room must beTrue
+//    
+//    def rootReturnsFalse = service canAddRoom parent must beFalse
+//  }
+//  
+//  def addChild(f: Factory) = new TestBase(f) {
+//    import org.squeryl.PrimitiveTypeMode._
+//    val parent = roomTable insert UserExhibitRoom()
+//    val room = roomTable insert UserExhibitRoom(parentId = Some(parent.id))
+//    
+//    service addRoom room
+//    
+//    def toTable = roomTable.lookup(room.id).get.parentId must beNone
+//  }
 }
