@@ -19,8 +19,7 @@ import jp.scid.gui.model.AbstractPersistentEventList
  * 全ローカルファイル所有クラス
  */
 class MuseumExhibitService(
-    exhibitTable: Table[MuseumExhibit],
-    roomTable: Table[UserExhibitRoom])
+    exhibitTable: Table[MuseumExhibit])
     extends AbstractPersistentEventList[MuseumExhibit](GlazedLists.comparableComparator())
     with IMuseumExhibitService
 //    with IExhibitFloorModel

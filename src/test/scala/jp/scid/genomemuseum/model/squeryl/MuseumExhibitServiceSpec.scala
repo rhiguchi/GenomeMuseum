@@ -14,7 +14,7 @@ private[squeryl] object MuseumExhibitServiceSpec {
 }
 
 class MuseumExhibitServiceSpec extends Specification with mock.Mockito {
-  private type Factory = (Table[MuseumExhibit], Table[UserExhibitRoom]) => MuseumExhibitService
+  private type Factory = Table[MuseumExhibit] => MuseumExhibitService
   
   def is = "ローカル展示物データモデル" ^
     "全展示物の取得" ^ exhibitListSpec(museumExhibitService) ^
@@ -26,9 +26,8 @@ class MuseumExhibitServiceSpec extends Specification with mock.Mockito {
 //    "Room を追加する" ^ addChildSpec(museumExhibitService) ^
     end
   
-  def museumExhibitService(
-      exhibitTable: Table[MuseumExhibit], roomTable: Table[UserExhibitRoom]) =
-    new MuseumExhibitService(exhibitTable, roomTable)
+  def museumExhibitService(exhibitTable: Table[MuseumExhibit]) =
+    new MuseumExhibitService(exhibitTable)
   
   def exhibitListSpec(f: Factory) =
     "最初は空" ! exhibitList(f).initial ^
@@ -76,8 +75,7 @@ class MuseumExhibitServiceSpec extends Specification with mock.Mockito {
     private def mockTable[A] = mock[Table[A]]
   
     val exhibitTable = spy(schema.exhibitTable)
-    val roomTable = spy(schema.roomTable)
-    val service = f(exhibitTable, roomTable)
+    val service = f(exhibitTable)
     
     def insertToTable() = exhibitTable insert MuseumExhibit("")
   }

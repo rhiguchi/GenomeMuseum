@@ -70,7 +70,7 @@ class MuseumSchema extends Schema with IMuseumSchema {
     userExhibitRoom, museumExhibit, roomExhibit)
   
   /** Squeryl で実装した『展示物』データのサービス */
-  val museumExhibitService = new MuseumExhibitService(museumExhibit, userExhibitRoom)
+  val museumExhibitService = new MuseumExhibitService(museumExhibit)
   
   /** 部屋の中身から展示物を取得する、共通に使用される関数 */
   private lazy val containerToExhibitFunction =
