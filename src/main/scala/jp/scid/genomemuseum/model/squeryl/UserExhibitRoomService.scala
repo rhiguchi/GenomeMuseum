@@ -113,6 +113,11 @@ private[squeryl] class UserExhibitRoomService(
     table.where(e => nvl(e.parentId, 0L) === parentId).toIndexedSeq
   }
   
+  /** 全ての子孫にある葉要素を返す */
+  def getAllLeafs(room: IUserExhibitRoom) = inTransaction {
+    UserExhibitRoomService.getLeafs(room.id, table)
+  }
+  
   def remove(element: IUserExhibitRoom) = {
     val parent = parentFor(element.id)
     

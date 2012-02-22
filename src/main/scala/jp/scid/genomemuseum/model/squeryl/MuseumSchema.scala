@@ -3,8 +3,9 @@ package jp.scid.genomemuseum.model.squeryl
 import org.squeryl.{Schema, Session}
 import org.squeryl.PrimitiveTypeMode._
 
-import jp.scid.genomemuseum.model.{MuseumSchema => IMuseumSchema}
-
+import jp.scid.genomemuseum.model.{MuseumSchema => IMuseumSchema, UserExhibitRoom => IUserExhibitRoom}
+import IUserExhibitRoom.RoomType
+import RoomType._
 
 /**
  * GenomeMuseum データソースの Squeryl 実装
@@ -70,6 +71,27 @@ class MuseumSchema extends Schema with IMuseumSchema {
   
   /** Squeryl で実装した『展示物』データのサービス */
   val museumExhibitService = new MuseumExhibitService(museumExhibit, userExhibitRoom)
+  
+  /** 部屋の中身から展示物を取得する、共通に使用される関数 */
+  private lazy val containerToExhibitFunction =
+    new ExhibitRoomModel.ContanerToExhibitFunction(museumExhibit)
+  
+  /** 部屋のコンテンツを返す */
+  def getRoomExhibitList(room: IUserExhibitRoom) = room.roomType match {
+    case BasicRoom =>
+      new FreeExhibitRoomModel(room, roomExhibit, containerToExhibitFunction)
+      
+    case SmartRoom =>
+      val contentList = new QueryContentList(roomExhibit)
+      new ExhibitRoomModel(room, contentList, containerToExhibitFunction)
+    
+    case GroupRoom =>
+      // 子孫部屋 の CollectionModelを作成する
+      // 
+//      val contentList = new RoomContentList(room, roomExhibit)
+new FreeExhibitRoomModel(room, roomExhibit, containerToExhibitFunction)
+//      new RoomExhibitList(contentList, containerToExhibitFunction)
+  }
 }
 
 object MuseumSchema {
