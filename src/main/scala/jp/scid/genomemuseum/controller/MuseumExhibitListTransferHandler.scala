@@ -7,14 +7,21 @@ import javax.swing.{JComponent, TransferHandler}
 import DataFlavor.javaFileListFlavor
 import TransferHandler.TransferSupport
 
-import jp.scid.genomemuseum.model.{MuseumExhibit, MutableMuseumExhibitListModel, RoomContentExhibits,
+import jp.scid.gui.control.ObjectControllerTransferHandler
+import jp.scid.genomemuseum.model.{MuseumExhibit, ExhibitRoomModel, MutableMuseumExhibitListModel, RoomContentExhibits,
   MuseumExhibitListModel, UserExhibitRoom}
 
 private[controller] object MuseumExhibitTransferHandler {
+  /**
+   * 転送データ作成オブジェクト
+   */
   object TransferData {
     val dataFlavor =
       new DataFlavor(classOf[RoomContentExhibits], "RoomContentExhibits")
     
+    /**
+     * `TransferSupport` から展示物リスとデータを作成する
+     */
     def unapply(ts: TransferSupport): Option[RoomContentExhibits] = {
       ts.isDataFlavorSupported(dataFlavor) match {
         case true =>
@@ -69,6 +76,9 @@ private[controller] object MuseumExhibitTransferHandler {
   ) extends RoomContentExhibits
 }
 
+/**
+ * ファイルと展示物の転送ハンドラ
+ */
 abstract class MuseumExhibitTransferHandler extends TransferHandler {
   import MuseumExhibitTransferHandler.TransferData
   
@@ -138,7 +148,10 @@ abstract class MuseumExhibitTransferHandler extends TransferHandler {
  * MuseumExhibit の転送ハンドラ。
  * 
  */
-class MuseumExhibitListTransferHandler extends MuseumExhibitTransferHandler {
+class MuseumExhibitListTransferHandler extends ObjectControllerTransferHandler {
+  import ObjectControllerTransferHandler.TransferData
+  
+  /** 親コントローラを指定して初期化 */
   def this(controller: MuseumExhibitListController) {
     this()
     exhibitController = Option(controller)
@@ -147,21 +160,55 @@ class MuseumExhibitListTransferHandler extends MuseumExhibitTransferHandler {
   /** 親コントローラ */
   var exhibitController: Option[MuseumExhibitListController] = None
   
-  /** コントローラの現在のモデルを返す */
-  private def controllerModel: Option[MuseumExhibitListModel] = exhibitController.flatMap(c => Option(c.getModel))
-  
-  /** 親コントローラで現在選択されている要素リストを返す */
-  private def selectedElements = {
-    import collection.JavaConverters._
-    exhibitController.map(_.getSelectedElements.asScala.toList).getOrElse(Nil)
+  /** 展示物オブジェクトのファイルを返す */
+  override def getSourceFile(element: AnyRef) = element match {
+    case exhibit: MuseumExhibit => exhibit.sourceFile getOrElse null
+    case _ => null
   }
   
   /**
-   * 転入可能な部屋を取得する
+   * 展示物オブジェクトの転入が可能かを調べる。
    */
-  def getExhibitTransferTarget(ts: TransferSupport): Option[MutableMuseumExhibitListModel] = {
-    controllerModel collect {
-      case model: MutableMuseumExhibitListModel => model
+  override def canImport(ts: TransferSupport) = exhibitController.get.getModel match {
+//    case Some(model: FreeExhibitRoomModel) => true
+    case _ => false
+  }
+  
+  /** ファイルを転入 */
+  override def importFile(rowIndex: Int, fileList: java.util.List[File]) = {
+    import collection.JavaConverters._
+    exhibitController.get.importFile(fileList.asScala.toList)
+  }
+  
+  /** 転送オブジェクトを転入 */
+  override def importTransferData(rowIndex: Int, fileList: TransferData) = {
+    import collection.JavaConverters._
+    
+    exhibitController match {
+      case Some(controller) => fileList.getSourceModel == controller.getModel match {
+        case true => false
+        case false =>
+          val elements = fileList.getSelectedElements.asScala flatMap {
+            case exhibit: MuseumExhibit => Some(exhibit)
+            case TreePathLastObject(model) => model.exhibitList
+            case _ => None
+          }
+          controller.addElements(elements.toList)
+      }
+      case None => false
+    }
+  }
+  
+  /** TreePath オブジェクトの最後の葉要素をExhibitRoomModelとして取得 */
+  private object TreePathLastObject {
+    import javax.swing.tree.TreePath
+    
+    def unapply(o: AnyRef): Option[ExhibitRoomModel] = o match {
+      case path: TreePath => path.getLastPathComponent match {
+        case model: ExhibitRoomModel => Some(model)
+        case _ => None
+      }
+      case _ => None
     }
   }
   
@@ -170,17 +217,4 @@ class MuseumExhibitListTransferHandler extends MuseumExhibitTransferHandler {
    */
   override def getSourceActions(c: JComponent) =
     TransferHandler.COPY
-  
-  /**
-   * 選択展示物から転送オブジェクトを作成
-   */
-  override def createTransferable(c: JComponent): Transferable = {
-    import collection.JavaConverters._
-    
-    controllerModel match {
-      case Some(room) =>
-        new MuseumExhibitTransferHandler.TransferData(selectedElements, room.userExhibitRoom)
-      case _ => super.createTransferable(c)
-    }
-  }
 }

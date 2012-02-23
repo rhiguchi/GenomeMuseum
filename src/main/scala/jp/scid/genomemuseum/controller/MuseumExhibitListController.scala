@@ -10,7 +10,7 @@ import jp.scid.gui.ValueHolder
 import jp.scid.gui.event.{ValueChange, DataListSelectionChanged}
 import jp.scid.gui.table.{DataTableModel, TableColumnSortable}
 import jp.scid.genomemuseum.{view, model, gui}
-import model.{UserExhibitRoom, MuseumExhibit,
+import model.{UserExhibitRoom, MuseumExhibit, FreeExhibitRoomModel,
   MutableMuseumExhibitListModel, MuseumExhibitListModel}
 import view.ExhibitListView
 
@@ -31,6 +31,9 @@ class MuseumExhibitListController extends MuseumExhibitController {
   /** ローカルソースの選択項目を除去するアクション */
   val removeSelectionAction = ctrl.getAction("removeSelections")
   
+  /** 読み込みマネージャ */
+  var loadManager: Option[MuseumExhibitLoadManager] = None
+  
   /**
    * 選択項目を削除する
    */
@@ -45,26 +48,26 @@ class MuseumExhibitListController extends MuseumExhibitController {
     }
   }
   
-  /** 読み込みマネージャを返す */
-  def loadManager = tableTransferHandler.exhibitLoadManager
-  
-  /** 読み込みマネージャを設定する */
-  def loadManager_=(manager: Option[MuseumExhibitLoadManager]) =
-    tableTransferHandler.exhibitLoadManager = manager
-  
   /** ビューに結合処理を追加するため */
   override def bind(view: ExhibitListView) {
     super.bind(view)
     bindTable(view.dataTable)
   }
   
-  /** 転送ハンドラを結合 */
-  def bindTable(table: JTable) {
-    table.setTransferHandler(tableTransferHandler)
-    table.setDropMode(DropMode.INSERT_ROWS)
-    table.getParent match {
-      case parent: JComponent => parent.setTransferHandler(tableTransferHandler)
-      case _ =>
-    }
+  /** 転送ハンドラを作成 */
+  override def getTransferHandler() = tableTransferHandler
+  
+  /** ファイルを読み込む */
+  def importFile(files: List[File]) = getModel match {
+//    case model: FreeExhibitRoomModel =>
+//      import collection.JavaConverters._
+//      files.asScala foreach (file => loadManager.get.load(model, file))
+//      true
+    case  _ => false
+  }
+  
+  def addElements(sourceRows: List[MuseumExhibit]) = getModel match {
+//    case model: FreeExhibitRoomModel => sourceRows map mode.addContent contains true
+    case _ => false
   }
 }

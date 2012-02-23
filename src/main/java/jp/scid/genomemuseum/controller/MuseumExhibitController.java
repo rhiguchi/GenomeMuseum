@@ -90,13 +90,14 @@ public class MuseumExhibitController extends EventListController<MuseumExhibit, 
         // refilter
         tableRefilterator.setModel(getFilterTextModel());
         setMatcherEditor((MatcherEditor<? super MuseumExhibit>) tableRefilterator.getTextMatcherEditor());
+        
+        setTableFormat(tableFormat);
     }
     
     public void bind(ExhibitListView view) {
         motifViewerController.bind(view.overviewMotifView);
         
-        bindTable(view.dataTable, tableFormat);
-        bindTableHeader(view.dataTable.getTableHeader(), tableFormat);
+        bindTable(view.dataTable);
         bindDataViewsTab(view.contentsViewTabbedPane);
         bindDataViewSplit(view.dataListContentSplit);
         
