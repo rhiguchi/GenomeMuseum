@@ -38,6 +38,7 @@ import ca.odell.glazedlists.TextFilterator;
 import ca.odell.glazedlists.gui.AdvancedTableFormat;
 import ca.odell.glazedlists.matchers.MatcherEditor;
 
+@Deprecated
 public class MuseumExhibitController extends EventListController<MuseumExhibit, MuseumExhibitListModel> {
     static enum DataViewMode {
         CONTENTS, MOTIFVIEW;

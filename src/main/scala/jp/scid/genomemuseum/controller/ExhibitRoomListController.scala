@@ -160,8 +160,9 @@ class ExhibitRoomListController extends TreeController[ExhibitRoom, MuseumStruct
 object EventListHandler {
   import ca.odell.glazedlists.EventList
   import jp.scid.gui.control.ListHandler
+  import collection.mutable
   
-  def apply[E](eventList: EventList[E])(function: Seq[E] => Unit): ListHandler[E] = {
+  def apply[E](eventList: EventList[E])(function: mutable.Buffer[E] => Unit): ListHandler[E] = {
     val handler = new ListHandler[E] {
       override def processValueChange(modelList: java.util.List[E]) {
         import collection.JavaConverters._

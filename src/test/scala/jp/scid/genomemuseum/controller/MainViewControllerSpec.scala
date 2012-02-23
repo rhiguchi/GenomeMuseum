@@ -85,7 +85,7 @@ class MainViewControllerSpec extends Specification with mock.Mockito {
     
     def localMode = {
       ctrl.setContentsMode(ContentsMode.LOCAL)
-      model.getSubject must_== ctrl.museumExhibitController.getFilterTextModel
+      model.getSubject must_== ctrl.museumExhibitController.title
     }
     
     def ncbiMode = {
@@ -102,7 +102,7 @@ class MainViewControllerSpec extends Specification with mock.Mockito {
     
     def localMode = {
       ctrl.setContentsMode(ContentsMode.LOCAL)
-      model.getSubject must_== ctrl.museumExhibitController.getTitleModel
+      model.getSubject must_== ctrl.museumExhibitController.searchText
     }
     
     def ncbiMode = {

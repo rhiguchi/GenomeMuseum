@@ -87,11 +87,11 @@ class MainViewController extends GenomeMuseumController {
       case `webSource` => setContentsMode(ContentsMode.NCBI)
       case _ =>
         //ソースリスト項目選択
-        val exhibits = newRoom match {
-          case room: UserExhibitRoom => museumStructure getContent room
-          case _ => museumStructure.museumExhibitService.getOrElse(null)
-        }
-        museumExhibitController setModel exhibits
+//        val exhibits = newRoom match {
+//          case room: UserExhibitRoom => museumStructure getContent room
+//          case _ => museumStructure.museumExhibitService.getOrElse(null)
+//        }
+//        museumExhibitController setModel exhibits
         setContentsMode(ContentsMode.LOCAL)
     }
   }
@@ -142,14 +142,14 @@ class MainViewController extends GenomeMuseumController {
   def setContentsMode(newMode: ContentsMode) {
     // 検索フィールドのモデル変更
     val newSearchTextModel = newMode match {
-      case ContentsMode.LOCAL => museumExhibitController.getFilterTextModel
+      case ContentsMode.LOCAL => museumExhibitController.searchText
       case ContentsMode.NCBI => webServiceResultController.searchTextModel
     }
     searchText.setSubject(newSearchTextModel)
     
     // 表題のモデル変更
     val titleModel = newMode match {
-      case ContentsMode.LOCAL => museumExhibitController.getTitleModel
+      case ContentsMode.LOCAL => museumExhibitController.title
       case ContentsMode.NCBI => webServiceResultController.taskMessage
     }
     title.setSubject(titleModel)
