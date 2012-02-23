@@ -83,7 +83,7 @@ class MuseumSchema extends Schema with IMuseumSchema {
   }
   
   /** 部屋のコンテンツを返す */
-  def getRoomExhibitList(room: IUserExhibitRoom) = {
+  def getExhibitRoomModel(room: IUserExhibitRoom) = {
     val contentList = museumExhibitService.getContentList(roomExhibit, room)
     val exhibitEventList = new FunctionList(contentList, containerToExhibitFunction)
     
