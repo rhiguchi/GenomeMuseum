@@ -72,10 +72,11 @@ class ExhibitRoomListTransferHandler extends MuseumExhibitTransferHandler {
       case tree: JTree =>
         val loc = ts.getDropLocation.getDropPoint
         
-        tree.getPathForLocation(loc.x, loc.y) match {
-          case null => structure.flatMap(_.museumExhibitService)
-          case path => getContent(path)
-        }
+        None
+//        tree.getPathForLocation(loc.x, loc.y) match {
+//          case null => structure.flatMap(_.museumExhibitService)
+//          case path => getContent(path)
+//        }
       case _ => None
     }
   }

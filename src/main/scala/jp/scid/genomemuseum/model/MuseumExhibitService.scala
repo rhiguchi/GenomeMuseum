@@ -6,7 +6,7 @@ import collection.script.Message
 /**
  * MuseumExhibit データ提供サービスのインターフェイス。
  */
-trait MuseumExhibitService extends MuseumExhibitListModel {
+trait MuseumExhibitService extends FreeExhibitRoomModel {
   type ElementClass <: MuseumExhibit
   
   /**
@@ -33,8 +33,6 @@ trait MuseumExhibitService extends MuseumExhibitListModel {
    */
   def remove(element: MuseumExhibit): Boolean
   
-  /** {@inheritDoc} */
-  def userExhibitRoom = None
-  
-  def exhibitList: Seq[ElementClass]
+  /** サービスの起源の部屋は未設定 */
+  def sourceRoom = None
 }

@@ -9,7 +9,7 @@ import TransferHandler.TransferSupport
 
 import jp.scid.gui.control.ObjectControllerTransferHandler
 import jp.scid.genomemuseum.model.{MuseumExhibit, ExhibitRoomModel, MutableMuseumExhibitListModel, RoomContentExhibits,
-  MuseumExhibitListModel, UserExhibitRoom}
+  MuseumExhibitListModel, UserExhibitRoom, FreeExhibitRoomModel}
 
 private[controller] object MuseumExhibitTransferHandler {
   /**
@@ -170,7 +170,7 @@ class MuseumExhibitListTransferHandler extends ObjectControllerTransferHandler {
    * 展示物オブジェクトの転入が可能かを調べる。
    */
   override def canImport(ts: TransferSupport) = exhibitController.get.getModel match {
-//    case Some(model: FreeExhibitRoomModel) => true
+    case model: FreeExhibitRoomModel => true
     case _ => false
   }
   

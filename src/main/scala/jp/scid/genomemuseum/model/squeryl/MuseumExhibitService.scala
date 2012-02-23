@@ -27,14 +27,6 @@ class MuseumExhibitService(
   /** 全展示物リスト */
   val exhibitEventList = new KeyedEntityEventList(exhibitTable)
   
-  override def userExhibitRoom = None
-  
-  /** 展示物 */
-  def exhibitList = {
-    import collection.JavaConverters._
-    exhibitEventList.asScala.toIndexedSeq
-  }
-  
   /**
    * このデータサービスが持つ要素を除去する。
    * 要素がこのサービスに存在しない時は無視される。
@@ -45,7 +37,7 @@ class MuseumExhibitService(
     exhibitEventList.indexOf(element) match {
       case -1 => false
       case index =>
-        exhibitEventList.remove(index)
+        remove(index)
         true
     }
   }
@@ -80,6 +72,12 @@ class MuseumExhibitService(
       exhibitEventList.elementChanged(exhibit)
     case _ =>
   }
+  
+  /** インデックス値に関係なく展示物を保存 */
+  def set(index: Int, element: IMuseumExhibit) = save(element)
+  
+  /** この行の展示物を除去 */
+  def remove(index: Int): IMuseumExhibit = exhibitEventList.remove(index)
   
   override def getValue() = exhibitEventList.asInstanceOf[java.util.List[IMuseumExhibit]]
 }

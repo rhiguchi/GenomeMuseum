@@ -122,7 +122,7 @@ class MuseumExhibitLoadManager {
     private lazy val exhibit = service.create
     
     def doInBackground() = {
-      destModel foreach (_.addContent(exhibit))
+      destModel foreach (_.add(exhibit))
       
       // 読み込み処理
       loadMuseumExhibit(exhibit, source) match {

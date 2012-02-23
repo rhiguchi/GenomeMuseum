@@ -6,12 +6,17 @@ import org.squeryl.PrimitiveTypeMode._
 import ca.odell.glazedlists.{CompositeList, EventList}
 
 import jp.scid.genomemuseum.model.{UserExhibitRoom => IUserExhibitRoom,
+  ExhibitFloorModel => IExhibitFloorModel,
   UserExhibitRoomService => IUserExhibitRoomService}
 import IUserExhibitRoom.RoomType._
 
+/**
+ * 部屋の中身を取り扱うことができるサービス
+ */
 class MuseumExhibitContentService(
     exhibitTable: Table[MuseumExhibit])
-    extends MuseumExhibitService(exhibitTable) {
+    extends MuseumExhibitService(exhibitTable)
+    with IExhibitFloorModel {
   /** 部屋サービスも同時に設定する */
   def this(exhibitTable: Table[MuseumExhibit], roomService: IUserExhibitRoomService) {
     this(exhibitTable)

@@ -102,12 +102,12 @@ class MuseumExhibitServiceSpec extends Specification with mock.Mockito {
       there was one(exhibitTable).insert(element)
     }
     
-    def andGet = service.exhibitList must contain(element).only.inOrder
+    def andGet = service.exhibitList must_== Seq(element)
     
     def multiple = {
       val element2 = MuseumExhibit("")
       service.add(element2: IMuseumExhibit)
-      service.exhibitList must contain(element, element2).only.inOrder
+      service.exhibitList must_== Seq(element, element2)
     }
     
     def nonEntity = {

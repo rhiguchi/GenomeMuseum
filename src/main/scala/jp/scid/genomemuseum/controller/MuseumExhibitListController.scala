@@ -219,7 +219,7 @@ class MuseumExhibitListController extends EventListController[MuseumExhibit, Exh
   }
   
   def addElements(sourceRows: List[MuseumExhibit]) = getModel match {
-    case model: FreeExhibitRoomModel => sourceRows map model.addContent contains true
+    case model: FreeExhibitRoomModel => sourceRows map model.add contains true
     case _ => false
   }
   
