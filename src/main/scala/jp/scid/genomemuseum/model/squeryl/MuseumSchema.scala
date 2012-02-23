@@ -75,8 +75,11 @@ class MuseumSchema extends Schema with IMuseumSchema {
   val museumExhibitService = new MuseumExhibitContentService(museumExhibit, userExhibitRoomService)
   
   /** 部屋の中身から展示物を取得する、共通に使用される関数 */
-  private lazy val containerToExhibitFunction =
-    new ContanerToExhibitFunction(museumExhibit)
+  private lazy val containerToExhibitFunction = new FunctionList.Function[RoomExhibit, MuseumExhibit] {
+    def evaluate(container: RoomExhibit) = inTransaction {
+      museumExhibit.lookup(container.exhibitId).get
+    }
+  }
   
   /** 部屋のコンテンツを返す */
   def getRoomExhibitList(room: IUserExhibitRoom) = {
@@ -91,13 +94,6 @@ class MuseumSchema extends Schema with IMuseumSchema {
     roomModel.exhibitEventList = exhibitEventList
     roomModel.sourceRoom = Some(room)
     roomModel
-  }
-  
-  class ContanerToExhibitFunction(table: Table[MuseumExhibit])
-      extends FunctionList.Function[RoomExhibit, MuseumExhibit] {
-    def evaluate(container: RoomExhibit) = inTransaction {
-      table.lookup(container.exhibitId).get
-    }
   }
 }
 

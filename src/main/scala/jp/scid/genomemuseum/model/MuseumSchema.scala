@@ -10,7 +10,7 @@ trait MuseumSchema {
   def userExhibitRoomService: UserExhibitRoomService
   
   /** 『展示物』データのテーブルデータサービス */
-  def museumExhibitService: MuseumExhibitListModel with MuseumExhibitService
+  def museumExhibitService: MuseumExhibitService
 }
 
 object MuseumSchema {

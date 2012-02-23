@@ -8,7 +8,6 @@ import org.squeryl.PrimitiveTypeMode._
 import ca.odell.glazedlists.GlazedLists
 
 import jp.scid.genomemuseum.model.{UserExhibitRoom => IUserExhibitRoom,
-  ExhibitFloorModel => IExhibitFloorModel,
   MuseumExhibitService => IMuseumExhibitService, UriFileStorage,
   MuseumExhibit => IMuseumExhibit, MutableMuseumExhibitListModel => IMutableMuseumExhibitListModel,
   GroupRoomContentsModel}
@@ -20,9 +19,7 @@ import jp.scid.gui.model.AbstractPersistentEventList
  */
 class MuseumExhibitService(
     exhibitTable: Table[MuseumExhibit])
-    extends IMuseumExhibitService
-//    with IExhibitFloorModel
-    with IMutableMuseumExhibitListModel {
+    extends IMuseumExhibitService {
   import UserExhibitRoomService.getParentId
   /** 作成するエンティティクラス */
   type ElementClass = MuseumExhibit
