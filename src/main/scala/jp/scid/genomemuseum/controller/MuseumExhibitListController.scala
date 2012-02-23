@@ -122,25 +122,25 @@ class MuseumExhibitListController extends EventListController[MuseumExhibit, Exh
   val searchText = ValueModels.newValueModel("");
   
   /** テーブル形式を返す */
-  override val getTableFormat = new ExhibitTableFormat
+  private[controller] val tableFormat = new ExhibitTableFormat
   
   // コントローラ
   /** MotifViewer */
-  private val motifViewerController = new MotifViewerController
+  private[controller] val motifViewerController = new MotifViewerController
   
   /** 中身を読み込む操作 */
-  private val documentLoader = new UriDocumentLoader
+  private[controller] val documentLoader = new UriDocumentLoader
   documentLoader.setModel(selectedUri)
   
   /** 検索ハンドラ */
-  private val tableRefilterator = new TextMatcherEditorRefilterator(filterator)
+  private[controller] val tableRefilterator = new TextMatcherEditorRefilterator(filterator)
   setMatcherEditor(tableRefilterator.getTextMatcherEditor)
   tableRefilterator.setModel(searchText)
   
   /** 項目削除アクション */
   def tableDeleteAction = Some(removeSelectionAction.peer)
   /** 転送ハンドラ */
-  val tableTransferHandler = new MuseumExhibitListTransferHandler(this)
+  private[controller] val tableTransferHandler = new MuseumExhibitListTransferHandler(this)
   /** ローカルソースの選択項目を除去するアクション */
   val removeSelectionAction = ctrl.getAction("removeSelections")
   
@@ -148,9 +148,12 @@ class MuseumExhibitListController extends EventListController[MuseumExhibit, Exh
   var loadManager: Option[MuseumExhibitLoadManager] = None
   
   /** 選択項目変化に処理を行うハンドラ */
-  private val selectionChangeHandler = EventListHandler(getSelectionModel.getSelected) { exhibits =>
+  private[controller] val selectionChangeHandler = EventListHandler(getSelectionModel.getSelected) { exhibits =>
     setDataViewExhibits(exhibits.toList)
   }
+  
+  /** 使用するテーブル形式を指定 */
+  override def createTableFormat = tableFormat
   
   /**
    * 選択項目を削除する
@@ -160,8 +163,8 @@ class MuseumExhibitListController extends EventListController[MuseumExhibit, Exh
     import collection.JavaConverters._
     
     getModel match {
-      case model: MutableMuseumExhibitListModel => 
-        getSelectionModel.getSelected.asScala.toList foreach model.remove
+      case model: FreeExhibitRoomModel => 
+//        getSelectionModel.getSelected.asScala.toList foreach model.remove
       case _ =>
     }
   }
@@ -169,6 +172,7 @@ class MuseumExhibitListController extends EventListController[MuseumExhibit, Exh
   /** ビューに結合処理を追加するため */
    def bind(view: ExhibitListView) {
     bindTable(view.dataTable)
+    motifViewerController.bind(view.overviewMotifView)
     documentLoader.bindTextComponent(view.getContentViewComponent)
   }
   
@@ -178,7 +182,7 @@ class MuseumExhibitListController extends EventListController[MuseumExhibit, Exh
   /** ファイルを読み込む */
   def importFile(files: List[File]) = getModel match {
     case model: FreeExhibitRoomModel =>
-//      files foreach (file => loadManager.get.load(model, file))
+      files foreach (file => loadManager.get.loadExhibit(model, file))
       true
     case  _ => false
   }
@@ -225,9 +229,8 @@ class MuseumExhibitListController extends EventListController[MuseumExhibit, Exh
   
   class TableFilterator extends TextFilterator[MuseumExhibit] {
     def getFilterStrings(baseList: java.util.List[String], exhibit: MuseumExhibit) {
-      val format = getTableFormat
-      (0 until format.getColumnCount) foreach { index =>
-        baseList.add(format.getColumnValue(exhibit, index).toString)
+      (0 until tableFormat.getColumnCount) foreach { index =>
+        baseList.add(tableFormat.getColumnValue(exhibit, index).toString)
       }
     }
   }
