@@ -127,7 +127,7 @@ abstract class MuseumExhibitTransferHandler extends TransferHandler {
       getExhibitTransferTarget(ts) match {
         case Some(room) =>
           val fileList = getTransferFiles(ts)
-          fileList.foreach(file => exhibitLoadManager.get.loadExhibit(room, file))
+//          fileList.foreach(file => exhibitLoadManager.get.loadExhibit(room, file))
           true
         case _ => false
       }

@@ -25,6 +25,14 @@ trait MuseumExhibitService extends MuseumExhibitListModel {
    */
   def save(element: MuseumExhibit)
   
+  /**
+   * このデータサービスが持つ要素を除去する。
+   * 要素がこのサービスに存在しない時は無視される。
+   * @return 削除に成功した場合は {@code true} 。
+   *         項目が存在しなかったなどでサービス内に変更が発生しなかった時は {@code false} 。
+   */
+  def remove(element: MuseumExhibit): Boolean
+  
   /** {@inheritDoc} */
   def userExhibitRoom = None
   

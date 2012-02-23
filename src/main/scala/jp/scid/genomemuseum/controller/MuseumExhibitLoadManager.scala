@@ -12,7 +12,7 @@ import collection.mutable.{ListBuffer, SynchronizedQueue}
 
 import jp.scid.genomemuseum.view.MainView
 import jp.scid.genomemuseum.model.{MuseumExhibit, MuseumExhibitLoader, MuseumExhibitFileLibrary,
-  MuseumExhibitService, MutableMuseumExhibitListModel}
+  MuseumExhibitService, FreeExhibitRoomModel}
 import jp.scid.gui.model.ValueModels
 import jp.scid.gui.control.{ComponentPropertyConnector, OptionPaneController}
 
@@ -108,21 +108,21 @@ class MuseumExhibitLoadManager {
    * 展示物の読み込みタスク
    */
   private class MuseumExhibitLoadingTask(val source: URL) extends SwingWorker[Option[MuseumExhibit], Unit] {
-    def this(source: URL, listModel: MutableMuseumExhibitListModel) {
+    def this(source: URL, destModel: FreeExhibitRoomModel) {
       this(source)
-      this.listModel = Option(listModel)
+      this.destModel = Option(destModel)
     }
     
     /** 展示物の作成サービス */
     val service = museumExhibitService.get
     
     /** 読み込み完了後に追加されるモデル */
-    var listModel: Option[MutableMuseumExhibitListModel] = None
+    var destModel: Option[FreeExhibitRoomModel] = None
     
     private lazy val exhibit = service.create
     
     def doInBackground() = {
-      listModel foreach (_.add(exhibit))
+      destModel foreach (_.addContent(exhibit))
       
       // 読み込み処理
       loadMuseumExhibit(exhibit, source) match {
@@ -132,7 +132,6 @@ class MuseumExhibitLoadManager {
           exhibit.dataSourceUri = dataSourceUri.toString
           Some(exhibit)
         case false =>
-          listModel foreach (_.remove(exhibit))
           None
       }
     }
@@ -159,8 +158,8 @@ class MuseumExhibitLoadManager {
       }
       
       save match {
-        case true => service save exhibit
-        case false => listModel foreach (_.remove(exhibit))
+        case true => service.save(exhibit)
+        case false => service.remove(exhibit)
       }
       
       // アラート表示中に次のタスクをブロックさせないために次のイベントで実行
@@ -200,7 +199,7 @@ class MuseumExhibitLoadManager {
   /**
    * ファイルから展示物を読み込み、リストに追加する。
    */
-  def loadExhibit(targetRoom: MutableMuseumExhibitListModel, file: File): Future[Option[MuseumExhibit]] = {
+  def loadExhibit(targetRoom: FreeExhibitRoomModel, file: File): Future[Option[MuseumExhibit]] = {
     val task = new MuseumExhibitLoadingTask(file.toURI.toURL, targetRoom)
     execute(task)
     task
