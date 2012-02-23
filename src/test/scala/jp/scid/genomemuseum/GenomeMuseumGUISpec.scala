@@ -208,7 +208,7 @@ class GenomeMuseumGUISpec extends Specification with mock.Mockito {
   def createMainViewController(app: GenomeMuseumGUI) = new {
     val ctrl = app.createMainViewController
     
-    def setMuseumStructure = ctrl.museumStructure must_== app.museumStructure
+    def setMuseumStructure = todo //ctrl.museumStructure must_== app.museumStructure
     def setExhibitLoadManager = todo
   }
   

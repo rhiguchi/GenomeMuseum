@@ -16,6 +16,12 @@ import RoomType._
  */
 class ExhibitRoomListController extends TreeController[ExhibitRoom, MuseumStructure] {
   
+  def this(structure: MuseumStructure) {
+    this()
+    
+    setModel(structure)
+  }
+  
   private val ctrl = GenomeMuseumController(this);
   // モデル
   /** BasicRoom 規定名リソース */
@@ -83,11 +89,16 @@ class ExhibitRoomListController extends TreeController[ExhibitRoom, MuseumStruct
       model.groupRoomDefaultName = groupRoomDefaultNameResource()
       model.smartRoomDefaultName = smartRoomDefaultNameResource()
       
-      import collection.JavaConverters._
-      setlectPathAsList(model.pathForLoalSource.asJava)
+      selectLocalSource()
     }
     
     transferHandler.structure = Option(model)
+  }
+  
+  /** ローカルソースを選択する */
+  def selectLocalSource() = {
+    import collection.JavaConverters._
+    Option(getModel).foreach(model => setlectPathAsList(model.pathForLoalSource.asJava))
   }
   
   /**

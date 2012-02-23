@@ -39,12 +39,18 @@ class MainViewController extends GenomeMuseumController {
   /** 現在のデータビューの表示モード */
   val contentsMode = ValueModels.newValueModel(ContentsMode.LOCAL)
   
+  /** ソースリストモデル */
+  private val museumStructure = new MuseumStructure()
+  
+  /** データモデル */
+  private var currentMuseumSchema: Option[MuseumSchema] = None
+  
   // コントローラ
   /** 検索フィールドコントローラ */
   protected[controller] val searchTextController = new DocumentTextController(searchText)
   
   /** 部屋リスト操作 */
-  protected[controller] val exhibitRoomListController = new ExhibitRoomListController
+  protected[controller] val exhibitRoomListController = new ExhibitRoomListController(museumStructure)
   
   /** 展示物リスト操作 */
   protected[controller] val museumExhibitController = new MuseumExhibitListController
@@ -55,17 +61,17 @@ class MainViewController extends GenomeMuseumController {
   /** データテーブルの現在適用するモデル */
   private val sourceSelectionHandler = EventListHandler(exhibitRoomListController.getSelectedNodes) {
     case Seq(room, _*) => updateRoomContents(room)
-    case _ => // TODO ローカルライブラリを選択する
+    case _ => exhibitRoomListController.selectLocalSource()
   }
   
-  // プロパティアクセサ
-  /** ソースリストモデルを取得 */
-  def museumStructure: MuseumStructure = exhibitRoomListController.getModel
+  /** スキーマの取得 */
+  def museumSchema = currentMuseumSchema.get
   
-  /** ソースリストモデルを設定 */
-  def setMuseumStructure(newModel: MuseumStructure) {
-    setContentsMode(ContentsMode.LOCAL)
-    exhibitRoomListController.setModel(newModel)
+  /** スキーマの設定 */
+  def museumSchema_=(schema: MuseumSchema) {
+    currentMuseumSchema = Option(schema)
+    museumStructure.userExhibitRoomService = Some(schema.userExhibitRoomService)
+    exhibitRoomListController.selectLocalSource()
   }
   
   /** 読み込みマネージャの設定 */
@@ -87,11 +93,13 @@ class MainViewController extends GenomeMuseumController {
       case `webSource` => setContentsMode(ContentsMode.NCBI)
       case _ =>
         //ソースリスト項目選択
-//        val exhibits = newRoom match {
-//          case room: UserExhibitRoom => museumStructure getContent room
-//          case _ => museumStructure.museumExhibitService.getOrElse(null)
-//        }
-//        museumExhibitController setModel exhibits
+        currentMuseumSchema foreach { museumSchema =>
+          val exhibits = newRoom match {
+            case room: UserExhibitRoom => museumSchema getExhibitRoomModel room
+            case _ => museumSchema.museumExhibitService
+          }
+          museumExhibitController setModel exhibits
+        }
         setContentsMode(ContentsMode.LOCAL)
     }
   }

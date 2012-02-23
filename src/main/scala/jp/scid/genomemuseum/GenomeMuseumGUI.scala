@@ -9,6 +9,8 @@ import controller.{GenomeMuseumController, MainFrameViewController, MainViewCont
   MuseumExhibitListController, WebServiceResultController}
 import model.{MuseumSchema, MuseumExhibitLoader, DefaultMuseumExhibitFileLibrary,
   MuseumExhibitService, MuseumStructure}
+  
+  
 
 /**
  * GenomeMuseum GUI アプリケーション実行クラス。
@@ -23,7 +25,6 @@ class GenomeMuseumGUI extends Application {
   import jp.scid.genomemuseum.model.MuseumExhibit
   import GenomeMuseumGUI._
   import RunMode._
-  
   
   // リソースのネームスペースを無しに設定
   getContext.getResourceManager.setResourceFolder("")
@@ -89,8 +90,6 @@ class GenomeMuseumGUI extends Application {
     val museumSchema = MuseumSchema.on(databaseSource)
     museumSchema
   }
-  
-  lazy val museumStructure = new MuseumStructure(museumSchema.userExhibitRoomService, museumSchema.museumExhibitService)
   
   lazy val exhibitLoader = new MuseumExhibitLoader()
   
@@ -186,7 +185,7 @@ class GenomeMuseumGUI extends Application {
    */
   protected[genomemuseum] def createMainViewController() = {
     val ctrl = new MainViewController()
-    ctrl.setMuseumStructure(museumStructure)
+    ctrl.museumSchema = museumSchema
     ctrl.setExhibitLoadManager(exhibitLoadManager)
     ctrl
   }

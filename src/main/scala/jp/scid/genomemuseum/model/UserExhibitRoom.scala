@@ -41,6 +41,7 @@ trait UserExhibitRoom extends ExhibitRoom {
   def name_=(newName: String)
   
   /** この部屋が保持する展示物を返す */
+  @deprecated("", "")
   private[model] def exhibitListModel(implicit roomService: UserExhibitRoomService) = roomType match {
     case BasicRoom => new UserExhibitBasicRoom(this, roomService)
     case GroupRoom => new UserExhibitGroupRoom(this, roomService)
@@ -49,6 +50,7 @@ trait UserExhibitRoom extends ExhibitRoom {
 }
 
 // Classes for MuseumStructure
+@deprecated("", "")
 abstract class UserExhibitRoomContents(room: UserExhibitRoom) extends MuseumExhibitListModel {
   /** もとの部屋 */
   def userExhibitRoom = Some(room)
@@ -57,6 +59,7 @@ abstract class UserExhibitRoomContents(room: UserExhibitRoom) extends MuseumExhi
 /**
  * ツリーノードコンテンツ用プロキシクラス
  */
+@deprecated("", "")
 class UserExhibitBasicRoom(
   basicRoom: UserExhibitRoom,
   contentsService: ExhibitRoomContentsService
@@ -88,6 +91,7 @@ class UserExhibitBasicRoom(
 /**
  * GroupRoom コンテンツ用プロキシクラス
  */
+@deprecated("", "")
 class UserExhibitGroupRoom(
   groupRoom: UserExhibitRoom,
   roomService: UserExhibitRoomService
@@ -126,6 +130,7 @@ class UserExhibitGroupRoom(
 /**
  * SmartRoom コンテンツ用プロキシクラス
  */
+@deprecated("", "")
 class UserExhibitSmartRoom(
   smartRoom: UserExhibitRoom,
   contentsService: ExhibitRoomContentsService
