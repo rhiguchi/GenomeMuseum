@@ -12,11 +12,11 @@ import jp.scid.genomemuseum.model.{MuseumExhibit => IMuseumExhibit,
  */
 class ExhibitRoomModel extends IExhibitRoomModel {
   /** 現在の値（展示物リスト） */
-  private var value: EventList[_ <: IMuseumExhibit] = null
+  private var value: EventList[IMuseumExhibit] = null
   
   def exhibitEventList = value
   
-  def exhibitEventList_=(newList: EventList[_ <: IMuseumExhibit]) {
+  def exhibitEventList_=(newList: EventList[IMuseumExhibit]) {
     this.value = newList
     setValue(newList)
   }

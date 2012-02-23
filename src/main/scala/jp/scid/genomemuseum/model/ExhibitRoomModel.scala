@@ -5,11 +5,11 @@ import jp.scid.gui.model.ValueModel
 /**
  * 部屋データの構造定義
  */
-trait ExhibitRoomModel extends ValueModel[java.util.List[_ <: MuseumExhibit]]
+trait ExhibitRoomModel extends ValueModel[java.util.List[MuseumExhibit]]
   with PropertyChangeObservable {
 
   /** イベント発行 */
-  def setValue(newExhibitList: java.util.List[_ <: MuseumExhibit]) {
+  def setValue(newExhibitList: java.util.List[MuseumExhibit]) {
     firePropertyChange("value", null, newExhibitList)
   }
   

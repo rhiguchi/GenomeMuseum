@@ -3,9 +3,10 @@ package jp.scid.genomemuseum.model.squeryl
 import org.squeryl.{Schema, Session, Table}
 import org.squeryl.PrimitiveTypeMode._
 
-import ca.odell.glazedlists.FunctionList
+import ca.odell.glazedlists.{EventList, FunctionList}
 
-import jp.scid.genomemuseum.model.{MuseumSchema => IMuseumSchema, UserExhibitRoom => IUserExhibitRoom}
+import jp.scid.genomemuseum.model.{MuseumSchema => IMuseumSchema, UserExhibitRoom => IUserExhibitRoom,
+  MuseumExhibit => IMuseumExhibit}
 import IUserExhibitRoom.RoomType
 import RoomType._
 
@@ -91,7 +92,7 @@ class MuseumSchema extends Schema with IMuseumSchema {
       case SmartRoom => new ExhibitRoomModel
       case GroupRoom => new ExhibitFloorModel(userExhibitRoomService)
     }
-    roomModel.exhibitEventList = exhibitEventList
+    roomModel.exhibitEventList = exhibitEventList.asInstanceOf[EventList[IMuseumExhibit]]
     roomModel.sourceRoom = Some(room)
     roomModel
   }
