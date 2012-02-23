@@ -15,4 +15,10 @@ trait ExhibitRoomModel extends ValueModel[java.util.List[_ <: MuseumExhibit]]
   
   /** このデータの部屋 */
   def sourceRoom: Option[ExhibitRoom]
+  
+  /** 展示物リスト */
+  def exhibitList: List[MuseumExhibit] = {
+    import collection.JavaConverters._
+    getValue.asScala.toList
+  }
 }
