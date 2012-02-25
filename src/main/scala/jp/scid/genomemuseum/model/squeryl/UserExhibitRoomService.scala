@@ -6,6 +6,9 @@ import org.squeryl.{Table, KeyedEntity}
 import org.squeryl.dsl.OneToManyRelation
 import org.squeryl.PrimitiveTypeMode._
 
+import ca.odell.glazedlists.{EventList, FilterList, matchers}
+import matchers.Matcher
+
 import jp.scid.gui.model.TreeSource.MappedPropertyChangeEvent
 import jp.scid.genomemuseum.model.{UserExhibitRoom => IUserExhibitRoom,
   UserExhibitRoomService => IUserExhibitRoomService, ExhibitRoom,
@@ -55,16 +58,12 @@ object UserExhibitRoomService {
   }
   
   /**
-   * 子部屋を保持する EventList アダプター
+   * 子部屋を抽出する適合子
    */
-  class RoomGroupEventList(table: Table[UserExhibitRoom], parent: Option[IUserExhibitRoom])
-        extends KeyedEntityEventList(table) {
+  class ParentRoomMatcher(parent: Option[IUserExhibitRoom]) extends Matcher[UserExhibitRoom] {
+    val parentId = parent.map(_.id).getOrElse(0L)
     
-    /** 読み出し用クエリを返す */
-    override protected[squeryl] def getFetchQuery(e: UserExhibitRoom) = parent match {
-      case Some(room) => where(e.parentId === room.id)
-      case None =>  where(e.parentId isNotNull)
-    }
+    def matches(room: UserExhibitRoom) = room.parentId.getOrElse(0L) == parentId
   }
 }
 
@@ -76,7 +75,10 @@ private[squeryl] class UserExhibitRoomService(
   exhibitTable: Table[MuseumExhibit],
   relationTable: Table[RoomExhibit]
 ) extends IUserExhibitRoomService {
-  import UserExhibitRoomService.RoomGroupEventList
+  import UserExhibitRoomService.ParentRoomMatcher
+  
+  /** 全ての部屋要素 */
+  val allRoomList = new KeyedEntityEventList(table)
   
   /** 子要素のキャッシュ */
   //
@@ -122,7 +124,7 @@ private[squeryl] class UserExhibitRoomService(
   }
   
   def getRoomList(parent: Option[IUserExhibitRoom]) =
-    new RoomGroupEventList(table, parent).asInstanceOf[java.util.List[IUserExhibitRoom]]
+    new FilterList(allRoomList, new ParentRoomMatcher(parent)).asInstanceOf[java.util.List[IUserExhibitRoom]]
   
   def getChildren(parent: Option[IUserExhibitRoom]) =
     retrieveChildren(parent.map(_.id).getOrElse(0L)).toList
