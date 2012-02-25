@@ -22,9 +22,7 @@ class MuseumExhibitService(
   /** 全展示物リスト */
   val exhibitEventList = new KeyedEntityEventList(exhibitTable)
   
-  private def using[A <% java.io.Closeable, B](s: A)(f: A => B) = {
-    try f(s) finally s.close()
-  }
+  def name = "All Artifacts"
   
   /**
    * このデータサービスが持つ要素を除去する。

@@ -27,5 +27,7 @@ class ExhibitRoomModel extends IExhibitRoomModel {
   
   var sourceRoom: Option[IUserExhibitRoom] = None
   
+  def name = sourceRoom.map(_.name).getOrElse("NoName")
+  
   private[squeryl] def roomId = sourceRoom.get.id
 }
