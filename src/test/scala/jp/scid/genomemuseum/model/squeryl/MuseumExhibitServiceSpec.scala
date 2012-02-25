@@ -91,7 +91,7 @@ class MuseumExhibitServiceSpec extends Specification with mock.Mockito {
   }
   
   def create(f: Factory) = new TestBase(f) {
-    def exhibit = service.create must beAnInstanceOf[service.ElementClass]
+    def exhibit = service.create must beAnInstanceOf[MuseumExhibit]
   }
   
   def add(f: Factory) = new TestBase(f) {

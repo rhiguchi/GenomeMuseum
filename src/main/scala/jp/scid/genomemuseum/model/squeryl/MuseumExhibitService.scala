@@ -9,21 +9,22 @@ import ca.odell.glazedlists.GlazedLists
 
 import jp.scid.genomemuseum.model.{UserExhibitRoom => IUserExhibitRoom,
   MuseumExhibitService => IMuseumExhibitService, UriFileStorage,
-  MuseumExhibit => IMuseumExhibit, MutableMuseumExhibitListModel => IMutableMuseumExhibitListModel,
-  GroupRoomContentsModel}
+  MuseumExhibit => IMuseumExhibit}
 
 /**
- * 全ローカルファイル所有クラス
+ * 全ローカル展示物所有クラス
+ * 
+ * @param exhibitTable 展示物テーブル
  */
 class MuseumExhibitService(
     exhibitTable: Table[MuseumExhibit])
     extends IMuseumExhibitService {
-  import UserExhibitRoomService.getParentId
-  /** 作成するエンティティクラス */
-  type ElementClass = MuseumExhibit
-  
   /** 全展示物リスト */
   val exhibitEventList = new KeyedEntityEventList(exhibitTable)
+  
+  private def using[A <% java.io.Closeable, B](s: A)(f: A => B) = {
+    try f(s) finally s.close()
+  }
   
   /**
    * このデータサービスが持つ要素を除去する。
@@ -41,7 +42,7 @@ class MuseumExhibitService(
    * @param element 保存を行う要素。
    */
   def add(element: IMuseumExhibit) = element match {
-    case exhibit: ElementClass if !exhibit.isPersisted =>
+    case exhibit: MuseumExhibit if !exhibit.isPersisted =>
       exhibitEventList.add(exhibit)
     case _ => false
   }
@@ -50,7 +51,7 @@ class MuseumExhibitService(
    * Squeryl MuseumExhibit エンティティを作成する。
    * 永続化はされないが、 {@link allElements} では要素が返される。
    */
-  def create(): ElementClass = MuseumExhibit("No Name")
+  def create() = MuseumExhibit("No Name")
   
   /**
    * 要素の更新をサービスに通知する。
@@ -59,7 +60,7 @@ class MuseumExhibitService(
    * @param element 保存を行う要素。
    */
   def save(element: IMuseumExhibit) = element match {
-    case exhibit: ElementClass if exhibit.isPersisted =>
+    case exhibit: MuseumExhibit if exhibit.isPersisted =>
       exhibitEventList.elementChanged(exhibit)
     case _ =>
   }
@@ -70,5 +71,6 @@ class MuseumExhibitService(
   /** この行の展示物を除去 */
   def remove(index: Int): IMuseumExhibit = exhibitEventList.remove(index)
   
+  /** {@inheritDoc} */
   override def getValue() = exhibitEventList.asInstanceOf[java.util.List[IMuseumExhibit]]
 }
