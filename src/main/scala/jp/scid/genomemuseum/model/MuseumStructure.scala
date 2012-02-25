@@ -108,7 +108,22 @@ class MuseumStructure extends TreeSource[ExhibitRoom] with PropertyChangeObserva
   
   override def getChildren(parent: ExhibitRoom): java.util.List[ExhibitRoom] = {
     import collection.JavaConverters._
-    childrenFor(parent).asJava
+    
+    def emptyList = List.empty[ExhibitRoom].asJava
+    
+    val list = if (isLeaf(parent)) emptyList else parent match {
+      // ユーザー設定部屋ルートの時は、サービスからのルート要素取得して返す
+      case `userRoomsRoot` =>
+        userExhibitRoomService map (_.getRoomList(None)) getOrElse emptyList
+      // ユーザー設定部屋の時は、サービスから子要素を取得して返す
+      case parent: UserExhibitRoom =>
+        userExhibitRoomService.map(_.getRoomList(Some(parent))) getOrElse emptyList
+      // MuseumFloor の時は、メソッドから子要素を返す
+      case parent: MuseumFloor => parent.children.asJava
+      // 該当が無い時は Nil
+      case _ => emptyList
+    }
+    list.asInstanceOf[java.util.List[ExhibitRoom]]
   }
   
   /** 子要素を取得 */

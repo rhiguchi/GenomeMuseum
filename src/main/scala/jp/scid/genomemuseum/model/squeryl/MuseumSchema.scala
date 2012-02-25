@@ -38,6 +38,7 @@ class MuseumSchema extends Schema with IMuseumSchema {
   override def create = {
     val conn = Session.currentSession.connection
     conn.createStatement.execute(schemaCreationSql(name.get))
+    
     super.create
   }
   

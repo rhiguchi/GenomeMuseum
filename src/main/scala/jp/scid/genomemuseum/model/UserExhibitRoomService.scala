@@ -34,6 +34,13 @@ trait UserExhibitRoomService extends ExhibitRoomContentsService
   def remove(element: UserExhibitRoom): Boolean
   
   /**
+   * 指定した親をもつ部屋のリストを返す
+   * @param parent 親要素。{@code None} で、ルート要素（どの親にも属さない要素）を返す。
+   * @return 子要素。
+   */
+  def getRoomList(parent: Option[UserExhibitRoom]): java.util.List[UserExhibitRoom]
+  
+  /**
    * 子要素を返す。
    * @param parent 親要素。{@code None} で、ルート要素（どの親にも属さない要素）を返す。
    * @return 子要素。

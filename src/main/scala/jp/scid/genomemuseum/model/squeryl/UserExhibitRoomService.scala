@@ -53,6 +53,19 @@ object UserExhibitRoomService {
     val rooms = roomTable.lookup(rootId).toList
     getLeafs(rooms, ListBuffer.empty).toList
   }
+  
+  /**
+   * 子部屋を保持する EventList アダプター
+   */
+  class RoomGroupEventList(table: Table[UserExhibitRoom], parent: Option[IUserExhibitRoom])
+        extends KeyedEntityEventList(table) {
+    
+    /** 読み出し用クエリを返す */
+    override protected[squeryl] def getFetchQuery(e: UserExhibitRoom) = parent match {
+      case Some(room) => where(e.parentId === room.id)
+      case None =>  where(e.parentId isNotNull)
+    }
+  }
 }
 
 /**
@@ -63,6 +76,8 @@ private[squeryl] class UserExhibitRoomService(
   exhibitTable: Table[MuseumExhibit],
   relationTable: Table[RoomExhibit]
 ) extends IUserExhibitRoomService {
+  import UserExhibitRoomService.RoomGroupEventList
+  
   /** 子要素のキャッシュ */
   //
   // ノード
@@ -105,6 +120,9 @@ private[squeryl] class UserExhibitRoomService(
     
     fireMappedPropertyChangeEvent("parent", element, oldParent, parent)
   }
+  
+  def getRoomList(parent: Option[IUserExhibitRoom]) =
+    new RoomGroupEventList(table, parent).asInstanceOf[java.util.List[IUserExhibitRoom]]
   
   def getChildren(parent: Option[IUserExhibitRoom]) =
     retrieveChildren(parent.map(_.id).getOrElse(0L)).toList
