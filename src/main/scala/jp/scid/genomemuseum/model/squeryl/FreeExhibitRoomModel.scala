@@ -26,8 +26,7 @@ class FreeExhibitRoomModel extends ExhibitRoomModel with IFreeExhibitRoomModel {
    * 要素が存在しない時は無視される。
    * @param element 保存を行う要素。
    */
-  def add(element: IMuseumExhibit) =
-    contentList.add(RoomExhibit(roomId, element.id))
+  def add(element: IMuseumExhibit) = getValue.add(element)
   
   /**
    * インデックスの展示物を置換する。
@@ -36,20 +35,10 @@ class FreeExhibitRoomModel extends ExhibitRoomModel with IFreeExhibitRoomModel {
    * 要素が存在しない時は無視される。
    * @param element 保存を行う要素。
    */
-  def set(index: Int, element: IMuseumExhibit) = {
-    val oldExhibit = get(index)
-    val content = contentList.get(index)
-    content.exhibitId = element.id
-    contentList.set(index, content)
-    oldExhibit
-  }
+  def set(index: Int, element: IMuseumExhibit) = getValue.set(index, element)
   
   /**
    * 指定項目番目の要素を除去する。
    */
-  def remove(index: Int) = {
-    val removed = get(index)
-    contentList.remove(index)
-    removed
-  }
+  def remove(index: Int) = getValue.remove(index)
 }

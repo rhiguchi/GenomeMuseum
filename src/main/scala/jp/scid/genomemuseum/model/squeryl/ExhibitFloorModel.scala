@@ -4,7 +4,7 @@ import org.squeryl.Table
 import org.squeryl.PrimitiveTypeMode._
 
 import jp.scid.genomemuseum.model.{ExhibitFloorModel => IExhibitFloorModel,
-  UserExhibitRoom => IUserExhibitRoom}
+  UserExhibitRoom => IUserExhibitRoom, UserExhibitRoomService => IUserExhibitRoomService}
 
 /**
  * 部屋と展示物データリストのアダプター
@@ -14,14 +14,14 @@ import jp.scid.genomemuseum.model.{ExhibitFloorModel => IExhibitFloorModel,
  */
 class ExhibitFloorModel extends ExhibitRoomModel with IExhibitFloorModel {
   /** 部屋サービスとともに構築 */
-  def this(roomService: UserExhibitRoomService) {
+  def this(roomService: IUserExhibitRoomService) {
     this()
     
     this.roomService = roomService
   }
 
   /** 部屋サービス */
-  private var roomService: UserExhibitRoomService = null
+  private var roomService: IUserExhibitRoomService = null
   
   
   /** {@inheritDoc} */

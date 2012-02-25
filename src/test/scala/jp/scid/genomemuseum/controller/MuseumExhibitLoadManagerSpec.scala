@@ -26,6 +26,7 @@ class MuseumExhibitLoadManagerSpec extends Specification with mock.Mockito {
   def is = "MuseumExhibitLoadManager" ^
     "展示物の読み込みができる" ^ canLoadMuseumExhibit(createManager) ^
     "読み込みタスクの実行" ^ executeSpec(createManager) ^
+    "展示物の読み込みタスク" ^ canLoadExhibit(createManager) ^
     end
   
   def createManager() = new MuseumExhibitLoadManager
@@ -41,15 +42,19 @@ class MuseumExhibitLoadManagerSpec extends Specification with mock.Mockito {
     "実行される" ! execute(m).execute ^
     bt
   
+  def canLoadExhibit(m: => MuseumExhibitLoadManager) =
+    "タスクを実行" ! loadExhibit(m).execute ^
+    "読み込み処理" ! loadExhibit(m).loadMuseumExhibit ^
+    "保存される" ! loadExhibit(m).save ^
+    "読み込み失敗時は保存されない" ! loadExhibitOnFail(m).notSave ^
+    bt
+  
   def loadMuseumExhibit(manager: MuseumExhibitLoadManager) = new {
     val museumExhibitLoader = mock[MuseumExhibitLoader]
     
     manager.museumExhibitLoader = museumExhibitLoader
     
-//    val service = mock[MuseumExhibitService]
-//    manager.museumExhibitService = Some(service)
-    
-    val exhibit = mock[MuseumExhibit] //.asInstanceOf[service.ElementClass]
+    val exhibit = mock[MuseumExhibit]
     
     def genBank = {
       museumExhibitLoader.findFormat(emptyResource) returns GenBank
@@ -82,5 +87,40 @@ class MuseumExhibitLoadManagerSpec extends Specification with mock.Mockito {
     def addHandler = task.getPropertyChangeSupport.getPropertyChangeListeners
       .toList.contains(manager.TaskPropertyChangeHandler)
     def execute = task.getState must_!= SwingWorker.StateValue.PENDING
+  }
+  
+  /** 展示物読み込みテスト共通 */
+  class LoadExhibitText(m: MuseumExhibitLoadManager) {
+    def loadResult = true
+    
+    val exhibit = mock[MuseumExhibit]
+    
+    val service = mock[MuseumExhibitService]
+    service.create returns exhibit
+    
+    val manager = spy(m)
+    manager.museumExhibitService = Some(service)
+    
+    doAnswer{_ => loadResult}.when(manager).loadMuseumExhibit(any, any)
+    doAnswer{_ => }.when(manager).processResultMessages()
+    
+    val future = manager.loadExhibit(emptyResource)
+    future.get()
+  }
+  
+  /** 展示物読み込み */
+  def loadExhibit(m: MuseumExhibitLoadManager) = new LoadExhibitText(m) {
+    def execute = there was one(manager).execute(future.asInstanceOf[SwingWorker[_, _]])
+    
+    def loadMuseumExhibit = there was one(manager).loadMuseumExhibit(exhibit, emptyResource)
+    
+    def save = there was one(service).save(exhibit)
+  }
+  
+  /** 失敗する展示物読み込み */
+  def loadExhibitOnFail(m: MuseumExhibitLoadManager) = new LoadExhibitText(m) {
+    override def loadResult = false
+    
+    def notSave = there was no(service).save(exhibit)
   }
 }

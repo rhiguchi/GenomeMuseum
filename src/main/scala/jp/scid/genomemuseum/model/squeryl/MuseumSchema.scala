@@ -75,27 +75,9 @@ class MuseumSchema extends Schema with IMuseumSchema {
   /** Squeryl で実装した『展示物』データのサービス */
   val museumExhibitService = new MuseumExhibitContentService(museumExhibit, userExhibitRoomService)
   
-  /** 部屋の中身から展示物を取得する、共通に使用される関数 */
-  private lazy val containerToExhibitFunction = new FunctionList.Function[RoomExhibit, MuseumExhibit] {
-    def evaluate(container: RoomExhibit) = inTransaction {
-      museumExhibit.lookup(container.exhibitId).get
-    }
-  }
-  
   /** 部屋のコンテンツを返す */
-  def getExhibitRoomModel(room: IUserExhibitRoom) = {
-    val contentList = museumExhibitService.getContentList(roomExhibit, room)
-    val exhibitEventList = new FunctionList(contentList, containerToExhibitFunction)
-    
-    val roomModel = room.roomType match {
-      case BasicRoom => new FreeExhibitRoomModel(contentList)
-      case SmartRoom => new ExhibitRoomModel
-      case GroupRoom => new ExhibitFloorModel(userExhibitRoomService)
-    }
-    roomModel.exhibitEventList = exhibitEventList.asInstanceOf[EventList[IMuseumExhibit]]
-    roomModel.sourceRoom = Some(room)
-    roomModel
-  }
+  def getExhibitRoomModel(room: IUserExhibitRoom) =
+    museumExhibitService.createExhibitRoomModel(roomExhibit, room)
 }
 
 object MuseumSchema {

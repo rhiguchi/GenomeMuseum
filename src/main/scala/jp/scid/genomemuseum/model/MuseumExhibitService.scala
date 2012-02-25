@@ -15,7 +15,7 @@ trait MuseumExhibitService extends FreeExhibitRoomModel {
    * 作成した要素を永続化するには {@link #save(A)} を行う。
    * @return このサービスによって管理する新しい {@code MuseumExhibit} オブジェクト。
    */
-  def create(): ElementClass
+  def create(): MuseumExhibit
   
   /**
    * 要素の更新をサービスに通知する。

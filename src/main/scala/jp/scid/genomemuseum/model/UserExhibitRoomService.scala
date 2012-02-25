@@ -9,7 +9,7 @@ import UserExhibitRoom.RoomType._
  * UserExhibitRoom データ提供サービスのインターフェイス。
  */
 trait UserExhibitRoomService extends ExhibitRoomContentsService
-    with PropertyChangeObservable with Publisher[Message[UserExhibitRoom]] {
+    with PropertyChangeObservable {
   /**
    * 部屋をサービスに追加する。
    * @param roomType 部屋の種類

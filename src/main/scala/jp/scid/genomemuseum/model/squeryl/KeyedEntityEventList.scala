@@ -42,20 +42,22 @@ private object KeyedEntityEventList {
  * ID 順でテーブル項目と結合される。
  */
 class KeyedEntityEventList[E <: KeyedEntity[Long]](table: Table[E])
-      extends AbstractPersistentEventList[E](new KeyedEntityEventList.KeyedEntityIdComparator[E]) {
+      extends AbstractPersistentEventList[E](
+        new KeyedEntityEventList.KeyedEntityIdComparator[E]) {
   // Read
   /** 常に ID でソートされる。 */
-  override def fetch() = inTransaction {
+  override def fetchAll() = inTransaction {
     import collection.JavaConverters._
-    from(table)( e => getFetchQuery(e) orderBy(e.id asc)).toIndexedSeq.asJava
+    from(table)( e => getFetchQuery(e) select(e) orderBy(e.id asc)).toIndexedSeq.asJava
   }
   
   /** 読み出し用クエリを返す */
-  private[squeryl] protected def getFetchQuery(e: E) = select(e)
+  private[squeryl] protected def getFetchQuery(e: E) = where(e.id gt 0)
   
   // Insert
-  override def insertToTable(index: Int, element: E) = inTransaction {
+  override def insertToTable(element: E) = inTransaction {
     table.insert(element)
+    true
   }
   
   // Update

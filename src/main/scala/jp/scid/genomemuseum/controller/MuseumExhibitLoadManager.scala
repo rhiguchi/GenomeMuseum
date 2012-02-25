@@ -106,30 +106,38 @@ class MuseumExhibitLoadManager {
   
   /**
    * 展示物の読み込みタスク
+   * 
+   * @param service 展示物の作成サービス
+   * @param source 読み込む URL
    */
-  private class MuseumExhibitLoadingTask(val source: URL) extends SwingWorker[Option[MuseumExhibit], Unit] {
-    def this(source: URL, destModel: FreeExhibitRoomModel) {
-      this(source)
+  private class MuseumExhibitLoadingTask(service: MuseumExhibitService, val source: URL) extends SwingWorker[Option[MuseumExhibit], Unit] {
+    def this(service: MuseumExhibitService, source: URL, destModel: FreeExhibitRoomModel) {
+      this(service, source)
       this.destModel = Option(destModel)
     }
-    
-    /** 展示物の作成サービス */
-    val service = museumExhibitService.get
     
     /** 読み込み完了後に追加されるモデル */
     var destModel: Option[FreeExhibitRoomModel] = None
     
-    private lazy val exhibit = service.create
+    private lazy val exhibit = {
+      val exhibit = service.create
+      service.add(exhibit)
+      destModel match {
+        case Some(room) if room != service => room.add(exhibit)
+        case _ =>
+      }
+      exhibit
+    }
     
     def doInBackground() = {
-      destModel foreach (_.add(exhibit))
-      
       // 読み込み処理
       loadMuseumExhibit(exhibit, source) match {
         case true =>
           // ファイルのコピーとライブラリ登録
           val dataSourceUri = fileLibrary map (_.store(exhibit, source)) getOrElse source.toURI
           exhibit.dataSourceUri = dataSourceUri.toString
+          service.save(exhibit)
+          
           Some(exhibit)
         case false =>
           None
@@ -140,26 +148,26 @@ class MuseumExhibitLoadManager {
       import java.util.concurrent.ExecutionException
       import util.control.Exception.catching
       
-      val save = isCancelled match {
+      val result = isCancelled match {
         case false => catching(classOf[ExecutionException]) either get() match {
-          case Right(Some(_)) => true
+          case Right(e @ Some(_)) => e
           case Right(None) =>
             loadingTaskResults += InvalidFormat(source)
-            false
+            None
           case Left(e: ExecutionException) =>
             e.getCause match {
               case e: IOException => loadingTaskResults += ThrowedIOException(e, source)
               case e: ParseException => loadingTaskResults += ThrowedParseException(e, source)
               case e => e.printStackTrace
             }
-            false
+            None
         }
         case true => false
       }
       
-      save match {
-        case true => service.save(exhibit)
-        case false => service.remove(exhibit)
+      result match {
+        case None => service.remove(exhibit)
+        case _ =>
       }
       
       // アラート表示中に次のタスクをブロックさせないために次のイベントで実行
@@ -191,7 +199,7 @@ class MuseumExhibitLoadManager {
    * URLから展示物を読み込み、コピーしたファイルをライブラリへコピーして追加する。
    */
   def loadExhibit(source: URL): Future[Option[MuseumExhibit]] = {
-    val task = new MuseumExhibitLoadingTask(source)
+    val task = new MuseumExhibitLoadingTask(museumExhibitService.get, source)
     execute(task)
     task
   }
@@ -200,7 +208,7 @@ class MuseumExhibitLoadManager {
    * ファイルから展示物を読み込み、リストに追加する。
    */
   def loadExhibit(targetRoom: FreeExhibitRoomModel, file: File): Future[Option[MuseumExhibit]] = {
-    val task = new MuseumExhibitLoadingTask(file.toURI.toURL, targetRoom)
+    val task = new MuseumExhibitLoadingTask(museumExhibitService.get, file.toURI.toURL, targetRoom)
     execute(task)
     task
   }
@@ -210,11 +218,7 @@ class MuseumExhibitLoadManager {
    * 
    * @param file 読み込みもとのファイル
    */
-  def loadExhibit(file: File): Future[Option[MuseumExhibit]] = {
-    val task = new MuseumExhibitLoadingTask(file.toURI.toURL)
-    execute(task)
-    task
-  }
+  def loadExhibit(file: File): Future[Option[MuseumExhibit]] = loadExhibit(file.toURI.toURL)
   
   /**
    * タスクを実行する

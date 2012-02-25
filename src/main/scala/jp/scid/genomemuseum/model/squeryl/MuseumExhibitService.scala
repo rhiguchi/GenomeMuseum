@@ -11,8 +11,6 @@ import jp.scid.genomemuseum.model.{UserExhibitRoom => IUserExhibitRoom,
   MuseumExhibitService => IMuseumExhibitService, UriFileStorage,
   MuseumExhibit => IMuseumExhibit, MutableMuseumExhibitListModel => IMutableMuseumExhibitListModel,
   GroupRoomContentsModel}
-import jp.scid.gui.model.AbstractPersistentEventList
-
 
 /**
  * 全ローカルファイル所有クラス
@@ -33,14 +31,8 @@ class MuseumExhibitService(
    * @return 削除に成功した場合は {@code true} 。
    *         項目が存在しなかったなどでサービス内に変更が発生しなかった時は {@code false} 。
    */
-  def remove(element: IMuseumExhibit): Boolean = {
-    exhibitEventList.indexOf(element) match {
-      case -1 => false
-      case index =>
-        remove(index)
-        true
-    }
-  }
+  def remove(element: IMuseumExhibit): Boolean =
+    exhibitEventList.remove(element)
   
   /**
    * 要素の更新をサービスに通知する。
@@ -57,9 +49,8 @@ class MuseumExhibitService(
   /**
    * Squeryl MuseumExhibit エンティティを作成する。
    * 永続化はされないが、 {@link allElements} では要素が返される。
-   * @deprecated add で追加と永続化が行われる。
    */
-  def create(): ElementClass = MuseumExhibit("")
+  def create(): ElementClass = MuseumExhibit("No Name")
   
   /**
    * 要素の更新をサービスに通知する。
