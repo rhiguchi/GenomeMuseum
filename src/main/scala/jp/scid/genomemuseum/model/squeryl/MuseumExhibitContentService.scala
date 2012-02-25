@@ -3,7 +3,7 @@ package jp.scid.genomemuseum.model.squeryl
 import org.squeryl.Table
 import org.squeryl.PrimitiveTypeMode._
 
-import ca.odell.glazedlists.{CompositeList, EventList, FunctionList}
+import ca.odell.glazedlists.{GlazedLists, CompositeList, EventList, FunctionList}
 
 import jp.scid.genomemuseum.model.{UserExhibitRoom => IUserExhibitRoom,
   ExhibitFloorModel => IExhibitFloorModel, MuseumExhibit => IMuseumExhibit,
@@ -100,8 +100,9 @@ class MuseumExhibitContentService(
    */
   def createRoomContentEventList(contentTable: Table[RoomExhibit], room: IUserExhibitRoom) = {
     val list = new RoomContentEventList(contentTable, room)
-    val changeHandler = new ContentsParentChangeHandler[IMuseumExhibit](list)
-    exhibitEventList.addListEventListener(changeHandler)
+    val changeHandler = new ContentsParentChangeHandler[MuseumExhibit](list)
+    val listenerProxy = GlazedLists.weakReferenceProxy(exhibitEventList, changeHandler)
+    exhibitEventList.addListEventListener(listenerProxy)
     list
   }
   
