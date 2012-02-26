@@ -70,8 +70,7 @@ class MuseumSchema extends Schema with IMuseumSchema {
   exhibitToRoomExhibitRelation.foreignKeyDeclaration.constrainReference(onDelete cascade)
   
   /** Squeryl で実装した『部屋』データのサービス */
-  val userExhibitRoomService = new UserExhibitRoomService(
-    userExhibitRoom, museumExhibit, roomExhibit)
+  val userExhibitRoomService = new UserExhibitRoomService(userExhibitRoom)
   
   /** Squeryl で実装した『展示物』データのサービス */
   val museumExhibitService = new MuseumExhibitService(museumExhibit)

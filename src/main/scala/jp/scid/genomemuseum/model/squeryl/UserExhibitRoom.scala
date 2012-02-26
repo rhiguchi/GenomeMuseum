@@ -19,7 +19,7 @@ case class UserExhibitRoom(
   @Column("type")
   val roomType: RoomType.Value = RoomType.BasicRoom,
   @Column("parent_id")
-  val parentId: Option[Long] = None
+  var parentId: Option[Long] = None
 ) extends IUserExhibitRoom with KeyedEntity[Long] {
   /** 
    * この部屋を一意に決める識別子。

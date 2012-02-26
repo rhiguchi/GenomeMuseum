@@ -13,10 +13,6 @@ import UserExhibitRoom.RoomType._
 trait UserExhibitRoomService extends PropertyChangeObservable {
 
   /**
-   * 展示物を作成する
-   */
-  def create(roomType: RoomType, baseName: String, parent: Option[UserExhibitRoom]): UserExhibitRoom
-  /**
    * 部屋をサービスに追加する。
    * @param roomType 部屋の種類
    * @param name 表示名
@@ -24,13 +20,6 @@ trait UserExhibitRoomService extends PropertyChangeObservable {
    * @see UserExhibitRoom
    */
   def addRoom(roomType: RoomType, name: String, parent: Option[UserExhibitRoom]): UserExhibitRoom
-  
-  /**
-   * この名前をもつ部屋が存在するか。
-   * @param name
-   * @return 存在する時は {@code true} 。
-   */
-  def nameExists(name: String): Boolean
   
   /**
    * 要素と、その子孫全てを削除する
@@ -51,7 +40,6 @@ trait UserExhibitRoomService extends PropertyChangeObservable {
    * @param parent 親要素。{@code None} で、ルート要素（どの親にも属さない要素）を返す。
    * @return 子要素。
    */
-  def getChildren(parent: Option[UserExhibitRoom]): Iterable[UserExhibitRoom]
   
   /**
    * 親要素を取得する

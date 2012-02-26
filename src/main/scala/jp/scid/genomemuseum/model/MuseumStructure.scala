@@ -200,22 +200,22 @@ class MuseumStructure extends TreeSource[MuseumSpace] with PropertyChangeObserva
    * @see UserExhibitRoom
    */
   def addRoom(roomType: RoomType, parent: Option[UserExhibitRoom]): UserExhibitRoom = {
-    val name = findRoomNewName(roomType match {
+    val name = roomType match {
       case BasicRoom => basicRoomDefaultName
       case GroupRoom => groupRoomDefaultName
       case SmartRoom => smartRoomDefaultName
-    })
+    }
     
     val newRoom = userExhibitRoomService.get.addRoom(roomType, name, parent)
     newRoom
   }
   
   def addRoom(roomType: RoomType, parent: ExhibitMuseumFloor): ExhibitRoomModel = {
-    val name = findRoomNewName(roomType match {
+    val name = roomType match {
       case BasicRoom => basicRoomDefaultName
       case GroupRoom => groupRoomDefaultName
       case SmartRoom => smartRoomDefaultName
-    })
+    }
     
     freeExhibitPavilion.get.addRoom(roomType, name, parent)
   }
@@ -262,28 +262,6 @@ class MuseumStructure extends TreeSource[MuseumSpace] with PropertyChangeObserva
   private def fireChildrenChange(parent: ExhibitRoom) {
     val event = new TreeSource.MappedPropertyChangeEvent(this, "children", parent, null, null)
     firePropertyChange(event)
-  }
-  
-  /**
-   * 未使用の名前を検索する。
-   * {@code baseName} の名前を持つ部屋がサービス中に存在するとき、
-   * 連番をつけて次の名前を検索する。
-   * @param baseName 基本の名前
-   * @return 他と重複しない、部屋の名前。
-   */
-  private def findRoomNewName(baseName: String) = {
-    def searchNext(index: Int): String = {
-      val candidate = baseName + " " + index
-      userExhibitRoomService.map(_.nameExists(candidate)) match {
-        case Some(true) => searchNext(index + 1)
-        case _ => candidate
-      }
-    }
-    
-    userExhibitRoomService.map(_.nameExists(baseName)) match {
-      case Some(true) => searchNext(1)
-      case _ => baseName
-    }
   }
 }
 

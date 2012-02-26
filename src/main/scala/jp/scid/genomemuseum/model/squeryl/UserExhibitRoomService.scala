@@ -62,18 +62,17 @@ object UserExhibitRoomService {
   class ParentRoomMatcher(parent: Option[IUserExhibitRoom]) extends Matcher[UserExhibitRoom] {
     val parentId = parent.map(_.id).getOrElse(0L)
     
-    def matches(room: UserExhibitRoom) = room.parentId.getOrElse(0L) == parentId
+    def matches(room: UserExhibitRoom) = room.parentId match {
+      case Some(`parentId`) => true
+      case _ => false
+    }
   }
 }
 
 /**
  * GenomeMuseum データソースの Squeryl 実装
  */
-private[squeryl] class UserExhibitRoomService(
-  table: Table[UserExhibitRoom],
-  exhibitTable: Table[MuseumExhibit],
-  relationTable: Table[RoomExhibit]
-) extends IUserExhibitRoomService {
+class UserExhibitRoomService(table: Table[UserExhibitRoom]) extends IUserExhibitRoomService {
   import UserExhibitRoomService.ParentRoomMatcher
   
   /** 全ての部屋要素 */
@@ -81,49 +80,42 @@ private[squeryl] class UserExhibitRoomService(
   
   /** 部屋を作成する。永続化はされない */
   def create(roomType: RoomType, baseName: String, parent: Option[IUserExhibitRoom]) = {
-    require(parent.filter(_.roomType != GroupRoom).isEmpty, "roomType of parent must be GroupRoom")
+    parent foreach ensureParentAllowed
     
-    // TODO 名前検索
-    UserExhibitRoom(baseName, roomType, parent.map(_.id))
+    val name = findRoomNewName(baseName)
+    
+    UserExhibitRoom(name, roomType, parent.map(_.id))
   }
   
   /** 子要素のキャッシュ */
   //
   // ノード
   def addRoom(roomType: RoomType, name: String, parent: Option[IUserExhibitRoom]) = {
-    val parentIdOp = parent flatMap {
-      case RoomType(GroupRoom) => parent
-      case elm => getParent(elm)
-    } map {p => p.id}
-    
-    val newRoom = UserExhibitRoom(name, roomType, parentIdOp)
+    val newRoom = create(roomType, name, parent)
     allRoomList.add(newRoom)
-    
     newRoom
   }
   
+  /**
+   * この名前をもつ部屋が存在するか。
+   * @param name
+   * @return 存在する時は {@code true} 。
+   */
   def nameExists(name: String): Boolean = inTransaction {
     table.where( e => e.name === name).nonEmpty
   }
   
-  def getParent(element: IUserExhibitRoom) = {
-    parentFor(element.id)
-  }
+  /** 親を取得 */
+  def getParent(element: IUserExhibitRoom) = parentFor(element.id)
   
+  /** 親を設定 */
   def setParent(element: IUserExhibitRoom, parent: Option[IUserExhibitRoom]) {
     parent foreach ensureParentAllowed
     
-    val parentId = parent.map(_.id)
-    val oldParent = parentFor(element.id)
-    
-    inTransaction {
-      update(table) ( e =>
-        where(e.id === element.id)
-        set(e.parentId := parentId)
-      )
+    lookup(element.id) foreach { room =>
+      room.parentId = parent.map(_.id)
+      allRoomList.elementChanged(room)
     }
-    
-    fireMappedPropertyChangeEvent("parent", element, oldParent, parent)
   }
   
   /**
@@ -132,46 +124,16 @@ private[squeryl] class UserExhibitRoomService(
   def getFloorRoomList(parent: Option[IUserExhibitRoom]) =
     new FilterList(allRoomList, new ParentRoomMatcher(parent)).asInstanceOf[EventList[IUserExhibitRoom]]
   
-  def getChildren(parent: Option[IUserExhibitRoom]) =
-    retrieveChildren(parent.map(_.id).getOrElse(0L)).toList
-  
-  private def retrieveChildren(parentId: Long) = inTransaction {
-    table.where(e => nvl(e.parentId, 0L) === parentId).toIndexedSeq
-  }
-  
-  /** 全ての子孫にある葉要素を返す */
-  def getAllLeafs(room: IUserExhibitRoom) = inTransaction {
-    UserExhibitRoomService.getLeafs(room.id, table)
-  }
-  
-  def remove(element: IUserExhibitRoom) = {
-    val parent = parentFor(element.id)
-    
-    val result = inTransaction {
-      table.delete(element.id)
-    }
-    result match {
-      case true =>
-      case false => fireChildrenChange(parent)
-    }
-    result
+  def remove(element: IUserExhibitRoom) = lookup(element.id) match {
+    case Some(room) => allRoomList.remove(room)
+    case None => false
   }
   
   def save(element: IUserExhibitRoom) = inTransaction {
     element match {
-      case element: UserExhibitRoom => table.update(element)
+      case element: UserExhibitRoom => allRoomList.elementChanged(element)
       case _ =>
     }
-  }
-  
-  private def fireChildrenChange(parent: Option[IUserExhibitRoom]) {
-    fireMappedPropertyChangeEvent("children", parent, null, null)
-  }
-  
-  private def fireMappedPropertyChangeEvent(
-      propertyName: String, key: AnyRef, oldValue: AnyRef, newValue: AnyRef) {
-    val pce = new MappedPropertyChangeEvent(this, propertyName, key, oldValue, newValue)
-    firePropertyChange(pce)
   }
   
   /**
@@ -179,17 +141,21 @@ private[squeryl] class UserExhibitRoomService(
    */
   private[squeryl] def parentFor(roomId: Long) = inTransaction {
     from(table)(e => where(e.id === roomId) select(e.parentId))
-        .headOption.flatMap(id => id).flatMap(id => table.lookup(id))
+        .headOption.flatMap(identity).flatMap(id => lookup(id))
+  }
+  
+  /** ID から部屋を取得 */
+  private[squeryl] def lookup(roomId: Long) = allRoomList.findOrNull(roomId) match {
+    case null => None
+    case room => Some(room)
   }
   
   /**
    * 親として設定できる要素であるか
    */
-  private def ensureParentAllowed(room: IUserExhibitRoom) {
-    room match {
-      case RoomType(GroupRoom) =>
-      case _ => throw new IllegalArgumentException("parent must be a GroupRoom")
-    }
+  private def ensureParentAllowed(room: IUserExhibitRoom) = room match {
+    case RoomType(GroupRoom) =>
+    case _ => throw new IllegalArgumentException("parent must be a GroupRoom")
   }
   
   /**
