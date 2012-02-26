@@ -90,11 +90,7 @@ private[squeryl] class UserExhibitRoomService(
     } map {p => p.id}
     
     val newRoom = UserExhibitRoom(name, roomType, parentIdOp)
-    inTransaction {
-      table.insert(newRoom)
-    }
-    
-    fireChildrenChange(parent)
+    allRoomList.add(newRoom)
     
     newRoom
   }
@@ -123,8 +119,11 @@ private[squeryl] class UserExhibitRoomService(
     fireMappedPropertyChangeEvent("parent", element, oldParent, parent)
   }
   
-  def getRoomList(parent: Option[IUserExhibitRoom]) =
-    new FilterList(allRoomList, new ParentRoomMatcher(parent)).asInstanceOf[java.util.List[IUserExhibitRoom]]
+  /**
+   * 指定した部屋を親とするサブリストを作成。
+   */
+  def getFloorRoomList(parent: Option[IUserExhibitRoom]) =
+    new FilterList(allRoomList, new ParentRoomMatcher(parent)).asInstanceOf[EventList[IUserExhibitRoom]]
   
   def getChildren(parent: Option[IUserExhibitRoom]) =
     retrieveChildren(parent.map(_.id).getOrElse(0L)).toList

@@ -35,6 +35,15 @@ object MuseumExhibitContentService {
     def evaluate(exhibit: IMuseumExhibit) = RoomExhibit(room.id, exhibit.id)
   }
   
+  /**
+   * ツリー構造情報を持つ博物館展示空間の変換クラス
+   */
+  class ExhibitRoomModelFunction(service: MuseumExhibitContentService)
+      extends FunctionList.Function[IUserExhibitRoom, ExhibitRoomModel] {
+    def evaluate(room: IUserExhibitRoom) =
+      service.createExhibitRoomModel(room)
+  }
+  
   /** コンテンツ情報のリスト */
   class RoomContentEventList(contentTable: Table[RoomExhibit], room: IUserExhibitRoom)
       extends KeyedEntityEventList(contentTable) {
@@ -57,16 +66,18 @@ object MuseumExhibitContentService {
 
 /**
  * 部屋の中身を取り扱うことができるサービス
+ * @todo extends ExhibitFloor
  */
 class MuseumExhibitContentService(
-    exhibitTable: Table[MuseumExhibit])
+    exhibitTable: Table[MuseumExhibit], contentTable: Table[RoomExhibit])
     extends MuseumExhibitService(exhibitTable)
     with IExhibitFloorModel {
   import MuseumExhibitContentService._
   
   /** 部屋サービスも同時に設定する */
-  def this(exhibitTable: Table[MuseumExhibit], roomService: IUserExhibitRoomService) {
-    this(exhibitTable)
+  def this(exhibitTable: Table[MuseumExhibit], contentTable: Table[RoomExhibit],
+      roomService: IUserExhibitRoomService) {
+    this(exhibitTable, contentTable)
     
     setRoomService(roomService)
   }
@@ -90,16 +101,29 @@ class MuseumExhibitContentService(
     roomService.map(_.getParent(target).nonEmpty) getOrElse false
   
   /**
-   * 親を除去する
+   * 部屋を追加する。追加された部屋は親が除去される。
    */
   def addRoom(element: IUserExhibitRoom) =
     roomService.get.setParent(element, None)
   
   /**
-   * 部屋のコンテンツを作成
+   * ユーザー部屋の親の無い部屋を返す
    */
-  def createRoomContentEventList(contentTable: Table[RoomExhibit], room: IUserExhibitRoom) = {
+  def childRoomList: EventList[ExhibitRoomModel] = {
+    val convertFunc = new ExhibitRoomModelFunction(this)
+    val roomList = roomService.get.getFloorRoomList(None) match {
+      case list: EventList[IUserExhibitRoom] => list
+      case list => GlazedLists.eventList(list)
+    }
+    new FunctionList(roomList, convertFunc)
+  }
+  
+  /**
+   * 部屋のコンテンツの EventList を作成
+   */
+  protected[squeryl] def createRoomContentEventList(room: IUserExhibitRoom) = {
     val list = new RoomContentEventList(contentTable, room)
+    
     val changeHandler = new ContentsParentChangeHandler[MuseumExhibit](list)
     val listenerProxy = GlazedLists.weakReferenceProxy(exhibitEventList, changeHandler)
     exhibitEventList.addListEventListener(listenerProxy)
@@ -110,9 +134,9 @@ class MuseumExhibitContentService(
    * 部屋のコンテンツを取得する
    * @param contentTable 部屋の中身テーブル
    */
-  protected[squeryl] def getContentList(contentTable: Table[RoomExhibit], room: IUserExhibitRoom) = room.roomType match {
-    case BasicRoom => createRoomContentEventList(contentTable, room)
-    case SmartRoom => createRoomContentEventList(contentTable, room)
+  protected[squeryl] def getContentList(room: IUserExhibitRoom) = room.roomType match {
+    case BasicRoom => createRoomContentEventList(room)
+    case SmartRoom => createRoomContentEventList(room)
     case GroupRoom =>
       val roomContents = new FloorContents(contentTable, room)
       roomContents setContentService this
@@ -120,13 +144,13 @@ class MuseumExhibitContentService(
   }
   
   /** 部屋のデータモデルを作成する */
-  protected[squeryl] def createExhibitRoomModel(contentTable: Table[RoomExhibit], room: IUserExhibitRoom) = {
-    val contentList = getContentList(contentTable, room)
+  def createExhibitRoomModel(room: IUserExhibitRoom) = {
+    val contentList = getContentList(room)
     val reverseFunction = new ExhibitContainerReverseFunction(room)
     val exhibitEventList = new FunctionList(contentList, containerToExhibitFunction, reverseFunction)
     
     val roomModel = room.roomType match {
-      case BasicRoom => new FreeExhibitRoomModel(contentList)
+      case BasicRoom => new ExhibitRoomModel with FreeExhibitRoomModel
       case SmartRoom => new ExhibitRoomModel
       case GroupRoom => new ExhibitFloorModel(roomService.get)
     }
@@ -138,10 +162,10 @@ class MuseumExhibitContentService(
   /**
    * この部屋の子部屋のコンテンツを取得する
    */
-  private def getChildContentList(contentTable: Table[RoomExhibit], room: IUserExhibitRoom) = roomService match {
+  private def getChildContentList(room: IUserExhibitRoom) = roomService match {
     case Some(service) =>
       val children = service getChildren Some(room)
-      children map (c => getContentList(contentTable, c)) toList
+      children map (c => getContentList(c)) toList
     case None => Nil
   }
   
@@ -175,7 +199,7 @@ class MuseumExhibitContentService(
       try {
         childRoomList foreach contentList.removeMemberList
         
-        childRoomList = service getChildContentList (contentTable, room)
+        childRoomList = service getChildContentList (room)
         
         childRoomList foreach contentList.addMemberList
       }

@@ -3,6 +3,8 @@ package jp.scid.genomemuseum.model
 import scala.collection.mutable.Publisher
 import scala.collection.script.Message
 
+import ca.odell.glazedlists.EventList
+
 import UserExhibitRoom.RoomType._
 
 /**
@@ -38,7 +40,7 @@ trait UserExhibitRoomService extends ExhibitRoomContentsService
    * @param parent 親要素。{@code None} で、ルート要素（どの親にも属さない要素）を返す。
    * @return 子要素。
    */
-  def getRoomList(parent: Option[UserExhibitRoom]): java.util.List[UserExhibitRoom]
+  def getFloorRoomList(parent: Option[UserExhibitRoom]): EventList[UserExhibitRoom]
   
   /**
    * 子要素を返す。
