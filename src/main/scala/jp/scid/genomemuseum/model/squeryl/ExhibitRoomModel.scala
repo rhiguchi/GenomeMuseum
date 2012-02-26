@@ -14,6 +14,11 @@ class ExhibitRoomModel extends IExhibitRoomModel {
   /** 現在の値（展示物リスト） */
   private var value: EventList[IMuseumExhibit] = null
   
+  def this(exhibitList: EventList[IMuseumExhibit]) {
+    this()
+    exhibitEventList = exhibitList
+  }
+  
   def exhibitEventList = value
   
   def exhibitEventList_=(newList: EventList[IMuseumExhibit]) {

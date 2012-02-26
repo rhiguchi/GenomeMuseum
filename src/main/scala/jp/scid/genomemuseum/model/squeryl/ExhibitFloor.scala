@@ -1,32 +1,9 @@
 package jp.scid.genomemuseum.model.squeryl
 
-import org.squeryl.Table
-import org.squeryl.PrimitiveTypeMode._
+import ca.odell.glazedlists.EventList
 
 import jp.scid.genomemuseum.model.{ExhibitFloorModel => IExhibitFloorModel,
-  UserExhibitRoom => IUserExhibitRoom, UserExhibitRoomService => IUserExhibitRoomService,
-  ExhibitRoomModel => IExhibitRoomModel}
-
-/**
- * 部屋と展示物データリストのアダプター
- * 
- * @param contentList 部屋内容
- * @param contanerToExhibitFunction 部屋内容と展示物の変換関数
- */
-class ExhibitFloorModel extends ExhibitRoomModel with ExhibitFloor {
-  /** 部屋サービス */
-  var userExhibitRoomService: MuseumExhibitContentService = null
-  
-  /** 部屋サービスとともに構築 */
-  def this(roomService: MuseumExhibitContentService) {
-    this()
-    
-    this.userExhibitRoomService = roomService
-  }
-  
-  /** 部屋ソースを返す。 */
-  protected def exhibitFloor = sourceRoom
-}
+  UserExhibitRoom => IUserExhibitRoom, ExhibitRoomModel => IExhibitRoomModel}
 
 /**
  * 階層構造を実装するミックスイン
@@ -59,5 +36,5 @@ trait ExhibitFloor extends IExhibitFloorModel {
    */
   lazy val childRoomList =
     userExhibitRoomService.createChildRoomList(exhibitFloor)
-      .asInstanceOf[java.util.List[IExhibitRoomModel]]
+      .asInstanceOf[EventList[IExhibitRoomModel]]
 }

@@ -3,7 +3,7 @@ package jp.scid.genomemuseum.model.squeryl
 import org.squeryl.Table
 import org.squeryl.PrimitiveTypeMode._
 
-import ca.odell.glazedlists.{GlazedLists, CompositeList, EventList, FunctionList}
+import ca.odell.glazedlists.{GlazedLists, CollectionList, EventList, FunctionList}
 
 import jp.scid.genomemuseum.model.{UserExhibitRoom => IUserExhibitRoom,
   ExhibitRoomModel => IExhibitRoomModel,
@@ -149,43 +149,18 @@ class MuseumExhibitContentService(
     list
   }
   
-  /**
-   * 部屋のコンテンツを取得する
-   * @param contentTable 部屋の中身テーブル
-   */
-  protected[squeryl] def getContentList(room: IUserExhibitRoom) = room.roomType match {
-    case BasicRoom => createRoomContentEventList(room)
-    case SmartRoom => createRoomContentEventList(room)
-    case GroupRoom =>
-      val roomContents = new FloorContents(contentTable, room)
-      roomContents setContentService this
-      roomContents.contentList
-  }
-  
   /** 部屋のデータモデルを作成する */
   def createExhibitRoomModel(room: IUserExhibitRoom) = {
-    val contentList = getContentList(room)
-    val reverseFunction = new ExhibitContainerReverseFunction(room)
-    val exhibitEventList = new FunctionList(contentList, containerToExhibitFunction, reverseFunction)
+    lazy val exhibitEventList = new FunctionList(
+        createRoomContentEventList(room), containerToExhibitFunction, new ExhibitContainerReverseFunction(room))
     
     val roomModel = room.roomType match {
-      case BasicRoom => new ExhibitRoomModel with FreeExhibitRoomModel
-      case SmartRoom => new ExhibitRoomModel
-      case GroupRoom => new ExhibitFloorModel(this)
+      case BasicRoom => new ExhibitRoomModel(exhibitEventList) with FreeExhibitRoomModel
+      case SmartRoom => new ExhibitRoomModel(exhibitEventList)
+      case GroupRoom => new ExhibitFloorModel
     }
-    roomModel.exhibitEventList = exhibitEventList
     roomModel.sourceRoom = Some(room)
     roomModel
-  }
-  
-  /**
-   * この部屋の子部屋のコンテンツを取得する
-   */
-  private def getChildContentList(room: IUserExhibitRoom) = roomService match {
-    case Some(service) =>
-      val children = service getChildren Some(room)
-      children map (c => getContentList(c)) toList
-    case None => Nil
   }
   
   /**
@@ -196,43 +171,29 @@ class MuseumExhibitContentService(
   }
   
   /**
-   * @param contentList この部屋の展示物リスト
+   * 階層と展示物データリストのアダプター
+   * 
+   * @param contentList 部屋内容
+   * @param contanerToExhibitFunction 部屋内容と展示物の変換関数
    */
-  class FloorContents(
-      val contentList: CompositeList[RoomExhibit],
-      contentTable: Table[RoomExhibit],
-      room: IUserExhibitRoom) {
+  class ExhibitFloorModel
+      extends ExhibitRoomModel with ExhibitFloor {
+    /** 展示物リスト */
+    lazy val contentList = new CollectionList(childRoomList, new RoomExhibitCollectionModel)
     
-    def this(contentTable: Table[RoomExhibit], room: IUserExhibitRoom) {
-      this(new CompositeList[RoomExhibit], contentTable, room)
-    }
+    def userExhibitRoomService = MuseumExhibitContentService.this
     
-    private var service: MuseumExhibitContentService = _
-    
-    /** 子部屋リスト */
-    var childRoomList: List[EventList[RoomExhibit]] = Nil
+    /** 展示階層 */
+    def exhibitFloor = sourceRoom
     
     /** 子部屋リストを更新する */
-    def updateChildRoomList() = {
-      contentList.getReadWriteLock.writeLock.lock()
-      try {
-        childRoomList foreach contentList.removeMemberList
-        
-        childRoomList = service getChildContentList (room)
-        
-        childRoomList foreach contentList.addMemberList
-      }
-      finally {
-        contentList.getReadWriteLock.writeLock.unlock()
-      }
-    }
-    
-    def setContentService(newService: MuseumExhibitContentService) {
-      service = newService
-      updateChildRoomList()
-    }
+    override def getValue() = contentList
   }
-  
+
+  class RoomExhibitCollectionModel extends CollectionList.Model[IExhibitRoomModel, IMuseumExhibit] {
+    def getChildren(room: IExhibitRoomModel) = room.getValue
+  }
+
   /** 部屋の中身から展示物を取得する関数 */
   private lazy val containerToExhibitFunction = new FunctionList.Function[RoomExhibit, IMuseumExhibit]() {
     def evaluate(container: RoomExhibit) = getContentExhibit(container)
