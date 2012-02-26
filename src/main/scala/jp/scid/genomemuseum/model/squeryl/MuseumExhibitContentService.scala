@@ -6,8 +6,7 @@ import org.squeryl.PrimitiveTypeMode._
 import ca.odell.glazedlists.{GlazedLists, CollectionList, EventList, FunctionList}
 
 import jp.scid.genomemuseum.model.{UserExhibitRoom => IUserExhibitRoom,
-  ExhibitRoomModel => IExhibitRoomModel,
-  ExhibitFloorModel => IExhibitFloorModel, MuseumExhibit => IMuseumExhibit,
+  ExhibitRoomModel => IExhibitRoomModel, MuseumExhibit => IMuseumExhibit,
   UserExhibitRoomService => IUserExhibitRoomService}
 import IUserExhibitRoom.RoomType._
 
@@ -67,10 +66,9 @@ object MuseumExhibitContentService {
 
 /**
  * 部屋の中身を取り扱うことができるサービス
- * @todo extends ExhibitFloor
  */
 class MuseumExhibitContentService(contentTable: Table[RoomExhibit])
-    extends ExhibitFloor {
+    extends MuseumFloor {
   import MuseumExhibitContentService._
 
   /** 展示物サービス */
@@ -106,7 +104,7 @@ class MuseumExhibitContentService(contentTable: Table[RoomExhibit])
   protected def userExhibitRoomService = this
   
   /** ルート要素なので階層は None */
-  protected def exhibitFloor = None
+  protected def floorModel = None
 
   def name = "Free Area"
 
@@ -167,7 +165,7 @@ class MuseumExhibitContentService(contentTable: Table[RoomExhibit])
     val roomModel = room.roomType match {
       case BasicRoom => new ExhibitRoomModel(exhibitEventList) with FreeExhibitRoomModel
       case SmartRoom => new ExhibitRoomModel(exhibitEventList)
-      case GroupRoom => new ExhibitFloorModel
+      case GroupRoom => new ExhibitFloor
     }
     roomModel.sourceRoom = Some(room)
     roomModel
@@ -179,15 +177,14 @@ class MuseumExhibitContentService(contentTable: Table[RoomExhibit])
    * @param contentList 部屋内容
    * @param contanerToExhibitFunction 部屋内容と展示物の変換関数
    */
-  class ExhibitFloorModel
-      extends ExhibitRoomModel with ExhibitFloor {
+  class ExhibitFloor extends ExhibitRoomModel with MuseumFloor {
     /** 展示物リスト */
     lazy val contentList = new CollectionList(childRoomList, new RoomExhibitCollectionModel)
     
     def userExhibitRoomService = MuseumExhibitContentService.this
     
     /** 展示階層 */
-    def exhibitFloor = sourceRoom
+    def floorModel = sourceRoom
     
     /** 子部屋リストを更新する */
     override def getValue() = contentList
