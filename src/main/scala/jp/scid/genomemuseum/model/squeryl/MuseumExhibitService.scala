@@ -69,12 +69,6 @@ class MuseumExhibitService(
   /** この行の展示物を除去 */
   def remove(index: Int): IMuseumExhibit = exhibitEventList.remove(index)
   
-  /** 展示物を取得する */
-  def getExhibit(exhibitId: Long) = exhibitEventList.findOrNull(exhibitId) match {
-    case null => create()
-    case exhibit => exhibit
-  }
-  
   /** {@inheritDoc} */
   override def getValue() = exhibitEventList.asInstanceOf[java.util.List[IMuseumExhibit]]
 }
