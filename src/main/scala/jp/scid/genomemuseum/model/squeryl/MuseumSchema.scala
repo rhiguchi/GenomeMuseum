@@ -78,11 +78,6 @@ class MuseumSchema extends Schema with IMuseumSchema {
   /** 展示室サービス */
   val freeExhibitPavilion = new FreeExhibitPavilion(
     roomExhibit, museumExhibitService.exhibitEventList, userExhibitRoomService)
-
-  /** 部屋のコンテンツを返す */
-  @deprecated("2012/02/26", "use via museumExhibitService")
-  def getExhibitRoomModel(room: IUserExhibitRoom) =
-    freeExhibitPavilion.createExhibitRoomModel(room)
 }
 
 object MuseumSchema {
