@@ -4,7 +4,8 @@ import org.squeryl.Table
 import org.squeryl.PrimitiveTypeMode._
 
 import jp.scid.genomemuseum.model.{ExhibitFloorModel => IExhibitFloorModel,
-  UserExhibitRoom => IUserExhibitRoom, UserExhibitRoomService => IUserExhibitRoomService}
+  UserExhibitRoom => IUserExhibitRoom, UserExhibitRoomService => IUserExhibitRoomService,
+  ExhibitRoomModel => IExhibitRoomModel}
 
 /**
  * 部屋と展示物データリストのアダプター
@@ -14,13 +15,13 @@ import jp.scid.genomemuseum.model.{ExhibitFloorModel => IExhibitFloorModel,
  */
 class ExhibitFloorModel extends ExhibitRoomModel with ExhibitFloor {
   /** 部屋サービス */
-  var roomService: IUserExhibitRoomService = null
+  var userExhibitRoomService: MuseumExhibitContentService = null
   
   /** 部屋サービスとともに構築 */
-  def this(roomService: IUserExhibitRoomService) {
+  def this(roomService: MuseumExhibitContentService) {
     this()
     
-    this.roomService = roomService
+    this.userExhibitRoomService = roomService
   }
   
   /** 部屋ソースを返す。 */
@@ -32,7 +33,7 @@ class ExhibitFloorModel extends ExhibitRoomModel with ExhibitFloor {
  */
 trait ExhibitFloor extends IExhibitFloorModel {
   /** 展示室サービスオブジェクト */
-  protected def roomService: IUserExhibitRoomService
+  protected def userExhibitRoomService: MuseumExhibitContentService
   
   /** 展示階層を返す */
   protected def exhibitFloor: Option[IUserExhibitRoom]
@@ -43,29 +44,20 @@ trait ExhibitFloor extends IExhibitFloorModel {
    * すでにこの階層の部屋であるとき、またはこの階層の親階層であるときは
    * 追加できない。
    */
-  def canAddRoom(target: IUserExhibitRoom) = {
-    // 循環参照にならないように、祖先に子要素候補がいないか調べる
-    def ancester(room: IUserExhibitRoom): Boolean = {
-      roomService.getParent(room) match {
-        case None => true
-        case Some(`room` | `target`) => false
-        case Some(parent) => ancester(parent)
-      }
-    }
-    
-    exhibitFloor match {
-      case None => roomService.getParent(target).nonEmpty
-      case Some(`target`) => false
-      case Some(parentRoom) => ancester(parentRoom)
-    }
+  def canAddRoom(room: IExhibitRoomModel): Boolean = room.sourceRoom match {
+    case Some(sourceRoom: IUserExhibitRoom) =>
+      userExhibitRoomService.canSetParent(sourceRoom, exhibitFloor)
+    case _ => false
   }
   
   /** {@inheritDoc} */
-  def addRoom(element: IUserExhibitRoom) =
-    roomService.setParent(element, exhibitFloor)
+  def addRoom(room: IExhibitRoomModel) = 
+    userExhibitRoomService.setParent(room.sourceRoom.get.asInstanceOf[IUserExhibitRoom], exhibitFloor)
 
   /**
    * この部屋を親とする部屋のリストを返す
    */
-  def childRoomList = roomService.getChildren(exhibitFloor)
+  lazy val childRoomList =
+    userExhibitRoomService.createChildRoomList(exhibitFloor)
+      .asInstanceOf[java.util.List[IExhibitRoomModel]]
 }

@@ -7,10 +7,15 @@ trait ExhibitFloorModel extends ExhibitRoomModel {
   /**
    * この部屋の子要素となれるか
    */
-  def canAddRoom(target: UserExhibitRoom): Boolean
+  def canAddRoom(room: ExhibitRoomModel): Boolean
   
   /**
    * この部屋の子となる部屋を追加する。
    */
-  def addRoom(element: UserExhibitRoom)
+  def addRoom(room: ExhibitRoomModel)
+  
+  /**
+   * 子部屋のリストを返す
+   */
+  def childRoomList: java.util.List[ExhibitRoomModel]
 }
