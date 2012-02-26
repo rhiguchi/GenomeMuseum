@@ -3,6 +3,8 @@ package jp.scid.genomemuseum.model.squeryl
 import org.squeryl.{KeyedEntity, Table}
 import org.squeryl.PrimitiveTypeMode._
 
+import ca.odell.glazedlists.{FunctionList, GlazedLists}
+
 import jp.scid.gui.model.AbstractPersistentEventList
 
 private object KeyedEntityEventList {
@@ -35,6 +37,11 @@ private object KeyedEntityEventList {
       }
     }
   }
+  
+  /** エンティティから ID を作成する関数クラス */
+  private class IdentifierMaker[E <: KeyedEntity[Long]] extends FunctionList.Function[E, Long] {
+    def evaluate(element: E) = element.id
+  }
 }
 
 /**
@@ -42,8 +49,7 @@ private object KeyedEntityEventList {
  * ID 順でテーブル項目と結合される。
  */
 class KeyedEntityEventList[E <: KeyedEntity[Long]](table: Table[E])
-      extends AbstractPersistentEventList[E](
-        new KeyedEntityEventList.KeyedEntityIdComparator[E]) {
+      extends AbstractPersistentEventList[E](new KeyedEntityEventList.KeyedEntityIdComparator[E]) {
   // Read
   /** 常に ID でソートされる。 */
   override def fetchAll() = inTransaction {
@@ -69,4 +75,15 @@ class KeyedEntityEventList[E <: KeyedEntity[Long]](table: Table[E])
   override def deleteFromTable(entity: E) = inTransaction {
     table.delete(entity.id)
   }
+  
+  override def dispose() {
+    identifierMap.dispose()
+    super.dispose()
+  }
+  
+  /** id から取得 */
+  def findOrNull(id: Long): E = identifierMap.get(id)
+  
+  /** ID から取得するためのマップ */
+  lazy val identifierMap = GlazedLists.syncEventListToMap(this, new KeyedEntityEventList.IdentifierMaker[E])
 }

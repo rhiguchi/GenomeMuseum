@@ -3,7 +3,7 @@ package jp.scid.genomemuseum.model
 /**
  * 複数の部屋を保持できる階層の構造定義。
  */
-trait ExhibitFloorModel extends ExhibitRoomModel {
+trait ExhibitFloorModel extends MuseumSpace {
   /**
    * この部屋の子要素となれるか
    */

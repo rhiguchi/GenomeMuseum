@@ -69,21 +69,36 @@ object MuseumExhibitContentService {
  * 部屋の中身を取り扱うことができるサービス
  * @todo extends ExhibitFloor
  */
-class MuseumExhibitContentService(
-    exhibitTable: Table[MuseumExhibit], contentTable: Table[RoomExhibit])
-    extends MuseumExhibitService(exhibitTable)
-    with ExhibitFloor {
+class MuseumExhibitContentService(contentTable: Table[RoomExhibit])
+    extends ExhibitFloor {
   import MuseumExhibitContentService._
 
+  /** 展示物サービス */
+  var exhibitEventList: Option[KeyedEntityEventList[MuseumExhibit]] = None
+
   /** 部屋サービス */
-  private var roomService: Option[IUserExhibitRoomService] = None
+  var roomService: Option[IUserExhibitRoomService] = None
   
-  /** 部屋サービスも同時に設定する */
-  def this(exhibitTable: Table[MuseumExhibit], contentTable: Table[RoomExhibit],
+  /** 
+   * 部屋サービスと展示物サービスも同時に設定する
+   * 
+   * @param exhibitLookupper 部屋の中身から展示物を取得する関数
+   */
+  def this(contentTable: Table[RoomExhibit], 
+      exhibitEventList: KeyedEntityEventList[MuseumExhibit],
       roomService: IUserExhibitRoomService) {
-    this(exhibitTable, contentTable)
+    this(contentTable)
     
-    setRoomService(roomService)
+    this.roomService = Option(roomService)
+    this.exhibitEventList = Option(exhibitEventList)
+  }
+
+  /** 部屋の中身から展示物を取得する関数 */
+  private val exhibitLookupper = new FunctionList.Function[RoomExhibit, IMuseumExhibit]() {
+    def evaluate(c: RoomExhibit) = exhibitEventList.get.findOrNull(c.exhibitId) match {
+      case null => MuseumExhibit("Nil")
+      case exhibit => exhibit
+    }
   }
   
   // ExhibitFloor 実装
@@ -93,15 +108,8 @@ class MuseumExhibitContentService(
   /** ルート要素なので階層は None */
   protected def exhibitFloor = None
 
-  /**
-   * 部屋サービスを設定する。
-   * 
-   * 部屋の親子関係のデータ処理を行えるようになる。
-   */
-  def setRoomService(newRoomService: IUserExhibitRoomService) {
-    roomService = Option(newRoomService)
-  }
-  
+  def name = "Free Area"
+
   /**
    * 部屋に親を設定できるか
    */
@@ -144,15 +152,17 @@ class MuseumExhibitContentService(
     val list = new RoomContentEventList(contentTable, room)
     
     val changeHandler = new ContentsParentChangeHandler[MuseumExhibit](list)
-    val listenerProxy = GlazedLists.weakReferenceProxy(exhibitEventList, changeHandler)
-    exhibitEventList.addListEventListener(listenerProxy)
+    exhibitEventList foreach { list =>
+      val listenerProxy = GlazedLists.weakReferenceProxy(list, changeHandler)
+      list.addListEventListener(listenerProxy)
+    }
     list
   }
   
   /** 部屋のデータモデルを作成する */
-  def createExhibitRoomModel(room: IUserExhibitRoom) = {
+  protected[squeryl] def createExhibitRoomModel(room: IUserExhibitRoom) = {
     lazy val exhibitEventList = new FunctionList(
-        createRoomContentEventList(room), containerToExhibitFunction, new ExhibitContainerReverseFunction(room))
+        createRoomContentEventList(room), exhibitLookupper, new ExhibitContainerReverseFunction(room))
     
     val roomModel = room.roomType match {
       case BasicRoom => new ExhibitRoomModel(exhibitEventList) with FreeExhibitRoomModel
@@ -161,13 +171,6 @@ class MuseumExhibitContentService(
     }
     roomModel.sourceRoom = Some(room)
     roomModel
-  }
-  
-  /**
-   * コンテンツの展示物を取得する
-   */
-  def getContentExhibit(container: RoomExhibit) = inTransaction {
-    exhibitTable.lookup(container.exhibitId).getOrElse(create())
   }
   
   /**
@@ -192,11 +195,6 @@ class MuseumExhibitContentService(
 
   class RoomExhibitCollectionModel extends CollectionList.Model[IExhibitRoomModel, IMuseumExhibit] {
     def getChildren(room: IExhibitRoomModel) = room.getValue
-  }
-
-  /** 部屋の中身から展示物を取得する関数 */
-  private lazy val containerToExhibitFunction = new FunctionList.Function[RoomExhibit, IMuseumExhibit]() {
-    def evaluate(container: RoomExhibit) = getContentExhibit(container)
   }
 }
 

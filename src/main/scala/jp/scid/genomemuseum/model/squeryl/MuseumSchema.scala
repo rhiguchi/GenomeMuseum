@@ -74,12 +74,16 @@ class MuseumSchema extends Schema with IMuseumSchema {
     userExhibitRoom, museumExhibit, roomExhibit)
   
   /** Squeryl で実装した『展示物』データのサービス */
-  val museumExhibitService = new MuseumExhibitContentService(museumExhibit, roomExhibit, userExhibitRoomService)
+  val museumExhibitService = new MuseumExhibitService(museumExhibit)
   
+  /** 展示室サービス */
+  val exhibitRoomService = new MuseumExhibitContentService(
+    roomExhibit, museumExhibitService.exhibitEventList, userExhibitRoomService)
+
   /** 部屋のコンテンツを返す */
   @deprecated("2012/02/26", "use via museumExhibitService")
   def getExhibitRoomModel(room: IUserExhibitRoom) =
-    museumExhibitService.createExhibitRoomModel(room)
+    exhibitRoomService.createExhibitRoomModel(room)
 }
 
 object MuseumSchema {
