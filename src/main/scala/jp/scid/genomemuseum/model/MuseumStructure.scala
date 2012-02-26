@@ -126,7 +126,7 @@ class MuseumStructure extends TreeSource[ExhibitRoom] with PropertyChangeObserva
       case parent: UserExhibitRoom =>
         userExhibitRoomService.map(_.getFloorRoomList(Some(parent))) getOrElse emptyList
       // MuseumFloor の時は、メソッドから子要素を返す
-      case parent: MuseumFloor => parent.childList
+      case parent: MuseumFloor => parent.childRoomList
       // 該当が無い時は Nil
       case _ => emptyList
     }
@@ -135,6 +135,7 @@ class MuseumStructure extends TreeSource[ExhibitRoom] with PropertyChangeObserva
   }
   
   /** 子要素を取得 */
+  @deprecated("2012/02/26", "use getChildren")
   def childrenFor(parent: ExhibitRoom): List[ExhibitRoom] = {
     if (isLeaf(parent)) Nil
     else parent match {
@@ -145,7 +146,7 @@ class MuseumStructure extends TreeSource[ExhibitRoom] with PropertyChangeObserva
       case parent: UserExhibitRoom =>
         userExhibitRoomService.map(_.getChildren(Some(parent)).toList) getOrElse Nil
       // MuseumFloor の時は、メソッドから子要素を返す
-      case parent: MuseumFloor => parent.children
+      case parent: MuseumFloor => Nil //parent.childRoomList
       // 該当が無い時は Nil
       case _ => Nil
     }
@@ -155,7 +156,7 @@ class MuseumStructure extends TreeSource[ExhibitRoom] with PropertyChangeObserva
   override def isLeaf(room: ExhibitRoom) = room match {
     case room: UserExhibitRoom => room.roomType != GroupRoom
     case `userRoomsRoot` => false
-    case floor: MuseumFloor => floor.children.isEmpty
+    case floor: MuseumFloor => false
     case _ => throw new IllegalArgumentException(
       "node %s is not valid ExhibitRoom".format(room))
   }
@@ -301,41 +302,32 @@ class MuseumStructure extends TreeSource[ExhibitRoom] with PropertyChangeObserva
 }
 
 import java.beans.PropertyChangeEvent
-import TreeSource.{MappedPropertyChangeEvent => MappedEvent}
 
 object MuseumStructure {
   import collection.JavaConverters._
   
   /**
-   * 階層オブジェクト
+   * 管理階層
    */
-  class MuseumFloor(
+  class MuseumControlFloor(
     /** このノードの名前 */
     var name: String,
     /** このノードの子要素 */
-    val childList: EventList[MuseumFloor] = new BasicEventList
-  ) extends ExhibitRoom {
+    val childRoomList: EventList[MuseumSpace] = new BasicEventList
+  ) extends MuseumFloor {
     /** 親要素 */
     var parent: Option[MuseumFloor] = None
     
-    def children: List[MuseumFloor] = childList.asScala.toList
+    def addElement(element: MuseumControlFloor) {
+      childRoomList.add(element)
+      element.parent = Some(this)
+    }
     
     override def toString = name
   }
   
-  private object MuseumFloor {
-    def apply(name: String, children: MuseumFloor*): MuseumFloor = {
-      val floor = new MuseumFloor(name, GlazedLists.eventListOf(children: _*))
-      children foreach (_.parent = Some(floor))
-      floor
-    }
-  }
-  
-  private object MappedPropertyChangeEvent {
-    def unapply(event: PropertyChangeEvent): Option[(String, AnyRef, AnyRef, AnyRef)] = event match{
-      case event: MappedEvent =>
-        Some(event.getPropertyName, event.getKey, event.getOldValue, event.getNewValue)
-      case _ => None
-    }
+  private object MuseumControlFloor {
+    def apply(name: String, children: MuseumSpace*): MuseumControlFloor =
+      new MuseumControlFloor(name, GlazedLists.eventListOf(children: _*))
   }
 }

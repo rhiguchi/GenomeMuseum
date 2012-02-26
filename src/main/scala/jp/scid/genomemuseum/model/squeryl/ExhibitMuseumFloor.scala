@@ -2,13 +2,13 @@ package jp.scid.genomemuseum.model.squeryl
 
 import ca.odell.glazedlists.EventList
 
-import jp.scid.genomemuseum.model.{MuseumFloor => IMuseumFloor,
-  UserExhibitRoom => IUserExhibitRoom, ExhibitRoomModel => IExhibitRoomModel}
+import jp.scid.genomemuseum.model.{UserExhibitRoom => IUserExhibitRoom,
+  ExhibitMuseumFloor => IExhibitMuseumFloor, ExhibitRoomModel => IExhibitRoomModel}
 
 /**
  * 階層構造を実装するミックスイン
  */
-trait MuseumFloor extends IMuseumFloor {
+trait ExhibitMuseumFloor extends IExhibitMuseumFloor {
   /** 展示室サービスオブジェクト */
   protected def freeExhibitPavilion: FreeExhibitPavilion
   

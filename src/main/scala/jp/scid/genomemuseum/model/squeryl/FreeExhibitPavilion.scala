@@ -68,7 +68,7 @@ object FreeExhibitPavilion {
  * 自由展示棟の実装
  */
 class FreeExhibitPavilion(contentTable: Table[RoomExhibit])
-    extends IFreeExhibitPavilion with MuseumFloor {
+    extends IFreeExhibitPavilion with ExhibitMuseumFloor {
   import FreeExhibitPavilion._
 
   /** 展示物サービス */
@@ -177,7 +177,7 @@ class FreeExhibitPavilion(contentTable: Table[RoomExhibit])
    * @param contentList 部屋内容
    * @param contanerToExhibitFunction 部屋内容と展示物の変換関数
    */
-  class ExhibitFloor extends ExhibitRoomModel with MuseumFloor {
+  class ExhibitFloor extends ExhibitRoomModel with ExhibitMuseumFloor {
     /** 展示物リスト */
     lazy val contentList = new CollectionList(childRoomList, new RoomExhibitCollectionModel)
     

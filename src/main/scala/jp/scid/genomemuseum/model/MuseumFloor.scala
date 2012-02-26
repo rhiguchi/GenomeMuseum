@@ -5,17 +5,7 @@ package jp.scid.genomemuseum.model
  */
 trait MuseumFloor extends MuseumSpace {
   /**
-   * この部屋の子要素となれるか
-   */
-  def canAddRoom(room: ExhibitRoomModel): Boolean
-  
-  /**
-   * この部屋の子となる部屋を追加する。
-   */
-  def addRoom(room: ExhibitRoomModel)
-  
-  /**
    * 子部屋のリストを返す
    */
-  def childRoomList: java.util.List[ExhibitRoomModel]
+  def childRoomList: java.util.List[_ <: MuseumSpace]
 }
