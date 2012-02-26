@@ -7,14 +7,14 @@ import org.jdesktop.application.Action
 
 import jp.scid.gui.control.{TreeController, TreeExpansionController}
 import jp.scid.genomemuseum.model.{ExhibitRoom, UserExhibitRoom, MuseumExhibit,
-  MuseumStructure, MuseumExhibitListModel}
+  MuseumStructure, MuseumExhibitListModel, MuseumSpace, ExhibitRoomModel, ExhibitMuseumFloor}
 import UserExhibitRoom.RoomType
 import RoomType._
 
 /**
  * 『部屋』の一覧をツリー上に表示し、また『部屋』の追加、編集、削除を行う操作オブジェクト。
  */
-class ExhibitRoomListController extends TreeController[ExhibitRoom, MuseumStructure] {
+class ExhibitRoomListController extends TreeController[MuseumSpace, MuseumStructure] {
   
   def this(structure: MuseumStructure) {
     this()
@@ -56,8 +56,8 @@ class ExhibitRoomListController extends TreeController[ExhibitRoom, MuseumStruct
   val removeSelectedUserRoomAction = ctrl.getAction("deleteSelectedRoom")
   
   // ノード削除アクションの使用可不可
-  private val deleteActionEnabledHandler = EventListHandler(getSelectedNodes) { nodes =>
-    removeSelectedUserRoomAction.enabled = nodes.find(_.isInstanceOf[UserExhibitRoom]).nonEmpty
+  private val deleteActionEnabledHandler = EventListHandler(getSelectedPathList) { nodes =>
+//    removeSelectedUserRoomAction.enabled = nodes.find(_.isInstanceOf[UserExhibitRoom]).nonEmpty
   }
   
   /** BasicRoom 型の部屋を追加し、部屋名を編集開始状態にする */
@@ -97,8 +97,8 @@ class ExhibitRoomListController extends TreeController[ExhibitRoom, MuseumStruct
   
   /** ローカルソースを選択する */
   def selectLocalSource() = {
-    import collection.JavaConverters._
-    Option(getModel).foreach(model => setlectPathAsList(model.pathForLoalSource.asJava))
+//    import collection.JavaConverters._
+//    Option(getModel).foreach(model => setlectPathAsList(model.pathForLoalSource.asJava))
   }
   
   /**
@@ -127,13 +127,15 @@ class ExhibitRoomListController extends TreeController[ExhibitRoom, MuseumStruct
    */
   protected def addRoom(roomType: RoomType) {
     import collection.JavaConverters._
-    
-    val parent = selectedElementList.headOption match {
-      case Some(parent: UserExhibitRoom) => Some(parent)
-      case _ => None
+    val parent = selectedPathList.headOption.map(_.reverse).getOrElse(IndexedSeq.empty) match {
+      case Seq(parent: ExhibitMuseumFloor, _*) => parent
+      case Seq(_, parent: ExhibitMuseumFloor, _*) => parent
+      case _ => getModel.freeExhibitPavilion.get
     }
     val newRoom = getModel.addRoom(roomType, parent)
     val newRoomPath = getModel.pathToRoot(newRoom)
+    
+    
     setlectPathAsList(newRoomPath.asJava)
     startEditingForElement(newRoom)
   }
@@ -155,16 +157,22 @@ class ExhibitRoomListController extends TreeController[ExhibitRoom, MuseumStruct
    * @param room 削除する要素
    */
   protected def removeSelections() {
-    selectedElementList.foreach {
-      case room: UserExhibitRoom =>
-        getModel.removeRoom(room)
-      case _ =>
-    }
+//    selectedElementList.foreach {
+//      case room: UserExhibitRoom =>
+//        getModel.removeRoom(room)
+//      case _ =>
+//    }
   }
   
-  private def selectedElementList = {
+  private def selectedPathList: List[IndexedSeq[MuseumSpace]] = {
     import collection.JavaConverters._
-    getSelectedNodes.asScala.toList
+    
+    val list = getSelectedPathList
+    list.getReadWriteLock.readLock.lock()
+    val scalaPathList = try list.asScala.toList
+    finally list.getReadWriteLock.readLock.unlock()
+    
+    scalaPathList.map(_.asScala.toIndexedSeq)
   }
 }
 

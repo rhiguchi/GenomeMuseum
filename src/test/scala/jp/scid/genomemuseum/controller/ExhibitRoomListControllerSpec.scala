@@ -7,7 +7,7 @@ import org.specs2._
 import org.mockito.Matchers
 
 import jp.scid.genomemuseum.model.{UserExhibitRoomService, UserExhibitRoom,
-  MuseumExhibitService, UserExhibitRoomMock, MuseumStructure}
+  MuseumExhibitService, UserExhibitRoomMock, MuseumStructure, MuseumFloor}
 import UserExhibitRoom.RoomType._
 
 class ExhibitRoomListControllerSpec extends Specification with mock.Mockito {
@@ -173,11 +173,11 @@ class ExhibitRoomListControllerSpec extends Specification with mock.Mockito {
   
   class AddRoomSpec(ctrl: ExhibitRoomListController) {
     val model = mock[MuseumStructure]
-    val newRoom, root = mock[UserExhibitRoom]
+    val newRoom, root = mock[MuseumFloor]
     model.getValue returns root
     model.isLeaf(root) returns false
     model.getChildren(root) returns java.util.Arrays.asList(newRoom)
-    model.addRoom(any, any) returns newRoom
+//    model.addRoom(any, any) returns newRoom
     model.pathToRoot(newRoom) returns Vector(root, newRoom)
     model.pathForLoalSource returns Vector.empty
     
@@ -225,7 +225,7 @@ class ExhibitRoomListControllerSpec extends Specification with mock.Mockito {
     ctrl setModel model
     
     val room1, room2, room3 = mock[UserExhibitRoom]
-    Seq(room1, room2) foreach ctrl.getSelectedNodes.add
+//    Seq(room1, room2) foreach ctrl.getSelectedNodes.add
     ctrl.deleteSelectedRoom
     
     def deletesFromService =

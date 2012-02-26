@@ -16,9 +16,7 @@ import jp.scid.genomemuseum.model.{UserExhibitRoom => IUserExhibitRoom,
  * 
  * @param exhibitTable 展示物テーブル
  */
-class MuseumExhibitService(
-    exhibitTable: Table[MuseumExhibit])
-    extends IMuseumExhibitService {
+class MuseumExhibitService(exhibitTable: Table[MuseumExhibit]) extends IMuseumExhibitService {
   /** 全展示物リスト */
   val exhibitEventList = new KeyedEntityEventList(exhibitTable)
   
@@ -71,4 +69,6 @@ class MuseumExhibitService(
   
   /** {@inheritDoc} */
   override def getValue() = exhibitEventList.asInstanceOf[java.util.List[IMuseumExhibit]]
+  
+  def roomModel = sourceRoom
 }

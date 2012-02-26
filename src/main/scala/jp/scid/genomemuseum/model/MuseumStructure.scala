@@ -18,14 +18,14 @@ import RoomType._
  * ローカルで管理されるファイルは、利用者の要望に応じてグループ分けができる。
  * 
  */
-class MuseumStructure extends TreeSource[ExhibitRoom] with PropertyChangeObservable {
+class MuseumStructure extends TreeSource[MuseumSpace] with PropertyChangeObservable {
   import MuseumStructure._
   
-  def this(roomService: UserExhibitRoomService, localLibraryContent: MuseumExhibitService) {
+  def this(roomService: UserExhibitRoomService, localManagedPavilion: MuseumExhibitService) {
     this()
     
     this.roomService = Option(roomService)
-    this.museumExhibitService = Option(localLibraryContent)
+    this.localManagedPavilion = Option(localManagedPavilion)
   }
   
   // プロパティ
@@ -39,41 +39,45 @@ class MuseumStructure extends TreeSource[ExhibitRoom] with PropertyChangeObserva
   /** ユーザー部屋 */
   private var roomService: Option[UserExhibitRoomService] = None
   
+  /** 自由展示棟のサービス */
+  private var currentFreeExhibitPavilion: Option[FreeExhibitPavilion] = None
+  
   /** ローカルライブラリ用展示物サービス */
   private var exhibitService: Option[MuseumExhibitService] = None
   
   // 規定ノード
   /** ローカルソースの要素を取得 */
-  val localSource = MuseumFloor("Local")
+  val localSource = MuseumControlFloor("Local")
   /** Web ソースの要素を取得 */
-  val webSource = MuseumFloor("NCBI")
+  val webSource = MuseumControlFloor("NCBI")
   /** ライブラリーカテゴリの要素 */
-  val sourcesRoot = MuseumFloor("Libraries", localSource, webSource)
+  val sourcesRoot = MuseumControlFloor("Main Pavilions")
   /** ユーザー部屋カテゴリの要素 */
-  val userRoomsRoot = MuseumFloor("User Rooms")
+  val userRoomsRoot = MuseumControlFloor("User Rooms")
   /** ルート要素 */
-  val root = MuseumFloor("Museum", sourcesRoot, userRoomsRoot)
+  val root = MuseumControlFloor("Museum Gate", sourcesRoot)
   
   /** サービスの要素変化監視 */
   val roomServiceChangeListener = new PropertyChangeListener {
-    private def getOptionRoom(room: AnyRef): ExhibitRoom = room.asInstanceOf[Option[_]] match {
-      case Some(parent) => parent.asInstanceOf[UserExhibitRoom]
-      case None => userRoomsRoot
-    }
-    
-    def propertyChange(evt: PropertyChangeEvent) = evt match {
-      case MappedPropertyChangeEvent("children", key, _, _) =>
-        val parent = getOptionRoom(key)
-        fireChildrenChange(parent)
-      case MappedPropertyChangeEvent("parent", room, oldValue, newValue) =>
-        val oldParent = getOptionRoom(oldValue)
-        val newParent = getOptionRoom(newValue)
-        fireChildrenChange(oldParent)
-        if (oldParent != newParent)
-          fireChildrenChange(newParent)
-      case MappedPropertyChangeEvent("exhibitList", room, _, _) =>
-        // TODO
-    }
+//    private def getOptionRoom(room: AnyRef): ExhibitRoom = room.asInstanceOf[Option[_]] match {
+//      case Some(parent) => parent.asInstanceOf[UserExhibitRoom]
+//      case None => userRoomsRoot
+//    }
+//    
+    def propertyChange(evt: PropertyChangeEvent) {}
+//    def propertyChange(evt: PropertyChangeEvent) = evt match {
+//      case MappedPropertyChangeEvent("children", key, _, _) =>
+//        val parent = getOptionRoom(key)
+//        fireChildrenChange(parent)
+//      case MappedPropertyChangeEvent("parent", room, oldValue, newValue) =>
+//        val oldParent = getOptionRoom(oldValue)
+//        val newParent = getOptionRoom(newValue)
+//        fireChildrenChange(oldParent)
+//        if (oldParent != newParent)
+//          fireChildrenChange(newParent)
+//      case MappedPropertyChangeEvent("exhibitList", room, _, _) =>
+//        // TODO
+//    }
   }
   
   /** ユーザー部屋の取得 */
@@ -91,15 +95,25 @@ class MuseumStructure extends TreeSource[ExhibitRoom] with PropertyChangeObserva
   }
   
   /** 展示物サービスを取得する */
-  def museumExhibitService = exhibitService
+  def localManagedPavilion = exhibitService
   
   /**
    * 展示物サービスを設定する。
-   * 
-   * TODO ローカルライブラリとして、ツリー構造に追加される。
    */
-  def museumExhibitService_=(exhibitService: Option[MuseumExhibitService]) {
+  def localManagedPavilion_=(exhibitService: Option[MuseumExhibitService]) {
+    // TODO add list
     this.exhibitService = exhibitService
+  }
+  
+  /** 展示物サービスを取得する */
+  def freeExhibitPavilion = currentFreeExhibitPavilion
+  
+  /**
+   * 展示物サービスを設定する。
+   */
+  def freeExhibitPavilion_=(exhibitService: Option[FreeExhibitPavilion]) {
+    // TODO add list
+    this.currentFreeExhibitPavilion = exhibitService
   }
   
   /** 部屋データリストから展示室モデルリストを作成する */
@@ -110,104 +124,66 @@ class MuseumStructure extends TreeSource[ExhibitRoom] with PropertyChangeObserva
   /**
    * 部屋の中身を取得する
    */
-  def getContent(room: UserExhibitRoom) =
-    room.exhibitListModel(userExhibitRoomService.get)
-  
-  override def getChildren(parent: ExhibitRoom): java.util.List[ExhibitRoom] = {
-    import collection.JavaConverters._
-    
-    def emptyList = List.empty[ExhibitRoom].asJava
-    
-    val list = if (isLeaf(parent)) emptyList else parent match {
-      // ユーザー設定部屋ルートの時は、サービスからのルート要素取得して返す
-      case `userRoomsRoot` =>
-        userExhibitRoomService map (_.getFloorRoomList(None)) getOrElse emptyList
-      // ユーザー設定部屋の時は、サービスから子要素を取得して返す
-      case parent: UserExhibitRoom =>
-        userExhibitRoomService.map(_.getFloorRoomList(Some(parent))) getOrElse emptyList
-      // MuseumFloor の時は、メソッドから子要素を返す
-      case parent: MuseumFloor => parent.childRoomList
-      // 該当が無い時は Nil
-      case _ => emptyList
-    }
-    
-    list.asInstanceOf[java.util.List[ExhibitRoom]]
-  }
-  
-  /** 子要素を取得 */
-  @deprecated("2012/02/26", "use getChildren")
-  def childrenFor(parent: ExhibitRoom): List[ExhibitRoom] = {
-    if (isLeaf(parent)) Nil
-    else parent match {
-      // ユーザー設定部屋ルートの時は、サービスからのルート要素取得して返す
-      case `userRoomsRoot` =>
-        userExhibitRoomService map (_.getChildren(None).toList) getOrElse Nil
-      // ユーザー設定部屋の時は、サービスから子要素を取得して返す
-      case parent: UserExhibitRoom =>
-        userExhibitRoomService.map(_.getChildren(Some(parent)).toList) getOrElse Nil
-      // MuseumFloor の時は、メソッドから子要素を返す
-      case parent: MuseumFloor => Nil //parent.childRoomList
-      // 該当が無い時は Nil
-      case _ => Nil
-    }
+//  def getContent(room: UserExhibitRoom) =
+//    room.exhibitListModel(userExhibitRoomService.get)
+
+  def getChildren(parent: MuseumSpace): java.util.List[MuseumSpace] = parent match {
+    // 階層の時は部屋を返す
+    case floor: MuseumFloor => floor.childRoomList.asInstanceOf[java.util.List[MuseumSpace]]
+    // 該当が無い時は Nil
+    case _ => java.util.Collections.emptyList[MuseumSpace]
   }
   
   /** 末端要素であるか */
-  override def isLeaf(room: ExhibitRoom) = room match {
-    case room: UserExhibitRoom => room.roomType != GroupRoom
-    case `userRoomsRoot` => false
-    case floor: MuseumFloor => false
-    case _ => throw new IllegalArgumentException(
-      "node %s is not valid ExhibitRoom".format(room))
+  def isLeaf(space: MuseumSpace) = space match {
+    case floor: MuseumFloor => true
+    case _ => false
   }
   
-  override def getValue(): ExhibitRoom = root
+  override def getValue(): MuseumSpace = root
   
-  override def setValue(room: ExhibitRoom) {
+  def setValue(room: MuseumSpace) {
     // TODO
   }
   
-  protected def updateNodeValue(room: ExhibitRoom, newValue: AnyRef) = room match {
-    case room: UserExhibitRoom => update(room, newValue)
-    case _ =>
-  }
-  
   /**
-   * UserExhibitRoom の値を更新し、サービスへ更新を通知する。
+   * MuseumSpace の値を更新する。
    */
-  protected def update(element: UserExhibitRoom, newValue: AnyRef) {
-    newValue match {
-      case value: String => element.name = value
+  protected def updateNodeValue(room: MuseumSpace, newValue: AnyRef) = room match {
+    case room: ExhibitMuseumFloor => newValue match {
+      case name: String => room.name = name
       case _ =>
     }
-    userExhibitRoomService.foreach(_.save(element))
+    case _ =>
   }
   
   /** 値の更新 */
   def update(path: IndexedSeq[ExhibitRoom], newValue: AnyRef): Unit = path.lastOption match {
-    case Some(element: ExhibitRoom) => updateNodeValue(element, newValue)
+//    case Some(element: ExhibitRoom) => updateNodeValue(element, newValue)
     case None =>
   }
   
   /**
    * ルート要素までのパスを取得
+   * @todo 実装
    */
-  def pathToRoot(node: ExhibitRoom): IndexedSeq[ExhibitRoom] = {
+  def pathToRoot(node: ExhibitRoom): IndexedSeq[MuseumSpace] = {
     import collection.mutable.Buffer
     
-    def getParent(node: ExhibitRoom, path: List[ExhibitRoom] = Nil): List[ExhibitRoom] = {
-      node match {
-        case floor: MuseumFloor => floor.parent match {
-          case Some(parent) => getParent(parent, floor :: path)
-          case None => node :: path // return value
-        }
-        case room: UserExhibitRoom =>
-          val parent = userExhibitRoomService.flatMap(_.getParent(room)).getOrElse(userRoomsRoot)
-          getParent(parent, room :: path)
-      }
-    }
+//    def getParent(node: ExhibitRoom, path: List[ExhibitRoom] = Nil): List[ExhibitRoom] = {
+//      node match {
+//        case floor: MuseumFloor => floor.parent match {
+//          case Some(parent) => getParent(parent, floor :: path)
+//          case None => node :: path // return value
+//        }
+//        case room: UserExhibitRoom =>
+//          val parent = userExhibitRoomService.flatMap(_.getParent(room)).getOrElse(userRoomsRoot)
+//          getParent(parent, room :: path)
+//      }
+//    }
     
-    getParent(node).toIndexedSeq
+//    getParent(node).toIndexedSeq
+    IndexedSeq.empty
   }
   
   /**
@@ -232,6 +208,16 @@ class MuseumStructure extends TreeSource[ExhibitRoom] with PropertyChangeObserva
     
     val newRoom = userExhibitRoomService.get.addRoom(roomType, name, parent)
     newRoom
+  }
+  
+  def addRoom(roomType: RoomType, parent: ExhibitMuseumFloor): ExhibitRoomModel = {
+    val name = findRoomNewName(roomType match {
+      case BasicRoom => basicRoomDefaultName
+      case GroupRoom => groupRoomDefaultName
+      case SmartRoom => smartRoomDefaultName
+    })
+    
+    freeExhibitPavilion.get.addRoom(roomType, name, parent)
   }
   
   /**

@@ -3,7 +3,7 @@ package jp.scid.genomemuseum.model
 /**
  * 展示室をもつ博物館階層の構造定義。
  */
-trait ExhibitMuseumFloor extends MuseumFloor {
+trait ExhibitMuseumFloor extends ExhibitMuseumSpace with MuseumFloor {
   /**
    * この部屋の子要素となれるか
    */
@@ -18,4 +18,9 @@ trait ExhibitMuseumFloor extends MuseumFloor {
    * 子部屋のリストを返す
    */
   def childRoomList: java.util.List[ExhibitRoomModel]
+  
+  /**
+   * 名前を設定する
+   */
+  def name_=(newName: String)
 }

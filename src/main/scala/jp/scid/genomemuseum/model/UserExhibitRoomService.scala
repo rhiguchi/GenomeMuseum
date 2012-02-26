@@ -10,8 +10,12 @@ import UserExhibitRoom.RoomType._
 /**
  * UserExhibitRoom データ提供サービスのインターフェイス。
  */
-trait UserExhibitRoomService extends ExhibitRoomContentsService
-    with PropertyChangeObservable {
+trait UserExhibitRoomService extends PropertyChangeObservable {
+
+  /**
+   * 展示物を作成する
+   */
+  def create(roomType: RoomType, baseName: String, parent: Option[UserExhibitRoom]): UserExhibitRoom
   /**
    * 部屋をサービスに追加する。
    * @param roomType 部屋の種類
@@ -69,13 +73,4 @@ trait UserExhibitRoomService extends ExhibitRoomContentsService
    * @param parent 新しい親の要素。ルート項目にするには None。
    */
   def setParent(element: UserExhibitRoom, parent: Option[UserExhibitRoom])
-}
-
-
-trait ExhibitRoomContentsService {
-  def getExhibitList(room: UserExhibitRoom): List[MuseumExhibit]
-  
-  def addExhibit(room: UserExhibitRoom, element: MuseumExhibit): Boolean
-  
-  def removeExhibit(room: UserExhibitRoom, element: MuseumExhibit): Boolean
 }

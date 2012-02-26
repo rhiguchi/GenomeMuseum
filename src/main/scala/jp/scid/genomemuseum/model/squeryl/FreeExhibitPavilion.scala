@@ -6,6 +6,7 @@ import org.squeryl.PrimitiveTypeMode._
 import ca.odell.glazedlists.{GlazedLists, CollectionList, EventList, FunctionList}
 
 import jp.scid.genomemuseum.model.{UserExhibitRoom => IUserExhibitRoom,
+  ExhibitMuseumFloor => IExhibitMuseumFloor,
   ExhibitRoomModel => IExhibitRoomModel, MuseumExhibit => IMuseumExhibit,
   UserExhibitRoomService => IUserExhibitRoomService, FreeExhibitPavilion => IFreeExhibitPavilion}
 import IUserExhibitRoom.RoomType._
@@ -36,12 +37,19 @@ object FreeExhibitPavilion {
   }
   
   /**
-   * ツリー構造情報を持つ博物館展示空間の変換クラス
+   * 展示室エンティティから展示室モデルを作成する関数
    */
   class ExhibitRoomModelFunction(service: FreeExhibitPavilion)
-      extends FunctionList.Function[IUserExhibitRoom, ExhibitRoomModel] {
+      extends FunctionList.AdvancedFunction[IUserExhibitRoom, ExhibitRoomModel] {
     def evaluate(room: IUserExhibitRoom) =
       service.createExhibitRoomModel(room)
+    
+    def reevaluate(room: IUserExhibitRoom, roomModel: ExhibitRoomModel) =
+      service.createExhibitRoomModel(room)
+    
+    def dispose(room: IUserExhibitRoom, roomModel: ExhibitRoomModel) {
+      roomModel.dispose()
+    }
   }
   
   /** コンテンツ情報のリスト */
@@ -104,10 +112,28 @@ class FreeExhibitPavilion(contentTable: Table[RoomExhibit])
   protected def freeExhibitPavilion = this
   
   /** ルート要素なので階層は None */
-  protected def floorModel = None
+  def roomModel = None
 
   def name = "Free Area"
-
+  
+  /**
+   * 部屋のプロパティを保存する
+   */
+  def save(roomModel: IUserExhibitRoom) = roomService.foreach(_.save(roomModel))
+  
+  /** 部屋を追加する */
+  def addRoom(roomType: RoomType, name: String, parent: IExhibitMuseumFloor): IExhibitRoomModel = {
+    import collection.JavaConverters._
+    
+    val room = roomService.get.addRoom(roomType, name, parent.roomModel)
+    parent.childRoomList.asScala.find(_.roomModel == room) getOrElse
+      createExhibitRoomModel(room)
+  }
+  
+//  def getParent(room: IExhibitRoomModel) = {
+//    
+//  }
+  
   /**
    * 部屋に親を設定できるか
    */
@@ -182,9 +208,6 @@ class FreeExhibitPavilion(contentTable: Table[RoomExhibit])
     lazy val contentList = new CollectionList(childRoomList, new RoomExhibitCollectionModel)
     
     def freeExhibitPavilion = FreeExhibitPavilion.this
-    
-    /** 展示階層 */
-    def floorModel = sourceRoom
     
     /** 子部屋リストを更新する */
     override def getValue() = contentList

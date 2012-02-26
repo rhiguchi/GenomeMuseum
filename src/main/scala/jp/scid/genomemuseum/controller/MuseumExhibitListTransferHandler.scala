@@ -190,7 +190,7 @@ class MuseumExhibitListTransferHandler extends ObjectControllerTransferHandler {
         case false =>
           val elements = fileList.getSelectedElements.asScala flatMap {
             case exhibit: MuseumExhibit => Some(exhibit)
-            case TreePathLastObject(model) => model.exhibitList
+            case TreePathLastObject(model) => Nil // todo model.exhibitList
             case _ => None
           }
           controller.addElements(elements.toList)

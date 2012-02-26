@@ -30,7 +30,14 @@ class ExhibitRoomModel extends IExhibitRoomModel {
   
   var sourceRoom: Option[IUserExhibitRoom] = None
   
+  def roomModel = sourceRoom
+  
+  /** 名前を取得 */
   def name = sourceRoom.map(_.name).getOrElse("NoName")
+  
+  // TODO 新しい階層
+  /** 名前を設定 */
+//  def name_=(newName: String) = sourceRoom.foreach(_.name = newName)
   
   def dispose() {
     value.foreach(_.dispose())

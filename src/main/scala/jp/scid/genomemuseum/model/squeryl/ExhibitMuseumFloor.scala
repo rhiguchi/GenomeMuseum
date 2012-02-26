@@ -12,9 +12,6 @@ trait ExhibitMuseumFloor extends IExhibitMuseumFloor {
   /** 展示室サービスオブジェクト */
   protected def freeExhibitPavilion: FreeExhibitPavilion
   
-  /** 展示階層を返す */
-  protected def floorModel: Option[IUserExhibitRoom]
-  
   /**
    * この階層に部屋を追加できるかを返す。
    * 
@@ -23,18 +20,23 @@ trait ExhibitMuseumFloor extends IExhibitMuseumFloor {
    */
   def canAddRoom(room: IExhibitRoomModel): Boolean = room.sourceRoom match {
     case Some(sourceRoom: IUserExhibitRoom) =>
-      freeExhibitPavilion.canSetParent(sourceRoom, floorModel)
+      freeExhibitPavilion.canSetParent(sourceRoom, roomModel)
     case _ => false
   }
   
   /** {@inheritDoc} */
   def addRoom(room: IExhibitRoomModel) = 
-    freeExhibitPavilion.setParent(room.sourceRoom.get.asInstanceOf[IUserExhibitRoom], floorModel)
+    freeExhibitPavilion.setParent(room.sourceRoom.get.asInstanceOf[IUserExhibitRoom], roomModel)
 
   /**
    * この部屋を親とする部屋のリストを返す
    */
   lazy val childRoomList =
-    freeExhibitPavilion.createChildRoomList(floorModel)
+    freeExhibitPavilion.createChildRoomList(roomModel)
       .asInstanceOf[EventList[IExhibitRoomModel]]
+  
+  /**
+   * 名前を設定する
+   */
+  def name_=(newName: String) = roomModel.foreach(_.name = newName)
 }

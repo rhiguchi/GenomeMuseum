@@ -6,7 +6,7 @@ import jp.scid.gui.model.ValueModel
  * 部屋データの構造定義
  */
 trait ExhibitRoomModel extends ValueModel[java.util.List[MuseumExhibit]]
-  with MuseumSpace with PropertyChangeObservable {
+  with ExhibitMuseumSpace with PropertyChangeObservable {
 
   /** イベント発行 */
   def setValue(newExhibitList: java.util.List[MuseumExhibit]) {
@@ -17,9 +17,9 @@ trait ExhibitRoomModel extends ValueModel[java.util.List[MuseumExhibit]]
   def sourceRoom: Option[ExhibitRoom]
   
   /** 展示物リスト */
-  @deprecated("2012/02/26/", "use getValue")
-  def exhibitList: List[MuseumExhibit] = {
-    import collection.JavaConverters._
-    getValue.asScala.toList
-  }
+//  @deprecated("2012/02/26/", "use getValue")
+//  def exhibitList: List[MuseumExhibit] = {
+//    import collection.JavaConverters._
+//    getValue.asScala.toList
+//  }
 }

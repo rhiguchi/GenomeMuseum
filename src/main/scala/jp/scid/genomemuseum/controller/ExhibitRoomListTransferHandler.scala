@@ -5,7 +5,7 @@ import javax.swing.tree.TreePath
 import java.awt.datatransfer.{Transferable, DataFlavor}
 import TransferHandler.TransferSupport
 
-import jp.scid.genomemuseum.model.{MuseumStructure}
+import jp.scid.genomemuseum.model.{MuseumStructure, ExhibitMuseumSpace}
 import jp.scid.genomemuseum.model.{ExhibitRoom, UserExhibitRoom, MuseumExhibit,
   GroupRoomContentsModel, MuseumExhibitListModel,
   MutableMuseumExhibitListModel}
@@ -57,6 +57,8 @@ class ExhibitRoomListTransferHandler extends MuseumExhibitTransferHandler {
   /** モデル */
   var structure: Option[MuseumStructure] = None
   
+  var treeController: Option[ExhibitRoomListController] = None
+  
   /** 展示物の転入が可能な部屋を返す */
   def getExhibitTransferTarget(ts: TransferSupport) = {
     getTargetRoomContents(ts) collect {
@@ -98,6 +100,11 @@ class ExhibitRoomListTransferHandler extends MuseumExhibitTransferHandler {
     case _ => super.canImport(ts)
   }
   
+  /** 転送オブジェクトを転入 */
+//  override def importTransferData(rowIndex: Int, data: TransferData) = {
+//    
+//  }
+  
   /**
    * 部屋の転入操作をする。
    */
@@ -118,21 +125,16 @@ class ExhibitRoomListTransferHandler extends MuseumExhibitTransferHandler {
   override def getSourceActions(c: JComponent) =
     TransferHandler.COPY
   
-  override def createTransferable(c: JComponent): Transferable = c match {
-    case tree: JTree =>
-      val contentsOp = tree.getSelectionPath match {
-        case null => None
-        case path => getContent(path)
-      }
-      
-      contentsOp.map(c => new ExhibitRoomTransferData(c)) getOrElse null
-    case _ => super.createTransferable(c)
-  }
   
-  /** パスのコンテンツを返す */
-  private def getContent(path: TreePath): Option[MuseumExhibitListModel] = {
-    path.getLastPathComponent match {
-      case room: UserExhibitRoom => structure.map(_.getContent(room))
+  /** TreePath オブジェクトの最後の葉要素をExhibitRoomModelとして取得 */
+  private object TreePathLastObject {
+    import javax.swing.tree.TreePath
+    
+    def unapply(o: AnyRef): Option[ExhibitMuseumSpace] = o match {
+      case path: TreePath => path.getLastPathComponent match {
+        case model: ExhibitMuseumSpace => Some(model)
+        case _ => None
+      }
       case _ => None
     }
   }

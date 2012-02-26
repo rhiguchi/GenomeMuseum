@@ -14,8 +14,7 @@ import jp.scid.genomemuseum.model.{UserExhibitRoom => IUserExhibitRoom,
   UserExhibitRoomService => IUserExhibitRoomService, ExhibitRoom,
   MuseumExhibitService => IMuseumExhibitService, UriFileStorage,
   MuseumExhibit => IMuseumExhibit, MutableMuseumExhibitListModel => IMutableMuseumExhibitListModel,
-  MuseumExhibitListModel => IMuseumExhibitListModel, GroupRoomContentsModel,
-  ExhibitRoomContentsService}
+  MuseumExhibitListModel => IMuseumExhibitListModel, GroupRoomContentsModel}
 import IUserExhibitRoom.RoomType
 import RoomType._
 
@@ -79,6 +78,14 @@ private[squeryl] class UserExhibitRoomService(
   
   /** 全ての部屋要素 */
   val allRoomList = new KeyedEntityEventList(table)
+  
+  /** 部屋を作成する。永続化はされない */
+  def create(roomType: RoomType, baseName: String, parent: Option[IUserExhibitRoom]) = {
+    require(parent.filter(_.roomType != GroupRoom).isEmpty, "roomType of parent must be GroupRoom")
+    
+    // TODO 名前検索
+    UserExhibitRoom(baseName, roomType, parent.map(_.id))
+  }
   
   /** 子要素のキャッシュ */
   //
@@ -167,55 +174,6 @@ private[squeryl] class UserExhibitRoomService(
     firePropertyChange(pce)
   }
   
-  //
-  // コンテンツ
-  /**
-   * 要素を追加する。
-   * 
-   * 要素を ID で DB からルックアップし、存在するときは追加される。
-   * 要素が存在しない時は無視される。
-   * @param element 保存を行う要素。
-   */
-  def addExhibit(room: IUserExhibitRoom, element: IMuseumExhibit) = inTransaction {
-    exhibitTable.lookup(element.id) match {
-      case Some(exhibit) =>
-        relationTable.insert(RoomExhibit(room.id, exhibit.id))
-        fireMappedPropertyChangeEvent("exhibitList", room, null, null)
-        true
-      case None => false
-    }
-  }
-  
-  /**
-   * 要素を除去する。
-   * 
-   * 要素の ID が存在するとき、この部屋から除去される。
-   * 要素が存在しない時は無視される。
-   * @param element 保存を行う要素。
-   */
-  def removeExhibit(room: IUserExhibitRoom, element: IMuseumExhibit) = inTransaction {
-    val relations = relationTable.where(e =>
-        e.exhibitId === element.id and e.roomId === room.id).toList
-    relations.headOption map { relation => relationTable delete relation.id } match {
-      case Some(true) =>
-        fireMappedPropertyChangeEvent("exhibitList", room, null, null)
-        true
-      case _ => false
-    }
-  }
-  
-  /**
-   * 部屋のコンテンツを表示する
-   */
-  def getExhibitList(room: IUserExhibitRoom) = inTransaction {
-    val exhibitIdList = UserExhibitRoomService.getLeafs(room.id, table)
-      .flatMap(r => UserExhibitRoomService.getElementIds(r.id, relationTable))
-    
-    val elements = exhibitTable.where(e => e.id in exhibitIdList).toIndexedSeq
-    val elmMap = elements.view.map(e => (e.id, e)).toMap
-    exhibitIdList.view.flatMap(id => elmMap.get(id)).toList
-  }
-  
   /**
    * ID から親要素を取得する
    */
@@ -231,6 +189,28 @@ private[squeryl] class UserExhibitRoomService(
     room match {
       case RoomType(GroupRoom) =>
       case _ => throw new IllegalArgumentException("parent must be a GroupRoom")
+    }
+  }
+  
+  /**
+   * 未使用の名前を検索する。
+   * {@code baseName} の名前を持つ部屋がサービス中に存在するとき、
+   * 連番をつけて次の名前を検索する。
+   * @param baseName 基本の名前
+   * @return 他と重複しない、部屋の名前。
+   */
+  private def findRoomNewName(baseName: String) = {
+    def searchNext(index: Int): String = {
+      val candidate = baseName + " " + index
+      nameExists(candidate) match {
+        case true => searchNext(index + 1)
+        case false => candidate
+      }
+    }
+    
+    nameExists(baseName) match {
+      case true => searchNext(1)
+      case false => baseName
     }
   }
 }
