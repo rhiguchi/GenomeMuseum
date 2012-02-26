@@ -17,6 +17,7 @@ trait ExhibitRoomModel extends ValueModel[java.util.List[MuseumExhibit]]
   def sourceRoom: Option[ExhibitRoom]
   
   /** 展示物リスト */
+  @deprecated("2012/02/26/", "use getValue")
   def exhibitList: List[MuseumExhibit] = {
     import collection.JavaConverters._
     getValue.asScala.toList
