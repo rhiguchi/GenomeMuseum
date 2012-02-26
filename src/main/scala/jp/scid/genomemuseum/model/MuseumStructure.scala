@@ -21,13 +21,6 @@ import RoomType._
 class MuseumStructure extends TreeSource[MuseumSpace] with PropertyChangeObservable {
   import MuseumStructure._
   
-  def this(roomService: UserExhibitRoomService, localManagedPavilion: MuseumExhibitService) {
-    this()
-    
-    this.roomService = Option(roomService)
-    this.localManagedPavilion = Option(localManagedPavilion)
-  }
-  
   // プロパティ
   /** {@code BasicRoom} 型の部屋を作成するときの標準の名前 */
   var basicRoomDefaultName = "New BasicRoom"
@@ -57,41 +50,13 @@ class MuseumStructure extends TreeSource[MuseumSpace] with PropertyChangeObserva
   /** ルート要素 */
   val root = MuseumControlFloor("Museum Gate", sourcesRoot)
   
-  /** サービスの要素変化監視 */
-  val roomServiceChangeListener = new PropertyChangeListener {
-//    private def getOptionRoom(room: AnyRef): ExhibitRoom = room.asInstanceOf[Option[_]] match {
-//      case Some(parent) => parent.asInstanceOf[UserExhibitRoom]
-//      case None => userRoomsRoot
-//    }
-//    
-    def propertyChange(evt: PropertyChangeEvent) {}
-//    def propertyChange(evt: PropertyChangeEvent) = evt match {
-//      case MappedPropertyChangeEvent("children", key, _, _) =>
-//        val parent = getOptionRoom(key)
-//        fireChildrenChange(parent)
-//      case MappedPropertyChangeEvent("parent", room, oldValue, newValue) =>
-//        val oldParent = getOptionRoom(oldValue)
-//        val newParent = getOptionRoom(newValue)
-//        fireChildrenChange(oldParent)
-//        if (oldParent != newParent)
-//          fireChildrenChange(newParent)
-//      case MappedPropertyChangeEvent("exhibitList", room, _, _) =>
-//        // TODO
-//    }
-  }
-  
   /** ユーザー部屋の取得 */
   def userExhibitRoomService = roomService
   
   /** ユーザー部屋の設定 */
   def userExhibitRoomService_=(roomService: Option[UserExhibitRoomService]) {
     // 結合解除
-    this.roomService.foreach(_.removePropertyChangeListener(roomServiceChangeListener))
     this.roomService = roomService
-    roomService.foreach(_.addPropertyChangeListener(roomServiceChangeListener))
-    
-    val event = new TreeSource.MappedPropertyChangeEvent(this, "children", userRoomsRoot, null, null)
-    firePropertyChange(event)
   }
   
   /** 展示物サービスを取得する */

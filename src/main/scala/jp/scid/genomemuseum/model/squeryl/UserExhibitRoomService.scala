@@ -9,12 +9,8 @@ import org.squeryl.PrimitiveTypeMode._
 import ca.odell.glazedlists.{EventList, FilterList, matchers}
 import matchers.Matcher
 
-import jp.scid.gui.model.TreeSource.MappedPropertyChangeEvent
 import jp.scid.genomemuseum.model.{UserExhibitRoom => IUserExhibitRoom,
-  UserExhibitRoomService => IUserExhibitRoomService, ExhibitRoom,
-  MuseumExhibitService => IMuseumExhibitService, UriFileStorage,
-  MuseumExhibit => IMuseumExhibit, MutableMuseumExhibitListModel => IMutableMuseumExhibitListModel,
-  MuseumExhibitListModel => IMuseumExhibitListModel, GroupRoomContentsModel}
+  UserExhibitRoomService => IUserExhibitRoomService}
 import IUserExhibitRoom.RoomType
 import RoomType._
 

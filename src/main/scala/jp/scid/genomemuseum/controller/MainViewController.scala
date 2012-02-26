@@ -72,7 +72,8 @@ class MainViewController extends GenomeMuseumController {
   /** スキーマの設定 */
   def museumSchema_=(schema: MuseumSchema) {
     currentMuseumSchema = Option(schema)
-    museumStructure.userExhibitRoomService = Some(schema.userExhibitRoomService)
+    museumStructure.localManagedPavilion = Some(schema.museumExhibitService)
+    museumStructure.freeExhibitPavilion = Some(schema.freeExhibitPavilion)
     exhibitRoomListController.selectLocalSource()
   }
   
