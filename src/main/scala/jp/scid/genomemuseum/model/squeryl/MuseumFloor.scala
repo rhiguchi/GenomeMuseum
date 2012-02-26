@@ -10,7 +10,7 @@ import jp.scid.genomemuseum.model.{MuseumFloor => IMuseumFloor,
  */
 trait MuseumFloor extends IMuseumFloor {
   /** 展示室サービスオブジェクト */
-  protected def userExhibitRoomService: MuseumExhibitContentService
+  protected def freeExhibitPavilion: FreeExhibitPavilion
   
   /** 展示階層を返す */
   protected def floorModel: Option[IUserExhibitRoom]
@@ -23,18 +23,18 @@ trait MuseumFloor extends IMuseumFloor {
    */
   def canAddRoom(room: IExhibitRoomModel): Boolean = room.sourceRoom match {
     case Some(sourceRoom: IUserExhibitRoom) =>
-      userExhibitRoomService.canSetParent(sourceRoom, floorModel)
+      freeExhibitPavilion.canSetParent(sourceRoom, floorModel)
     case _ => false
   }
   
   /** {@inheritDoc} */
   def addRoom(room: IExhibitRoomModel) = 
-    userExhibitRoomService.setParent(room.sourceRoom.get.asInstanceOf[IUserExhibitRoom], floorModel)
+    freeExhibitPavilion.setParent(room.sourceRoom.get.asInstanceOf[IUserExhibitRoom], floorModel)
 
   /**
    * この部屋を親とする部屋のリストを返す
    */
   lazy val childRoomList =
-    userExhibitRoomService.createChildRoomList(floorModel)
+    freeExhibitPavilion.createChildRoomList(floorModel)
       .asInstanceOf[EventList[IExhibitRoomModel]]
 }

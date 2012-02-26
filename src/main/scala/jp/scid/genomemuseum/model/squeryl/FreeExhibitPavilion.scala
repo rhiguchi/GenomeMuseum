@@ -7,10 +7,10 @@ import ca.odell.glazedlists.{GlazedLists, CollectionList, EventList, FunctionLis
 
 import jp.scid.genomemuseum.model.{UserExhibitRoom => IUserExhibitRoom,
   ExhibitRoomModel => IExhibitRoomModel, MuseumExhibit => IMuseumExhibit,
-  UserExhibitRoomService => IUserExhibitRoomService}
+  UserExhibitRoomService => IUserExhibitRoomService, FreeExhibitPavilion => IFreeExhibitPavilion}
 import IUserExhibitRoom.RoomType._
 
-object MuseumExhibitContentService {
+object FreeExhibitPavilion {
   import ca.odell.glazedlists.event.{ListEventListener, ListEvent}
   
   /**
@@ -38,7 +38,7 @@ object MuseumExhibitContentService {
   /**
    * ツリー構造情報を持つ博物館展示空間の変換クラス
    */
-  class ExhibitRoomModelFunction(service: MuseumExhibitContentService)
+  class ExhibitRoomModelFunction(service: FreeExhibitPavilion)
       extends FunctionList.Function[IUserExhibitRoom, ExhibitRoomModel] {
     def evaluate(room: IUserExhibitRoom) =
       service.createExhibitRoomModel(room)
@@ -65,11 +65,11 @@ object MuseumExhibitContentService {
 }
 
 /**
- * 部屋の中身を取り扱うことができるサービス
+ * 自由展示棟の実装
  */
-class MuseumExhibitContentService(contentTable: Table[RoomExhibit])
-    extends MuseumFloor {
-  import MuseumExhibitContentService._
+class FreeExhibitPavilion(contentTable: Table[RoomExhibit])
+    extends IFreeExhibitPavilion with MuseumFloor {
+  import FreeExhibitPavilion._
 
   /** 展示物サービス */
   var exhibitEventList: Option[KeyedEntityEventList[MuseumExhibit]] = None
@@ -101,7 +101,7 @@ class MuseumExhibitContentService(contentTable: Table[RoomExhibit])
   
   // ExhibitFloor 実装
   /** サービスは自身を返す */
-  protected def userExhibitRoomService = this
+  protected def freeExhibitPavilion = this
   
   /** ルート要素なので階層は None */
   protected def floorModel = None
@@ -181,7 +181,7 @@ class MuseumExhibitContentService(contentTable: Table[RoomExhibit])
     /** 展示物リスト */
     lazy val contentList = new CollectionList(childRoomList, new RoomExhibitCollectionModel)
     
-    def userExhibitRoomService = MuseumExhibitContentService.this
+    def freeExhibitPavilion = FreeExhibitPavilion.this
     
     /** 展示階層 */
     def floorModel = sourceRoom
