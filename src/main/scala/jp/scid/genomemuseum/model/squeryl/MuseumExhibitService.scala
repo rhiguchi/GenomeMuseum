@@ -20,8 +20,6 @@ class MuseumExhibitService(exhibitTable: Table[MuseumExhibit]) extends IMuseumEx
   /** 全展示物リスト */
   val exhibitEventList = new KeyedEntityEventList(exhibitTable)
   
-  def name = "All Artifacts"
-  
   /**
    * このデータサービスが持つ要素を除去する。
    * 要素がこのサービスに存在しない時は無視される。
@@ -70,5 +68,5 @@ class MuseumExhibitService(exhibitTable: Table[MuseumExhibit]) extends IMuseumEx
   /** {@inheritDoc} */
   override def getValue() = exhibitEventList.asInstanceOf[java.util.List[IMuseumExhibit]]
   
-  def roomModel = sourceRoom
+  val roomModel = UserExhibitRoom("All Artifacts")
 }

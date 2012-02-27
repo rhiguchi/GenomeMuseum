@@ -3,6 +3,7 @@ package jp.scid.genomemuseum.model.squeryl
 import ca.odell.glazedlists.EventList
 
 import jp.scid.genomemuseum.model.{UserExhibitRoom => IUserExhibitRoom,
+  ExhibitMuseumSpace => IExhibitMuseumSpace,
   ExhibitMuseumFloor => IExhibitMuseumFloor, ExhibitRoomModel => IExhibitRoomModel}
 
 /**
@@ -18,25 +19,15 @@ trait ExhibitMuseumFloor extends IExhibitMuseumFloor {
    * すでにこの階層の部屋であるとき、またはこの階層の親階層であるときは
    * 追加できない。
    */
-  def canAddRoom(room: IExhibitRoomModel): Boolean = room.sourceRoom match {
-    case Some(sourceRoom: IUserExhibitRoom) =>
-      freeExhibitPavilion.canSetParent(sourceRoom, roomModel)
-    case _ => false
-  }
+  def canAddRoom(room: IExhibitMuseumSpace): Boolean = freeExhibitPavilion.canSetParent(room, this)
   
   /** {@inheritDoc} */
-  def addRoom(room: IExhibitRoomModel) = 
-    freeExhibitPavilion.setParent(room.sourceRoom.get.asInstanceOf[IUserExhibitRoom], roomModel)
+  def addRoom(room: IExhibitMuseumSpace) =  freeExhibitPavilion.setParent(room, this)
 
   /**
    * この部屋を親とする部屋のリストを返す
    */
   lazy val childRoomList =
-    freeExhibitPavilion.createChildRoomList(roomModel)
-      .asInstanceOf[EventList[IExhibitRoomModel]]
-  
-  /**
-   * 名前を設定する
-   */
-  def name_=(newName: String) = roomModel.foreach(_.name = newName)
+    freeExhibitPavilion.createChildRoomList(this)
+      .asInstanceOf[EventList[IExhibitMuseumSpace]]
 }

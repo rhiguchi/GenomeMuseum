@@ -6,20 +6,16 @@ import jp.scid.gui.model.ValueModel
  * 部屋データの構造定義
  */
 trait ExhibitRoomModel extends ValueModel[java.util.List[MuseumExhibit]]
-  with ExhibitMuseumSpace with PropertyChangeObservable {
+  with MuseumSpace with PropertyChangeObservable {
 
   /** イベント発行 */
   def setValue(newExhibitList: java.util.List[MuseumExhibit]) {
     firePropertyChange("value", null, newExhibitList)
   }
   
-  /** このデータの部屋 */
-  def sourceRoom: Option[ExhibitRoom]
+  /** この部屋の部屋データ */
+  def roomModel: UserExhibitRoom
   
-  /** 展示物リスト */
-//  @deprecated("2012/02/26/", "use getValue")
-//  def exhibitList: List[MuseumExhibit] = {
-//    import collection.JavaConverters._
-//    getValue.asScala.toList
-//  }
+  /** 名前を取得 */
+  def name = roomModel.name
 }

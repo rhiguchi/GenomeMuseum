@@ -135,7 +135,6 @@ class ExhibitRoomListController extends TreeController[MuseumSpace, MuseumStruct
     val newRoom = getModel.addRoom(roomType, parent)
     val newRoomPath = getModel.pathToRoot(newRoom)
     
-    
     setlectPathAsList(newRoomPath.asJava)
     startEditingForElement(newRoom)
   }
@@ -148,7 +147,7 @@ class ExhibitRoomListController extends TreeController[MuseumSpace, MuseumStruct
    * @throws IllegalStateException 指定した親が要素自身か、子孫である時
    */
   protected def moveRoom(element: UserExhibitRoom, newParent: Option[UserExhibitRoom]) {
-    getModel.moveRoom(element, newParent)
+    // TODO
   }
   
   /**

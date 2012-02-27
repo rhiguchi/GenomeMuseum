@@ -89,8 +89,6 @@ class MainViewController extends GenomeMuseumController {
    * 通常は、ソースリストの選択項目となる
    */
   def updateRoomContents(newRoom: ExhibitRoom) {
-    implicit def roomService = museumStructure.userExhibitRoomService.get
-    
     val webSource = museumStructure.webSource
     newRoom match {
       case `webSource` => setContentsMode(ContentsMode.NCBI)

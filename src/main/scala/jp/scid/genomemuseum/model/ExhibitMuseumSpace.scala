@@ -5,9 +5,9 @@ import ca.odell.glazedlists.EventList
 /**
  * 自由展示スペース
  */
-trait ExhibitMuseumSpace extends MuseumSpace {
-//  /** 展示物リスト */
-//  def exhibitList: EventList[MuseumExhibit]
-
-  def roomModel: Option[UserExhibitRoom]
+trait ExhibitMuseumSpace extends ExhibitRoomModel {
+  /**
+   * 名前を設定する
+   */
+  def name_=(newName: String) = roomModel.name = newName
 }

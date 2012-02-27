@@ -3,14 +3,14 @@ package jp.scid.genomemuseum.model.squeryl
 import ca.odell.glazedlists.EventList
 
 import jp.scid.genomemuseum.model.{MuseumExhibit => IMuseumExhibit,
-  UserExhibitRoom => IUserExhibitRoom, ExhibitRoomModel => IExhibitRoomModel}
+  UserExhibitRoom => IUserExhibitRoom, ExhibitMuseumSpace => IExhibitMuseumSpace}
 
 /**
  * 部屋と展示物データリストのアダプター
  * @param contentList 部屋の内容データリスト
  * @param contanerToExhibitFunction 部屋の内容から展示物を取得する関数
  */
-class ExhibitRoomModel extends IExhibitRoomModel {
+class ExhibitMuseumSpace extends IExhibitMuseumSpace {
   /** 現在の値（展示物リスト） */
   private var value: Option[EventList[IMuseumExhibit]] = None
   
@@ -28,16 +28,7 @@ class ExhibitRoomModel extends IExhibitRoomModel {
   
   override def getValue() = exhibitEventList.getOrElse(null)
   
-  var sourceRoom: Option[IUserExhibitRoom] = None
-  
-  def roomModel = sourceRoom
-  
-  /** 名前を取得 */
-  def name = sourceRoom.map(_.name).getOrElse("NoName")
-  
-  // TODO 新しい階層
-  /** 名前を設定 */
-//  def name_=(newName: String) = sourceRoom.foreach(_.name = newName)
+  var roomModel: IUserExhibitRoom = UserExhibitRoom("NoName")
   
   def dispose() {
     value.foreach(_.dispose())

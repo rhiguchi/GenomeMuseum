@@ -6,7 +6,7 @@ import org.squeryl.PrimitiveTypeMode._
 import ca.odell.glazedlists.{GlazedLists, CollectionList, EventList, FunctionList}
 
 import jp.scid.genomemuseum.model.{UserExhibitRoom => IUserExhibitRoom,
-  ExhibitMuseumFloor => IExhibitMuseumFloor,
+  ExhibitMuseumFloor => IExhibitMuseumFloor, ExhibitMuseumSpace => IExhibitMuseumSpace,
   ExhibitRoomModel => IExhibitRoomModel, MuseumExhibit => IMuseumExhibit,
   UserExhibitRoomService => IUserExhibitRoomService, FreeExhibitPavilion => IFreeExhibitPavilion}
 import IUserExhibitRoom.RoomType._
@@ -37,19 +37,24 @@ object FreeExhibitPavilion {
   }
   
   /**
-   * 展示室エンティティから展示室モデルを作成する関数
+   * 展示室データモデルから展示室モデルを作成する関数
    */
   class ExhibitRoomModelFunction(service: FreeExhibitPavilion)
-      extends FunctionList.AdvancedFunction[IUserExhibitRoom, ExhibitRoomModel] {
+      extends FunctionList.AdvancedFunction[IUserExhibitRoom, ExhibitMuseumSpace] {
     def evaluate(room: IUserExhibitRoom) =
       service.createExhibitRoomModel(room)
     
-    def reevaluate(room: IUserExhibitRoom, roomModel: ExhibitRoomModel) =
+    def reevaluate(room: IUserExhibitRoom, roomModel: ExhibitMuseumSpace) =
       service.createExhibitRoomModel(room)
     
-    def dispose(room: IUserExhibitRoom, roomModel: ExhibitRoomModel) {
+    def dispose(room: IUserExhibitRoom, roomModel: ExhibitMuseumSpace) {
       roomModel.dispose()
     }
+  }
+
+  /** 展示室モデルから展示物エンティティリストを取得する機能関数 */
+  class RoomExhibitCollectionModel extends CollectionList.Model[IExhibitMuseumSpace, IMuseumExhibit] {
+    def getChildren(room: IExhibitMuseumSpace) = room.getValue
   }
   
   /** コンテンツ情報のリスト */
@@ -59,7 +64,7 @@ object FreeExhibitPavilion {
     override def getFetchQuery(e: RoomExhibit) = where(e.roomId === room.id)
     
     /**
-     * 要素を追加する。
+     * 項目番目の展示物を変更する。
      */
     override def set(index: Int, newElement: RoomExhibit) = {
       require(newElement.roomId == room.id, "newElement requires same room id to update for room content")
@@ -79,6 +84,7 @@ class FreeExhibitPavilion(contentTable: Table[RoomExhibit])
     extends IFreeExhibitPavilion with ExhibitMuseumFloor {
   import FreeExhibitPavilion._
 
+  // プロパティ
   /** 展示物サービス */
   var exhibitEventList: Option[KeyedEntityEventList[MuseumExhibit]] = None
 
@@ -111,62 +117,80 @@ class FreeExhibitPavilion(contentTable: Table[RoomExhibit])
   /** サービスは自身を返す */
   protected def freeExhibitPavilion = this
   
-  /** ルート要素なので階層は None */
-  def roomModel = None
-
   def name = "Free Area"
   
+  // 展示室操作
   /**
    * 部屋のプロパティを保存する
    */
-  def save(roomModel: IUserExhibitRoom) = roomService.foreach(_.save(roomModel))
+  def save(room: IExhibitMuseumSpace) = roomService.foreach(_.save(room.roomModel))
   
   /** 部屋を追加する */
-  def addRoom(roomType: RoomType, name: String, parent: IExhibitMuseumFloor): IExhibitRoomModel = {
+  def addRoom(roomType: RoomType, name: String, parent: IExhibitMuseumFloor): IExhibitMuseumSpace = {
     import collection.JavaConverters._
     
-    val room = roomService.get.addRoom(roomType, name, parent.roomModel)
+    val parentRoomModel = parent match {
+      case model: IExhibitMuseumSpace => Some(model.roomModel)
+      case _ => None
+    }
+    
+    val room = roomService.get.addRoom(roomType, name, parentRoomModel)
     parent.childRoomList.asScala.find(_.roomModel == room) getOrElse
       createExhibitRoomModel(room)
   }
   
-//  def getParent(room: IExhibitRoomModel) = {
-//    
-//  }
+  /** 部屋を削除する */
+  def removeRoom(room: IExhibitMuseumSpace) = roomService foreach (_.remove(room.roomModel))
   
   /**
    * 部屋に親を設定できるか
    */
-  def canSetParent(target: IUserExhibitRoom, parent: Option[IUserExhibitRoom]) = {
+  protected[squeryl] def canSetParent(room: IExhibitMuseumSpace, floor: IExhibitMuseumFloor) = {
     // 循環参照にならないように、祖先に子要素候補がいないか調べる
-    def ancester(room: IUserExhibitRoom): Boolean = {
-      roomService.flatMap(_.getParent(room)) match {
-        case None => true
-        case Some(`room` | `target`) => false
-        case Some(parent) => ancester(parent)
+    def ancester(space: IExhibitMuseumSpace): Boolean = getParent(space) match {
+      case `room` | `floor` => false
+      case parent: IExhibitMuseumSpace => space.roomModel != parent.roomModel match {
+        case true => ancester(parent)
+        case false => false
       }
+      case parent => true
     }
     
-    parent match {
-      case None => roomService.flatMap(_.getParent(target)).nonEmpty
-      case Some(`target`) => false
-      case Some(parentRoom) => ancester(parentRoom)
+    floor match {
+      case `room` => false
+      case parent: IExhibitMuseumSpace => ancester(parent)
+      // 事実上 this
+      case parent => getParent(room) != parent
     }
   }
   
   /**
+   * 部屋の親を取得する
+   */
+  protected[squeryl] def getParent(room: IExhibitMuseumSpace): IExhibitMuseumFloor =
+    roomService.flatMap(_.getParent(room.roomModel))
+      .map(getExhibitRoomModel).map(_.asInstanceOf[IExhibitMuseumFloor]).getOrElse(this)
+  
+  /**
    * 部屋の親を設定する
    */
-  def setParent(target: IUserExhibitRoom, parent: Option[IUserExhibitRoom]) =
-    roomService.foreach(_.setParent(target, parent)) 
+  protected[squeryl] def setParent(room: IExhibitMuseumSpace, floor: IExhibitMuseumFloor) =
+    roomService.foreach(_.setParent(room.roomModel, getRoomModel(floor))) 
   
   /**
    * 子部屋リストを返す
    */
-  def createChildRoomList(parent: Option[IUserExhibitRoom]): EventList[ExhibitRoomModel] = {
+  protected[squeryl] def createChildRoomList(parent: ExhibitMuseumFloor): EventList[ExhibitMuseumSpace] = {
     val convertFunc = new ExhibitRoomModelFunction(this)
-    val roomList = roomService.map(_.getFloorRoomList(parent)) getOrElse GlazedLists.eventListOf()
+    val roomModel = getRoomModel(parent)
+    val roomList = roomService.map(_.getFloorRoomList(roomModel)) getOrElse GlazedLists.eventListOf()
     new FunctionList(roomList, convertFunc)
+  }
+  
+  /** 階層の部屋オブジェクトを返す */
+  private def getRoomModel(floor: IExhibitMuseumFloor) = floor match {
+    case space: ExhibitMuseumSpace => Some(space.roomModel)
+    case _ => None
   }
   
   /**
@@ -183,17 +207,22 @@ class FreeExhibitPavilion(contentTable: Table[RoomExhibit])
     list
   }
   
+  /** 部屋のデータモデルを返す */
+  def getExhibitRoomModel(room: IUserExhibitRoom): ExhibitMuseumSpace = {
+    createExhibitRoomModel(room) // TODO
+  }
+  
   /** 部屋のデータモデルを作成する */
   protected[squeryl] def createExhibitRoomModel(room: IUserExhibitRoom) = {
     lazy val exhibitEventList = new FunctionList(
         createRoomContentEventList(room), exhibitLookupper, new ExhibitContainerReverseFunction(room))
     
     val roomModel = room.roomType match {
-      case BasicRoom => new ExhibitRoomModel(exhibitEventList) with FreeExhibitRoomModel
-      case SmartRoom => new ExhibitRoomModel(exhibitEventList)
+      case BasicRoom => new ExhibitMuseumSpace(exhibitEventList) with FreeExhibitRoomModel
+      case SmartRoom => new ExhibitMuseumSpace(exhibitEventList)
       case GroupRoom => new ExhibitFloor
     }
-    roomModel.sourceRoom = Some(room)
+    roomModel.roomModel = room
     roomModel
   }
   
@@ -203,7 +232,7 @@ class FreeExhibitPavilion(contentTable: Table[RoomExhibit])
    * @param contentList 部屋内容
    * @param contanerToExhibitFunction 部屋内容と展示物の変換関数
    */
-  class ExhibitFloor extends ExhibitRoomModel with ExhibitMuseumFloor {
+  class ExhibitFloor extends ExhibitMuseumSpace with ExhibitMuseumFloor {
     /** 展示物リスト */
     lazy val contentList = new CollectionList(childRoomList, new RoomExhibitCollectionModel)
     
@@ -211,10 +240,6 @@ class FreeExhibitPavilion(contentTable: Table[RoomExhibit])
     
     /** 子部屋リストを更新する */
     override def getValue() = contentList
-  }
-
-  class RoomExhibitCollectionModel extends CollectionList.Model[IExhibitRoomModel, IMuseumExhibit] {
-    def getChildren(room: IExhibitRoomModel) = room.getValue
   }
 }
 

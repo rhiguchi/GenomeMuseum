@@ -29,9 +29,6 @@ class MuseumStructure extends TreeSource[MuseumSpace] with PropertyChangeObserva
   /** {@code SmartRoom} 型の部屋を作成するときの標準の名前 */
   var smartRoomDefaultName = "New SmartRoom"
   
-  /** ユーザー部屋 */
-  private var roomService: Option[UserExhibitRoomService] = None
-  
   /** 自由展示棟のサービス */
   private var currentFreeExhibitPavilion: Option[FreeExhibitPavilion] = None
   
@@ -49,15 +46,6 @@ class MuseumStructure extends TreeSource[MuseumSpace] with PropertyChangeObserva
   val userRoomsRoot = MuseumControlFloor("User Rooms")
   /** ルート要素 */
   val root = MuseumControlFloor("Museum Gate", sourcesRoot)
-  
-  /** ユーザー部屋の取得 */
-  def userExhibitRoomService = roomService
-  
-  /** ユーザー部屋の設定 */
-  def userExhibitRoomService_=(roomService: Option[UserExhibitRoomService]) {
-    // 結合解除
-    this.roomService = roomService
-  }
   
   /** 展示物サービスを取得する */
   def localManagedPavilion = exhibitService
@@ -115,7 +103,7 @@ class MuseumStructure extends TreeSource[MuseumSpace] with PropertyChangeObserva
    * MuseumSpace の値を更新する。
    */
   protected def updateNodeValue(room: MuseumSpace, newValue: AnyRef) = room match {
-    case room: ExhibitMuseumFloor => newValue match {
+    case room: ExhibitMuseumSpace => newValue match {
       case name: String => room.name = name
       case _ =>
     }
@@ -164,17 +152,6 @@ class MuseumStructure extends TreeSource[MuseumSpace] with PropertyChangeObserva
    * @return 追加に成功した場合、そのオブジェクトが返る。
    * @see UserExhibitRoom
    */
-  def addRoom(roomType: RoomType, parent: Option[UserExhibitRoom]): UserExhibitRoom = {
-    val name = roomType match {
-      case BasicRoom => basicRoomDefaultName
-      case GroupRoom => groupRoomDefaultName
-      case SmartRoom => smartRoomDefaultName
-    }
-    
-    val newRoom = userExhibitRoomService.get.addRoom(roomType, name, parent)
-    newRoom
-  }
-  
   def addRoom(roomType: RoomType, parent: ExhibitMuseumFloor): ExhibitRoomModel = {
     val name = roomType match {
       case BasicRoom => basicRoomDefaultName
@@ -186,43 +163,9 @@ class MuseumStructure extends TreeSource[MuseumSpace] with PropertyChangeObserva
   }
   
   /**
-   * 部屋の移動が可能か
-   */
-  def canMove(source: UserExhibitRoom, dest: Option[UserExhibitRoom]) = {
-    dest match {
-      case Some(dest @ RoomType(GroupRoom)) =>
-        !pathToRoot(dest).startsWith(pathToRoot(source))
-      case None => userExhibitRoomService.map(_.getParent(source).nonEmpty).getOrElse(false)
-      case _ => false
-    }
-  }
-  
-  /**
-   * 新しい親へ移動する
-   * @param element 移動する要素
-   * @param newParent 異動先となる親要素。ルート項目にする時は None 。
-   * @throws IllegalArgumentException 指定した親が GroupRoom ではない時
-   * @throws IllegalStateException 指定した親が要素自身か、子孫である時
-   */
-  def moveRoom(source: UserExhibitRoom, newParent: Option[UserExhibitRoom])  {
-    val parent = newParent match {
-      case Some(dest @ RoomType(GroupRoom)) => newParent
-      case Some(nonGroupRoom) => userExhibitRoomService.get.getParent(nonGroupRoom) match {
-        case parent @ Some(_  @ RoomType(GroupRoom)) => parent
-        case _ => None
-      }
-      case None => None
-    }
-    
-    userExhibitRoomService.get.setParent(source, parent)
-  }
-  
-  /**
    * 部屋を削除する
    */
-  def removeRoom(room: UserExhibitRoom) {
-    userExhibitRoomService.foreach(_.remove(room))
-  }
+  def removeRoom(room: ExhibitMuseumSpace) = freeExhibitPavilion foreach (_.removeRoom(room))
   
   private def fireChildrenChange(parent: ExhibitRoom) {
     val event = new TreeSource.MappedPropertyChangeEvent(this, "children", parent, null, null)
