@@ -42,10 +42,11 @@ object FreeExhibitPavilion {
   class ExhibitRoomModelFunction(service: FreeExhibitPavilion)
       extends FunctionList.AdvancedFunction[IUserExhibitRoom, ExhibitMuseumSpace] {
     def evaluate(room: IUserExhibitRoom) =
-      service.createExhibitRoomModel(room)
+      service.getExhibitRoomModel(room)
     
-    def reevaluate(room: IUserExhibitRoom, roomModel: ExhibitMuseumSpace) =
-      service.createExhibitRoomModel(room)
+    def reevaluate(room: IUserExhibitRoom, roomModel: ExhibitMuseumSpace) = {
+      service.getExhibitRoomModel(room)
+    }
     
     def dispose(room: IUserExhibitRoom, roomModel: ExhibitMuseumSpace) {
       roomModel.dispose()
@@ -83,6 +84,10 @@ object FreeExhibitPavilion {
 class FreeExhibitPavilion(contentTable: Table[RoomExhibit])
     extends IFreeExhibitPavilion with ExhibitMuseumFloor {
   import FreeExhibitPavilion._
+  import collection.mutable.WeakHashMap
+
+  // 作成した展示室のマップ
+  private val roomMap = new WeakHashMap[IUserExhibitRoom, ExhibitMuseumSpace]
 
   // プロパティ
   /** 展示物サービス */
@@ -135,8 +140,7 @@ class FreeExhibitPavilion(contentTable: Table[RoomExhibit])
     }
     
     val room = roomService.get.addRoom(roomType, name, parentRoomModel)
-    parent.childRoomList.asScala.find(_.roomModel == room) getOrElse
-      createExhibitRoomModel(room)
+    getExhibitRoomModel(room)
   }
   
   /** 部屋を削除する */
@@ -208,12 +212,11 @@ class FreeExhibitPavilion(contentTable: Table[RoomExhibit])
   }
   
   /** 部屋のデータモデルを返す */
-  def getExhibitRoomModel(room: IUserExhibitRoom): ExhibitMuseumSpace = {
-    createExhibitRoomModel(room) // TODO
-  }
+  def getExhibitRoomModel(room: IUserExhibitRoom): ExhibitMuseumSpace =
+    roomMap.getOrElseUpdate(room, createExhibitRoomModel(room))
   
   /** 部屋のデータモデルを作成する */
-  protected[squeryl] def createExhibitRoomModel(room: IUserExhibitRoom) = {
+  private def createExhibitRoomModel(room: IUserExhibitRoom) = {
     lazy val exhibitEventList = new FunctionList(
         createRoomContentEventList(room), exhibitLookupper, new ExhibitContainerReverseFunction(room))
     
