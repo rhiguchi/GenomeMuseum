@@ -41,7 +41,7 @@ class ExhibitRoomListController extends TreeController[MuseumSpace, MuseumStruct
   
   // コントローラ
   /** 転送ハンドラ */
-  val transferHandler = new ExhibitRoomListTransferHandler()
+  val transferHandler = new ExhibitRoomListTransferHandler(this)
   
   private[controller] val expansionController = TreeExpansionController.newConstantDepthExpansionController(2)
   
@@ -91,8 +91,6 @@ class ExhibitRoomListController extends TreeController[MuseumSpace, MuseumStruct
       
       selectLocalSource()
     }
-    
-    transferHandler.structure = Option(model)
   }
   
   /** ローカルソースを選択する */
