@@ -1,5 +1,6 @@
 package jp.scid.genomemuseum.controller
 
+import java.io.File
 import javax.swing.{JTree, TransferHandler, JComponent}
 import javax.swing.tree.{TreeModel, TreePath}
 import java.awt.datatransfer.{Transferable, DataFlavor, UnsupportedFlavorException}
@@ -7,7 +8,7 @@ import TransferHandler.TransferSupport
 
 import jp.scid.gui.control.ObjectControllerTransferHandler
 import jp.scid.genomemuseum.model.{MuseumStructure, ExhibitMuseumSpace, MuseumSpace}
-import jp.scid.genomemuseum.model.{ExhibitRoom, UserExhibitRoom, MuseumExhibit,
+import jp.scid.genomemuseum.model.{ExhibitRoom, UserExhibitRoom, MuseumExhibit, MuseumExhibitService,
   GroupRoomContentsModel, ExhibitMuseumFloor, FreeExhibitRoomModel, ExhibitRoomModel}
 
 private[controller] object ExhibitRoomListTransferHandler {
@@ -22,6 +23,20 @@ private[controller] object ExhibitRoomListTransferHandler {
       case true =>
         val data = ts.getTransferData(dataFlavor).asInstanceOf[TransferData]
         Some(data.treeModel, data.pathList)
+      case false => None
+    }
+  }
+  
+  /** ファイル転送オブジェクト */
+  object FileListTransferData {
+    private val dataFlavor = DataFlavor.javaFileListFlavor
+    
+    def unapply(ts: Transferable) = ts.isDataFlavorSupported(dataFlavor) match {
+      case true =>
+        import collection.JavaConverters._
+        
+        val fileList = ts.getTransferData(dataFlavor).asInstanceOf[java.util.List[File]]
+        Some(fileList.asScala.toList)
       case false => None
     }
   }
@@ -58,18 +73,16 @@ private[controller] object ExhibitRoomListTransferHandler {
  * @param loadManager 読み込み操作管理オブジェクト
  */
 class ExhibitRoomListTransferHandler extends TransferHandler {
+  import ExhibitRoomListTransferHandler._
+  
+  /** 親コントローラ */
+  var treeController: Option[ExhibitRoomListController] = None
+  
   def this(ctrl: ExhibitRoomListController) {
     this()
     
     this.treeController = Option(ctrl)
   }
-  
-  import ExhibitRoomListTransferHandler._
-  /** ファイルの読み込み処理を行うモデル */
-  var exhibitLoadManager: Option[MuseumExhibitLoadManager] = None
-  
-  /** 親コントローラ */
-  var treeController: Option[ExhibitRoomListController] = None
   
   /**
    * 部屋の転入操作の可能性を返す。
@@ -82,6 +95,11 @@ class ExhibitRoomListTransferHandler extends TransferHandler {
       // 自由展示室には展示物を転入できる
       case Some(target: ExhibitMuseumSpace with FreeExhibitRoomModel) =>
          !getExhibitMuseumSpace(pathList).contains(target)
+      case _ => false
+    }
+    case FileListTransferData(fileList) => getTargetRoomContents(ts) match {
+      // 展示室と展示物サービスにはファイルを追加できる
+      case Some(_: MuseumExhibitService) | Some(_: FreeExhibitRoomModel) => true
       case _ => false
     }
     case _ => super.canImport(ts)
@@ -102,6 +120,15 @@ class ExhibitRoomListTransferHandler extends TransferHandler {
         val exhibitList = getExhibitMuseumSpace(pathList).flatMap(_.exhibitList)
         exhibitList foreach target.add
         exhibitList.nonEmpty
+      case _ => false
+    }
+    case FileListTransferData(fileList) => getTargetRoomContents(ts) match {
+      // 展示物サービスにも追加できる
+      case Some(r: MuseumExhibitService) =>
+        treeController map (_.importFile(fileList)) getOrElse false
+      // 展示室にはファイルを追加できる
+      case Some(target: FreeExhibitRoomModel) =>
+        treeController map (_.importFile(fileList, target)) getOrElse false
       case _ => false
     }
     case _ => super.importData(ts)

@@ -1,12 +1,14 @@
 package jp.scid.genomemuseum.controller
 
+import java.io.File
 import javax.swing.{JTree, JComponent}
 import javax.swing.tree.TreePath
 
 import org.jdesktop.application.Action
 
 import jp.scid.gui.control.{TreeController, TreeExpansionController}
-import jp.scid.genomemuseum.model.{UserExhibitRoom, MuseumStructure, MuseumSpace, ExhibitMuseumFloor}
+import jp.scid.genomemuseum.model.{UserExhibitRoom, MuseumStructure, MuseumSpace,
+  ExhibitMuseumFloor, FreeExhibitRoomModel}
 import UserExhibitRoom.RoomType
 import RoomType._
 
@@ -14,6 +16,8 @@ import RoomType._
  * 『部屋』の一覧をツリー上に表示し、また『部屋』の追加、編集、削除を行う操作オブジェクト。
  */
 class ExhibitRoomListController extends TreeController[MuseumSpace, MuseumStructure] {
+  /** ファイルの読み込み処理を行うコントローラ */
+  var exhibitLoadManager: Option[MuseumExhibitLoadManager] = None
   
   def this(structure: MuseumStructure) {
     this()
@@ -29,14 +33,6 @@ class ExhibitRoomListController extends TreeController[MuseumSpace, MuseumStruct
   def groupRoomDefaultNameResource = ctrl.getResource("groupRoom.defaultName")
   /** SmartRoom 規定名リソース */
   def smartRoomDefaultNameResource = ctrl.getResource("smartRoom.defaultName")
-  
-  /** 読み込みマネージャの取得 */
-  def exhibitLoadManager = transferHandler.exhibitLoadManager
-  
-  /** 読み込みマネージャの設定 */
-  def exhibitLoadManager_=(manager: Option[MuseumExhibitLoadManager]) {
-    transferHandler.exhibitLoadManager = manager
-  }
   
   // コントローラ
   /** 転送ハンドラ */
@@ -137,17 +133,6 @@ class ExhibitRoomListController extends TreeController[MuseumSpace, MuseumStruct
   }
   
   /**
-   * 新しい親へ移動する
-   * @param element 移動する要素
-   * @param newParent 異動先となる親要素。ルート項目にする時は None 。
-   * @throws IllegalArgumentException 指定した親が GroupRoom ではない時
-   * @throws IllegalStateException 指定した親が要素自身か、子孫である時
-   */
-  protected def moveRoom(element: UserExhibitRoom, newParent: Option[UserExhibitRoom]) {
-    // TODO
-  }
-  
-  /**
    * 部屋を親から削除する。
    * {@code room} に子要素が存在する時は、その要素もサービスから除外される。
    * @param room 削除する要素
@@ -159,6 +144,14 @@ class ExhibitRoomListController extends TreeController[MuseumSpace, MuseumStruct
 //      case _ =>
 //    }
   }
+  
+  /** ファイルを読み込み */
+  def importFile(files: List[File]) =
+    exhibitLoadManager.flatMap(_.loadExhibit(files)).nonEmpty
+  
+  /** 部屋へファイルを読み込み */
+  def importFile(files: List[File], room: FreeExhibitRoomModel) =
+    exhibitLoadManager.flatMap(_.loadExhibit(files, room)).nonEmpty
   
   private def selectedPathList: List[IndexedSeq[MuseumSpace]] = {
     import collection.JavaConverters._

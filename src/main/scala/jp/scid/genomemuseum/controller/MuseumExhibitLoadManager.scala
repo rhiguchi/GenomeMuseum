@@ -220,6 +220,17 @@ class MuseumExhibitLoadManager {
    */
   def loadExhibit(file: File): Future[Option[MuseumExhibit]] = loadExhibit(file.toURI.toURL)
   
+  
+  /**
+   * ファイルから展示物を読む
+   */
+  def loadExhibit(file: List[File]): Option[Future[Option[MuseumExhibit]]] = None
+  
+  /**
+   * ファイルから展示物を読む
+   */
+  def loadExhibit(file: List[File], destRoom: FreeExhibitRoomModel): Option[Future[Option[MuseumExhibit]]] = None
+  
   /**
    * タスクを実行する
    */
