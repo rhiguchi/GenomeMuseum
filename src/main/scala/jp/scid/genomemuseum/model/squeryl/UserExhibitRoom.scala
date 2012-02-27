@@ -3,8 +3,7 @@ package jp.scid.genomemuseum.model.squeryl
 import org.squeryl.KeyedEntity
 import org.squeryl.annotations.Column
 
-import jp.scid.genomemuseum.model.{UserExhibitRoom => IUserExhibitRoom,
-  MuseumExhibitListModel => IMuseumExhibitListModel, UserExhibitRoomService => IUserExhibitRoomService}
+import jp.scid.genomemuseum.model.{UserExhibitRoom => IUserExhibitRoom}
 import IUserExhibitRoom.RoomType
 
 /**

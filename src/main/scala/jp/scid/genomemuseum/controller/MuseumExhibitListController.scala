@@ -17,8 +17,7 @@ import jp.scid.gui.event.{ValueChange, DataListSelectionChanged}
 import jp.scid.gui.table.{DataTableModel, TableColumnSortable}
 import jp.scid.motifviewer.gui.MotifViewerController
 import jp.scid.genomemuseum.{view, model, gui}
-import model.{UserExhibitRoom, MuseumExhibit, FreeExhibitRoomModel, ExhibitRoomModel,
-  MutableMuseumExhibitListModel, MuseumExhibitListModel}
+import model.{UserExhibitRoom, MuseumExhibit, FreeExhibitRoomModel, ExhibitRoomModel}
 import view.ExhibitListView
 import gui.ExhibitTableFormat
 import MuseumExhibit.FileType

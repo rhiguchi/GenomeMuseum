@@ -1,7 +1,5 @@
 package jp.scid.genomemuseum.model
 
-import ca.odell.glazedlists.EventList
-
 /**
  * 自由展示スペース
  */

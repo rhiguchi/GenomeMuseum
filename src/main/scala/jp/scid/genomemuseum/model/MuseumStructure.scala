@@ -53,9 +53,15 @@ class MuseumStructure extends TreeSource[MuseumSpace] with PropertyChangeObserva
   /**
    * 展示物サービスを設定する。
    */
-  def localManagedPavilion_=(exhibitService: Option[MuseumExhibitService]) {
-    // TODO add list
-    this.exhibitService = exhibitService
+  def localManagedPavilion_=(newService: Option[MuseumExhibitService]) {
+    val list = sourcesRoot.childRoomList
+    lockWith(list.getReadWriteLock.writeLock) {
+      this.exhibitService foreach list.remove
+      
+      this.exhibitService = newService
+      
+      newService foreach (s => list.add(0, s))
+    }
   }
   
   /** 展示物サービスを取得する */
@@ -64,21 +70,17 @@ class MuseumStructure extends TreeSource[MuseumSpace] with PropertyChangeObserva
   /**
    * 展示物サービスを設定する。
    */
-  def freeExhibitPavilion_=(exhibitService: Option[FreeExhibitPavilion]) {
-    // TODO add list
-    this.currentFreeExhibitPavilion = exhibitService
+  def freeExhibitPavilion_=(newPavilion: Option[FreeExhibitPavilion]) {
+    val list = root.childRoomList
+    
+    lockWith(list.getReadWriteLock.writeLock) {
+      this.currentFreeExhibitPavilion foreach list.remove
+      
+      this.currentFreeExhibitPavilion = newPavilion
+      
+      newPavilion foreach (list.add)
+    }
   }
-  
-  /** 部屋データリストから展示室モデルリストを作成する */
-  protected def createUserExhibitRoom(roomSourceList: java.util.List[UserExhibitRoom]) = {
-//    val function = new ExhibitRoomModelFunction()
-  }
-  
-  /**
-   * 部屋の中身を取得する
-   */
-//  def getContent(room: UserExhibitRoom) =
-//    room.exhibitListModel(userExhibitRoomService.get)
 
   def getChildren(parent: MuseumSpace): java.util.List[MuseumSpace] = parent match {
     // 階層の時は部屋を返す
@@ -108,12 +110,6 @@ class MuseumStructure extends TreeSource[MuseumSpace] with PropertyChangeObserva
       case _ =>
     }
     case _ =>
-  }
-  
-  /** 値の更新 */
-  def update(path: IndexedSeq[ExhibitRoom], newValue: AnyRef): Unit = path.lastOption match {
-//    case Some(element: ExhibitRoom) => updateNodeValue(element, newValue)
-    case None =>
   }
   
   /**
@@ -166,11 +162,6 @@ class MuseumStructure extends TreeSource[MuseumSpace] with PropertyChangeObserva
    * 部屋を削除する
    */
   def removeRoom(room: ExhibitMuseumSpace) = freeExhibitPavilion foreach (_.removeRoom(room))
-  
-  private def fireChildrenChange(parent: ExhibitRoom) {
-    val event = new TreeSource.MappedPropertyChangeEvent(this, "children", parent, null, null)
-    firePropertyChange(event)
-  }
 }
 
 import java.beans.PropertyChangeEvent
@@ -201,5 +192,10 @@ object MuseumStructure {
   private object MuseumControlFloor {
     def apply(name: String, children: MuseumSpace*): MuseumControlFloor =
       new MuseumControlFloor(name, GlazedLists.eventListOf(children: _*))
+  }
+  
+  private def lockWith[A <% ca.odell.glazedlists.util.concurrent.Lock, B](l: A)(e: => B) = {
+    l.lock()
+    try e finally l.unlock()
   }
 }

@@ -2,9 +2,8 @@ package jp.scid.genomemuseum.model.squeryl
 
 import ca.odell.glazedlists.EventList
 
-import jp.scid.genomemuseum.model.{UserExhibitRoom => IUserExhibitRoom,
-  ExhibitMuseumSpace => IExhibitMuseumSpace,
-  ExhibitMuseumFloor => IExhibitMuseumFloor, ExhibitRoomModel => IExhibitRoomModel}
+import jp.scid.genomemuseum.model.{ExhibitMuseumSpace => IExhibitMuseumSpace,
+  ExhibitMuseumFloor => IExhibitMuseumFloor}
 
 /**
  * 階層構造を実装するミックスイン
