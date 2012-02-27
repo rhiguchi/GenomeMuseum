@@ -82,6 +82,9 @@ class MuseumStructure extends TreeSource[MuseumSpace] with PropertyChangeObserva
     }
   }
 
+  /**
+   * 子要素リストを返す
+   */
   def getChildren(parent: MuseumSpace): java.util.List[MuseumSpace] = parent match {
     // 階層の時は部屋を返す
     case floor: MuseumFloor => floor.childRoomList.asInstanceOf[java.util.List[MuseumSpace]]
@@ -89,16 +92,28 @@ class MuseumStructure extends TreeSource[MuseumSpace] with PropertyChangeObserva
     case _ => java.util.Collections.emptyList[MuseumSpace]
   }
   
+  /** 親要素を返す */
+  protected[model] def getParent(child: MuseumSpace): Option[MuseumSpace] = child match {
+    case floor: MuseumControlFloor => floor.parent
+    case space: ExhibitMuseumSpace => freeExhibitPavilion.get.getParent(space) match {
+      case parent @ Some(_) => parent
+      case None => freeExhibitPavilion
+    }
+    case child =>
+      if (root.containsChild(child)) Some(root)
+      else if (sourcesRoot.containsChild(child)) Some(sourcesRoot)
+      else throw new IllegalStateException("%s's parent is not found".format(child))
+  }
+  
   /** 末端要素であるか */
   def isLeaf(space: MuseumSpace) = space match {
-    case floor: MuseumFloor => true
-    case _ => false
+    case floor: MuseumFloor => false
+    case _ => true
   }
   
   override def getValue(): MuseumSpace = root
   
   def setValue(room: MuseumSpace) {
-    // TODO
   }
   
   /**
@@ -114,25 +129,17 @@ class MuseumStructure extends TreeSource[MuseumSpace] with PropertyChangeObserva
   
   /**
    * ルート要素までのパスを取得
-   * @todo 実装
    */
-  def pathToRoot(node: ExhibitRoom): IndexedSeq[MuseumSpace] = {
+  def pathToRoot(node: MuseumSpace): IndexedSeq[MuseumSpace] = {
     import collection.mutable.Buffer
     
-//    def getParent(node: ExhibitRoom, path: List[ExhibitRoom] = Nil): List[ExhibitRoom] = {
-//      node match {
-//        case floor: MuseumFloor => floor.parent match {
-//          case Some(parent) => getParent(parent, floor :: path)
-//          case None => node :: path // return value
-//        }
-//        case room: UserExhibitRoom =>
-//          val parent = userExhibitRoomService.flatMap(_.getParent(room)).getOrElse(userRoomsRoot)
-//          getParent(parent, room :: path)
-//      }
-//    }
+    def makePath(node: MuseumSpace, path: List[MuseumSpace] = Nil)
+        : List[MuseumSpace] = getParent(node) match {
+      case Some(parent) => makePath(parent, parent :: path)
+      case None => path
+    }
     
-//    getParent(node).toIndexedSeq
-    IndexedSeq.empty
+    makePath(node).toIndexedSeq
   }
   
   /**
@@ -148,7 +155,7 @@ class MuseumStructure extends TreeSource[MuseumSpace] with PropertyChangeObserva
    * @return 追加に成功した場合、そのオブジェクトが返る。
    * @see UserExhibitRoom
    */
-  def addRoom(roomType: RoomType, parent: ExhibitMuseumFloor): ExhibitRoomModel = {
+  def addRoom(roomType: RoomType, parent: Option[ExhibitMuseumFloor]): ExhibitRoomModel = {
     val name = roomType match {
       case BasicRoom => basicRoomDefaultName
       case GroupRoom => groupRoomDefaultName
@@ -184,6 +191,10 @@ object MuseumStructure {
     def addElement(element: MuseumControlFloor) {
       childRoomList.add(element)
       element.parent = Some(this)
+    }
+    
+    def containsChild(element: MuseumSpace) = lockWith(childRoomList.getReadWriteLock.readLock) {
+      childRoomList.contains(element)
     }
     
     override def toString = name

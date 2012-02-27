@@ -18,15 +18,15 @@ trait ExhibitMuseumFloor extends IExhibitMuseumFloor {
    * すでにこの階層の部屋であるとき、またはこの階層の親階層であるときは
    * 追加できない。
    */
-  def canAddRoom(room: IExhibitMuseumSpace): Boolean = freeExhibitPavilion.canSetParent(room, this)
+  def canAddRoom(room: IExhibitMuseumSpace): Boolean = freeExhibitPavilion.canSetParent(room, Some(this))
   
   /** {@inheritDoc} */
-  def addRoom(room: IExhibitMuseumSpace) =  freeExhibitPavilion.setParent(room, this)
+  def addRoom(room: IExhibitMuseumSpace) = freeExhibitPavilion.setParent(room, Some(this))
 
   /**
    * この部屋を親とする部屋のリストを返す
    */
   lazy val childRoomList =
-    freeExhibitPavilion.createChildRoomList(this)
+    freeExhibitPavilion.createChildRoomList(Some(this))
       .asInstanceOf[EventList[IExhibitMuseumSpace]]
 }

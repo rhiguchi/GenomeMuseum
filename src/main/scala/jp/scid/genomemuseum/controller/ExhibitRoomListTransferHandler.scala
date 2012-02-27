@@ -92,7 +92,7 @@ class ExhibitRoomListTransferHandler extends TransferHandler {
       // 階層へは Room を転入できる
       case Some(floor: ExhibitMuseumFloor) =>
         getExhibitMuseumSpace(pathList).forall(floor.canAddRoom)
-      // 自由展示室には展示物を転入できる
+      // 自身以外の自由展示室には展示物を転入できる
       case Some(target: ExhibitMuseumSpace with FreeExhibitRoomModel) =>
          !getExhibitMuseumSpace(pathList).contains(target)
       case _ => false

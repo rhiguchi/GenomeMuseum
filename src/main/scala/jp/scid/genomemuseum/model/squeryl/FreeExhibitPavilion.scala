@@ -81,8 +81,7 @@ object FreeExhibitPavilion {
 /**
  * 自由展示棟の実装
  */
-class FreeExhibitPavilion(contentTable: Table[RoomExhibit])
-    extends IFreeExhibitPavilion with ExhibitMuseumFloor {
+class FreeExhibitPavilion(contentTable: Table[RoomExhibit]) extends IFreeExhibitPavilion {
   import FreeExhibitPavilion._
   import collection.mutable.WeakHashMap
 
@@ -124,6 +123,16 @@ class FreeExhibitPavilion(contentTable: Table[RoomExhibit])
   
   def name = "Free Area"
   
+  /** 最上層の部屋のリストを返す */
+  lazy val childRoomList =
+    createChildRoomList(None).asInstanceOf[EventList[IExhibitMuseumSpace]]
+  
+  /** 部屋を子に設定できるか */
+  def canAddRoom(room: IExhibitMuseumSpace): Boolean = canSetParent(room, None)
+  
+  /** 子部屋に設定 */
+  def addRoom(room: IExhibitMuseumSpace) = setParent(room, None)
+   
   // 展示室操作
   /**
    * 部屋のプロパティを保存する
@@ -131,7 +140,7 @@ class FreeExhibitPavilion(contentTable: Table[RoomExhibit])
   def save(room: IExhibitMuseumSpace) = roomService.foreach(_.save(room.roomModel))
   
   /** 部屋を追加する */
-  def addRoom(roomType: RoomType, name: String, parent: IExhibitMuseumFloor): IExhibitMuseumSpace = {
+  def addRoom(roomType: RoomType, name: String, parent: Option[IExhibitMuseumFloor]): IExhibitMuseumSpace = {
     import collection.JavaConverters._
     
     val parentRoomModel = parent match {
@@ -149,52 +158,44 @@ class FreeExhibitPavilion(contentTable: Table[RoomExhibit])
   /**
    * 部屋に親を設定できるか
    */
-  protected[squeryl] def canSetParent(room: IExhibitMuseumSpace, floor: IExhibitMuseumFloor) = {
+  protected[squeryl] def canSetParent(room: IExhibitMuseumSpace, floor: Option[IExhibitMuseumFloor]) = {
     // 循環参照にならないように、祖先に子要素候補がいないか調べる
-    def ancester(space: IExhibitMuseumSpace): Boolean = getParent(space) match {
-      case `room` | `floor` => false
-      case parent: IExhibitMuseumSpace => space.roomModel != parent.roomModel match {
+    def ancester(space: IExhibitMuseumFloor): Boolean = getParent(space) match {
+      case Some(`floor`) => false
+      case Some(parent) => space.roomModel != parent.roomModel match {
         case true => ancester(parent)
         case false => false
       }
-      case parent => true
+      case None => true
     }
     
     floor match {
-      case `room` => false
-      case parent: IExhibitMuseumSpace => ancester(parent)
-      // 事実上 this
-      case parent => getParent(room) != parent
+      case Some(`room`) => false
+      case Some(parent) => ancester(parent)
+      case None => getParent(room).nonEmpty
     }
   }
   
   /**
    * 部屋の親を取得する
    */
-  protected[squeryl] def getParent(room: IExhibitMuseumSpace): IExhibitMuseumFloor =
+  def getParent(room: IExhibitMuseumSpace): Option[IExhibitMuseumFloor] =
     roomService.flatMap(_.getParent(room.roomModel))
-      .map(getExhibitRoomModel).map(_.asInstanceOf[IExhibitMuseumFloor]).getOrElse(this)
+      .map(getExhibitRoomModel).map(_.asInstanceOf[IExhibitMuseumFloor])
   
   /**
    * 部屋の親を設定する
    */
-  protected[squeryl] def setParent(room: IExhibitMuseumSpace, floor: IExhibitMuseumFloor) =
-    roomService.foreach(_.setParent(room.roomModel, getRoomModel(floor))) 
+  protected[squeryl] def setParent(room: IExhibitMuseumSpace, floor: Option[IExhibitMuseumFloor]) =
+    roomService.foreach(_.setParent(room.roomModel, floor.map(_.roomModel))) 
   
   /**
    * 子部屋リストを返す
    */
-  protected[squeryl] def createChildRoomList(parent: ExhibitMuseumFloor): EventList[ExhibitMuseumSpace] = {
+   protected[squeryl] def createChildRoomList(parent: Option[ExhibitMuseumFloor]): EventList[ExhibitMuseumSpace] = {
     val convertFunc = new ExhibitRoomModelFunction(this)
-    val roomModel = getRoomModel(parent)
-    val roomList = roomService.map(_.getFloorRoomList(roomModel)) getOrElse GlazedLists.eventListOf()
+  val roomList = roomService.get.getFloorRoomList(parent.map(_.roomModel))
     new FunctionList(roomList, convertFunc)
-  }
-  
-  /** 階層の部屋オブジェクトを返す */
-  private def getRoomModel(floor: IExhibitMuseumFloor) = floor match {
-    case space: ExhibitMuseumSpace => Some(space.roomModel)
-    case _ => None
   }
   
   /**

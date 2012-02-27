@@ -1,15 +1,16 @@
 package jp.scid.genomemuseum.controller
 
-import java.awt.datatransfer.{Transferable, DataFlavor}
+import java.awt.datatransfer.{Transferable, DataFlavor, UnsupportedFlavorException}
 import java.io.{File, IOException}
 
-import javax.swing.{JComponent, TransferHandler}
+import javax.swing.{table, JComponent, TransferHandler}
+import table.TableModel
 import DataFlavor.javaFileListFlavor
 import TransferHandler.TransferSupport
 
 import jp.scid.gui.control.ObjectControllerTransferHandler
-import jp.scid.genomemuseum.model.{MuseumExhibit, ExhibitRoomModel, MutableMuseumExhibitListModel, RoomContentExhibits,
-  MuseumExhibitListModel, UserExhibitRoom, FreeExhibitRoomModel}
+import jp.scid.genomemuseum.model.{MuseumExhibit, ExhibitRoomModel,
+  FreeExhibitRoomModel, MuseumExhibitService}
 
 private[controller] object MuseumExhibitTransferHandler {
   /**
@@ -17,20 +18,23 @@ private[controller] object MuseumExhibitTransferHandler {
    */
   object TransferData {
     val dataFlavor =
-      new DataFlavor(classOf[RoomContentExhibits], "RoomContentExhibits")
+      new DataFlavor(classOf[MuseumExhibitTransferHandler.TransferData],
+        "MuseumExhibitTransferHandler.TransferData")
     
     /**
      * `TransferSupport` から展示物リスとデータを作成する
      */
-    def unapply(ts: TransferSupport): Option[RoomContentExhibits] = {
-      ts.isDataFlavorSupported(dataFlavor) match {
-        case true =>
-          val data = ts.getTransferable.getTransferData(dataFlavor)
-            .asInstanceOf[RoomContentExhibits]
-          Some(data)
-        case false => None
-      }
+    def unapply(t: Transferable) = t.isDataFlavorSupported(dataFlavor) match {
+      case true =>
+        val data = t.getTransferData(dataFlavor).asInstanceOf[TransferData]
+        Some(data.tableModel, data.exhibitList)
+      case false => None
     }
+  }
+
+  trait TransferData {
+    def tableModel: TableModel
+    def exhibitList: List[MuseumExhibit]
   }
 
   /**
@@ -43,104 +47,27 @@ private[controller] object MuseumExhibitTransferHandler {
    * @param exhibits 転送する展示物。
    * @param sourceRoom 展示物が存在していた部屋。部屋からの転出ではない時は {@code None} 。
    */
-  class TransferData(contents: RoomContentExhibits) extends Transferable {
-    def this(exhibits: List[MuseumExhibit], room: Option[UserExhibitRoom]) {
-      this(RoomContentExhibitsImpl(exhibits, room))
-    }
+  private case class TransferDataImpl(
+      tableModel: TableModel,
+      exhibitList: List[MuseumExhibit],
+      fileList: List[File] = Nil)
+      extends TransferData with Transferable {
     
-    def getTransferDataFlavors(): Array[DataFlavor] =
-      Array(TransferData.dataFlavor, javaFileListFlavor)
+    val getTransferDataFlavors = fileList.isEmpty match {
+      case true => Array(TransferData.dataFlavor)
+      case false => Array(TransferData.dataFlavor, javaFileListFlavor)
+    }
     
     def getTransferData(flavor: DataFlavor) = flavor match {
-      case TransferData.dataFlavor => contents
-      case `javaFileListFlavor` =>
+      case TransferData.dataFlavor => this
+      case `javaFileListFlavor` if fileList.nonEmpty =>
         import collection.JavaConverters._
-        val files = contents.exhibitList flatMap (_.sourceFile)
-        files.asJava: java.util.List[File]
-      case _ => null
+        fileList.asJava: java.util.List[File]
+      case _ => throw new UnsupportedFlavorException(flavor)
     }
     
-    def isDataFlavorSupported(flavor: DataFlavor) = flavor match {
-      case TransferData.dataFlavor => true
-      case `javaFileListFlavor` => true
-      case _ => false
-    }
-  }
-  
-  /**
-   * 単純実装
-   */
-  private case class RoomContentExhibitsImpl(
-    exhibitList: List[MuseumExhibit],
-    userExhibitRoom: Option[UserExhibitRoom]
-  ) extends RoomContentExhibits
-}
-
-/**
- * ファイルと展示物の転送ハンドラ
- */
-abstract class MuseumExhibitTransferHandler extends TransferHandler {
-  import MuseumExhibitTransferHandler.TransferData
-  
-  /** ファイルの読み込み処理を行うモデル */
-  var exhibitLoadManager: Option[MuseumExhibitLoadManager] = None
-  
-  /** 展示物の転入が可能な部屋を返す */
-  protected[controller] def getExhibitTransferTarget(ts: TransferSupport)
-    : Option[MutableMuseumExhibitListModel]
-  
-  private[controller] def canImportExhibits(target: MutableMuseumExhibitListModel, source: Option[UserExhibitRoom]) = {
-    // 同一部屋とLocalLibraryへは展示物の転送をしない
-    target.userExhibitRoom.nonEmpty && target.userExhibitRoom != source
-  }
-
-  /**
-   * 展示物オブジェクトの転入が可能かを調べる。
-   */
-  override def canImport(ts: TransferSupport) = ts match {
-    case TransferData(contents) => getExhibitTransferTarget(ts) match {
-      case Some(room) => canImportExhibits(room, contents.userExhibitRoom)
-      case _ => false
-    }
-    case _ => if (ts.isDataFlavorSupported(javaFileListFlavor) && exhibitLoadManager.nonEmpty) {
-      // ファイルの転入を調べる。
-      getExhibitTransferTarget(ts).nonEmpty
-    }
-    else {
-      // その他は上位クラスに委譲
-      super.canImport(ts)
-    }
-  }
-  
-  /**
-   * 展示物オブジェクトの転入 を試みる。
-   */
-  override def importData(ts: TransferSupport) = ts match {
-    case TransferData(contents) => getExhibitTransferTarget(ts) match {
-      case Some(room) =>
-        contents.exhibitList foreach room.add
-        true
-      case _ => false
-    }
-    case _ => if (ts.isDataFlavorSupported(javaFileListFlavor) && exhibitLoadManager.nonEmpty)
-      // ファイルの転入を行う。
-      getExhibitTransferTarget(ts) match {
-        case Some(room) =>
-          val fileList = getTransferFiles(ts)
-//          fileList.foreach(file => exhibitLoadManager.get.loadExhibit(room, file))
-          true
-        case _ => false
-      }
-    else {
-      // その他は上位クラスに委譲
-      super.importData(ts)
-    }
-  }
-  
-  /** 転送するファイルを返す。 */
-  protected[controller] def getTransferFiles(ts: TransferSupport): List[File] = {
-    import collection.JavaConverters._
-    ts.getTransferable.getTransferData(javaFileListFlavor).asInstanceOf[java.util.List[File]].asScala.toList
+    def isDataFlavorSupported(flavor: DataFlavor) =
+      getTransferDataFlavors.contains(flavor)
   }
 }
 
@@ -170,6 +97,7 @@ class MuseumExhibitListTransferHandler extends ObjectControllerTransferHandler {
    * 展示物オブジェクトの転入が可能かを調べる。
    */
   override def canImport(ts: TransferSupport) = exhibitController.get.getModel match {
+    case model: MuseumExhibitService => true
     case model: FreeExhibitRoomModel => true
     case _ => false
   }

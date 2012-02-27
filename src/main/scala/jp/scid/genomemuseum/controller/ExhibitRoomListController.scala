@@ -121,9 +121,9 @@ class ExhibitRoomListController extends TreeController[MuseumSpace, MuseumStruct
   protected def addRoom(roomType: RoomType) {
     import collection.JavaConverters._
     val parent = selectedPathList.headOption.map(_.reverse).getOrElse(IndexedSeq.empty) match {
-      case Seq(parent: ExhibitMuseumFloor, _*) => parent
-      case Seq(_, parent: ExhibitMuseumFloor, _*) => parent
-      case _ => getModel.freeExhibitPavilion.get
+      case Seq(parent: ExhibitMuseumFloor, _*) => Some(parent)
+      case Seq(_, parent: ExhibitMuseumFloor, _*) => Some(parent)
+      case _ => None
     }
     val newRoom = getModel.addRoom(roomType, parent)
     val newRoomPath = getModel.pathToRoot(newRoom)
