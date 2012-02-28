@@ -32,7 +32,4 @@ trait MuseumExhibitService extends FreeExhibitRoomModel {
    *         項目が存在しなかったなどでサービス内に変更が発生しなかった時は {@code false} 。
    */
   def remove(element: MuseumExhibit): Boolean
-  
-  /** サービスの起源の部屋は未設定 */
-  def sourceRoom = None
 }
