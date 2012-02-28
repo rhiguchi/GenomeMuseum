@@ -9,7 +9,7 @@ import TransferHandler.TransferSupport
 import jp.scid.gui.control.ObjectControllerTransferHandler
 import jp.scid.genomemuseum.model.{MuseumStructure, ExhibitMuseumSpace, MuseumSpace}
 import jp.scid.genomemuseum.model.{ExhibitRoom, UserExhibitRoom, MuseumExhibit, MuseumExhibitService,
-  GroupRoomContentsModel, ExhibitMuseumFloor, FreeExhibitRoomModel, ExhibitRoomModel}
+  ExhibitMuseumFloor, FreeExhibitRoomModel, ExhibitRoomModel}
 
 private[controller] object ExhibitRoomListTransferHandler {
   private type PathList = List[IndexedSeq[MuseumSpace]]

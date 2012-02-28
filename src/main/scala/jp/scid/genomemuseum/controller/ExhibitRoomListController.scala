@@ -51,9 +51,9 @@ class ExhibitRoomListController extends TreeController[MuseumSpace, MuseumStruct
   val removeSelectedUserRoomAction = ctrl.getAction("deleteSelectedRoom")
   
   // ノード削除アクションの使用可不可
-  private val deleteActionEnabledHandler = EventListHandler(getSelectedPathList) { nodes =>
-//    removeSelectedUserRoomAction.enabled = nodes.find(_.isInstanceOf[UserExhibitRoom]).nonEmpty
-  }
+//  private val deleteActionEnabledHandler = EventListHandler(getSelectedPathList) { nodes =>
+////    removeSelectedUserRoomAction.enabled = nodes.find(_.isInstanceOf[UserExhibitRoom]).nonEmpty
+//  }
   
   /** BasicRoom 型の部屋を追加し、部屋名を編集開始状態にする */
   @Action(name="addBasicRoom")
@@ -129,7 +129,7 @@ class ExhibitRoomListController extends TreeController[MuseumSpace, MuseumStruct
     val newRoomPath = getModel.pathToRoot(newRoom)
     
     setlectPathAsList(newRoomPath.asJava)
-    startEditingForElement(newRoom)
+//    startEditingForElement(newRoom)
   }
   
   /**
@@ -156,12 +156,7 @@ class ExhibitRoomListController extends TreeController[MuseumSpace, MuseumStruct
   private def selectedPathList: List[IndexedSeq[MuseumSpace]] = {
     import collection.JavaConverters._
     
-    val list = getSelectedPathList
-    list.getReadWriteLock.readLock.lock()
-    val scalaPathList = try list.asScala.toList
-    finally list.getReadWriteLock.readLock.unlock()
-    
-    scalaPathList.map(_.asScala.toIndexedSeq)
+    getSelectedPathList.asScala.toList.map(_.asScala.toIndexedSeq)
   }
 }
 

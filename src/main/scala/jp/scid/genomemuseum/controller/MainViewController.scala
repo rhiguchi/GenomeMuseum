@@ -59,12 +59,12 @@ class MainViewController extends GenomeMuseumController {
   protected[controller] val webServiceResultController = new WebServiceResultController
   
   /** データテーブルの現在適用するモデル */
-  private val sourceSelectionHandler = EventListHandler(exhibitRoomListController.getSelectedPathList) {
-    case Seq(path, _*) => 
-      import collection.JavaConverters._
-      updateRoomContents(path.asScala.last)
-    case _ => exhibitRoomListController.selectLocalSource()
-  }
+//  private val sourceSelectionHandler = EventListHandler(exhibitRoomListController.getSelectedPathList) {
+//    case Seq(path, _*) => 
+//      import collection.JavaConverters._
+//      updateRoomContents(path.asScala.last)
+//    case _ => exhibitRoomListController.selectLocalSource()
+//  }
   
   /** スキーマの取得 */
   def museumSchema = currentMuseumSchema.get

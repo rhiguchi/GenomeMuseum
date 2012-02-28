@@ -36,7 +36,6 @@ class ExhibitRoomListControllerSpec extends Specification with mock.Mockito {
   def propertiesSpec(f: => ExhibitRoomListController) =
     "exhibitLoadManager 初期値" ! properties(f).exhibitLoadManagerInit ^
     "exhibitLoadManager 設定" ! properties(f).exhibitLoadManager ^
-    "exhibitLoadManager transferHandler へ適用" ! properties(f).exhibitLoadManagerToManager ^
     bt
   
   def canBindTree(f: => ExhibitRoomListController) =
@@ -97,7 +96,6 @@ class ExhibitRoomListControllerSpec extends Specification with mock.Mockito {
   
   def mockUserExhibitRoomService() = {
     val service = mock[UserExhibitRoomService]
-    service.getChildren(any) returns Iterable.empty
     service.getParent(any) returns None
     service
   }
@@ -125,11 +123,6 @@ class ExhibitRoomListControllerSpec extends Specification with mock.Mockito {
       val manager = mock[MuseumExhibitLoadManager]
       ctrl.exhibitLoadManager = Some(manager)
       ctrl.exhibitLoadManager must beSome(manager)
-    }
-    def exhibitLoadManagerToManager = {
-      val manager = mock[MuseumExhibitLoadManager]
-      ctrl.exhibitLoadManager = Some(manager)
-      ctrl.transferHandler.exhibitLoadManager must beSome(manager)
     }
   }
   
@@ -228,9 +221,9 @@ class ExhibitRoomListControllerSpec extends Specification with mock.Mockito {
 //    Seq(room1, room2) foreach ctrl.getSelectedNodes.add
     ctrl.deleteSelectedRoom
     
-    def deletesFromService =
-      there was one(model).removeRoom(room1) then one(model).removeRoom(room2) then
-        no(model).removeRoom(room3)
+    def deletesFromService = todo
+//      there was one(model).removeRoom(room1) then one(model).removeRoom(room2) then
+//        no(model).removeRoom(room3)
     
     def selectsLocalLibrary = todo // ctrl.selectedRoom() must_== ctrl.sourceStructure.localSource
   }
