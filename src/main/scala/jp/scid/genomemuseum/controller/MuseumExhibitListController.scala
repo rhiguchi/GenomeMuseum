@@ -174,12 +174,6 @@ class MuseumExhibitListController extends EventListController[MuseumExhibit, Exh
   /** 転送ハンドラを作成 */
   override def getTransferHandler() = tableTransferHandler
   
-  /** 現在のモデルに対してファイルが読み込み得るかどうかの判定を返す。 */
-  def canImportFile = getModel match {
-    case model: FreeExhibitRoomModel => loadManager.nonEmpty
-    case _ => false
-  }
-  
   /** ファイルを読み込む */
   def importFile(files: List[File]) = getModel match {
     case model: FreeExhibitRoomModel => loadManager.get.loadExhibit(files, model).nonEmpty

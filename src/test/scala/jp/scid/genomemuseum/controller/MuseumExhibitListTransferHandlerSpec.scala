@@ -9,125 +9,91 @@ import org.specs2._
 import mock._
 
 import jp.scid.genomemuseum.model.{MuseumExhibit, UserExhibitRoom,
-  UserExhibitRoomMock, MuseumExhibitMock}
+  UserExhibitRoomMock, MuseumExhibitMock, ExhibitRoomModel, ExhibitMuseumSpace,
+  FreeExhibitRoomModel}
 import UserExhibitRoom.RoomType._
 import DataFlavor.javaFileListFlavor
 import TransferHandler.TransferSupport
+import MuseumExhibitListTransferHandler._
+import ExhibitRoomListTransferHandler.{TransferData => TreeTransferData}
+
+object MuseumExhibitListTransferHandlerSpec {
+  object TransferDataMock extends Mockito {
+    def of(tableModel: ExhibitRoomModel, exhibitList: List[MuseumExhibit] = Nil) = {
+      val data = mock[TransferData]
+      data.tableModel returns tableModel
+      data.exhibitList returns exhibitList
+      data
+    }
+  }
+}
 
 class MuseumExhibitListTransferHandlerSpec extends Specification with Mockito {
+  import MuseumExhibitListTransferHandlerSpec._
+  
   def is = "MuseumExhibitListTransferHandler" ^
-//    "転入可能性の確認" ^ canImportSpec(createHandler) ^
+    "転入可能性" ^ canImportSpec(createHandler) ^
 //    "転入操作" ^ importDataSpec(createHandler) ^
     end
   
-//  def createHandler() = new MuseumExhibitListTransferHandlerImpl
+  def createHandler() = new MuseumExhibitListTransferHandler
   
-//  class MuseumExhibitListTransferHandlerImpl() extends MuseumExhibitListTransferHandler {
-//    def importFiles(files: Seq[File], targetRoom: Option[UserExhibitRoom]) = false
-//    def importExhibits(exhibits: Seq[MuseumExhibit], targetRoom: UserExhibitRoom) = false
-//    def getTargetRooom(ts: TransferSupport): Option[UserExhibitRoom] = None
-//  }
-//  
-//  def canImportSpec(h: => MuseumExhibitListTransferHandler) =
-//    "MuseumExhibitTransferData を受け入れ可能" ! canimport(h).exhibit ^
-//    "File を受け入れ可能" ! canimport(h).file ^
-//    "標準で受け入れ不可" ! canimport(h).empty ^
-//    bt
-//  
-//  def importDataSpec(h: => MuseumExhibitListTransferHandler) =
-//    "MuseumExhibitTransferData を転入" ! importData(h).exhibit ^
-//    "File を転入" ! importData(h).file ^
-//    "他は転入しない" ! importData(h).empty ^
-//    bt
-//  
-//  class TestBase {
-//    def data() = mock[Transferable]
-//    val t = mock[Transferable]
-//    val ts = new TransferSupport(mock[JComponent], t)
-//    
-//    val Seq(basicRoom, smartRoom, groupRoom) = List(BasicRoom, SmartRoom, GroupRoom)
-//      .map(r => Some(UserExhibitRoomMock.of(r)))
-//    
-//    // ファイルフレーバーを付与
-//    protected def makeTransferDataFileFlavor(files: Seq[File]) {
-//      import scala.collection.JavaConverters._
-//      
-//      t.isDataFlavorSupported(javaFileListFlavor) returns true
-//      t.getTransferData(javaFileListFlavor) returns files.toBuffer.asJava
-//    }
-//    
-//    // 展示物フレーバーを付与
-//    protected def makeTransferDataExhibitFlavor(museumExhibits: Seq[MuseumExhibit], sourceRoom: Option[UserExhibitRoom]) {
-//      import scala.collection.JavaConverters._
-//      
-//      t.isDataFlavorSupported(exhibitDataFlavor) returns true
-//      
-//      val data = mock[MuseumExhibitTransferData]
-//      data.museumExhibits returns museumExhibits.toList
-//      data.sourceRoom returns sourceRoom
-//      t.getTransferData(exhibitDataFlavor) returns data
-//    }
-//  }
-//  
-//  def canimport(h: MuseumExhibitListTransferHandler) = new TestBase {
-//    val handler = spy(h)
-//    
-//    def exhibit = {
-//      val exhibits = (0 to 4).map(i => MuseumExhibitMock.of("exhibit" + i))
-//      val sourceRoom = UserExhibitRoomMock.of(BasicRoom)
-//      val data = MuseumExhibitTransferDataMock.of(exhibits, Some(sourceRoom))
-//      val ts = new TransferSupport(mock[JComponent], data)
-//      
-//      handler.getTargetRooom(ts) returns basicRoom
-//      
-//      handler.canImport(ts) must beTrue
-//    }
-//    
-//    def file = {
-//      t.isDataFlavorSupported(javaFileListFlavor) returns true
-//      h.canImport(ts) must beTrue
-//    }
-//    
-//    def empty = h.canImport(ts) must beFalse
-//  }
-//  
-//  def importData(h: MuseumExhibitListTransferHandler) = new TestBase {
-//    val handler = spy(h)
-//    
-//    // 転入先を指定して転入操作
-//    private def importDataTo(room: Option[UserExhibitRoom]) {
-//      handler.getTargetRooom(ts) returns room
-//      handler.importData(ts)
-//    }
-//    
-//    def exhibit = {
-//      val exhibits = (0 to 4).map(i => MuseumExhibitMock.of("exhibit" + i))
-//      val sourceRoom = UserExhibitRoomMock.of(BasicRoom)
-//      makeTransferDataFileFlavor(Nil)
-//      
-//      makeTransferDataExhibitFlavor(exhibits, Some(sourceRoom))
-//      Seq(basicRoom, smartRoom, groupRoom, None) foreach importDataTo
-//      
-//      makeTransferDataExhibitFlavor(exhibits, None)
-//      Seq(basicRoom, smartRoom, groupRoom, None) foreach importDataTo
-//      
-//      makeTransferDataExhibitFlavor(exhibits, basicRoom)
-//      Seq(basicRoom, smartRoom, groupRoom, None) foreach importDataTo
-//      
-//      there was two(handler).importExhibits(exhibits, basicRoom.get) then
-//        two(handler).importExhibits(any, any)
-//    }
-//    
-//    def file = {
-//      val files = (0 to 4).map(i => new File("file" + i))
-//      makeTransferDataFileFlavor(files)
-//      
-//      Seq(basicRoom, smartRoom, groupRoom, None) foreach importDataTo
-//      
-//      there was one(handler).importFiles(files, basicRoom) then
-//        one(handler).importFiles(files, None) then
-//        two(handler).importFiles(any, any)
-//    }
-//    def empty = todo
-//  }
+  def canImportSpec(h: => MuseumExhibitListTransferHandler) =
+    "TransferData を FreeExhibitRoomModel に転入できる" ! canimport(h).dataToFree ^
+    "TransferData を同じ部屋には転入できない" ! canimport(h).dataNotToSame ^
+    "TreeTransferData を FreeExhibitRoomModel に転入できる" ! canimport(h).treeToFree ^
+    "TreeTransferData を同じ部屋には転入できない" ! canimport(h).treeNotToSame ^
+    "ファイルリスト を FreeExhibitRoomModel に転入できる" ! canimport(h).fileToFree ^
+    bt
+  
+  def createTransferSupport(flavor: DataFlavor, data: AnyRef) = {
+    val transferable = mockTransferable(flavor, data)
+    new TransferSupport(mock[JComponent], transferable)
+  }
+  
+  def mockTransferable(flavor: DataFlavor, data: AnyRef) = {
+    val transferable = mock[Transferable]
+    transferable.isDataFlavorSupported(flavor) returns true
+    transferable.getTransferData(flavor) returns data
+    transferable
+  }
+  
+  def createTransferSupport(tableModel: ExhibitRoomModel): TransferSupport =
+    createTransferSupport(TransferData.dataFlavor, TransferData(tableModel))
+  
+  def createTreeTransferSupport(lastNode: ExhibitRoomModel): TransferSupport =
+    createTransferSupport(TreeTransferData.dataFlavor,
+      TreeTransferData(null, List(IndexedSeq(lastNode))))
+  
+  def createFileTransferSupport(files: File*): TransferSupport = {
+    import scala.collection.JavaConverters._
+    
+    val fileList = files.asJava
+    createTransferSupport(DataFlavor.javaFileListFlavor, fileList)
+  }
+  
+  private[controller] trait ImportableRoom extends ExhibitMuseumSpace with FreeExhibitRoomModel
+  
+  def canimport(h: MuseumExhibitListTransferHandler) = new {
+    val roomModel, ctrlRoomModel = mock[ImportableRoom]
+    
+    val handler = spy(h)
+    doAnswer{_ => ctrlRoomModel}.when(handler).controllerModel
+    
+    def dataToFree =
+      handler.canImport(createTransferSupport(roomModel)) must beTrue
+    
+    def dataNotToSame =
+      handler.canImport(createTransferSupport(ctrlRoomModel)) must beFalse
+    
+    def treeToFree =
+      handler.canImport(createTreeTransferSupport(roomModel)) must beTrue
+    
+    def treeNotToSame =
+      handler.canImport(createTreeTransferSupport(ctrlRoomModel)) must beFalse
+    
+    def fileToFree =
+      handler.canImport(createFileTransferSupport(
+        File.createTempFile("transfer test", null))) must beTrue
+  }
 }

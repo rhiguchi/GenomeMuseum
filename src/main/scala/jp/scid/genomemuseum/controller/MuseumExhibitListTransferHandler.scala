@@ -3,23 +3,22 @@ package jp.scid.genomemuseum.controller
 import java.awt.datatransfer.{Transferable, DataFlavor, UnsupportedFlavorException}
 import java.io.{File, IOException}
 
-import javax.swing.{table, JComponent, TransferHandler}
-import table.TableModel
+import javax.swing.{table, JTable, JComponent, TransferHandler}
 import DataFlavor.javaFileListFlavor
 import TransferHandler.TransferSupport
 
 import jp.scid.gui.control.ObjectControllerTransferHandler
-import jp.scid.genomemuseum.model.{MuseumExhibit, ExhibitRoomModel,
+import jp.scid.genomemuseum.model.{MuseumExhibit, ExhibitRoomModel, ExhibitMuseumSpace,
   FreeExhibitRoomModel, MuseumExhibitService}
 
-private[controller] object MuseumExhibitTransferHandler {
+object MuseumExhibitListTransferHandler {
   /**
    * 転送データ作成オブジェクト
    */
   object TransferData {
     val dataFlavor =
-      new DataFlavor(classOf[MuseumExhibitTransferHandler.TransferData],
-        "MuseumExhibitTransferHandler.TransferData")
+      new DataFlavor(classOf[MuseumExhibitListTransferHandler.TransferData],
+        "MuseumExhibitListTransferHandler.TransferData")
     
     /**
      * `TransferSupport` から展示物リスとデータを作成する
@@ -30,10 +29,13 @@ private[controller] object MuseumExhibitTransferHandler {
         Some(data.tableModel, data.exhibitList)
       case false => None
     }
+    
+    def apply(tableModel: ExhibitRoomModel, exhibitList: List[MuseumExhibit] = Nil): TransferData =
+      TransferDataImpl(tableModel, exhibitList)
   }
 
   trait TransferData {
-    def tableModel: TableModel
+    def tableModel: ExhibitRoomModel
     def exhibitList: List[MuseumExhibit]
   }
 
@@ -48,7 +50,7 @@ private[controller] object MuseumExhibitTransferHandler {
    * @param sourceRoom 展示物が存在していた部屋。部屋からの転出ではない時は {@code None} 。
    */
   private case class TransferDataImpl(
-      tableModel: TableModel,
+      tableModel: ExhibitRoomModel,
       exhibitList: List[MuseumExhibit],
       fileList: List[File] = Nil)
       extends TransferData with Transferable {
@@ -75,8 +77,12 @@ private[controller] object MuseumExhibitTransferHandler {
  * MuseumExhibit の転送ハンドラ。
  * 
  */
-class MuseumExhibitListTransferHandler extends ObjectControllerTransferHandler {
-  import ObjectControllerTransferHandler.TransferData
+class MuseumExhibitListTransferHandler extends TransferHandler {
+  import MuseumExhibitListTransferHandler._
+  import ExhibitRoomListTransferHandler.{TransferData => TreeTransferData, getExhibitRoomModel,
+    FileListTransferData}
+  
+  private type ImportableRoom = ExhibitMuseumSpace with FreeExhibitRoomModel
   
   /** 親コントローラを指定して初期化 */
   def this(controller: MuseumExhibitListController) {
@@ -87,58 +93,66 @@ class MuseumExhibitListTransferHandler extends ObjectControllerTransferHandler {
   /** 親コントローラ */
   var exhibitController: Option[MuseumExhibitListController] = None
   
-  /** 展示物オブジェクトのファイルを返す */
-  override def getSourceFile(element: AnyRef) = element match {
-    case exhibit: MuseumExhibit => exhibit.sourceFile getOrElse null
-    case _ => null
-  }
-  
   /**
-   * 展示物オブジェクトの転入が可能かを調べる。
+   * 部屋の転入操作の可能性を返す。
    */
-  override def canImport(ts: TransferSupport) = exhibitController.get.getModel match {
-    case model: MuseumExhibitService => true
-    case model: FreeExhibitRoomModel => true
-    case _ => false
-  }
-  
-  /** ファイルを転入 */
-  override def importFile(rowIndex: Int, fileList: java.util.List[File]) = {
-    import collection.JavaConverters._
-    exhibitController.get.importFile(fileList.asScala.toList)
+  override def canImport(ts: TransferSupport) = ts.getTransferable match {
+    // 転送データ
+    case TransferData(model, elements) => controllerModel match {
+      case room: ImportableRoom => room != model
+      case _ => false
+    }
+    // ツリーノード
+    case TreeTransferData(_, pathList) => controllerModel match {
+      case room: ImportableRoom => getExhibitRoomModel(pathList).forall(room.!=)
+      case _ => false
+    }
+    // ファイル
+    case FileListTransferData(files) => controllerModel match {
+      case _: ImportableRoom | _: MuseumExhibitService => true
+      case _ => false
+    }
   }
   
   /** 転送オブジェクトを転入 */
-  override def importTransferData(rowIndex: Int, fileList: TransferData) = {
-    import collection.JavaConverters._
-    
-    exhibitController match {
-      case Some(controller) => fileList.getSourceModel == controller.getModel match {
-        case true => false
-        case false =>
-          val elements = fileList.getSelectedElements.asScala flatMap {
-            case exhibit: MuseumExhibit => Some(exhibit)
-            case TreePathLastObject(model) => model.getValue.asScala
-            case _ => None
-          }
-          controller.addElements(elements.toList)
-      }
-      case None => false
+  override def importData(ts: TransferSupport) = ts.getTransferable match {
+    // 転送データ
+    case TransferData(model, elements) => controllerModel match {
+      case room: ImportableRoom => elements.foreach(room.add); true
+      case _ => false
+    }
+    // ツリーノード
+    case TreeTransferData(_, pathList) => controllerModel match {
+      case room: ImportableRoom =>
+        val exhibitList = getExhibitRoomModel(pathList).flatMap(_.exhibitList)
+        exhibitList foreach room.add
+        true
+      case _ => false
+    }
+    // ファイル
+    case FileListTransferData(files) => controllerModel match {
+      case _: ImportableRoom | _: MuseumExhibitService =>
+        exhibitController map (_.importFile(files)) getOrElse false
+      case _ => false
     }
   }
   
-  /** TreePath オブジェクトの最後の葉要素をExhibitRoomModelとして取得 */
-  private object TreePathLastObject {
-    import javax.swing.tree.TreePath
-    
-    def unapply(o: AnyRef): Option[ExhibitRoomModel] = o match {
-      case path: TreePath => path.getLastPathComponent match {
-        case model: ExhibitRoomModel => Some(model)
-        case _ => None
-      }
-      case _ => None
+  /** 転送オブジェクトの作成 */
+  override def createTransferable(c: JComponent) = exhibitController.map(_.getTableModel) match {
+    case Some(tableModel: ExhibitRoomModel) => c match {
+      case table: JTable if tableModel == table.getModel => 
+        import collection.JavaConverters._
+        
+        val selections = exhibitController.get.getSelectedElements.asScala.toList
+        val files = selections.flatMap(_.sourceFile) 
+        
+        TransferDataImpl(tableModel, selections, files)
+      case _ => null
     }
+    case None => null
   }
+  
+  private[controller] def controllerModel() = exhibitController.get.getModel
   
   /**
    * 転送許可

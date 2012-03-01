@@ -25,6 +25,9 @@ private[controller] object ExhibitRoomListTransferHandler {
         Some(data.treeModel, data.pathList)
       case false => None
     }
+    
+    def apply(treeModel: TreeModel, pathList: PathList = Nil): TransferData =
+      TransferDataImpl(treeModel, pathList)
   }
   
   /** ファイル転送オブジェクト */
@@ -64,6 +67,37 @@ private[controller] object ExhibitRoomListTransferHandler {
     override def isDataFlavorSupported(flavor: DataFlavor) = flavor match {
       case TransferData.dataFlavor => true
       case _ => false
+    }
+  }
+  
+  /** 移動可能な展示室リストを返す */
+  private[controller] def getExhibitMuseumSpace(pathList: PathList) =
+    pathList map (_.last) collect { case e: ExhibitMuseumSpace => e }
+  
+  /** 展示物を保持した展示室リストを返す */
+  private[controller] def getExhibitRoomModel(pathList: PathList) =
+    pathList map (_.last) collect { case e: ExhibitRoomModel => e }
+  
+  /**
+   * 転入先の部屋オブジェクトを取得する。
+   */
+  protected[controller] def getTargetRoomContents(ts: TransferSupport) = ts.getComponent match {
+    case tree: JTree =>
+      val loc = ts.getDropLocation.getDropPoint
+      TreePathLastObject unapply tree.getPathForLocation(loc.x, loc.y)
+    case _ => None
+  }
+  
+  /** TreePath オブジェクトの最後の葉要素をExhibitMuseumSpaceとして取得 */
+  private[controller] object TreePathLastObject {
+    import javax.swing.tree.TreePath
+    
+    def unapply(o: AnyRef): Option[MuseumSpace] = o match {
+      case path: TreePath => path.getLastPathComponent match {
+        case model: MuseumSpace => Some(model)
+        case _ => None
+      }
+      case _ => None
     }
   }
 }
@@ -166,35 +200,4 @@ class ExhibitRoomListTransferHandler extends TransferHandler {
   }
   
   override def getSourceActions(c: JComponent) = TransferHandler.COPY
-  
-  /** 移動可能な展示室リストを返す */
-  private def getExhibitMuseumSpace(pathList: PathList) =
-    pathList map (_.last) collect { case e: ExhibitMuseumSpace => e }
-  
-  /** 展示物を保持した展示室リストを返す */
-  private def getExhibitRoomModel(pathList: PathList) =
-    pathList map (_.last) collect { case e: ExhibitRoomModel => e }
-  
-  /**
-   * 転入先の部屋オブジェクトを取得する。
-   */
-  protected[controller] def getTargetRoomContents(ts: TransferSupport) = ts.getComponent match {
-    case tree: JTree =>
-      val loc = ts.getDropLocation.getDropPoint
-      TreePathLastObject unapply tree.getPathForLocation(loc.x, loc.y)
-    case _ => None
-  }
-  
-  /** TreePath オブジェクトの最後の葉要素をExhibitMuseumSpaceとして取得 */
-  private object TreePathLastObject {
-    import javax.swing.tree.TreePath
-    
-    def unapply(o: AnyRef): Option[MuseumSpace] = o match {
-      case path: TreePath => path.getLastPathComponent match {
-        case model: MuseumSpace => Some(model)
-        case _ => None
-      }
-      case _ => None
-    }
-  }
 }
