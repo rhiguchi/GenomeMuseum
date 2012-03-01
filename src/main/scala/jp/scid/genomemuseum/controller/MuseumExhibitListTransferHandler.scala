@@ -27,16 +27,16 @@ object MuseumExhibitListTransferHandler {
     def unapply(t: Transferable) = t.isDataFlavorSupported(dataFlavor) match {
       case true =>
         val data = t.getTransferData(dataFlavor).asInstanceOf[TransferData]
-        Some(data.tableModel, data.exhibitList)
+        Some(data.model, data.exhibitList)
       case false => None
     }
     
-    def apply(tableModel: TableModel, exhibitList: List[MuseumExhibit] = Nil): TransferData =
-      TransferDataImpl(tableModel, exhibitList)
+    def apply(model: ExhibitRoomModel, exhibitList: List[MuseumExhibit] = Nil): TransferData =
+      TransferDataImpl(model, exhibitList)
   }
 
   trait TransferData {
-    def tableModel: TableModel
+    def model: ExhibitRoomModel
     def exhibitList: List[MuseumExhibit]
   }
 
@@ -51,7 +51,7 @@ object MuseumExhibitListTransferHandler {
    * @param sourceRoom 展示物が存在していた部屋。部屋からの転出ではない時は {@code None} 。
    */
   private case class TransferDataImpl(
-      tableModel: TableModel,
+      model: ExhibitRoomModel,
       exhibitList: List[MuseumExhibit],
       fileList: List[File] = Nil)
       extends TransferData with Transferable {
@@ -100,7 +100,7 @@ class MuseumExhibitListTransferHandler extends TransferHandler {
   override def canImport(ts: TransferSupport) = ts.getTransferable match {
     // 転送データ
     case TransferData(model, elements) => controllerModel match {
-      case room: ImportableRoom => controllerTableModel != model
+      case room: ImportableRoom => room != model
       case _ => false
     }
     // ツリーノード
@@ -147,7 +147,7 @@ class MuseumExhibitListTransferHandler extends TransferHandler {
       val selections = exhibitController.get.getSelectedElements.asScala.toList
       val files = selections.flatMap(_.sourceFile) 
       
-      TransferDataImpl(table.getModel, selections, files)
+      TransferDataImpl(controllerModel, selections, files)
     case _ => null
   }
   

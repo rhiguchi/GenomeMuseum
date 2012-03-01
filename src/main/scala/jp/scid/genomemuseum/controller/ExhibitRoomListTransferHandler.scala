@@ -110,6 +110,7 @@ private[controller] object ExhibitRoomListTransferHandler {
  */
 class ExhibitRoomListTransferHandler extends TransferHandler {
   import ExhibitRoomListTransferHandler._
+  import MuseumExhibitListTransferHandler.{TransferData => ListTransferData}
   
   /** 親コントローラ */
   var treeController: Option[ExhibitRoomListController] = None
@@ -128,16 +129,21 @@ class ExhibitRoomListTransferHandler extends TransferHandler {
   override def canImport(ts: TransferSupport) = ts.getTransferable match {
     case TransferData(model, pathList) => getTargetRoomContents(ts) match {
       // 部屋移動
-      case floor: ExhibitPavilionFloor =>
+      case Some(floor: ExhibitPavilionFloor) =>
         getExhibitMuseumSpace(pathList).forall(floor.canAddRoom)
       case None => exhibitPavilion match {
         case Some(pav) => getExhibitMuseumSpace(pathList).forall(pav.canAddRoom)
         case _ => false
       }
       // 展示物追加
-      case room: ExhibitMuseumSpace with FreeExhibitRoomModel =>
+      case Some(room: ExhibitMuseumSpace with FreeExhibitRoomModel) =>
         getExhibitRoomModel(pathList).filter(room.!=).nonEmpty
-      case _ => false
+      case Some(_) => false
+    }
+    case ListTransferData(model, exhibit) => getTargetRoomContents(ts) match {
+      // 展示物追加
+      case Some(room: ExhibitMuseumSpace with FreeExhibitRoomModel) => model != room
+      case None | Some(_) => false
     }
     case t => if (t.isDataFlavorSupported(DataFlavor.javaFileListFlavor)) getTargetRoomContents(ts) match {
       // 展示室と展示物サービスにはファイルを追加できる
@@ -153,21 +159,27 @@ class ExhibitRoomListTransferHandler extends TransferHandler {
   override def importData(ts: TransferSupport) = ts.getTransferable match {
     case TransferData(model, pathList) => getTargetRoomContents(ts) match {
       // 親を変更
-      case floor: ExhibitPavilionFloor =>
+      case Some(floor: ExhibitPavilionFloor) =>
         getExhibitMuseumSpace(pathList).foreach(floor.addRoom)
         true
       case None => exhibitPavilion match {
         case Some(pav) =>
           getExhibitMuseumSpace(pathList).foreach(pav.addRoom)
           true
-        case _ => false
+        case None => false
       }
       // 展示物追加
-      case TreePathLastObject(room: ExhibitMuseumSpace with FreeExhibitRoomModel) =>
+      case Some(room: ExhibitMuseumSpace with FreeExhibitRoomModel) =>
         val exhibitList = getExhibitRoomModel(pathList).flatMap(_.exhibitList)
         exhibitList foreach room.add
         true
-      case _ => false
+      case Some(_) => false
+    }
+    case ListTransferData(_, exhibitList) => getTargetRoomContents(ts) match {
+      // 展示物追加
+      case Some(room: ExhibitMuseumSpace with FreeExhibitRoomModel) =>
+        exhibitList foreach room.add; true
+      case None | Some(_) => false
     }
     case FileListTransferData(fileList) => getTargetRoomContents(ts) match {
       // 展示物サービスにも追加できる

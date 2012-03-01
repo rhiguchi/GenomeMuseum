@@ -49,7 +49,7 @@ class MuseumExhibitListTransferHandlerSpec extends Specification with Mockito {
     transferable
   }
   
-  def createTransferSupport(tableModel: TableModel): TransferSupport =
+  def createTransferSupport(tableModel: ExhibitRoomModel): TransferSupport =
     createTransferSupport(TransferData.dataFlavor, TransferData(tableModel))
   
   def createTreeTransferSupport(lastNode: ExhibitRoomModel): TransferSupport =
@@ -75,14 +75,14 @@ class MuseumExhibitListTransferHandlerSpec extends Specification with Mockito {
     doAnswer{_ => ctrlTableModel}.when(handler).controllerTableModel
     
     def dataToFree =
-      handler.canImport(createTransferSupport(tableModel)) must beTrue
+      handler.canImport(createTransferSupport(roomModel)) must beTrue
     
     def dataNotToSame =
-      handler.canImport(createTransferSupport(ctrlTableModel)) must beFalse
+      handler.canImport(createTransferSupport(ctrlRoomModel)) must beFalse
     
     def dataNotToService = {
       handler.controllerModel returns service
-      handler.canImport(createTransferSupport(tableModel)) must beFalse
+      handler.canImport(createTransferSupport(roomModel)) must beFalse
     }
     
     def treeToFree =
