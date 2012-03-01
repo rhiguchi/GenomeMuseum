@@ -42,10 +42,13 @@ class MuseumExhibitService(exhibitTable: Table[MuseumExhibit]) extends IMuseumEx
   }
   
   /**
-   * Squeryl MuseumExhibit エンティティを作成する。
-   * 永続化はされないが、 {@link allElements} では要素が返される。
+   * 永続化された MuseumExhibit エンティティを作成する。
    */
-  def create() = MuseumExhibit("No Name")
+  def create() = {
+    val exhibit = MuseumExhibit("No Name")
+    add(exhibit)
+    exhibit
+  }
   
   /**
    * 要素の更新をサービスに通知する。

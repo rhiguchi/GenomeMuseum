@@ -121,11 +121,7 @@ class MuseumExhibitLoadManager {
     
     private lazy val exhibit = {
       val exhibit = service.create
-      service.add(exhibit)
-      destModel match {
-        case Some(room) if room != service => room.add(exhibit)
-        case _ =>
-      }
+      destModel.foreach(_.add(exhibit))
       exhibit
     }
     

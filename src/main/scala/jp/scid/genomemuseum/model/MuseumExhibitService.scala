@@ -6,13 +6,12 @@ import collection.script.Message
 /**
  * MuseumExhibit データ提供サービスのインターフェイス。
  */
-trait MuseumExhibitService extends FreeExhibitRoomModel {
+trait MuseumExhibitService extends ExhibitRoomModel {
   type ElementClass <: MuseumExhibit
   
   /**
    * 展示物オブジェクトを作成する。
-   * このメソッドを呼び出しただけでは要素の永続化はなされていない。
-   * 作成した要素を永続化するには {@link #save(A)} を行う。
+   * 永続化された MuseumExhibit エンティティを作成する。
    * @return このサービスによって管理する新しい {@code MuseumExhibit} オブジェクト。
    */
   def create(): MuseumExhibit
