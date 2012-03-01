@@ -23,7 +23,7 @@ object FreeExhibitPavilion {
   class ContentsParentChangeHandler[E](childList: RoomContentEventList) extends ListEventListener[E] {
     def listChanged(listChanges: ListEvent[E]) {
       val changeList = Iterator.continually(listChanges)
-        .takeWhile(_.hasNext).map(e => (e.getType, e.getIndex)).toList
+        .takeWhile(_.next).map(e => (e.getType, e.getIndex)).toList
       
       if (changeList.contains(ListEvent.DELETE)) {
         childList.reload()
