@@ -15,7 +15,7 @@ import jp.scid.gui.control.{ViewValueConnector, UriDocumentLoader, EventListCont
   TextMatcherEditorRefilterator}
 import jp.scid.motifviewer.gui.MotifViewerController
 import jp.scid.genomemuseum.{view, model, gui}
-import model.{MuseumExhibit, FreeExhibitRoomModel, ExhibitRoomModel}
+import model.{MuseumExhibit, FreeExhibitRoomModel, ExhibitRoomModel, MuseumExhibitService}
 import view.ExhibitListView
 import gui.ExhibitTableFormat
 import MuseumExhibit.FileType
@@ -177,6 +177,7 @@ class MuseumExhibitListController extends EventListController[MuseumExhibit, Exh
   /** ファイルを読み込む */
   def importFile(files: List[File]) = getModel match {
     case model: FreeExhibitRoomModel => loadManager.get.loadExhibit(files, model).nonEmpty
+    case model: MuseumExhibitService => loadManager.get.loadExhibit(files).nonEmpty
     case _ => false
   }
   

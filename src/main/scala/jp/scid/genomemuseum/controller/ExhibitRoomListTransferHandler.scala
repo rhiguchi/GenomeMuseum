@@ -39,7 +39,7 @@ private[controller] object ExhibitRoomListTransferHandler {
         import collection.JavaConverters._
         
         ts.getTransferData(dataFlavor).asInstanceOf[java.util.List[File]] match {
-          case null => None
+          case null => Some(Nil)
           case fileList => Some(fileList.asScala.toList)
         }
       case false => None
@@ -139,12 +139,12 @@ class ExhibitRoomListTransferHandler extends TransferHandler {
         getExhibitRoomModel(pathList).filter(room.!=).nonEmpty
       case _ => false
     }
-    case FileListTransferData(fileList) => getTargetRoomContents(ts) match {
+    case t => if (t.isDataFlavorSupported(DataFlavor.javaFileListFlavor)) getTargetRoomContents(ts) match {
       // 展示室と展示物サービスにはファイルを追加できる
       case Some(_: MuseumExhibitService) | Some(_: FreeExhibitRoomModel) => true
       case _ => false
     }
-    case _ => super.canImport(ts)
+    else super.canImport(ts)
   }
   
   /**

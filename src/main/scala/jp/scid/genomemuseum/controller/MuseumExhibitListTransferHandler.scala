@@ -108,10 +108,11 @@ class MuseumExhibitListTransferHandler extends TransferHandler {
       case _ => false
     }
     // ファイル
-    case FileListTransferData(files) => controllerModel match {
+    case t => if (t.isDataFlavorSupported(DataFlavor.javaFileListFlavor)) controllerModel match {
       case _: ImportableRoom | _: MuseumExhibitService => true
       case _ => false
     }
+    else super.canImport(ts)
   }
   
   /** 転送オブジェクトを転入 */
