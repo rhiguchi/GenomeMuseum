@@ -4,6 +4,7 @@ import java.awt.datatransfer.{Transferable, DataFlavor, UnsupportedFlavorExcepti
 import java.io.{File, IOException}
 
 import javax.swing.{table, JTable, JComponent, TransferHandler}
+import table.TableModel
 import DataFlavor.javaFileListFlavor
 import TransferHandler.TransferSupport
 
@@ -30,12 +31,12 @@ object MuseumExhibitListTransferHandler {
       case false => None
     }
     
-    def apply(tableModel: ExhibitRoomModel, exhibitList: List[MuseumExhibit] = Nil): TransferData =
+    def apply(tableModel: TableModel, exhibitList: List[MuseumExhibit] = Nil): TransferData =
       TransferDataImpl(tableModel, exhibitList)
   }
 
   trait TransferData {
-    def tableModel: ExhibitRoomModel
+    def tableModel: TableModel
     def exhibitList: List[MuseumExhibit]
   }
 
@@ -50,7 +51,7 @@ object MuseumExhibitListTransferHandler {
    * @param sourceRoom 展示物が存在していた部屋。部屋からの転出ではない時は {@code None} 。
    */
   private case class TransferDataImpl(
-      tableModel: ExhibitRoomModel,
+      tableModel: TableModel,
       exhibitList: List[MuseumExhibit],
       fileList: List[File] = Nil)
       extends TransferData with Transferable {
@@ -99,7 +100,7 @@ class MuseumExhibitListTransferHandler extends TransferHandler {
   override def canImport(ts: TransferSupport) = ts.getTransferable match {
     // 転送データ
     case TransferData(model, elements) => controllerModel match {
-      case room: ImportableRoom => room != model
+      case room: ImportableRoom => controllerTableModel != model
       case _ => false
     }
     // ツリーノード
@@ -118,7 +119,7 @@ class MuseumExhibitListTransferHandler extends TransferHandler {
   /** 転送オブジェクトを転入 */
   override def importData(ts: TransferSupport) = ts.getTransferable match {
     // 転送データ
-    case TransferData(model, elements) => controllerModel match {
+    case TransferData(_, elements) => controllerModel match {
       case room: ImportableRoom => elements.foreach(room.add); true
       case _ => false
     }
@@ -139,21 +140,22 @@ class MuseumExhibitListTransferHandler extends TransferHandler {
   }
   
   /** 転送オブジェクトの作成 */
-  override def createTransferable(c: JComponent) = exhibitController.map(_.getTableModel) match {
-    case Some(tableModel: ExhibitRoomModel) => c match {
-      case table: JTable if tableModel == table.getModel => 
-        import collection.JavaConverters._
-        
-        val selections = exhibitController.get.getSelectedElements.asScala.toList
-        val files = selections.flatMap(_.sourceFile) 
-        
-        TransferDataImpl(tableModel, selections, files)
-      case _ => null
-    }
-    case None => null
+  override def createTransferable(c: JComponent) = c match {
+    case table: JTable if controllerTableModel == table.getModel => 
+      import collection.JavaConverters._
+      
+      val selections = exhibitController.get.getSelectedElements.asScala.toList
+      val files = selections.flatMap(_.sourceFile) 
+      
+      TransferDataImpl(table.getModel, selections, files)
+    case _ => null
   }
   
+  /** コントローラの現在のモデルを返す */
   private[controller] def controllerModel() = exhibitController.get.getModel
+  
+  /** コントローラのテーブル用モデルを返す */
+  private[controller] def controllerTableModel(): TableModel = exhibitController.get.getTableModel
   
   /**
    * 転送許可
