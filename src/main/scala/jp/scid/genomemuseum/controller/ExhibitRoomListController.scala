@@ -8,7 +8,7 @@ import org.jdesktop.application.Action
 
 import jp.scid.gui.control.{TreeController, TreeExpansionController}
 import jp.scid.genomemuseum.model.{UserExhibitRoom, MuseumStructure, MuseumSpace,
-  ExhibitMuseumFloor, FreeExhibitRoomModel}
+  ExhibitMuseumSpace, ExhibitPavilionFloor, FreeExhibitRoomModel, FreeExhibitPavilion}
 import UserExhibitRoom.RoomType
 import RoomType._
 
@@ -47,13 +47,6 @@ class ExhibitRoomListController extends TreeController[MuseumSpace, MuseumStruct
   val addGroupRoomAction = ctrl.getAction("addGroupRoom")
   /** {@link addSmartRoom} のアクション */
   val addSamrtRoomAction = ctrl.getAction("addSmartRoom")
-  /** {@link deleteSelectedRoom} のアクション */
-  val removeSelectedUserRoomAction = ctrl.getAction("deleteSelectedRoom")
-  
-  // ノード削除アクションの使用可不可
-//  private val deleteActionEnabledHandler = EventListHandler(getSelectedPathList) { nodes =>
-////    removeSelectedUserRoomAction.enabled = nodes.find(_.isInstanceOf[UserExhibitRoom]).nonEmpty
-//  }
   
   /** BasicRoom 型の部屋を追加し、部屋名を編集開始状態にする */
   @Action(name="addBasicRoom")
@@ -67,12 +60,6 @@ class ExhibitRoomListController extends TreeController[MuseumSpace, MuseumStruct
   @Action(name="addSmartRoom")
   def addSmartRoom() = addRoom(SmartRoom)
   
-  /** 選択中の UserExhibitRoom ノードを除去する */
-  @Action(name="deleteSelectedRoom")
-  def deleteSelectedRoom {
-    removeSelections()
-  }
-  
   /**
    * 新しいモデルには初期部屋名を設定する。
    */
@@ -83,15 +70,7 @@ class ExhibitRoomListController extends TreeController[MuseumSpace, MuseumStruct
       model.basicRoomDefaultName = basicRoomDefaultNameResource()
       model.groupRoomDefaultName = groupRoomDefaultNameResource()
       model.smartRoomDefaultName = smartRoomDefaultNameResource()
-      
-      selectLocalSource()
     }
-  }
-  
-  /** ローカルソースを選択する */
-  def selectLocalSource() = {
-//    import collection.JavaConverters._
-//    Option(getModel).foreach(model => setlectPathAsList(model.pathForLoalSource.asJava))
   }
   
   /**
@@ -103,9 +82,6 @@ class ExhibitRoomListController extends TreeController[MuseumSpace, MuseumStruct
     tree setTransferHandler transferHandler
     tree.setDragEnabled(true)
     tree.setDropMode(javax.swing.DropMode.ON)
-    
-    // アクションバインド
-    tree.getActionMap.put("delete", removeSelectedUserRoomAction.peer)
     
     /** ツリーの展開を管理するハンドラ */
     expansionController.bind(tree)
@@ -121,37 +97,40 @@ class ExhibitRoomListController extends TreeController[MuseumSpace, MuseumStruct
   protected def addRoom(roomType: RoomType) {
     import collection.JavaConverters._
     val parent = selectedPathList.headOption.map(_.reverse).getOrElse(IndexedSeq.empty) match {
-      case Seq(parent: ExhibitMuseumFloor, _*) => Some(parent)
-      case Seq(_, parent: ExhibitMuseumFloor, _*) => Some(parent)
-      case _ => None
+      case Seq(parent: ExhibitPavilionFloor, _*) => parent
+      case Seq(_, parent: ExhibitPavilionFloor, _*) => parent
+      case _ => getModel.freeExhibitPavilion.get
     }
     val newRoom = getModel.addRoom(roomType, parent)
     val newRoomPath = getModel.pathToRoot(newRoom)
     
-    setlectPathAsList(newRoomPath.asJava)
-//    startEditingForElement(newRoom)
+    selectPath(newRoomPath.asJava)
+    editPath(newRoomPath.asJava)
   }
   
-  /**
-   * 部屋を親から削除する。
-   * {@code room} に子要素が存在する時は、その要素もサービスから除外される。
-   * @param room 削除する要素
-   */
-  protected def removeSelections() {
-//    selectedElementList.foreach {
-//      case room: UserExhibitRoom =>
-//        getModel.removeRoom(room)
-//      case _ =>
-//    }
+  override def isSelectable(path: java.util.List[MuseumSpace]) =
+    path.size > 2
+  
+  override def isDeletable(path: java.util.List[MuseumSpace]) = path.get(path.size - 1) match {
+    case _: ExhibitMuseumSpace => true
+    case _ => false
   }
   
   /** ファイルを読み込み */
   def importFile(files: List[File]) =
-    exhibitLoadManager.flatMap(_.loadExhibit(files)).nonEmpty
+    exhibitLoadManager.map(_.loadExhibit(files)).map(_.nonEmpty).getOrElse(false)
   
   /** 部屋へファイルを読み込み */
   def importFile(files: List[File], room: FreeExhibitRoomModel) =
-    exhibitLoadManager.flatMap(_.loadExhibit(files, room)).nonEmpty
+    exhibitLoadManager.map(_.loadExhibit(files, room)).map(_.nonEmpty).getOrElse(false)
+  
+  /** 自由展示棟を取得 */
+  private[controller] def freeExhibitPavilion =
+    Option(getModel).flatMap(_.freeExhibitPavilion)
+  
+  /** 自由展示棟へのパスを取得 */
+  private[controller] def freeExhibitPavilionPath =
+    Option(getModel).flatMap(m => m.freeExhibitPavilion.map(m.pathToRoot))
   
   private def selectedPathList: List[IndexedSeq[MuseumSpace]] = {
     import collection.JavaConverters._

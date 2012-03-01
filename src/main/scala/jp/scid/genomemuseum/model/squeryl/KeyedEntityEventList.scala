@@ -3,7 +3,7 @@ package jp.scid.genomemuseum.model.squeryl
 import org.squeryl.{KeyedEntity, Table}
 import org.squeryl.PrimitiveTypeMode._
 
-import ca.odell.glazedlists.{FunctionList, GlazedLists}
+import ca.odell.glazedlists.{FunctionList, GlazedLists, EventList, BasicEventList}
 
 import jp.scid.gui.model.AbstractPersistentEventList
 
@@ -48,8 +48,12 @@ private object KeyedEntityEventList {
  * Squeryl テーブルと EventList のアダプター。
  * ID 順でテーブル項目と結合される。
  */
-class KeyedEntityEventList[E <: KeyedEntity[Long]](table: Table[E])
-      extends AbstractPersistentEventList[E](new KeyedEntityEventList.KeyedEntityIdComparator[E]) {
+class KeyedEntityEventList[E <: KeyedEntity[Long]](baseList: EventList[E], table: Table[E])
+      extends AbstractPersistentEventList[E](baseList, new KeyedEntityEventList.KeyedEntityIdComparator[E]) {
+  def this(table: Table[E]) {
+    this(new BasicEventList[E], table)
+  }
+  
   // Read
   /** 常に ID でソートされる。 */
   override def fetchAll() = inTransaction {

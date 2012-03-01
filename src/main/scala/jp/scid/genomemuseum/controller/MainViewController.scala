@@ -1,18 +1,15 @@
 package jp.scid.genomemuseum.controller
 
 import java.net.{URI, URL}
-import javax.swing.{JFrame, JTree, JTextField, JComponent, JProgressBar, JLabel}
 
-import jp.scid.gui.ValueHolder
-import jp.scid.gui.event.ValueChange
-import jp.scid.gui.DataModel.Connector
+import jp.scid.gui.model.TransformValueModel
 import jp.scid.genomemuseum.{view, model, gui, GenomeMuseumGUI}
 import view.MainView
 import MainView.ContentsMode
 import jp.scid.gui.model.{ProxyValueModel, ValueModels}
 import jp.scid.gui.control.{ViewValueConnector, StringPropertyBinder, DocumentTextController}
-import model.{MuseumSchema, ExhibitRoom, UserExhibitRoom, MuseumExhibit, ExhibitRoomModel,
-  UserExhibitRoomService, MuseumExhibitService, MuseumStructure}
+import model.{MuseumSchema, ExhibitRoom, MuseumExhibit, ExhibitRoomModel, MuseumSpace,
+  MuseumExhibitService, MuseumStructure}
 import jp.scid.motifviewer.gui.MotifViewerController
 
 /**
@@ -45,12 +42,15 @@ class MainViewController extends GenomeMuseumController {
   /** データモデル */
   private var currentMuseumSchema: Option[MuseumSchema] = None
   
+  /** データテーブルに表示する展示室 */
+  private val exhibitRoom = new TransformValueModel[MuseumSpace, ExhibitRoomModel](RoomModelTransformer)
+  
   // コントローラ
   /** 検索フィールドコントローラ */
   protected[controller] val searchTextController = new DocumentTextController(searchText)
   
   /** 部屋リスト操作 */
-  protected[controller] val exhibitRoomListController = new ExhibitRoomListController(museumStructure)
+  protected[controller] val exhibitRoomListController: ExhibitRoomListController = new ExhibitRoomListController(museumStructure)
   
   /** 展示物リスト操作 */
   protected[controller] val museumExhibitController = new MuseumExhibitListController
@@ -58,13 +58,9 @@ class MainViewController extends GenomeMuseumController {
   /** ウェブ検索操作 */
   protected[controller] val webServiceResultController = new WebServiceResultController
   
+  // モデル
   /** データテーブルの現在適用するモデル */
-//  private val sourceSelectionHandler = EventListHandler(exhibitRoomListController.getSelectedPathList) {
-//    case Seq(path, _*) => 
-//      import collection.JavaConverters._
-//      updateRoomContents(path.asScala.last)
-//    case _ => exhibitRoomListController.selectLocalSource()
-//  }
+  private val sourceSelectionHandler = ValueChangeHandler(exhibitRoomListController.getSelection)(updateRoomContents)
   
   /** スキーマの取得 */
   def museumSchema = currentMuseumSchema.get
@@ -74,7 +70,11 @@ class MainViewController extends GenomeMuseumController {
     currentMuseumSchema = Option(schema)
     museumStructure.localManagedPavilion = Some(schema.museumExhibitService)
     museumStructure.freeExhibitPavilion = Some(schema.freeExhibitPavilion)
-    exhibitRoomListController.selectLocalSource()
+    
+    import collection.JavaConverters._
+    // museumExhibitService を標準選択項目に
+    val mainPavilionPath = museumStructure.pathToRoot(schema.museumExhibitService)
+    exhibitRoomListController.setDefaultSelection(mainPavilionPath.asJava)
   }
   
   /** 読み込みマネージャの設定 */
@@ -88,20 +88,15 @@ class MainViewController extends GenomeMuseumController {
    * データテーブル領域に表示するコンテンツを設定する
    * 通常は、ソースリストの選択項目となる
    */
-  def updateRoomContents(newRoom: ExhibitRoom) {
-    val webSource = museumStructure.webSource
-    newRoom match {
-      case `webSource` => setContentsMode(ContentsMode.NCBI)
-      case _ =>
-        //ソースリスト項目選択
-        currentMuseumSchema foreach { museumSchema =>
-          val exhibits = newRoom match {
-            case room: ExhibitRoomModel => museumExhibitController setModel room
-            case _ =>
-          }
-        }
-        setContentsMode(ContentsMode.LOCAL)
-    }
+  def updateRoomContents(newRoom: ExhibitRoom) = newRoom match {
+    case museumStructure.webSource => setContentsMode(ContentsMode.NCBI)
+    case _ =>
+      //ソースリスト項目選択
+      newRoom match {
+        case room: ExhibitRoomModel => museumExhibitController setModel room
+        case _ =>
+      }
+      setContentsMode(ContentsMode.LOCAL)
   }
   
   /**
@@ -139,7 +134,7 @@ class MainViewController extends GenomeMuseumController {
     bindAction(view.addListBox -> exhibitRoomListController.addBasicRoomAction,
       view.addSmartBox -> exhibitRoomListController.addSamrtRoomAction,
       view.addBoxFolder -> exhibitRoomListController.addGroupRoomAction,
-      view.removeBoxButton -> exhibitRoomListController.removeSelectedUserRoomAction)
+      view.removeBoxButton -> exhibitRoomListController.getDeleteAction)
   }
   
   /**
@@ -168,6 +163,7 @@ class MainViewController extends GenomeMuseumController {
 }
 
 object MainViewController {
+  import TransformValueModel.Transformer
   /**
    * コンテンツモードを更新するハンドラ
    */
@@ -176,4 +172,29 @@ object MainViewController {
       view setContentsMode mode
     }
   }
+  
+  /** MuseumSpace が展示室の時に変換。 */
+  object RoomModelTransformer extends Transformer[MuseumSpace, ExhibitRoomModel] {
+    def apply(space: MuseumSpace) = space match {
+      case room: ExhibitRoomModel => room
+      case _ => null
+    }
+  }
 }
+
+
+object ValueChangeHandler {
+  import jp.scid.gui.model.ValueModel
+  import jp.scid.gui.control.ValueChangeHandler
+  
+  def apply[A](model: ValueModel[A])(function: A => Unit): ValueChangeHandler[A] = {
+    val handler = new ValueChangeHandler[A] {
+      override def valueChanged(newValue: A) {
+        function apply newValue
+      }
+    }
+    handler.setModel(model)
+    handler
+  }
+}
+

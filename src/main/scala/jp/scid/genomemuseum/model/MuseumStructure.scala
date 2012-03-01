@@ -36,14 +36,10 @@ class MuseumStructure extends TreeSource[MuseumSpace] with PropertyChangeObserva
   private var exhibitService: Option[MuseumExhibitService] = None
   
   // 規定ノード
-  /** ローカルソースの要素を取得 */
-  val localSource = MuseumControlFloor("Local")
   /** Web ソースの要素を取得 */
-  val webSource = MuseumControlFloor("NCBI")
+  val webSource = RemoteSource("NCBI")
   /** ライブラリーカテゴリの要素 */
-  val sourcesRoot = MuseumControlFloor("Main Pavilions")
-  /** ユーザー部屋カテゴリの要素 */
-  val userRoomsRoot = MuseumControlFloor("User Rooms")
+  val sourcesRoot = MuseumControlFloor("Main Pavilions", webSource)
   /** ルート要素 */
   val root = MuseumControlFloor("Museum Gate", sourcesRoot)
   
@@ -95,10 +91,7 @@ class MuseumStructure extends TreeSource[MuseumSpace] with PropertyChangeObserva
   /** 親要素を返す */
   protected[model] def getParent(child: MuseumSpace): Option[MuseumSpace] = child match {
     case floor: MuseumControlFloor => floor.parent
-    case space: ExhibitMuseumSpace => freeExhibitPavilion.get.getParent(space) match {
-      case parent @ Some(_) => parent
-      case None => freeExhibitPavilion
-    }
+    case space: ExhibitMuseumSpace => freeExhibitPavilion.map(_.getParent(space))
     case child =>
       if (root.containsChild(child)) Some(root)
       else if (sourcesRoot.containsChild(child)) Some(sourcesRoot)
@@ -139,13 +132,8 @@ class MuseumStructure extends TreeSource[MuseumSpace] with PropertyChangeObserva
       case None => path
     }
     
-    makePath(node).toIndexedSeq
+    makePath(node, List(node)).toIndexedSeq
   }
-  
-  /**
-   * ローカルソースまでのパス
-   */
-  def pathForLoalSource = pathToRoot(localSource)
   
   /**
    * 部屋をサービスに追加する。
@@ -155,7 +143,7 @@ class MuseumStructure extends TreeSource[MuseumSpace] with PropertyChangeObserva
    * @return 追加に成功した場合、そのオブジェクトが返る。
    * @see UserExhibitRoom
    */
-  def addRoom(roomType: RoomType, parent: Option[ExhibitMuseumFloor]): ExhibitRoomModel = {
+  def addRoom(roomType: RoomType, parent: ExhibitPavilionFloor): ExhibitRoomModel = {
     val name = roomType match {
       case BasicRoom => basicRoomDefaultName
       case GroupRoom => groupRoomDefaultName
@@ -201,9 +189,15 @@ object MuseumStructure {
   }
   
   private object MuseumControlFloor {
-    def apply(name: String, children: MuseumSpace*): MuseumControlFloor =
-      new MuseumControlFloor(name, GlazedLists.eventListOf(children: _*))
+    def apply(name: String, children: MuseumSpace*): MuseumControlFloor = {
+      val floor = new MuseumControlFloor(name, GlazedLists.eventListOf(children: _*))
+      children collect {case f: MuseumControlFloor => f} foreach (_.parent = Some(floor))
+      floor
+    }
   }
+  
+  /** ネットワーク上ソースを意味する展示空間 */
+  case class RemoteSource(name: String) extends MuseumSpace
   
   private def lockWith[A <% ca.odell.glazedlists.util.concurrent.Lock, B](l: A)(e: => B) = {
     l.lock()

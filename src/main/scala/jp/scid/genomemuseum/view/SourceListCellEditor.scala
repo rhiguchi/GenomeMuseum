@@ -7,7 +7,7 @@ import javax.swing.{JTree, DefaultCellEditor, JTextField}
 
 import com.explodingpixels.widgets.TextProvider
 
-import jp.scid.genomemuseum.model.UserExhibitRoom
+import jp.scid.genomemuseum.model.ExhibitMuseumSpace
 
 class SourceListCellEditor(field: JTextField) extends DefaultCellEditor(field) {
   def this() = this(new JTextField)
@@ -18,7 +18,7 @@ class SourceListCellEditor(field: JTextField) extends DefaultCellEditor(field) {
       tree, value, isSelected, expanded, leaf, row)
     
     value match {
-      case room: UserExhibitRoom =>
+      case room: ExhibitMuseumSpace =>
         delegate setValue room.name
       case _ =>
     }
@@ -31,7 +31,7 @@ class SourceListCellEditor(field: JTextField) extends DefaultCellEditor(field) {
       case e: MouseEvent => event.getSource.asInstanceOf[JTree].getPathForLocation(e.getX, e.getY) match {
         case null => false
         case path => path.getLastPathComponent match {
-          case room: UserExhibitRoom => true
+          case room: ExhibitMuseumSpace => true
           case _ => false
         }
       }

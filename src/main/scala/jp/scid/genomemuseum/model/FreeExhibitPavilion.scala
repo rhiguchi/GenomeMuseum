@@ -7,12 +7,12 @@ import UserExhibitRoom.RoomType._
  * 
  * 『自由展示棟の最上層』
  */
-trait FreeExhibitPavilion extends MuseumFloor {
+trait FreeExhibitPavilion extends ExhibitPavilionFloor {
   /**
    * 指定した階層に部屋を追加する
    */
   def addRoom(roomType: RoomType, name: String,
-    parent: Option[ExhibitMuseumFloor]): ExhibitMuseumSpace
+    parent: ExhibitPavilionFloor): ExhibitMuseumSpace
   
   /**
    * 部屋を削除する
@@ -22,5 +22,5 @@ trait FreeExhibitPavilion extends MuseumFloor {
   /**
    * 親を取得する
    */
-  def getParent(room: ExhibitMuseumSpace): Option[ExhibitMuseumFloor]
+  def getParent(room: ExhibitMuseumSpace): ExhibitPavilionFloor
 }

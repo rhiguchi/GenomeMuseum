@@ -7,9 +7,9 @@ import java.awt.datatransfer.{Transferable, DataFlavor, UnsupportedFlavorExcepti
 import TransferHandler.TransferSupport
 
 import jp.scid.gui.control.ObjectControllerTransferHandler
-import jp.scid.genomemuseum.model.{MuseumStructure, ExhibitMuseumSpace, MuseumSpace}
+import jp.scid.genomemuseum.model.{MuseumStructure, ExhibitMuseumSpace, MuseumSpace, FreeExhibitPavilion}
 import jp.scid.genomemuseum.model.{ExhibitRoom, UserExhibitRoom, MuseumExhibit, MuseumExhibitService,
-  ExhibitMuseumFloor, FreeExhibitRoomModel, ExhibitRoomModel}
+  ExhibitPavilionFloor, FreeExhibitRoomModel, ExhibitRoomModel}
 
 private[controller] object ExhibitRoomListTransferHandler {
   private type PathList = List[IndexedSeq[MuseumSpace]]
@@ -35,8 +35,10 @@ private[controller] object ExhibitRoomListTransferHandler {
       case true =>
         import collection.JavaConverters._
         
-        val fileList = ts.getTransferData(dataFlavor).asInstanceOf[java.util.List[File]]
-        Some(fileList.asScala.toList)
+        ts.getTransferData(dataFlavor).asInstanceOf[java.util.List[File]] match {
+          case null => None
+          case fileList => Some(fileList.asScala.toList)
+        }
       case false => None
     }
   }
@@ -84,17 +86,23 @@ class ExhibitRoomListTransferHandler extends TransferHandler {
     this.treeController = Option(ctrl)
   }
   
+  private def exhibitPavilion = treeController.flatMap(_.freeExhibitPavilion)
+  
   /**
    * 部屋の転入操作の可能性を返す。
    */
   override def canImport(ts: TransferSupport) = ts.getTransferable match {
     case TransferData(model, pathList) => getTargetRoomContents(ts) match {
-      // 階層へは Room を転入できる
-      case Some(floor: ExhibitMuseumFloor) =>
+      // 部屋移動
+      case floor: ExhibitPavilionFloor =>
         getExhibitMuseumSpace(pathList).forall(floor.canAddRoom)
-      // 自身以外の自由展示室には展示物を転入できる
-      case Some(target: ExhibitMuseumSpace with FreeExhibitRoomModel) =>
-         !getExhibitMuseumSpace(pathList).contains(target)
+      case None => exhibitPavilion match {
+        case Some(pav) => getExhibitMuseumSpace(pathList).forall(pav.canAddRoom)
+        case _ => false
+      }
+      // 展示物追加
+      case room: ExhibitMuseumSpace with FreeExhibitRoomModel =>
+        getExhibitRoomModel(pathList).filter(room.!=).nonEmpty
       case _ => false
     }
     case FileListTransferData(fileList) => getTargetRoomContents(ts) match {
@@ -111,15 +119,20 @@ class ExhibitRoomListTransferHandler extends TransferHandler {
   override def importData(ts: TransferSupport) = ts.getTransferable match {
     case TransferData(model, pathList) => getTargetRoomContents(ts) match {
       // 親を変更
-      case Some(floor: ExhibitMuseumFloor) =>
-        val roomList = getExhibitMuseumSpace(pathList)
-        roomList foreach floor.addRoom
-        roomList.nonEmpty
-      // 展示物を追加
-      case Some(target: ExhibitMuseumSpace with FreeExhibitRoomModel) =>
-        val exhibitList = getExhibitMuseumSpace(pathList).flatMap(_.exhibitList)
-        exhibitList foreach target.add
-        exhibitList.nonEmpty
+      case floor: ExhibitPavilionFloor =>
+        getExhibitMuseumSpace(pathList).foreach(floor.addRoom)
+        true
+      case None => exhibitPavilion match {
+        case Some(pav) =>
+          getExhibitMuseumSpace(pathList).foreach(pav.addRoom)
+          true
+        case _ => false
+      }
+      // 展示物追加
+      case TreePathLastObject(room: ExhibitMuseumSpace with FreeExhibitRoomModel) =>
+        val exhibitList = getExhibitRoomModel(pathList).flatMap(_.exhibitList)
+        exhibitList foreach room.add
+        true
       case _ => false
     }
     case FileListTransferData(fileList) => getTargetRoomContents(ts) match {
@@ -154,9 +167,13 @@ class ExhibitRoomListTransferHandler extends TransferHandler {
   
   override def getSourceActions(c: JComponent) = TransferHandler.COPY
   
-  /** 展示室リストを作成する */
+  /** 移動可能な展示室リストを返す */
   private def getExhibitMuseumSpace(pathList: PathList) =
     pathList map (_.last) collect { case e: ExhibitMuseumSpace => e }
+  
+  /** 展示物を保持した展示室リストを返す */
+  private def getExhibitRoomModel(pathList: PathList) =
+    pathList map (_.last) collect { case e: ExhibitRoomModel => e }
   
   /**
    * 転入先の部屋オブジェクトを取得する。

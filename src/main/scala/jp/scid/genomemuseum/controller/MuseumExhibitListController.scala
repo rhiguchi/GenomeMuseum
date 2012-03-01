@@ -13,11 +13,9 @@ import org.jdesktop.application.Action
 import jp.scid.gui.model.{ValueModels, ValueModel}
 import jp.scid.gui.control.{ViewValueConnector, UriDocumentLoader, EventListController,
   TextMatcherEditorRefilterator}
-import jp.scid.gui.event.{ValueChange, DataListSelectionChanged}
-import jp.scid.gui.table.{DataTableModel, TableColumnSortable}
 import jp.scid.motifviewer.gui.MotifViewerController
 import jp.scid.genomemuseum.{view, model, gui}
-import model.{UserExhibitRoom, MuseumExhibit, FreeExhibitRoomModel, ExhibitRoomModel}
+import model.{MuseumExhibit, FreeExhibitRoomModel, ExhibitRoomModel}
 import view.ExhibitListView
 import gui.ExhibitTableFormat
 import MuseumExhibit.FileType
@@ -136,8 +134,6 @@ class MuseumExhibitListController extends EventListController[MuseumExhibit, Exh
   setMatcherEditor(tableRefilterator.getTextMatcherEditor)
   tableRefilterator.setModel(searchText)
   
-  /** 項目削除アクション */
-  def tableDeleteAction = Some(removeSelectionAction.peer)
   /** 転送ハンドラ */
   private[controller] val tableTransferHandler = new MuseumExhibitListTransferHandler(this)
   /** ローカルソースの選択項目を除去するアクション */
@@ -178,12 +174,16 @@ class MuseumExhibitListController extends EventListController[MuseumExhibit, Exh
   /** 転送ハンドラを作成 */
   override def getTransferHandler() = tableTransferHandler
   
+  /** 現在のモデルに対してファイルが読み込み得るかどうかの判定を返す。 */
+  def canImportFile = getModel match {
+    case model: FreeExhibitRoomModel => loadManager.nonEmpty
+    case _ => false
+  }
+  
   /** ファイルを読み込む */
   def importFile(files: List[File]) = getModel match {
-    case model: FreeExhibitRoomModel =>
-      files foreach (file => loadManager.get.loadExhibit(model, file))
-      true
-    case  _ => false
+    case model: FreeExhibitRoomModel => loadManager.get.loadExhibit(files, model).nonEmpty
+    case _ => false
   }
   
   /** データビューに表示する展示物を設定する */

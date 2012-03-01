@@ -195,10 +195,11 @@ class MuseumExhibitLoadManager {
   }
   
   // 読み込み実行
+  private type TaskFuture = Future[Option[MuseumExhibit]]
   /**
    * URLから展示物を読み込み、コピーしたファイルをライブラリへコピーして追加する。
    */
-  def loadExhibit(source: URL): Future[Option[MuseumExhibit]] = {
+  def loadExhibit(source: URL): TaskFuture = {
     val task = new MuseumExhibitLoadingTask(museumExhibitService.get, source)
     execute(task)
     task
@@ -207,7 +208,7 @@ class MuseumExhibitLoadManager {
   /**
    * ファイルから展示物を読み込み、リストに追加する。
    */
-  def loadExhibit(targetRoom: FreeExhibitRoomModel, file: File): Future[Option[MuseumExhibit]] = {
+  def loadExhibit(targetRoom: FreeExhibitRoomModel, file: File): TaskFuture = {
     val task = new MuseumExhibitLoadingTask(museumExhibitService.get, file.toURI.toURL, targetRoom)
     execute(task)
     task
@@ -218,18 +219,19 @@ class MuseumExhibitLoadManager {
    * 
    * @param file 読み込みもとのファイル
    */
-  def loadExhibit(file: File): Future[Option[MuseumExhibit]] = loadExhibit(file.toURI.toURL)
+  def loadExhibit(file: File): TaskFuture = loadExhibit(file.toURI.toURL)
   
   
   /**
    * ファイルから展示物を読む
    */
-  def loadExhibit(file: List[File]): Option[Future[Option[MuseumExhibit]]] = None
+  def loadExhibit(file: List[File]): List[TaskFuture] = getAllFiles(file) map loadExhibit
   
   /**
    * ファイルから展示物を読む
    */
-  def loadExhibit(file: List[File], destRoom: FreeExhibitRoomModel): Option[Future[Option[MuseumExhibit]]] = None
+  def loadExhibit(file: List[File], destRoom: FreeExhibitRoomModel): List[TaskFuture] =
+    getAllFiles(file) map (f => loadExhibit(destRoom, f))
   
   /**
    * タスクを実行する

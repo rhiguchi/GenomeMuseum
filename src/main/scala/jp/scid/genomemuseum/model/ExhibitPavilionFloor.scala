@@ -1,9 +1,9 @@
 package jp.scid.genomemuseum.model
 
 /**
- * 展示室をもつ博物館階層の構造定義。
+ * 展示物リストを保持する、展示室をもつ博物館階層の構造定義。
  */
-trait ExhibitMuseumFloor extends ExhibitMuseumSpace with MuseumFloor {
+trait ExhibitPavilionFloor extends MuseumFloor {
   /**
    * この部屋の子要素となれるか
    */

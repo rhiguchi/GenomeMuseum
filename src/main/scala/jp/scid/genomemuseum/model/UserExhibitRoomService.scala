@@ -1,13 +1,15 @@
 package jp.scid.genomemuseum.model
 
 import ca.odell.glazedlists.EventList
+import ca.odell.glazedlists.event.ListEventPublisher
+import ca.odell.glazedlists.util.concurrent.ReadWriteLock
 
 import UserExhibitRoom.RoomType._
 
 /**
  * UserExhibitRoom データ提供サービスのインターフェイス。
  */
-trait UserExhibitRoomService extends PropertyChangeObservable {
+trait UserExhibitRoomService {
 
   /**
    * 部屋をサービスに追加する。
@@ -52,4 +54,10 @@ trait UserExhibitRoomService extends PropertyChangeObservable {
    * @param parent 新しい親の要素。ルート項目にするには None。
    */
   def setParent(element: UserExhibitRoom, parent: Option[UserExhibitRoom])
+  
+  /** イベント発生オブジェクトを返す */
+  def getPublisher: ListEventPublisher
+  
+  /** イベント発生オブジェクトを返す */
+  def getReadWriteLock: ReadWriteLock
 }

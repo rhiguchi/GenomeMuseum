@@ -55,11 +55,9 @@ object UserExhibitRoomService {
   /**
    * 子部屋を抽出する適合子
    */
-  class ParentRoomMatcher(parent: Option[IUserExhibitRoom]) extends Matcher[UserExhibitRoom] {
-    val parentId = parent.map(_.id).getOrElse(0L)
-    
+  class ParentRoomMatcher(parentId: Option[Long]) extends Matcher[UserExhibitRoom] {
     def matches(room: UserExhibitRoom) = room.parentId match {
-      case Some(`parentId`) => true
+      case `parentId` => true
       case _ => false
     }
   }
@@ -73,6 +71,11 @@ class UserExhibitRoomService(table: Table[UserExhibitRoom]) extends IUserExhibit
   
   /** 全ての部屋要素 */
   val allRoomList = new KeyedEntityEventList(table)
+  
+  /** EventPublisher */
+  def getPublisher = allRoomList.getPublisher
+  
+  def getReadWriteLock = allRoomList.getReadWriteLock
   
   /** 部屋を作成する。永続化はされない */
   def create(roomType: RoomType, baseName: String, parent: Option[IUserExhibitRoom]) = {
@@ -118,7 +121,7 @@ class UserExhibitRoomService(table: Table[UserExhibitRoom]) extends IUserExhibit
    * 指定した部屋を親とするサブリストを作成。
    */
   def getFloorRoomList(parent: Option[IUserExhibitRoom]) =
-    new FilterList(allRoomList, new ParentRoomMatcher(parent)).asInstanceOf[EventList[IUserExhibitRoom]]
+    new FilterList(allRoomList, new ParentRoomMatcher(parent.map(_.id))).asInstanceOf[EventList[IUserExhibitRoom]]
   
   def remove(element: IUserExhibitRoom) = lookup(element.id) match {
     case Some(room) => allRoomList.remove(room)

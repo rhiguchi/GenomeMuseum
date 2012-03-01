@@ -31,6 +31,8 @@ class ExhibitMuseumSpace extends IExhibitMuseumSpace {
   var roomModel: IUserExhibitRoom = UserExhibitRoom("NoName")
   
   def dispose() {
-    value.foreach(_.dispose())
+//    value.foreach(_.dispose())
   }
+  
+  override def toString = roomModel.toString
 }

@@ -53,7 +53,6 @@ class MainViewControllerSpec extends Specification with mock.Mockito {
     "addBasicRoom ボタンアクション" ! bindMainView(f).addBasicRoom ^
     "addGroupRoom ボタンアクション" ! bindMainView(f).addGroupRoom ^
     "addSmartRoom ボタンアクション" ! bindMainView(f).addSmartRoom ^
-    "removeRoom ボタンアクション" ! bindMainView(f).removeRoom ^
     bt
   
   /** データビューの表示モード */
@@ -177,8 +176,5 @@ class MainViewControllerSpec extends Specification with mock.Mockito {
     
     def addSmartRoom = view.addBoxFolder.getAction must_==
       sourceListCtrl.addGroupRoomAction.peer
-    
-    def removeRoom = view.removeBoxButton.getAction must_==
-      sourceListCtrl.removeSelectedUserRoomAction.peer
   }
 }
