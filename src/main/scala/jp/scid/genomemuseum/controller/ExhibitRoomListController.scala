@@ -128,10 +128,6 @@ class ExhibitRoomListController extends TreeController[MuseumSpace, MuseumStruct
   private[controller] def freeExhibitPavilion =
     Option(getModel).flatMap(_.freeExhibitPavilion)
   
-  /** 自由展示棟へのパスを取得 */
-  private[controller] def freeExhibitPavilionPath =
-    Option(getModel).flatMap(m => m.freeExhibitPavilion.map(m.pathToRoot))
-  
   private def selectedPathList: List[IndexedSeq[MuseumSpace]] = {
     import collection.JavaConverters._
     

@@ -42,7 +42,7 @@ class UserExhibitRoomServiceSpec extends Specification with mock.Mockito {
     (Table[UserExhibitRoom], Table[MuseumExhibit], Table[RoomExhibit]) =>
       UserExhibitRoomService
   
-  def is = "展示物を置く部屋のデータモデル" ^
+  def is = "UserExhibitRoomService" ^
     "部屋を追加することができる" ^ canAddRoom(serviceOf) ^
     "親要素を取得できる" ^ canGetParent(serviceOf) ^
     "親要素を変更できる" ^ canSetParent(serviceOf) ^
@@ -59,8 +59,6 @@ class UserExhibitRoomServiceSpec extends Specification with mock.Mockito {
     "データベースに追加される" ! addRoom(f).toTable ^
     "ID が付与される" ! addRoom(f).witId ^
     "親要素を適用する" ! addRoom(f).withParent ^
-    "BasicRoom を親に指定するとその親が親となる" ! addRoom(f).parentBasicRooom ^
-    "SmartRoom を親に指定するとその親が親となる" ! addRoom(f).parentSmartRoom ^
     bt
   
   def canGetParent(f: Factory) =
@@ -118,16 +116,6 @@ class UserExhibitRoomServiceSpec extends Specification with mock.Mockito {
       contain(1L, 2L, 3L).only.inOrder
     
     def withParent = smartRoom.parentId must beSome(groupRoom.id)
-    
-    def parentBasicRooom = {
-      val room = service.addRoom(BasicRoom, "child", Some(basicRoom))
-      room.parentId must_== None
-    }
-    
-    def parentSmartRoom = {
-      val room = service.addRoom(BasicRoom, "child", Some(smartRoom))
-      room.parentId must beSome(groupRoom.id)
-    }
   }
   
   def getParent(f: Factory) = new TestBase(f) {
