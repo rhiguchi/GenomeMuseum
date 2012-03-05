@@ -127,7 +127,7 @@ class MuseumExhibitListController extends EventListController[MuseumExhibit, Exh
   
   /** 中身を読み込む操作 */
   private[controller] val documentLoader = new UriDocumentLoader
-  documentLoader.setModel(selectedUri)
+//  documentLoader.setModel(selectedUri)
   
   /** 検索ハンドラ */
   private[controller] val tableRefilterator = new TextMatcherEditorRefilterator(filterator)
@@ -168,7 +168,12 @@ class MuseumExhibitListController extends EventListController[MuseumExhibit, Exh
    def bind(view: ExhibitListView) {
     bindTable(view.dataTable)
     motifViewerController.bind(view.overviewMotifView)
-    documentLoader.bindTextComponent(view.getContentViewComponent)
+    
+    val contentView = view.getContentViewComponent
+    val viewer = new FileContentViewer(contentView)
+    viewer.listenTo(contentView.getParent.asInstanceOf[javax.swing.JViewport])
+    viewer.setModel(selectedUri)
+//    documentLoader.bindTextComponent(view.getContentViewComponent)
   }
   
   /** 転送ハンドラを作成 */
