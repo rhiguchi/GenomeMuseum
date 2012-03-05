@@ -1,23 +1,36 @@
 package jp.scid.genomemuseum.controller
 
-import javax.swing.{JCheckBox, RootPaneContainer}
+import javax.swing.{JDialog, JCheckBox, RootPaneContainer}
 import scala.swing.Window
 
 import jp.scid.genomemuseum.view
 import view.ColumnVisibilitySetting
 import org.jdesktop.application.Action
 
+import jp.scid.gui.model.ValueModels
+import jp.scid.gui.control.BooleanPropertyBinder
+
 class ViewSettingDialogController(
   view: ColumnVisibilitySetting,
   rootPaneContainer: RootPaneContainer
-) extends GenomeMuseumController {
-  // Actions
-  val showAction = getAction("show")
-  val finishSettingAction = getAction("finishSetting")
-  val cancelSettingAction = getAction("cancelSetting")
+) {
   
-  view.okButton setAction finishSettingAction.peer
-  view.cancelButton setAction cancelSettingAction.peer
+  private val ctrl = GenomeMuseumController(this)
+  
+  // Property
+  /** ダイアログの表示状態を保持するモデル */
+  private val dialogVisibled = ValueModels.newBooleanModel(false)
+  
+  // binding
+  private val dialogVisibledBinder = new BooleanPropertyBinder(dialogVisibled)
+  
+  // Actions
+  val showAction = ctrl.getAction("show")
+  val finishSettingAction = ctrl.getAction("finishSetting")
+  val cancelSettingAction = ctrl.getAction("cancelSetting")
+  
+//  view.okButton setAction finishSettingAction.peer
+//  view.cancelButton setAction cancelSettingAction.peer
   
   // Model
   /** 設定完了後に実行する処理 */
@@ -33,13 +46,8 @@ class ViewSettingDialogController(
   /** チェックボックスの状態を直して表示 */
   @Action(name="show")
   def show() {
-    println("viewOption.show")
     reloadView()
-    dialog.foreach { dialog =>
-      dialog setLocationRelativeTo null
-      dialog.pack()
-      dialog setVisible true
-    }
+    dialogVisibled.setValue(true)
   }
   
   /** ダイアログを閉じて、コールバックを実行 */
@@ -52,16 +60,17 @@ class ViewSettingDialogController(
     finishCallBack(checked)
   }
   
-  /** ダイアログを閉じる */
+  /** 変更を適用せずダイアログを閉じる */
   @Action(name="cancelSetting")
-  def cancelSetting() {
-    println("viewOption.cancelSetting")
-    close()
+  def close() {
+    dialogVisibled.setValue(false)
   }
   
-  /** ダイアログを閉じる */
-  protected def close() {
-    dialog.foreach(_.setVisible(false))
+  /** ビューを表示するダイアログと結合する */
+  def bindDialog(view: JDialog) {
+    view.setLocationRelativeTo(null)
+    view.pack()
+    dialogVisibledBinder.bindVisible(view)
   }
   
   /** モデルからチェックボックスの状態などを読み込み直す */

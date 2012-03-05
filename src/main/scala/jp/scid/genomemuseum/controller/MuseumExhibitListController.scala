@@ -5,6 +5,7 @@ import java.net.{URI, URL}
 
 import javax.swing.{JTable, JTextField, JComponent, TransferHandler, JTabbedPane,
   SwingWorker}
+import javax.swing.table.{TableColumn, DefaultTableColumnModel}
 
 import ca.odell.glazedlists.TextFilterator
 
@@ -12,7 +13,7 @@ import org.jdesktop.application.Action
 
 import jp.scid.gui.model.{ValueModels, ValueModel}
 import jp.scid.gui.control.{ViewValueConnector, UriDocumentLoader, EventListController,
-  TextMatcherEditorRefilterator}
+  TextMatcherEditorRefilterator, TableColumnEditor}
 import jp.scid.motifviewer.gui.MotifViewerController
 import jp.scid.genomemuseum.{view, model, gui}
 import model.{MuseumExhibit, FreeExhibitRoomModel, ExhibitRoomModel, MuseumExhibitService}
@@ -121,6 +122,16 @@ class MuseumExhibitListController extends EventListController[MuseumExhibit, Exh
   /** テーブル形式を返す */
   private[controller] val tableFormat = new ExhibitTableFormat
   
+  /** 列モデルリスト */
+  private[controller] val tableColumns = tableFormat.columns.zipWithIndex map { case (c, i) => createTableColumn(c, i) }
+  
+  /** 列モデル */
+  private[controller] val columnModel = {
+    val columnModel = new DefaultTableColumnModel()
+    tableColumns foreach columnModel.addColumn
+    columnModel
+  }
+  
   // コントローラ
   /** MotifViewer */
   private[controller] val motifViewerController = new MotifViewerController
@@ -147,6 +158,10 @@ class MuseumExhibitListController extends EventListController[MuseumExhibit, Exh
     setDataViewExhibits(exhibits.toList)
   }
   
+  /** 列設定ダイアログ操作 */
+  private[controller] val tableColumnEditor = new TableColumnEditor(columnModel)
+  
+  
   /** 使用するテーブル形式を指定 */
   override def createTableFormat = tableFormat
   
@@ -165,8 +180,10 @@ class MuseumExhibitListController extends EventListController[MuseumExhibit, Exh
   }
   
   /** ビューに結合処理を追加するため */
-   def bind(view: ExhibitListView) {
+  def bind(view: ExhibitListView) {
     bindTable(view.dataTable)
+    view.dataTable.setColumnModel(columnModel)
+    
     motifViewerController.bind(view.overviewMotifView)
     
     val contentView = view.getContentViewComponent
@@ -219,6 +236,16 @@ class MuseumExhibitListController extends EventListController[MuseumExhibit, Exh
       new SequenceLoader(motifViewerSequence, url, format)
     }
     task.foreach(_.execute())
+  }
+  
+  /** 列オブジェクトから TableColumn を作成 */
+  protected def createTableColumn(model: ExhibitTableFormat.Column, modelIndex: Int) = {
+    val column = new TableColumn(modelIndex)
+    column.setIdentifier(model.identifier)
+    
+    val headerValue = ctrl.getResource("TableColumn.%s.headerValue".format(model.identifier))
+    column.setHeaderValue(headerValue())
+    column
   }
   
   def addElements(sourceRows: List[MuseumExhibit]) = getModel match {

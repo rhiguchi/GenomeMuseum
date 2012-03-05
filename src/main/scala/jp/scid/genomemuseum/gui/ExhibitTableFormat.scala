@@ -86,7 +86,7 @@ object ExhibitTableFormat {
 class ExhibitTableFormat extends AdvancedTableFormat[MuseumExhibit] {
   import ExhibitTableFormat._
   
-  private val columns =
+  val columns =
     Vector(Name, SequenceLength, Accession, Identifier, Namespace, Version,
       Definition, Source, Organism, ExhibitTableFormat.Date, SequenceUnit, MoleculeType)
   
