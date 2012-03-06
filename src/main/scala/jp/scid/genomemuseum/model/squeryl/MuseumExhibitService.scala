@@ -26,8 +26,15 @@ class MuseumExhibitService(exhibitTable: Table[MuseumExhibit]) extends IMuseumEx
    * @return 削除に成功した場合は {@code true} 。
    *         項目が存在しなかったなどでサービス内に変更が発生しなかった時は {@code false} 。
    */
-  def remove(element: IMuseumExhibit): Boolean =
+  def remove(element: IMuseumExhibit): Boolean = remove(element, true)
+  
+  def remove(element: IMuseumExhibit, withFile: Boolean): Boolean = {
+    if (withFile) element.sourceFile match {
+      case Some(file) => file.delete()
+      case None =>
+    }
     exhibitEventList.remove(element)
+  }
   
   /**
    * 要素の更新をサービスに通知する。
