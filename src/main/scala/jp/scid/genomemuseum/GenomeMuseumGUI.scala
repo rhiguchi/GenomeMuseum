@@ -20,7 +20,7 @@ import model.{MuseumSchema, MuseumExhibitLoader, DefaultMuseumExhibitFileLibrary
  * @see #startup()
  * @see jp.scid.genomemuseum.controller.MainFrameViewController
  */
-@ProxyActions(Array("selectAll"))
+@ProxyActions(Array("selectAll", "delete"))
 class GenomeMuseumGUI extends Application {
   import jp.scid.genomemuseum.model.MuseumExhibit
   import GenomeMuseumGUI._
@@ -47,6 +47,8 @@ class GenomeMuseumGUI extends Application {
   }
   
   // アプリケーションアクション
+  /** 削除プロキシアクション */
+  lazy val deleteProxyAction = getAction("delete")
   /** 切り取りプロキシアクション */
   lazy val cutProxyAction = getAction("cut")
   /** コピープロキシアクション */
@@ -147,6 +149,7 @@ class GenomeMuseumGUI extends Application {
     menuBar.open.action = openAction
     menuBar.quit.action = quitAction
     
+    menuBar.delete.action = deleteProxyAction
     menuBar.cut.action = cutProxyAction
     menuBar.copy.action = copyProxyAction
     menuBar.paste.action = pasteProxyAction

@@ -23,9 +23,9 @@ object FreeExhibitPavilion {
   class ContentsParentChangeHandler[E](childList: RoomContentEventList) extends ListEventListener[E] {
     def listChanged(listChanges: ListEvent[E]) {
       val changeList = Iterator.continually(listChanges)
-        .takeWhile(_.next).map(e => (e.getType, e.getIndex)).toList
+        .takeWhile(_.next).find(e => e.getType == ListEvent.DELETE)
       
-      if (changeList.contains(ListEvent.DELETE)) {
+      if (changeList.nonEmpty) {
         childList.reload()
       }
     }
@@ -195,10 +195,7 @@ class FreeExhibitPavilion(contentTable: Table[RoomExhibit]) extends IFreeExhibit
     val list = new RoomContentEventList(baseList, contentTable, room)
     
     val changeHandler = new ContentsParentChangeHandler[MuseumExhibit](list)
-    exhibitEventList foreach { list =>
-      val listenerProxy = GlazedLists.weakReferenceProxy(list, changeHandler)
-      list.addListEventListener(listenerProxy)
-    }
+    exhibitEventList foreach (_.addListEventListener(changeHandler))
     list
   }
   
