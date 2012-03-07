@@ -180,7 +180,9 @@ public class MainView implements GenomeMuseumView {
     public final JToggleButton addBoxButton = new JToggleButton(MacIcons.PLUS);
     public final JButton removeBoxButton =
             (JButton) MacButtonFactory.createGradientButton(MacIcons.MINUS, null);
-    public final JToggleButton boxFunctionsButton = new JToggleButton(MacIcons.GEAR);
+    public final JToggleButton boxFunctionsButton = new JToggleButton(MacIcons.GEAR); {
+        boxFunctionsButton.setEnabled(false);
+    }
     
     public final JButton activityPaneVisiblityButton = new JButton("activityPaneVisiblity");
     

@@ -34,7 +34,7 @@ class MainViewMenuBar {
   val columnVisibility = createMenuItem("columnVisibility")
     
   container.contents += (fileMenu, editMenu, viewMenu)
-  fileMenu.contents += (newListBox, newSmartBox, newGroupBox, new Separator,
+  fileMenu.contents += (newListBox, newGroupBox, new Separator,
     open, new Separator, quit)
   editMenu.contents += (undo, new Separator,
     cut, copy, paste, delete, selectAll)

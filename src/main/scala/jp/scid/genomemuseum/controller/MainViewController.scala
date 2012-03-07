@@ -1,6 +1,7 @@
 package jp.scid.genomemuseum.controller
 
 import java.net.{URI, URL}
+import javax.swing.{JDialog, AbstractButton}
 
 import jp.scid.gui.model.TransformValueModel
 import jp.scid.genomemuseum.{view, model, gui, GenomeMuseumGUI}
@@ -131,10 +132,36 @@ class MainViewController extends GenomeMuseumController {
     contentsModeHandler.setModel(contentsMode)
     
     // ボタンアクションの結合
-    bindAction(view.addListBox -> exhibitRoomListController.addBasicRoomAction,
-      view.addSmartBox -> exhibitRoomListController.addSamrtRoomAction,
-      view.addBoxFolder -> exhibitRoomListController.addGroupRoomAction,
-      view.removeBoxButton -> exhibitRoomListController.getDeleteAction)
+    bindFreeRoomAddingButton(view.addListBox)
+    bindSmartRoomAddingButton(view.addSmartBox)
+    bindGroupRoomAddingButton(view.addBoxFolder)
+    bindRoomRemovingButton(view.removeBoxButton)
+  }
+  
+  def bindFreeRoomAddingButton(button: AbstractButton) =
+    button.setAction(exhibitRoomListController.addBasicRoomAction)
+  
+  def bindSmartRoomAddingButton(button: AbstractButton) =
+    button.setAction(exhibitRoomListController.addSamrtRoomAction)
+  
+  def bindGroupRoomAddingButton(button: AbstractButton) =
+    button.setAction(exhibitRoomListController.addGroupRoomAction)
+  
+  def bindRoomRemovingButton(button: AbstractButton) {
+    val icon = button.getIcon
+    button.setAction(exhibitRoomListController.getDeleteAction)
+    button.setText(null)
+    button.setIcon(icon)
+  }
+  
+  /** 列設定ビューと結合 */
+  def bindColumnVisibilitySettingView(view: ColumnVisibilitySetting) {
+    
+  }
+  
+  /** 列設定ビューダイアログと結合 */
+  def bindColumnVisibilitySettingDialog(dialog: JDialog) {
+    exhibitTableColumnEditor.bindDialog(dialog)
   }
   
   /**

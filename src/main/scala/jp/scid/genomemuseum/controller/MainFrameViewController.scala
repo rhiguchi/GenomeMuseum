@@ -75,7 +75,15 @@ class MainFrameViewController(val mainViewController: MainViewController) extend
    * メニューバー とアクションを結合する
    */
   def bindMenuBar(menuBar: MainViewMenuBar) {
+    implicit def swingButtonToJavaButton(b: scala.swing.AbstractButton) = b.peer
+    
     menuBar.resourceMap.injectComponents(menuBar.container.peer)
+    
+    // 部屋追加
+    mainViewController.bindFreeRoomAddingButton(menuBar.newListBox)
+    mainViewController.bindSmartRoomAddingButton(menuBar.newSmartBox)
+    mainViewController.bindGroupRoomAddingButton(menuBar.newGroupBox)
+    
     // 列設定メニュー
 //    menuBar.columnVisibility.action = viewSettingDialogCtrl.showAction
   }
