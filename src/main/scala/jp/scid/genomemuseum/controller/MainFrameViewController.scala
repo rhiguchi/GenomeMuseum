@@ -75,6 +75,7 @@ class MainFrameViewController(val mainViewController: MainViewController) extend
    * メニューバー とアクションを結合する
    */
   def bindMenuBar(menuBar: MainViewMenuBar) {
+    menuBar.resourceMap.injectComponents(menuBar.container.peer)
     // 列設定メニュー
 //    menuBar.columnVisibility.action = viewSettingDialogCtrl.showAction
   }

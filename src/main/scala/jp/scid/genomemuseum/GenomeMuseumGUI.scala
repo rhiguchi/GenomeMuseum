@@ -132,6 +132,7 @@ class GenomeMuseumGUI extends Application {
     val mainFrameView = createMainFrameView()
     mainFrameViewCtrl.bind(mainFrameView)
     bindMenuBar(mainFrameView.mainMenu)
+    mainFrameViewCtrl.bindMenuBar(mainFrameView.mainMenu)
     bindLoadProgress(mainFrameView.mainView)
     
     // 表示

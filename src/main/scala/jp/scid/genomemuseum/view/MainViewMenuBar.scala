@@ -2,9 +2,13 @@ package jp.scid.genomemuseum.view
 
 import java.util.ResourceBundle
 import scala.swing.{MenuBar, Menu, MenuItem, Separator}
-import org.jdesktop.application.Application
+import org.jdesktop.application.ResourceMap
 
 class MainViewMenuBar {
+  val resourceMap =
+    new ResourceMap(null, classOf[MainViewMenuBar].getClassLoader,
+      "jp.scid.genomemuseum.view.MainViewMenuBar")
+  
   val container = new MenuBar()
     
   val fileMenu = createMenu("file")
@@ -37,14 +41,16 @@ class MainViewMenuBar {
   viewMenu.contents += (columnVisibility)
   
   private def createMenuItem(name: String) = {
-    val menu = new MenuItem(name)
+    val menu = new MenuItem(getResourceText(name))
     menu.name = name
     menu
   }
   
   private def createMenu(name: String) = {
-    val menu = new Menu(name)
+    val menu = new Menu(getResourceText(name))
     menu.name = name
     menu
   }
+  
+  private def getResourceText(name: String) = resourceMap.getString(name + ".text")
 }
