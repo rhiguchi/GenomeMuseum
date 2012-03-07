@@ -123,7 +123,7 @@ class DefaultMuseumExhibitFileLibrary(val baseDir: File) extends MuseumExhibitFi
     // 複製
     copyFile(dest, source)
     
-    uriFileStorage getUri dest
+    dest.toURI
   }
   
   /**
