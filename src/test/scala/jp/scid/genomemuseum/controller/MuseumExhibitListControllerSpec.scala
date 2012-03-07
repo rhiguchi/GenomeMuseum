@@ -4,6 +4,7 @@ import org.specs2._
 
 import javax.swing.{JTable, JTextField, TransferHandler}
 
+import jp.scid.motifviewer.gui.MotifViewerController
 import jp.scid.genomemuseum.{model, gui, view}
 import model.{MuseumExhibitService, MuseumExhibit, UserExhibitRoom,
   MuseumExhibitServiceMock}
@@ -33,7 +34,6 @@ class MuseumExhibitListControllerSpec extends Specification with mock.Mockito {
   def canBind(f: => MuseumExhibitListController) =
     "dataTable と結合される" ! bind(f).dataTable ^
     "overviewMotifView と結合される" ! bind(f).overviewMotifView ^
-    "コンテンツビューと結合される" ! bind(f).contentView ^
     bt
   
   def tableModelSpec(f: => MuseumExhibitListController) =
@@ -88,15 +88,13 @@ class MuseumExhibitListControllerSpec extends Specification with mock.Mockito {
   // 結合
   def bind(c: MuseumExhibitListController) = new {
     val ctrl = spy(c)
-    ctrl.motifViewerController returns spy(c.motifViewerController)
-    ctrl.documentLoader returns spy(c.documentLoader)
+    ctrl.motifViewerController returns mock[MotifViewerController]
     val view = new ExhibitListView
     
     ctrl.bind(view)
     
     def dataTable = there was one(ctrl).bindTable(view.dataTable)
     def overviewMotifView = there was one(ctrl.motifViewerController).bind(view.overviewMotifView)
-    def contentView = there was one(ctrl.documentLoader).bindTextComponent(view.getContentViewComponent)
   }
   
   // テーブルモデル

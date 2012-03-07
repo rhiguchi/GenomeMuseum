@@ -25,7 +25,7 @@ class HttpDownloaderSpec extends SpecificationWithJUnit {
     "Done メッセージ" ! message(d).done
     
   def call(d: HttpDownloader) = new Object {
-    def download = d.call.length must_== 3187 
+    def download = d.call.length must_== 3177 
   }
   
   def message(d: HttpDownloader) = new Object {
@@ -42,7 +42,7 @@ class HttpDownloaderSpec extends SpecificationWithJUnit {
       while (channel.getState == Actor.State.Runnable)
         Thread.sleep(20)
       
-      msg must beSome(Start(d, 3187))
+      msg must beSome(Start(d, 3177))
     }
     
     def inProgress = {

@@ -27,13 +27,11 @@ class MainViewControllerSpec extends Specification with mock.Mockito {
     bt
   
   def searchTextModelSpec(c: => MainViewController) =
-    "最初はモデル結合なし" ! searchTextModel(c).initial ^
     "LOCAL モードでは local と結合" ! searchTextModel(c).localMode ^
     "NCBI モードでは web と結合" ! searchTextModel(c).ncbiMode ^
     bt
   
   def titleSpec(c: => MainViewController) =
-    "最初はモデル結合なし" ! title(c).initial ^
     "LOCAL モードでは local と結合" ! title(c).localMode ^
     "NCBI モードでは web と結合" ! title(c).ncbiMode ^
     bt
@@ -80,11 +78,9 @@ class MainViewControllerSpec extends Specification with mock.Mockito {
   def searchTextModel(ctrl: MainViewController) = new {
     private def model = ctrl.searchText
     
-    def initial = model.getSubject must beNull
-    
     def localMode = {
       ctrl.setContentsMode(ContentsMode.LOCAL)
-      model.getSubject must_== ctrl.museumExhibitController.title
+      model.getSubject must_== ctrl.museumExhibitController.searchText
     }
     
     def ncbiMode = {
@@ -97,11 +93,9 @@ class MainViewControllerSpec extends Specification with mock.Mockito {
   def title(ctrl: MainViewController) = new {
     private def model = ctrl.title
     
-    def initial = model.getSubject must beNull
-    
     def localMode = {
       ctrl.setContentsMode(ContentsMode.LOCAL)
-      model.getSubject must_== ctrl.museumExhibitController.searchText
+      model.getSubject must_== ctrl.museumExhibitController.title
     }
     
     def ncbiMode = {
