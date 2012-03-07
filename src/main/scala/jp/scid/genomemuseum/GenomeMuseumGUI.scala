@@ -2,6 +2,8 @@ package jp.scid.genomemuseum
 
 import java.io.File
 import java.awt.FileDialog
+import java.awt.event.{WindowAdapter, WindowEvent}
+
 import org.jdesktop.application.{Application, Action, ProxyActions}
 import view.{MainFrameView, MainView, MainViewMenuBar, ColumnVisibilitySetting}
 import controller.{GenomeMuseumController, MainFrameViewController, MainViewController,
@@ -134,6 +136,12 @@ class GenomeMuseumGUI extends Application {
     bindMenuBar(mainFrameView.mainMenu)
     mainFrameViewCtrl.bindMenuBar(mainFrameView.mainMenu)
     bindLoadProgress(mainFrameView.mainView)
+    
+    // フレームを閉じた時に終了するハンドラ
+    val frameDisposeHandler = new WindowAdapter {
+      override def windowClosed(e: WindowEvent) = exit(e)
+    }
+    mainFrameView.frame.addWindowListener(frameDisposeHandler)
     
     // 表示
     mainFrameViewCtrl.show()
