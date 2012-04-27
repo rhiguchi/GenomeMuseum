@@ -24,9 +24,6 @@ trait ExhibitRoomModel extends ValueModel[java.util.List[MuseumExhibit]]
   /** 展示物リストを返す */
   def exhibitList: List[MuseumExhibit] = getValue match {
     case null => Nil
-    case list: EventList[_] => lockWith(list.getReadWriteLock.readLock) {
-      list.asScala.toList
-    }
     case list => list.asScala.toList
   }
   

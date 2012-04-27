@@ -6,7 +6,8 @@ import javax.swing.tree.TreePath
 
 import org.jdesktop.application.Action
 
-import jp.scid.gui.control.{TreeController, TreeExpansionController}
+import jp.scid.gui.control.TreeController
+import jp.scid.gui.control.tree.TreeExpansionController
 import jp.scid.genomemuseum.model.{UserExhibitRoom, MuseumStructure, MuseumSpace,
   ExhibitMuseumSpace, ExhibitPavilionFloor, FreeExhibitRoomModel, FreeExhibitPavilion}
 import UserExhibitRoom.RoomType

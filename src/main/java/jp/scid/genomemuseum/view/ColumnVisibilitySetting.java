@@ -22,7 +22,7 @@ import com.jgoodies.forms.builder.ButtonBarBuilder2;
 public class ColumnVisibilitySetting implements GenomeMuseumView {
     private final static List<String> propertyNames = Arrays.asList("sequenceLength",
             "accession", "identifier", "namespace", "version", "definition",
-            "source", "organism", "date", "sequenceUnit", "molculeType");
+            "source", "organism", "date", "sequenceUnit", "moleculeType");
     
     private final static int columnCount = 3; 
     private final static int rowCount = (propertyNames.size() - 1) / columnCount + 1; 

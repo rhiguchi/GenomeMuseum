@@ -5,10 +5,11 @@ import javax.swing.{JDialog, AbstractButton}
 
 import jp.scid.gui.model.TransformValueModel
 import jp.scid.genomemuseum.{view, model, gui, GenomeMuseumGUI}
-import view.MainView
+import view.{MainView, ColumnVisibilitySetting}
 import MainView.ContentsMode
 import jp.scid.gui.model.{ProxyValueModel, ValueModels}
-import jp.scid.gui.control.{ViewValueConnector, StringPropertyBinder, DocumentTextController}
+import jp.scid.gui.control.{ViewValueConnector, StringPropertyBinder, DocumentTextController,
+  TableColumnEditor}
 import model.{MuseumSchema, ExhibitRoom, MuseumExhibit, ExhibitRoomModel, MuseumSpace,
   MuseumExhibitService, MuseumStructure}
 import jp.scid.motifviewer.gui.MotifViewerController
@@ -58,6 +59,9 @@ class MainViewController extends GenomeMuseumController {
   
   /** ウェブ検索操作 */
   protected[controller] val webServiceResultController = new WebServiceResultController
+  
+  /** 列設定ダイアログ操作 */
+  private[controller] val exhibitTableColumnEditor = new TableColumnEditor(museumExhibitController.columnModel)
   
   // モデル
   /** データテーブルの現在適用するモデル */

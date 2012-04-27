@@ -17,7 +17,7 @@ import jp.scid.gui.control.{ViewValueConnector, UriDocumentLoader, EventListCont
 import jp.scid.motifviewer.gui.MotifViewerController
 import jp.scid.genomemuseum.{view, model, gui}
 import model.{MuseumExhibit, FreeExhibitRoomModel, ExhibitRoomModel, MuseumExhibitService}
-import view.ExhibitListView
+import view.{ExhibitListView, ColumnVisibilitySetting}
 import gui.ExhibitTableFormat
 import MuseumExhibit.FileType
 
@@ -134,11 +134,9 @@ class MuseumExhibitListController extends EventListController[MuseumExhibit, Exh
   
   // コントローラ
   /** MotifViewer */
-  private[controller] val motifViewerController = new MotifViewerController
-  
-  /** 中身を読み込む操作 */
-  private[controller] val documentLoader = new UriDocumentLoader
-//  documentLoader.setModel(selectedUri)
+  private[controller] val motifViewerController: MotifViewerController = new MotifViewerController {
+    setModel(motifViewerSequence)
+  }
   
   /** 検索ハンドラ */
   private[controller] val tableRefilterator = new TextMatcherEditorRefilterator(filterator)
@@ -190,7 +188,27 @@ class MuseumExhibitListController extends EventListController[MuseumExhibit, Exh
     val viewer = new FileContentViewer(contentView)
     viewer.listenTo(contentView.getParent.asInstanceOf[javax.swing.JViewport])
     viewer.setModel(selectedUri)
-//    documentLoader.bindTextComponent(view.getContentViewComponent)
+  }
+  
+  /** 列設定ビューと結合 */
+  def bindColumnVisibilitySettingView(view: ColumnVisibilitySetting) {
+    import ExhibitTableFormat._
+    
+    val columns = List(SequenceLength, Accession, Identifier, Namespace, Version,
+      Definition, Source, Organism, ExhibitTableFormat.Date, SequenceUnit, MoleculeType)
+//    val buttonSet = columns map (col => view.getCheckBox(col.identifier))
+    
+//    buttonSet map {case (col)}
+//    tableColumnEditor.bindColumnVisibilityToggleButton(button, )
+  }
+  
+  private def bindColumnToggle() {
+    
+  }
+  
+  /** 列設定ビューダイアログと結合 */
+  def bindColumnVisibilitySettingDialog() {
+    
   }
   
   /** 転送ハンドラを作成 */

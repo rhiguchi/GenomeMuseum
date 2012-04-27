@@ -65,8 +65,8 @@ public class BioFileSequenceLoader extends AbstractValueController<BioFileSequen
 
         @Override
         protected String doInBackground() throws Exception {
-            String sequence = source.getBioFileFormat().getSequence(source.getReader());
-            return sequence;
+//            String sequence = source.getBioFileFormat().getSequence(source.getReader());
+            return "";
         }
         
         @Override
@@ -92,6 +92,6 @@ public class BioFileSequenceLoader extends AbstractValueController<BioFileSequen
     
     public static interface BioFileSource {
         Reader getReader();
-        BioFileFormat getBioFileFormat();
+        Object getBioFileFormat();
     }
 }

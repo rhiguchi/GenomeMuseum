@@ -7,7 +7,7 @@
                    
      higuchi                                                                
      ====================================================================== -->
-<project name="GenomeMuseum" default="run-jar">
+<project name="GenomeMuseum" default="run-jar" xmlns:ivy="antlib:org.apache.ivy.ant">
     <property name="genomemuseum.assembled"
         value="${basedir}/target/scala-2.9.1/genomemuseum_2.9.1-0.9a1.min.jar"/>
     
@@ -18,6 +18,8 @@
     <property name="build.mac.app.name" value="GenomeMuseum.app"/>
     <property name="build.resources.macbundle" location="${build.resources}/Mac OS Bundle"/>
     <property name="build.win.exe.name" value="GenomeMuseum.exe"/>
+    
+    <property file="project/build.properties"/>
     
     <!-- jar ファイルが存在するかどうか -->
     <condition property="genomemuseum.assembled.exists">
@@ -100,5 +102,61 @@
          - - - - - - - - - - - - - - - - - -->
     <target name="depends">
         <mkdir dir="${build.dest}"/>
+    </target>
+    
+    <!-- - - - - - - - - - - - - - - - - - 
+          target: jooq-retrieve                      
+         - - - - - - - - - - - - - - - - - -->
+    <target name="jooq-retrieve" description="jOOQ タスク用ライブラリを取得する">
+        <!-- ライブラリ解決 -->
+        <ivy:retrieve file="${ivy.file}" conf="jooq" pattern="${lib.dir}/[conf]/[artifact].[ext]"  />
+    </target>
+
+    
+    <!-- ================================= 
+          target: jooq-codegen              
+         ================================= -->
+    <target name="jooq-codegen" description="jOOQ を利用してエンティティコードを作成する">
+        <!-- ライブラリ解決 -->
+        <ivy:resolve file="${ivy.file}"/>
+        <ivy:cachepath pathid="ivy.jooq.classpath" conf="jooq" />
+
+        <property name="build.dest" location="build"/>
+        
+        <!-- データベースを作業場所に一時構築 -->
+        <delete includeemptydirs="true" dir="${jooq.temp.dir}"/>
+        <mkdir dir="${jooq.temp.dir}"/>
+        
+        <sql userid="genomemuseum" password="" driver="org.h2.Driver" encoding="utf-8"
+                url="jdbc:h2:file:${jooq.temp.dir}/genomemuseum"
+                classpathref="ivy.jooq.classpath">
+            <transaction>create schema V1_0_0;</transaction>
+            <transaction>SET SCHEMA V1_0_0;</transaction>
+            <transaction src="${src.main.resources.dir}/jp/scid/genomemuseum/model/sql/schema.sql" />
+        </sql>
+        
+        <!-- Task definition -->
+        <taskdef name="generate-classes" classname="org.jooq.util.GenerationTask" classpathref="ivy.jooq.classpath"/>
+        
+        <java fork="true" classname="org.jooq.util.GenerationTool">
+            <classpath>
+                <path refid="ivy.jooq.classpath"></path>
+                <pathelement path="."/>
+            </classpath>
+            <arg value="/project/jooq-config.xml"/>
+        </java>
+    </target>
+
+    <!-- ================================= 
+          target: h2-start              
+         ================================= -->
+    <target name="h2-server-start" depends="depends" description="description">
+        <!-- ライブラリ解決 -->
+        <ivy:resolve file="${ivy.file}"/>
+        <ivy:cachepath pathid="ivy.jooq.classpath" conf="jooq" />
+        
+        <java fork="true" classname="org.h2.tools.Server" spawn="true">
+            <classpath refid="ivy.jooq.classpath" />
+        </java>
     </target>
 </project>
