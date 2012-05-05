@@ -6,119 +6,158 @@ import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 
-import javax.swing.event.ListDataListener;
-
 import jp.scid.genomemuseum.model.CollectionBox.BoxType;
+import jp.scid.genomemuseum.model.CollectionBox.GroupCollectionBox;
 import jp.scid.genomemuseum.model.sql.tables.records.BoxTreeNodeRecord;
-import jp.scid.genomemuseum.model.tree.DefaultSourceTreeModel;
-import jp.scid.genomemuseum.model.tree.SourceTreeModel;
+import jp.scid.genomemuseum.model.sql.tables.records.CollectionBoxItemRecord;
+import jp.scid.genomemuseum.model.sql.tables.records.MuseumExhibitRecord;
 
-import org.jooq.Condition;
+import org.jooq.Record;
 import org.jooq.RecordHandler;
 import org.jooq.impl.Factory;
 
-public class CollectionBoxService implements SourceTreeModel<CollectionBox> {
-    private final Factory factory;
-    private final DefaultSourceTreeModel<CollectionBox> treeModelDelegate;
-    
-    CollectionBoxService(Factory factory) {
-        this.factory = factory;
-        treeModelDelegate = new DefaultSourceTreeModel<CollectionBox>();
-    }
-    
-    public List<CollectionBox> getChildren(CollectionBox parent) {
-        Condition condition;
-        if (parent == null) {
-            condition = BOX_TREE_NODE.PARENT_ID.isNull();
-        }
-        else {
-            condition = BOX_TREE_NODE.PARENT_ID.equal(parent.getId());
-        }
-        
-        List<CollectionBox> results = factory.selectFrom(BOX_TREE_NODE)
-                .where(condition).fetchInto(new CollectionBoxListBuilder()).build();
-        
-        return results;
-    }
-    
-    static class CollectionBoxListBuilder implements RecordHandler<BoxTreeNodeRecord> {
-        List<CollectionBox> list = new LinkedList<CollectionBox>();
+public class CollectionBoxService extends JooqEntityService<CollectionBox, BoxTreeNodeRecord> {
+    static class ContentsExhibitHandler implements RecordHandler<Record> {
+        private final List<MuseumExhibit> list = new LinkedList<MuseumExhibit>();
         
         @Override
-        public void next(BoxTreeNodeRecord record) {
-            CollectionBox box = new CollectionBox(record);
-            list.add(box);
-        }
-        
-        public List<CollectionBox> build() {
-            return new ArrayList<CollectionBox>(list);
-        }
-    }
-    
-    boolean getAllowedChildren(CollectionBox element) {
-        return element.getBoxType() == BoxType.GROUP;
-    }
-    
-    public boolean insert(CollectionBox element, CollectionBox parent) {
-        if (parent != null && parent.getId() == null) {
-            throw new IllegalArgumentException("id of parent must not be empty");
-        }
-        
-        element.setParentId(parent == null ? null : parent.getId());
-        
-        return insert(element);
-    }
-    
-    public boolean insert(CollectionBox element) {
-        boolean sotred = element.getRecord().store() > 0;
-        if (sotred) {
+        public void next(Record record) {
+            MuseumExhibitRecord exhibitRecord = record.into(MUSEUM_EXHIBIT);
+            MuseumExhibit element = new MuseumExhibit(exhibitRecord);
             
+            Integer rowId = record.getValueAsInteger(COLLECTION_BOX_ITEM.ID);
+            element.setRowId(rowId);
+            
+            list.add(element);
         }
-        return sotred;
+    
+        public List<MuseumExhibit> getElements() {
+            return new ArrayList<MuseumExhibit>(list);
+        }
+    }
+
+    final GroupCollectionBox groupingDelegate;
+    
+    CollectionBoxService(Factory factory) {
+        super(factory, BOX_TREE_NODE);
+        
+        groupingDelegate = (GroupCollectionBox) CollectionBox.newCollectionBox(BoxType.GROUP, this);
     }
     
-    public CollectionBox createBox(BoxType type) {
-        if (type == null) throw new IllegalArgumentException("type must not be null");
-        
-        CollectionBox box = createBox();
-        box.setBoxType(type);
+    @Override
+    protected CollectionBox createElement(BoxTreeNodeRecord record) {
+        CollectionBox box = CollectionBox.newCollectionBox(record, this);
         return box;
     }
     
-    CollectionBox createBox() {
-        BoxTreeNodeRecord node = factory.newRecord(BOX_TREE_NODE);
+    @Override
+    protected BoxTreeNodeRecord recordOfElement(CollectionBox element) {
+        return element.getRecord();
+    }
+    
+    public GroupCollectionBox getGroupingDelegate() {
+        return groupingDelegate;
+    }
+
+    public List<CollectionBox> fetchChildren() {
+        return groupingDelegate.fetchChildren();
+    }
+    
+    public CollectionBox addChild(BoxType boxType) {
+        return groupingDelegate.addChild(boxType);
+    }
+    
+    public CollectionBox addChild(BoxType boxType, Long parentId) {
+        CollectionBox box = CollectionBox.newCollectionBox(boxType, this);
         
-        return new CollectionBox(node);
+        box.setName("New Box");
+        box.setParentId(parentId);
+        box.getRecord().store();
+        
+        return box;
+    }
+
+    public boolean isAncestor(long boxId, long maybeAncestor) {
+        boolean ancester = false;
+        
+        for (Long targetParentId = getParentId(boxId);
+                targetParentId != null;
+                targetParentId = getParentId(targetParentId)) {
+            if (targetParentId.equals(maybeAncestor)) {
+                ancester = true;
+                break;
+            }
+        }
+        
+        return ancester;
     }
     
-    public boolean update(CollectionBox element) {
-        if (element.getId() == null)
-            throw new IllegalArgumentException("id of element is not spcified");
-        BoxTreeNodeRecord record = new BoxTreeNodeRecord();
-        record.from(element);
-        int count = factory.executeUpdate(BOX_TREE_NODE, record);
-        return count > 0;
+    private Long getParentId(long boxId) {
+        return factory.select(BOX_TREE_NODE.PARENT_ID).from(BOX_TREE_NODE)
+                .where(BOX_TREE_NODE.ID.equal(boxId))
+                .fetchOne(0, Long.class);
     }
     
-    public boolean delete(CollectionBox element) {
-        int count = factory.executeDelete(BOX_TREE_NODE, BOX_TREE_NODE.ID.equal(element.getId()));
-        return count > 0;
+    BoxTreeNodeRecord newRecord(BoxType boxType) {
+        BoxTreeNodeRecord record = factory.newRecord(table);
+        record.setNodeType(boxType.getIntValue());
+        
+        return record;
     }
 
-    public boolean isLeaf(CollectionBox element) {
-        return element.getBoxType() != BoxType.GROUP;
+    public List<CollectionBox> fetchChildren(Long parentId) {
+        final List<CollectionBox> children;
+        
+        if (parentId == null) {
+            children = search("parent_id IS NULL");
+        }
+        else {
+            children = search("parent_id = ?", parentId);
+        }
+        
+        return children;
     }
-
-    public void addChildrenListener(CollectionBox parent, ListDataListener l) {
-        treeModelDelegate.addChildrenListener(parent, l);
+    
+    public List<MuseumExhibit> fetchContent(long boxId) {
+        List<MuseumExhibit> elements = factory.select()
+                .from(COLLECTION_BOX_ITEM)
+                .join(MUSEUM_EXHIBIT)
+                .on(COLLECTION_BOX_ITEM.EXHIBIT_ID.equal(MUSEUM_EXHIBIT.ID))
+                .where(COLLECTION_BOX_ITEM.BOX_ID.equal(boxId))
+                .orderBy(COLLECTION_BOX_ITEM.ID)
+                .fetchInto(new CollectionBoxService.ContentsExhibitHandler())
+                .getElements();
+        
+        return elements;
     }
-
-    public void removeChildrenListener(CollectionBox parent, ListDataListener l) {
-        treeModelDelegate.removeChildrenListener(parent, l);
+    
+    public MuseumExhibit addContentTo(long boxId, long exhibitId) {
+        CollectionBoxItemRecord record = factory.insertInto(COLLECTION_BOX_ITEM)
+                .set(COLLECTION_BOX_ITEM.BOX_ID, boxId)
+                .set(COLLECTION_BOX_ITEM.EXHIBIT_ID, exhibitId)
+                .returning().fetchOne();
+        
+        long recordId = record.getId();
+        
+        MuseumExhibit exhibit = factory.select().from(COLLECTION_BOX_ITEM)
+                .join(MUSEUM_EXHIBIT)
+                .on(COLLECTION_BOX_ITEM.EXHIBIT_ID.equal(MUSEUM_EXHIBIT.ID))
+                .where(COLLECTION_BOX_ITEM.ID.equal(recordId))
+                .fetchInto(new CollectionBoxService.ContentsExhibitHandler()).getElements().get(0);
+        
+        return exhibit;
     }
-
-    public boolean setParent(CollectionBox element, CollectionBox parent) {
-        // TODO Auto-generated method stub
-        return false;
+    
+    public boolean removeContent(long contentId) {
+        int result = factory.delete(COLLECTION_BOX_ITEM)
+                .where(COLLECTION_BOX_ITEM.ID.equal(contentId))
+                .execute();
+        return result > 0;
+    }
+    
+    public void setParent(CollectionBox box, Long parentId) {
+        box.setParentId(parentId);
+        box.getRecord().store();
     }
 }
+

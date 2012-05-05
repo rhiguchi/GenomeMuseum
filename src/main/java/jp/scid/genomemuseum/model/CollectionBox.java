@@ -1,12 +1,17 @@
 package jp.scid.genomemuseum.model;
 
+import static jp.scid.genomemuseum.model.sql.Tables.*;
+
+import java.util.Collections;
+import java.util.List;
+
 import jp.scid.genomemuseum.model.sql.tables.records.BoxTreeNodeRecord;
 
-public class CollectionBox {
+public abstract class CollectionBox {
     public static enum BoxType {
+        GROUP(0),
         FREE(1),
-        GROUP(2),
-        SMART(3);
+        SMART(2);
         
         private final int intValue;
         
@@ -28,14 +33,49 @@ public class CollectionBox {
 
     private final BoxTreeNodeRecord record;
     
+    CollectionBoxService service;
+    
     private BoxType boxType;
 
-    public CollectionBox() {
-        this(new BoxTreeNodeRecord());
+    private CollectionBox(BoxTreeNodeRecord record) {
+        if (record == null) throw new IllegalArgumentException("record must not be null");
+        
+        this.record = record;
     }
     
-    CollectionBox(BoxTreeNodeRecord record) {
-        this.record = record;
+    static CollectionBox newCollectionBox(BoxTreeNodeRecord record, CollectionBoxService service) {
+        if (record == null) throw new IllegalArgumentException("record must not be null");
+        if (service == null) throw new IllegalArgumentException("service must not be null");
+        
+        BoxType boxType =
+            BoxType.findFrom(record.getValueAsInteger(
+                    BOX_TREE_NODE.NODE_TYPE, BoxType.GROUP.getIntValue()));
+
+        final CollectionBox box;
+        if (BoxType.FREE == boxType) {
+            box = new FreeCollectionBox(record);
+        }
+        else if (BoxType.GROUP == boxType) {
+            box = new GroupCollectionBox(record);
+        }
+        else if (BoxType.SMART == boxType) {
+            box = new SmartCollectionBox(record);
+        }
+        else {
+            throw new IllegalArgumentException("nodeType must be specified");
+        }
+        
+        box.service = service;
+        
+        return box;
+    }
+    
+    static CollectionBox newCollectionBox(BoxType boxType, CollectionBoxService service) {
+        if (boxType == null) throw new IllegalArgumentException("boxType must not be null");
+        
+        BoxTreeNodeRecord record = service.newRecord(boxType);
+        
+        return newCollectionBox(record, service);
     }
     
     BoxTreeNodeRecord getRecord() {
@@ -46,6 +86,11 @@ public class CollectionBox {
         return record.getId();
     }
     
+    void setId(long newId) {
+        record.setId(newId);
+    }
+    
+    @Deprecated
     public BoxType getBoxType() {
         if (boxType == null) {
             if (record.getNodeType() != null) {
@@ -59,18 +104,11 @@ public class CollectionBox {
         return boxType;
     }
 
-    void setBoxType(BoxType boxType) {
-        if (boxType == null) throw new IllegalArgumentException("boxType must not be null");
-        
-        record.setNodeType(boxType.getIntValue());
-        this.boxType = boxType;
-    }
-
-    public void setParentId(Long value) {
+    void setParentId(Long value) {
         record.setParentId(value);
     }
 
-    public Long getParentId() {
+    Long getParentId() {
         return record.getParentId();
     }
 
@@ -82,12 +120,104 @@ public class CollectionBox {
         return record.getName();
     }
     
-    public boolean isPersited() {
-        return getId() != 0;
+    boolean isPersited() {
+        return getId() != null;
+    }
+    
+    public int setParent(GroupCollectionBox newParent) {
+        if (getId() == null || newParent.isAncestorOf(getId())) {
+            throw new IllegalArgumentException("cannot set parent to " + newParent);
+        }
+        
+        service.setParent(this, newParent.getId());
+        
+        List<CollectionBox> children = newParent.fetchChildren();
+        int index = children.indexOf(this);
+        if (index < 0)
+            index = children.size();
+        
+        return index;
+    }
+    
+    public boolean delete() {
+        int count = getRecord().delete();
+        return count > 0;
     }
     
     @Override
     public String toString() {
         return getName() + " [" + getBoxType() + "]";
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        Long myId = getId();
+        if (myId != null && obj instanceof CollectionBox) {
+            Long targetId = ((CollectionBox) obj).getId();
+            return myId.equals(targetId);
+        }
+        else {
+            return super.equals(obj);
+        }
+    }
+    
+    public static class FreeCollectionBox extends CollectionBox {
+        private FreeCollectionBox(BoxTreeNodeRecord record) {
+            super(record);
+        }
+        
+        public List<MuseumExhibit> fetchExhibits() {
+            return service.fetchContent(getId());
+        }
+        
+        public MuseumExhibit addContent(long exhibitId) {
+            return service.addContentTo(getId(), exhibitId);
+        }
+        
+        public void setContentIndex(MuseumExhibit content, int newIndex) {
+            // TODO
+        }
+
+        public boolean removeContent(long contentId) {
+            return service.removeContent(contentId);
+        }
+    }
+    
+    public static class GroupCollectionBox extends CollectionBox {
+        private GroupCollectionBox(BoxTreeNodeRecord record) {
+            super(record);
+        }
+
+        public List<MuseumExhibit> fetchExhibits() {
+            return Collections.emptyList();
+        }
+        
+        public List<CollectionBox> fetchChildren() {
+            return service.fetchChildren(getId());
+        }
+        
+        public CollectionBox addChild(BoxType boxType) {
+            return service.addChild(boxType, getId());
+        }
+        
+        public boolean isAncestorOf(long boxId) {
+            Long myId = getId();
+            if (myId == null) {
+                return true;
+            }
+            else {
+                return service.isAncestor(boxId, myId.longValue());
+            }
+        }
+    }
+    
+    public static class SmartCollectionBox extends CollectionBox {
+        private SmartCollectionBox(BoxTreeNodeRecord record) {
+            super(record);
+        }
+
+        public List<MuseumExhibit> fetchExhibits() {
+            return Collections.emptyList();
+        }
     }
 }

@@ -10,7 +10,7 @@ import org.jooq.UpdatableRecord;
 import org.jooq.UpdatableTable;
 import org.jooq.impl.Factory;
 
-public abstract class JooqEntityService<E, R extends UpdatableRecord<R>> implements EntityService<E> {
+abstract class JooqEntityService<E, R extends UpdatableRecord<R>> implements EntityService<E> {
     protected final Factory factory;
     
     protected final UpdatableTable<R> table;
@@ -22,6 +22,10 @@ public abstract class JooqEntityService<E, R extends UpdatableRecord<R>> impleme
         this.table = table;
     }
 
+    public int getCount() {
+        return factory.selectCount().from(table).fetchOne(0, Integer.class);
+    }
+    
     @Override
     public E find(long id) {
         R record = factory.selectFrom(table)
