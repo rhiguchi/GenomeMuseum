@@ -1,26 +1,24 @@
 package jp.scid.genomemuseum.model;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 
-import javax.swing.event.TreeModelListener;
 import javax.swing.tree.DefaultMutableTreeNode;
 import javax.swing.tree.DefaultTreeModel;
 import javax.swing.tree.MutableTreeNode;
-import javax.swing.tree.TreeModel;
 import javax.swing.tree.TreeNode;
-import javax.swing.tree.TreePath;
 
 import jp.scid.genomemuseum.model.CollectionBox.BoxType;
-import jp.scid.genomemuseum.model.tree.DefaultEventTreeNode;
+import jp.scid.genomemuseum.model.CollectionBox.GroupCollectionBox;
 
-public class MuseumSourceModel implements TreeModel {
+public class MuseumSourceModel {
     public static interface NodeElement {
         String getName();
     }
     
-    public static class Category implements MuseumSourceModel.NodeElement, Comparable<MuseumSourceModel.Category> {
+    public static class Category implements NodeElement, Comparable<MuseumSourceModel.Category> {
         final int priority;
         String name;
         
@@ -62,15 +60,17 @@ public class MuseumSourceModel implements TreeModel {
         }
     };
     
-    public static interface LibraryElement extends MuseumSourceModel.NodeElement {
+    public static interface LibraryElement extends NodeElement {
         int orderPriority();
     }
     
     private final DefaultTreeModel delegate;
     
-    private final MuseumSourceModel.DefaultCategoryNode librariesNode;
+    private final DefaultCategoryNode librariesNode;
     
-    private DefaultEventTreeNode<CollectionBox> boxTreeRootNode = null;
+    private DefaultMutableTreeNode localLibraryNode = null;
+    
+    private CollectionBoxTreeRootNode collectionBoxTreeRootNode = null;
     
     protected Comparator<TreeNode> nodeComparator = null;
     
@@ -81,12 +81,16 @@ public class MuseumSourceModel implements TreeModel {
         addCategoryNode(librariesNode);
     }
     
-    public void addCategoryNode(MuseumSourceModel.CategoryNode categoryNode) {
+    public void addCategoryNode(CategoryNode categoryNode) {
         insertToOrderedIndex(categoryNode, getRoot(), nodeComparator());
     }
     
     protected void addLibraryElement(MutableTreeNode libraryNode) {
         insertToOrderedIndex(libraryNode, librariesNode, nodeComparator());
+    }
+    
+    public CategoryNode getLibrariesNode() {
+        return librariesNode;
     }
     
     int insertToOrderedIndex(
@@ -109,108 +113,170 @@ public class MuseumSourceModel implements TreeModel {
         delegate.removeNodeFromParent(node);
     }
     
-    public void addLibrarySource() {
-        // TODO
+    public void setLocalLibrarySource(Object librarySource) {
+        if (localLibraryNode != null) {
+            delegate.removeNodeFromParent(localLibraryNode);
+        }
         
+        localLibraryNode = null;
+        
+        if (librarySource != null) {
+            localLibraryNode = new DefaultMutableTreeNode(librarySource, false);
+            addLibraryElement(localLibraryNode);
+        }
     }
     
-    public void removeLibrarySource() {
-        // TODO
-        
+    public DefaultMutableTreeNode getLocalLibraryNode() {
+        return localLibraryNode;
     }
     
     Comparator<TreeNode> nodeComparator() {
         return categoryNodeComparator;
     }
     
+    public CollectionBoxTreeRootNode getCollectionBoxTreeRootNode() {
+        return collectionBoxTreeRootNode;
+    }
+    
+    void setCollectionBoxTreeRootNode(CollectionBoxTreeRootNode newNode) {
+        if (collectionBoxTreeRootNode != null) {
+            removeNodeFromParent(collectionBoxTreeRootNode);
+        }
+        
+        this.collectionBoxTreeRootNode = newNode;
+        
+        if (newNode != null) {
+            delegate.insertNodeInto(newNode, getRoot(), getRoot().getChildCount());
+        }
+    }
+    
     public CollectionBoxService getCollectionBoxTreeModel() {
-        return (CollectionBoxService) boxTreeRootNode.getTreeSource();
+        return collectionBoxTreeRootNode == null ? null : collectionBoxTreeRootNode.getService();
     }
     
     public void setCollectionBoxTreeModel(CollectionBoxService newSource) {
-        if (boxTreeRootNode != null) {
-            removeNodeFromParent(boxTreeRootNode);
-            boxTreeRootNode = null;
-        }
+        final CollectionBoxTreeRootNode newNode;
         
         if (newSource != null) {
-            boxTreeRootNode = new DefaultEventTreeNode<CollectionBox>(delegate, null, true);
-            boxTreeRootNode.setTreeSource(newSource);
-            boxTreeRootNode.setUserObject("Collections");
-            
-            delegate.insertNodeInto(boxTreeRootNode, getRoot(), getRoot().getChildCount());
+            newNode = new CollectionBoxTreeRootNode(newSource, 10);
+            newNode.setUserObject("Collections");
         }
-    }
-
-    public void addCollectionBox(BoxType boxType, CollectionBoxNode parentNode) {
-        CollectionBoxService model = getCollectionBoxTreeModel();
-        CollectionBox newBox = model.createBox(boxType);
+        else {
+            newNode = null;
+        }
         
-        CollectionBox parent = parentNode == null ? null : parentNode.getCollectionBox();
-        model.insert(newBox, parent);
+        setCollectionBoxTreeRootNode(newNode);
     }
     
-    public void moveCollectionBox(CollectionBoxNode node, CollectionBoxNode newParent) {
-        CollectionBoxService model = getCollectionBoxTreeModel();
+    public void reloadCollectionBoxNode(CollectionBoxNode node) {
+        GroupCollectionBox parent = (GroupCollectionBox) node.getCollectionBox();
+        List<CollectionBox> children = parent.fetchChildren();
         
-        CollectionBox parent = newParent == null ? null : newParent.getCollectionBox();
-        model.setParent(node.getCollectionBox(), parent);
-    }
-
-    public void removeCollectionBox(CollectionBoxNode node) {
-        CollectionBoxService model = getCollectionBoxTreeModel();
-        model.delete(node.getCollectionBox());
+        List<CollectionBoxNode> newChildNodeList = new ArrayList<CollectionBoxNode>();
+        
+        for (CollectionBox child: children) {
+            CollectionBoxNode childNode = createCollectionBoxNode(child);
+            newChildNodeList.add(childNode);
+        }
+        
+        node.setChildren(newChildNodeList);
+        
+        delegate.reload(node);
     }
     
-    @Override
+    protected CollectionBoxNode createCollectionBoxNode(CollectionBox box) {
+        boolean allowChildren = box instanceof GroupCollectionBox;
+        DefaultCollectionBoxNode node = new DefaultCollectionBoxNode(box, allowChildren);
+        return node;
+    }
+
+    public CollectionBoxNode addCollectionBox(BoxType boxType, CollectionBoxNode target) {
+        if (boxType == null) throw new IllegalArgumentException("boxType must not be null");
+        if (target == null) throw new IllegalArgumentException("target must not be null");
+        
+        final CollectionBoxNode parentNode =
+                target.getAllowsChildren() ? target : (CollectionBoxNode) target.getParent();
+        
+        final GroupCollectionBox parentBox = (GroupCollectionBox) parentNode.getCollectionBox();
+        
+        final CollectionBox newBox = parentBox.addChild(boxType);
+        
+        CollectionBoxNode newChild = createCollectionBoxNode(newBox);
+        
+        List<CollectionBox> children = parentBox.fetchChildren();
+        int index = children.indexOf(newBox);
+        if (index < 0)
+            index = parentNode.getChildCount();
+        
+        delegate.insertNodeInto(newChild, parentNode, index);
+        
+        return newChild;
+    }
+    
+    boolean canMove(CollectionBox box, CollectionBox target) {
+        final boolean canMove;
+        
+        if (box.getId() != null && box.getId().equals(target.getId())) {
+            canMove = false;
+        }
+        else if (target instanceof GroupCollectionBox) {
+            Long targetId = target.getId();
+            
+            if (targetId != null && box instanceof GroupCollectionBox) {
+                canMove = !((GroupCollectionBox) box).isAncestorOf(targetId);
+            }
+            else {
+                canMove = true;
+            }
+        }
+        else {
+            canMove = false;
+        }
+        
+        return canMove;
+    }
+    
+    public boolean canMove(CollectionBoxNode node, CollectionBoxNode target) {
+        CollectionBox boxOfNode = node.getCollectionBox();
+        CollectionBox boxOfTarget = target.getCollectionBox();
+        
+        return canMove(boxOfNode, boxOfTarget);
+    }
+    
+    public void moveCollectionBox(CollectionBoxNode boxNode, CollectionBoxNode target) {
+        if (boxNode == null) throw new IllegalArgumentException("boxNode must not be null");
+        if (target == null) throw new IllegalArgumentException("target must not be null");
+        
+        CollectionBox box = boxNode.getCollectionBox();
+        GroupCollectionBox parentBox = (GroupCollectionBox) target.getCollectionBox();
+        
+        int index = box.setParent(parentBox);
+        
+        delegate.insertNodeInto(boxNode, target, index);
+    }
+
+    public void removeCollectionBox(CollectionBoxNode collectionBoxNode) {
+        delegate.removeNodeFromParent(collectionBoxNode);
+        CollectionBox box = collectionBoxNode.getCollectionBox();
+        box.delete();
+    }
+    
     public MutableTreeNode getRoot() {
         return (MutableTreeNode) delegate.getRoot();
     }
 
-    @Override
-    public Object getChild(Object parent, int index) {
-        return delegate.getChild(parent, index);
-    }
-
-    @Override
-    public int getChildCount(Object parent) {
-        return delegate.getChildCount(parent);
-    }
-
-    @Override
-    public boolean isLeaf(Object node) {
-        return delegate.isLeaf(node);
-    }
-
-    @Override
-    public int getIndexOfChild(Object parent, Object child) {
-        return delegate.getIndexOfChild(parent, child);
-    }
-    
-    @Override
-    public void valueForPathChanged(TreePath path, Object newValue) {
-        delegate.nodeChanged((TreeNode) path.getLastPathComponent());
-    }
-
-    @Override
-    public void addTreeModelListener(TreeModelListener l) {
-        delegate.addTreeModelListener(l);
-    }
-
-    @Override
-    public void removeTreeModelListener(TreeModelListener l) {
-        delegate.removeTreeModelListener(l);
-    }
-    
     public static interface CategoryNode extends MutableTreeNode {
         int getPriority();
     }
     
-    public static interface CollectionBoxNode extends TreeNode {
+    public static interface CollectionBoxNode extends MutableTreeNode {
         CollectionBox getCollectionBox();
+        
+        void setChildren(List<CollectionBoxNode> newChildren);
     }
     
-    public static class DefaultCategoryNode extends DefaultMutableTreeNode implements MuseumSourceModel.CategoryNode {
+    // Node Implementations
+    static class DefaultCategoryNode extends DefaultMutableTreeNode implements MuseumSourceModel.CategoryNode {
         protected final int priority;
         
         public DefaultCategoryNode(int priority) {
@@ -226,6 +292,65 @@ public class MuseumSourceModel implements TreeModel {
         @Override
         public int getPriority() {
             return 0;
+        }
+    }
+    
+    static class DefaultCollectionBoxNode extends DefaultMutableTreeNode implements CollectionBoxNode {
+        private final CollectionBox box;
+        
+        public DefaultCollectionBoxNode(CollectionBox box, boolean allowChildren) {
+            super(box, allowChildren);
+            this.box = box;
+        }
+        
+        @Override
+        public CollectionBox getCollectionBox() {
+            return box;
+        }
+        
+        @Override
+        public void setChildren(List<CollectionBoxNode> newChildren) {
+            removeAllChildren();
+            
+            for (CollectionBoxNode node: newChildren) {
+                add(node);
+            }
+        }
+        
+        @Override
+        public String toString() {
+            if (box != null) {
+                return box.getName();
+            }
+            return super.toString();
+        }
+    }
+    
+    static class CollectionBoxTreeRootNode extends DefaultCollectionBoxNode implements CategoryNode {
+        final int priority;
+        final CollectionBoxService service;
+
+        public CollectionBoxTreeRootNode(CollectionBoxService service, int priority) {
+            super(service.getGroupingDelegate(), true);
+            
+            this.service = service;
+            this.priority = priority;
+            
+            setUserObject(service);
+        }
+        
+        public CollectionBoxService getService() {
+            return service;
+        }
+        
+        @Override
+        public int getPriority() {
+            return priority;
+        }
+        
+        @Override
+        public String toString() {
+            return getUserObject().toString();
         }
     }
 }

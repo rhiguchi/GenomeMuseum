@@ -1,16 +1,20 @@
 package jp.scid.genomemuseum.model;
 
+import static jp.scid.genomemuseum.model.sql.Tables.MUSEUM_EXHIBIT;
+
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.Date;
 
+import jp.scid.genomemuseum.model.sql.tables.records.MuseumExhibitRecord;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class GMExhibit {
-    private final static Logger logger = LoggerFactory.getLogger(GMExhibit.class);
+public class MuseumExhibit {
+    private final static Logger logger = LoggerFactory.getLogger(MuseumExhibit.class);
     
     public static enum SequenceUnitType {
         UNKNOWN(0),
@@ -57,168 +61,178 @@ public class GMExhibit {
         }
     }
     
-    public Long id = null;
+    private final MuseumExhibitRecord record;
     
-    public String name = "Untitled";
+    private Long rowId = null;
     
-    public int sequenceLength = 0;
+    MuseumExhibit(MuseumExhibitRecord record) {
+        this.record = record;
+    }
     
-    public String accession = "";
+    public MuseumExhibit() {
+        this(new MuseumExhibitRecord());
+    }
     
-    public String namespace = "";
+    MuseumExhibitRecord getRecord() {
+        return record;
+    }
     
-    public int version = 0;
-
-    public String definition = "";
-    
-    public String sourceText = "";
-    
-    public String organism = "";
-    
-    public Date date = null;
-    
-    public int sequenceUnit;
-    
-    public String moleculeType = "";
-    
-    public FileType fileType;
-    
-    public String fileUri = "";
-
     // Accessor
     public Long getId() {
-        return id;
+        return record.getId();
     }
 
     public void setId(Long id) {
-        this.id = id;
+        record.setId(id);
     }
 
+    // row num
+    public boolean hasRowId() {
+        return rowId != null;
+    }
+    
+    public long getRowId() {
+        return rowId;
+    }
+    
+    void setRowId(long rowId) {
+        this.rowId = rowId;
+    }
+    
     public String getName() {
-        return name;
+        return record.getValueAsString(MUSEUM_EXHIBIT.NAME, "");
     }
 
     public void setName(String name) {
         if (name == null) throw new IllegalArgumentException("name must not be null");
         
-        this.name = name;
+        record.setName(name);
     }
 
     public int getSequenceLength() {
-        return sequenceLength;
+        return record.getValueAsInteger(MUSEUM_EXHIBIT.SEQUENCE_LENGTH, 0);
     }
 
     public void setSequenceLength(int sequenceLength) {
         if (sequenceLength < 0)
             throw new IllegalArgumentException("sequenceLength must not be negative number");
-        this.sequenceLength = sequenceLength;
+        
+        record.setSequenceLength(sequenceLength);
     }
 
     public String getAccession() {
-        return accession;
+        return record.getValueAsString(MUSEUM_EXHIBIT.ACCESSION, "");
     }
 
     public void setAccession(String accession) {
         if (accession == null) throw new IllegalArgumentException("accession must not be null");
-        this.accession = accession;
+        
+        record.setAccession(accession);
     }
 
     public String getNamespace() {
-        return namespace;
+        return record.getValueAsString(MUSEUM_EXHIBIT.NAMESPACE, "");
     }
 
     public void setNamespace(String namespace) {
         if (namespace == null) throw new IllegalArgumentException("namespace must not be null");
-        this.namespace = namespace;
+        
+        record.setNamespace(namespace);
     }
 
     public int getVersion() {
-        return version;
+        return record.getValueAsInteger(MUSEUM_EXHIBIT.VERSION, 0);
     }
 
     public void setVersion(int version) {
         if (version < 0)
             throw new IllegalArgumentException("version must not be negative number");
 
-        this.version = version;
+        record.setVersion(version);
     }
 
     public String getDefinition() {
-        return definition;
+        return record.getValueAsString(MUSEUM_EXHIBIT.DEFINITION, "");
     }
 
     public void setDefinition(String definition) {
         if (definition == null) throw new IllegalArgumentException("definition must not be null");
-        this.definition = definition;
+        
+        record.setDefinition(definition);
     }
 
     public String getSourceText() {
-        return sourceText;
+        return record.getValueAsString(MUSEUM_EXHIBIT.SOURCE_TEXT, "");
     }
 
     public void setSourceText(String sourceText) {
         if (sourceText == null) throw new IllegalArgumentException("sourceText must not be null");
-        this.sourceText = sourceText;
+        
+        record.setSourceText(sourceText);
     }
 
     public String getOrganism() {
-        return organism;
+        return record.getValueAsString(MUSEUM_EXHIBIT.ORGANISM, "");
     }
 
     public void setOrganism(String organism) {
         if (organism == null) throw new IllegalArgumentException("organism must not be null");
-        this.organism = organism;
+        
+        record.setOrganism(organism);
     }
 
     public Date getDate() {
-        return date;
+        return record.getDate();
     }
 
     public void setDate(Date date) {
-        this.date = date;
+        record.setDate(new java.sql.Date(date.getTime()));
     }
     
     public SequenceUnitType getSequenceUnitAsTypeValue() {
-        return SequenceUnitType.fromIntValue(sequenceUnit);
+        Integer value = record.getValueAsInteger(MUSEUM_EXHIBIT.SEQUENCE_UNIT, 0);
+        
+        return SequenceUnitType.fromIntValue(value);
     }
     
     public void setSequenceUnitAsTypeValue(SequenceUnitType newType) {
         if (newType == null) throw new IllegalArgumentException("newType must not be null");
         
-        sequenceUnit = newType.toIntValue();
+        record.setSequenceUnit(newType.toIntValue());
     }
     
     public String getMoleculeType() {
-        return moleculeType;
+        return record.getValueAsString(MUSEUM_EXHIBIT.MOLECULE_TYPE, "");
     }
     
     public void setMoleculeType(String moleculeType) {
         if (moleculeType == null)
             throw new IllegalArgumentException("moleculeType must not be null");
-        this.moleculeType = moleculeType;
+        
+        record.setMoleculeType(moleculeType);
     }
     
     public FileType getFileType() {
+        Integer value = record.getValueAsInteger(MUSEUM_EXHIBIT.FILE_TYPE, 0);
+        FileType fileType = FileType.values()[value];
+        
         return fileType;
     }
     
     public void setFileType(FileType fileType) {
         if (fileType == null) throw new IllegalArgumentException("fileType must not be null");
         
-        this.fileType = fileType;
+        record.setFileType(fileType.getIntValue());
     }
     
     public String getFileUri() {
-        return fileUri;
+        return record.getValueAsString(MUSEUM_EXHIBIT.FILE_URI, "");
     }
     
     public void setFileUri(String fileUri) {
         if (fileUri == null) throw new IllegalArgumentException("fileUri must not be null");
-        this.fileUri = fileUri;
-    }
-    
-    public boolean isInserted() {
-        return getId() != null;
+        
+        record.setFileUri(fileUri);
     }
     
     public URL getSourceFileAsUrl() {
