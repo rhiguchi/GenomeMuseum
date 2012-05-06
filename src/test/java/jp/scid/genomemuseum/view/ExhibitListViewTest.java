@@ -1,10 +1,6 @@
 package jp.scid.genomemuseum.view;
 
-import static org.junit.Assert.*;
-
 import javax.swing.JFrame;
-
-import org.junit.Test;
 
 public class ExhibitListViewTest {
     ExhibitListView craeteView() {

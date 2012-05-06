@@ -271,11 +271,6 @@ public class MainView implements GenomeMuseumView {
         }
     }
 
-    // view test
-    public static void main(String[] args) {
-        GUICheckApp.launch(args, MainView.class);
-    }
-
     private static JTable createTable() {
         JTable table = new JTable();
         
