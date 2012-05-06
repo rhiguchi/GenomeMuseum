@@ -1,62 +1,54 @@
 package jp.scid.genomemuseum.gui;
 
-import java.io.File;
 import java.io.IOException;
+import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
-import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
-import java.util.concurrent.Future;
+import java.util.concurrent.Executors;
 
 import javax.swing.SwingWorker;
 
-import jp.scid.genomemuseum.model.ExhibitListModel;
-import jp.scid.genomemuseum.model.GMExhibit;
+import jp.scid.genomemuseum.model.MuseumExhibit;
+import jp.scid.genomemuseum.model.MuseumExhibit.FileType;
 import jp.scid.genomemuseum.model.MuseumExhibitLibrary;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class BioFileLoader {
-    private final static Logger logger = LoggerFactory.getLogger(BioFileLoader.class);
-    
+public class ExhibitDataLoader {
+    private final static Logger logger = LoggerFactory.getLogger(ExhibitDataLoader.class);
     final Executor taskExecutor;
-    final MuseumExhibitLibrary model;
+    final MuseumExhibitLibrary library;
     
-    public BioFileLoader(Executor taskExecutor, MuseumExhibitLibrary model) {
+    public ExhibitDataLoader(Executor taskExecutor, MuseumExhibitLibrary library) {
         this.taskExecutor = taskExecutor;
-        this.model = model;
+        this.library = library;
+    }
+    
+    public ExhibitDataLoader(MuseumExhibitLibrary model) {
+        this(Executors.newSingleThreadExecutor(), model);
     }
 
-    void save(GMExhibit element) {
-        model.save(element);
-    }
-    
-    public void loadFilesRecursive(List<File> fileList) {
-        loadFilesRecursive(null, fileList);
-    }
-    
-    public void loadFilesRecursive(ExhibitListModel model, List<File> fileList) {
-        // TODO
-    }
-    
-    public boolean canLoad(URL source) throws IOException {
-        // TODO
-        return false;
-    }
-    
-    public Future<LoadResult> executeWithSourceUrl(URL source) throws IOException {
-        GMExhibit exhibit = model.newElement();
-        try {
-            exhibit.setFileUri(source.toURI().toString());
-        }
-        catch (URISyntaxException e) {
-            exhibit.setFileUri(source.toString());
-        }
+    public MuseumExhibit newMuseumExhibit(URI source) {
+        MuseumExhibit exhibit = library.newMuseumExhibit();
+        exhibit.setFileUri(source.toString());
         
-        model.save(exhibit);
+        return exhibit;
+    }
+    
+    public FileType updateFileFormat(MuseumExhibit exhibit) throws IOException {
+        URL url = exhibit.getSourceFileAsUrl();
         
+        final FileType newFileType = library.findFileType(url);
+        
+        exhibit.setFileType(newFileType);
+        
+        return newFileType;
+    }
+    
+    public SwingWorker<LoadResult, ?> executeReload(MuseumExhibit exhibit) {
         BioFileLoadTask task = new BioFileLoadTask(exhibit);
         execute(task);
         
@@ -67,19 +59,10 @@ public class BioFileLoader {
         taskExecutor.execute(task);
     }
     
-    class BioFileInsertTask extends BioFileLoadTask {
-
-        public BioFileInsertTask(GMExhibit exhibit) {
-            super(exhibit);
-            // TODO Auto-generated constructor stub
-        }
-        
-    }
-    
     class BioFileLoadTask extends SwingWorker<LoadResult, Void> {
-        final GMExhibit exhibit;
+        final MuseumExhibit exhibit;
         
-        public BioFileLoadTask(GMExhibit exhibit) {
+        public BioFileLoadTask(MuseumExhibit exhibit) {
             this.exhibit = exhibit;
         }
         
@@ -88,7 +71,7 @@ public class BioFileLoader {
             LoadResult result;
             
             try {
-                boolean reloaded = model.reloadExhibit(exhibit);
+                boolean reloaded = library.reloadExhibit(exhibit);
                 
                 if (reloaded) {
                     result = new Success(exhibit);
@@ -131,21 +114,21 @@ public class BioFileLoader {
         }
     }
     
-    public void showLoadingError(GMExhibit exhibit, ExecutionException exception) {
+    public void showLoadingError(MuseumExhibit exhibit, ExecutionException exception) {
         // TODO
     }
     
-    public void showLoadingError(GMExhibit exhibit, URISyntaxException exception) {
+    public void showLoadingError(MuseumExhibit exhibit, URISyntaxException exception) {
         // TODO
     }
     
-    public void showLoadingError(GMExhibit exhibit, IOException exception) {
+    public void showLoadingError(MuseumExhibit exhibit, IOException exception) {
         // TODO
     }
 
     void processDoneLoading(final LoadResult loadResult) {
         if (loadResult instanceof Success) {
-            save(loadResult.exhibit());
+            // Do nothing
         }
         else if (loadResult instanceof InvalidFileFormat) {
             // Do nothing
@@ -159,33 +142,33 @@ public class BioFileLoader {
     }
 
     public static abstract class LoadResult {
-        private final GMExhibit exhibit;
+        private final MuseumExhibit exhibit;
 
-        LoadResult(GMExhibit exhibit) {
+        LoadResult(MuseumExhibit exhibit) {
             this.exhibit = exhibit;
         }
         
-        public GMExhibit exhibit() {
+        public MuseumExhibit exhibit() {
             return exhibit;
         }
     }
     
-    public static class Success extends BioFileLoader.LoadResult {
-        Success(GMExhibit exhibit) {
+    public static class Success extends LoadResult {
+        Success(MuseumExhibit exhibit) {
             super(exhibit);
         }
     }
     
-    public static class InvalidFileFormat extends BioFileLoader.LoadResult {
-        InvalidFileFormat(GMExhibit exhibit) {
+    public static class InvalidFileFormat extends LoadResult {
+        InvalidFileFormat(MuseumExhibit exhibit) {
             super(exhibit);
         }
     }
     
-    public static class InvalidSourceURI extends BioFileLoader.LoadResult {
+    public static class InvalidSourceURI extends LoadResult {
         private final URISyntaxException e;
         
-        InvalidSourceURI(GMExhibit exhibit, URISyntaxException e) {
+        InvalidSourceURI(MuseumExhibit exhibit, URISyntaxException e) {
             super(exhibit);
             this.e = e;
         }
@@ -195,10 +178,10 @@ public class BioFileLoader {
         }
     }
     
-    public static class IOExceptionThrown extends BioFileLoader.LoadResult {
+    public static class IOExceptionThrown extends LoadResult {
         private final IOException e;
         
-        IOExceptionThrown(GMExhibit exhibit, IOException e) {
+        IOExceptionThrown(MuseumExhibit exhibit, IOException e) {
             super(exhibit);
             this.e = e;
         }

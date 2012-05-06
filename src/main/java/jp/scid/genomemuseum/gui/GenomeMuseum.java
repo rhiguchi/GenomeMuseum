@@ -4,17 +4,16 @@ import java.awt.FileDialog;
 import java.io.File;
 import java.sql.Connection;
 import java.sql.SQLException;
-import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import javax.swing.JFrame;
 
-import jp.scid.genomemuseum.model.CollectionBox;
 import jp.scid.genomemuseum.model.CollectionBox.BoxType;
 import jp.scid.genomemuseum.model.CollectionBoxService;
-import jp.scid.genomemuseum.model.MuseumExhibitLibrary;
 import jp.scid.genomemuseum.model.MuseumDataSchema;
+import jp.scid.genomemuseum.model.MuseumExhibitLibrary;
+import jp.scid.genomemuseum.model.MuseumSourceModel;
 import jp.scid.genomemuseum.model.SchemaBuilder;
 import jp.scid.genomemuseum.view.MainView;
 
@@ -60,7 +59,9 @@ public class GenomeMuseum extends Application {
     private MuseumDataSchema dataSchema = null;
     
     // Controllers
-    private BioFileLoader fileLoader;
+    private ExhibitDataLoader fileLoader;
+    
+    MainFrameController mainFrameController = null;
     
     public GenomeMuseum() {
     }
@@ -108,27 +109,21 @@ public class GenomeMuseum extends Application {
         }
         
         CollectionBoxService boxService = dataSchema.getCollectionBoxService();
-        CollectionBox box = boxService.createBox(BoxType.FREE);
-        boxService.insert(box);
-        System.out.println(box.getId());
-        
-        List<CollectionBox> boxes = boxService.getChildren(null);
-        System.out.println(boxes);
+        boxService.addChild(BoxType.FREE);
         
         // test source
-        MuseumExhibitLibrary exhibitService = getExhibitService();
-        exhibitService.newElement();
-        exhibitService.newElement();
-        exhibitService.newElement();
+        MuseumExhibitLibrary exhibitService = getExhibitLibrary();
+        exhibitService.save(exhibitService.newElement());
+        exhibitService.save(exhibitService.newElement());
+        exhibitService.save(exhibitService.newElement());
         
         // Controller
-        MainFrameController mainFrameController = new MainFrameController();
+        MainFrameController mainFrameController = getMainFrameController();
         mainFrameController.bindFrame(getMainFrame());
         mainFrameController.bindMainView(getMainView());
         
-        mainFrameController.setDataSchema(dataSchema);
-        
-        addExitListener(mainFrameController);
+        // add local library
+        getMuseumSourceModel().setLocalLibrarySource(getExhibitLibrary());
         
         mainFrameController.showFrame();
     }
@@ -140,6 +135,21 @@ public class GenomeMuseum extends Application {
         }
     }
 
+    MainFrameController getMainFrameController() {
+        if (mainFrameController == null) {
+            mainFrameController = new MainFrameController();
+            mainFrameController.setDataSchema(getDataSchema());
+            mainFrameController.setBioFileLoader(getFileLoader());
+            
+            addExitListener(mainFrameController);
+        }
+        return mainFrameController;
+    }
+    
+    MuseumSourceModel getMuseumSourceModel() {
+        return getMainFrameController().sourceListController.sourceModel;
+    }
+    
     // Data Models
     public Connection getConnection() throws SQLException {
         if (connectionPool == null) {
@@ -156,12 +166,17 @@ public class GenomeMuseum extends Application {
     }
     
     public void initDataSchema() throws SQLException {
-        SchemaBuilder builder = new SchemaBuilder();
-        builder.setConnection(getConnection());
+        SchemaBuilder builder = new SchemaBuilder(getConnection());
         dataSchema = builder.getDataSchema();
     }
     
-    public MuseumExhibitLibrary getExhibitService() {
+    public MuseumDataSchema getDataSchema() {
+        if (dataSchema == null)
+            throw new IllegalStateException("schema needs initialize before using");
+        return dataSchema;
+    }
+    
+    public MuseumExhibitLibrary getExhibitLibrary() {
         return dataSchema.getMuseumExhibitLibrary();
     }
     
@@ -189,10 +204,10 @@ public class GenomeMuseum extends Application {
     }
     
     // Application controllers
-    public BioFileLoader getFileLoader() {
+    public ExhibitDataLoader getFileLoader() {
         if (fileLoader == null) {
             ExecutorService taskExecutor = Executors.newSingleThreadExecutor();
-            fileLoader = new BioFileLoader(taskExecutor, getExhibitService());
+            fileLoader = new ExhibitDataLoader(taskExecutor, getExhibitLibrary());
         }
         return fileLoader;
     }

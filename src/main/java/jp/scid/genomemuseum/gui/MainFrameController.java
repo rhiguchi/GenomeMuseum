@@ -2,15 +2,8 @@ package jp.scid.genomemuseum.gui;
 
 import static java.lang.String.*;
 
-import java.awt.Component;
-import java.beans.Expression;
-import java.beans.IntrospectionException;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
-import java.beans.PropertyDescriptor;
-import java.beans.Statement;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.util.EventObject;
 
 import javax.swing.AbstractButton;
@@ -18,17 +11,19 @@ import javax.swing.JFrame;
 import javax.swing.JTree;
 import javax.swing.event.TreeSelectionEvent;
 import javax.swing.event.TreeSelectionListener;
+import javax.swing.tree.DefaultMutableTreeNode;
+import javax.swing.tree.MutableTreeNode;
 import javax.swing.tree.TreePath;
 
+import jp.scid.bio.Features;
 import jp.scid.genomemuseum.model.CollectionBox;
-import jp.scid.genomemuseum.model.GMExhibit;
-import jp.scid.genomemuseum.model.ListSource;
+import jp.scid.genomemuseum.model.ExhibitListModel;
 import jp.scid.genomemuseum.model.MuseumDataSchema;
+import jp.scid.genomemuseum.model.MuseumExhibit;
+import jp.scid.genomemuseum.model.MuseumSourceModel;
+import jp.scid.genomemuseum.model.MuseumSourceModel.CollectionBoxNode;
 import jp.scid.genomemuseum.view.ExhibitListView;
 import jp.scid.genomemuseum.view.MainView;
-import jp.scid.gui.control.ComponentPropertyConnector;
-import jp.scid.gui.model.ValueModel;
-import jp.scid.gui.model.ValueModels;
 
 import org.jdesktop.application.AbstractBean;
 import org.jdesktop.application.Application.ExitListener;
@@ -42,11 +37,15 @@ public class MainFrameController extends AbstractBean
     
     protected MuseumDataSchema schema = null;
     
+    // Properties
+    
     // Controllers
     final MuseumSourceListController sourceListController;
     
     final ExhibitListViewController exhibitListViewController;
     
+    final MuseumExhibitContentViewer museumExhibitContentViewer;
+
     final BindingSupport bindings = new BindingSupport(this);
     
     public MainFrameController() {
@@ -57,6 +56,8 @@ public class MainFrameController extends AbstractBean
         
         exhibitListViewController = new ExhibitListViewController();
         exhibitListViewController.addPropertyChangeListener(this);
+        
+        museumExhibitContentViewer = new MuseumExhibitContentViewer();
     }
     
     // frameVisibled
@@ -68,20 +69,34 @@ public class MainFrameController extends AbstractBean
         firePropertyChange(PROPKEY_FRAME_VISIBLED, this.frameVisibled, this.frameVisibled = newValue);
     }
     
+    // Controllers
+    public ExhibitDataLoader getBioFileLoader() {
+        return exhibitListViewController.getBioFileLoader();
+    }
+
+    public void setBioFileLoader(ExhibitDataLoader bioFileLoader) {
+        exhibitListViewController.setBioFileLoader(bioFileLoader);
+    }
+
     public void showFrame() {
         setFrameVisibled(true);
     }
-    
+
     public void setDataSchema(MuseumDataSchema newSchema) {
-        setExhibitListSource(null);
         sourceListController.setCollectionBoxSource(null);
+//        exhibitListViewController.setMuseumSchema(newSchema);
         
         schema = newSchema;
         
         if (newSchema != null) {
-//          setExhibitListSource(newSchema.getMuseumExhibitLibrary());
             sourceListController.setCollectionBoxSource(newSchema.getCollectionBoxService());
+            sourceListController.setLocalLibrarySource(newSchema.getMuseumExhibitLibrary());
         }
+        
+    }
+
+    public void setExhibitListSource(ExhibitListModel newModel) {
+        exhibitListViewController.setExhibitListModel(newModel);
     }
     
     public CollectionBox getSelectedSource() {
@@ -89,15 +104,16 @@ public class MainFrameController extends AbstractBean
         return null;
     }
     
-    public GMExhibit getSelectedExhibit() {
-        // TODO
-        return null;
+    public MuseumExhibit getSelectedExhibit() {
+        return exhibitListViewController.getSelection();
     }
 
     // Action methods
     public void reloadExhibitDetailsView() {
-        GMExhibit selectedExhibit = getSelectedExhibit();
+        MuseumExhibit exhibit = getSelectedExhibit();
         
+        getBioFileLoader().executeReload(exhibit);
+//        motifViewerController.s
         // TODO Auto-generated method stub
         
     }
@@ -118,23 +134,37 @@ public class MainFrameController extends AbstractBean
     
     public void bindMainView(MainView mainView) {
         bindSourceList(mainView.sourceList);
-        bindSourceListControlls(mainView.addListBox);
-        
-        bindExhibitListView(mainView.exhibitListView);
+        bindSourceListControlls(
+                mainView.addListBox, mainView.addBoxFolder, mainView.addSmartBox,
+                mainView.removeBoxButton);
+
+        exhibitListViewController.bindTable(mainView.exhibitListView.dataTable);
+        exhibitListViewController.bindFilterTextField(mainView.quickSearchField);
+        bindExhibitContentView(mainView.exhibitListView);
     }
     
     void bindSourceList(JTree tree) {
         sourceListController.bindTree(tree);
     }
     
-    void bindSourceListControlls(AbstractButton addFreeBoxButton) {
+    void bindSourceListControlls(AbstractButton addFreeBoxButton,
+            AbstractButton addGroupBoxButton, AbstractButton addSmartBoxButton,
+            AbstractButton removeBoxButton) {
         sourceListController.bindAddFreeBox(addFreeBoxButton);
+        sourceListController.bindAddGroupBox(addGroupBoxButton);
+        sourceListController.bindAddSmartBox(addSmartBoxButton);
+        sourceListController.bindRemoveBox(removeBoxButton);
     }
     
-    void bindExhibitListView(ExhibitListView exhibitListView) {
-        exhibitListViewController.bindExhibitListView(exhibitListView);
+    void bindExhibitContentView(ExhibitListView view) {
+        museumExhibitContentViewer.bindFileContentView(view.fileContentView);
+        museumExhibitContentViewer.bindOverviewMotifView(view.overviewMotifView);
     }
-
+    
+    MuseumSourceModel getMuseumSourceModel() {
+        return sourceListController.sourceModel;
+    }
+    
     @Override
     public boolean canExit(EventObject event) {
         return true;
@@ -143,18 +173,22 @@ public class MainFrameController extends AbstractBean
     @Override
     public void willExit(EventObject event) {
     }
-
-    public void setExhibitListSource(ListSource<GMExhibit> listSource) {
-        exhibitListViewController.setListSource(listSource);
-    }
     
     @Override
     public void valueChanged(TreeSelectionEvent e) {
         TreePath path = e.getPath();
         if (path != null) {
-            Object selectedNode = path.getLastPathComponent();
+            MutableTreeNode node = (MutableTreeNode) path.getLastPathComponent();
             
-            
+            if (node instanceof CollectionBoxNode) {
+                ExhibitListModel model = ((CollectionBoxNode) node).getCollectionBox(); 
+                setExhibitListSource(model);
+            }
+            else if (node instanceof DefaultMutableTreeNode &&
+                    ((DefaultMutableTreeNode) node).getUserObject() instanceof ExhibitListModel) {
+                ExhibitListModel model = (ExhibitListModel) ((DefaultMutableTreeNode) node).getUserObject();
+                setExhibitListSource(model);
+            }
         }
     }
     
@@ -172,96 +206,6 @@ public class MainFrameController extends AbstractBean
             if ("selection".equals(propertyName)) {
                 reloadExhibitDetailsView();
             }
-        }
-    }
-}
-
-class BindingSupport {
-    final Object bean;
-    
-    public BindingSupport(Object bean) {
-        this.bean = bean;
-    }
-    
-    public PropertyConnector bind(String property) {
-        PropertyDescriptor pd;
-        try {
-            pd = new PropertyDescriptor(property, bean.getClass());
-        }
-        catch (IntrospectionException e) {
-            throw new IllegalStateException(format(
-                    "maybe invalid property name ''", property), e);
-        }
-        
-        Method readMethod = pd.getReadMethod();
-        
-        PropertyConnectorImpl conn = new PropertyConnectorImpl(readMethod);
-        conn.updateModelValue();
-        
-        listenTo(bean, conn);
-        
-        return conn;
-    }
-    
-    protected static interface PropertyConnector {
-        <C extends Component> ComponentPropertyConnector<C, Object> to(C component, String propertyName);
-    }
-    
-    class PropertyConnectorImpl implements PropertyConnector, PropertyChangeListener {
-        final ValueModel<Object> model = ValueModels.newNullableValueModel();
-        final Method readMethod;
-        
-        public PropertyConnectorImpl(Method readMethod) {
-            this.readMethod = readMethod;
-            
-            updateModelValue();
-        }
-        
-        public void updateModelValue() {
-            try {
-                Object newValue = readMethod.invoke(bean, (Object[]) null);
-                model.setValue(newValue);
-            }
-            catch (IllegalAccessException e) {
-                throw new IllegalStateException(e);
-            }
-            catch (InvocationTargetException e) {
-                throw new IllegalStateException(e);
-            }
-        }
-
-        @Override
-        public void propertyChange(PropertyChangeEvent evt) {
-            updateModelValue();
-        }
-
-        @Override
-        public <C extends Component> ComponentPropertyConnector<C, Object> to(C component, String propertyName) {
-            return ComponentPropertyConnector.connect(model, component, propertyName);
-        }
-    }
-    
-    protected Object getControllerValue(String getterMethodName) {
-        Expression statement = new Expression(bean, getterMethodName, null);
-        
-        try {
-            return statement.getValue();
-        }
-        catch (Exception e) {
-            throw new IllegalStateException(format(
-                    "Cannot execute %s with %s", getterMethodName, bean.getClass()), e);
-        }
-    }
-    
-    void listenTo(Object controller, PropertyChangeListener listener) {
-        
-        Statement statement = new Statement(controller, "addPropertyChangeListener", new Object[]{listener});
-        try {
-            statement.execute();
-        }
-        catch (Exception e) {
-            throw new IllegalStateException(format(
-                    "Cannot execute %s with %s", "addPropertyChangeListener", controller.getClass()), e);
         }
     }
 }

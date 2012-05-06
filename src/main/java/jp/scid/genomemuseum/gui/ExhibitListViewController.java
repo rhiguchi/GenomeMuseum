@@ -1,55 +1,94 @@
 package jp.scid.genomemuseum.gui;
 
+import java.awt.datatransfer.DataFlavor;
+import java.awt.datatransfer.UnsupportedFlavorException;
 import java.awt.event.KeyEvent;
 import java.io.File;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Iterator;
+import java.io.IOException;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
-import java.util.Map;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 
+import javax.swing.DropMode;
+import javax.swing.JComponent;
 import javax.swing.JTable;
+import javax.swing.JTextField;
 import javax.swing.KeyStroke;
+import javax.swing.SwingWorker;
+import javax.swing.TransferHandler;
+import javax.swing.event.ChangeEvent;
+import javax.swing.event.ChangeListener;
 
+import jp.scid.genomemuseum.gui.ExhibitDataLoader.LoadResult;
+import jp.scid.genomemuseum.model.ExhibitCollectionModel;
+import jp.scid.genomemuseum.model.ExhibitLibrary;
 import jp.scid.genomemuseum.model.ExhibitListModel;
-import jp.scid.genomemuseum.model.FreeExhibitBoxModel;
-import jp.scid.genomemuseum.model.FreeExhibitBoxModel.Element;
+import jp.scid.genomemuseum.model.FreeExhibitCollectionModel;
+import jp.scid.genomemuseum.model.MuseumExhibit;
+import jp.scid.genomemuseum.model.MuseumExhibit.FileType;
 import jp.scid.genomemuseum.model.MuseumExhibitTableFormat;
-import jp.scid.genomemuseum.model.GMExhibit;
-import jp.scid.genomemuseum.view.ExhibitListView;
+import jp.scid.gui.control.ColumnOrderStatementHandler;
+import jp.scid.gui.control.SortedListComparator;
+import jp.scid.gui.control.TextComponentTextConnector;
+import jp.scid.gui.model.ValueModel;
+import jp.scid.gui.model.ValueModels;
 
-import org.jooq.Condition;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import ca.odell.glazedlists.EventList;
-import ca.odell.glazedlists.event.ListEvent;
-import ca.odell.glazedlists.event.ListEventListener;
+import ca.odell.glazedlists.TextFilterator;
 import ca.odell.glazedlists.gui.TableFormat;
+import ca.odell.glazedlists.matchers.SearchEngineTextMatcherEditor;
 
-public class ExhibitListViewController extends ListController<GMExhibit> {
-    private String searchText = "";
+public class ExhibitListViewController extends ListController<MuseumExhibit> implements ChangeListener {
+    private final static Logger logger = LoggerFactory.getLogger(ExhibitListViewController.class);
     
-    final TableFormat<GMExhibit> tableFormat;
+    private String filterText = "";
+    
+    final MuseumExhibitTableFormat tableFormat;
     
     final BindingSupport bindings = new BindingSupport(this);
     
+    // Models
     protected ExhibitListModel exhibitListModel = null;
     
-    private List<Long> boxContent = null;
+    protected final SortedListComparator<MuseumExhibit> sortedListComparator;
+    
+    final TextFilterator<? super MuseumExhibit> textFilterator;
     
     // Controllers
-    protected BioFileLoader bioFileLoader = null;
+    final ExhibitTransferHandler transferHandler = new ExhibitTransferHandler(this);
+    
+    protected final ColumnOrderStatementHandler<MuseumExhibit> orderStatementHandler;
+    
+    private final SearchEngineTextMatcherEditor<MuseumExhibit> textMatcherEditor;
+
+    protected ExhibitDataLoader bioFileLoader = null;
     
     public ExhibitListViewController() {
         tableFormat = new MuseumExhibitTableFormat();
+        
+        // sorting
+        ValueModel<Comparator<? super MuseumExhibit>> comparator = ValueModels.newNullableValueModel();
+        sortedListComparator = new SortedListComparator<MuseumExhibit>(sortedList);
+        sortedListComparator.setModel(comparator);
+        
+        // filtering
+        textFilterator = new ExhibitTextFilterator();
+        textMatcherEditor = new SearchEngineTextMatcherEditor<MuseumExhibit>(textFilterator);
+        filterList.setMatcherEditor(textMatcherEditor);
+        
+        orderStatementHandler = new ColumnOrderStatementHandler<MuseumExhibit>(comparator, tableFormat);
     }
     
     // bioFileLoader
-    public BioFileLoader getBioFileLoader() {
+    public ExhibitDataLoader getBioFileLoader() {
         return bioFileLoader;
     }
     
-    public void setBioFileLoader(BioFileLoader bioFileLoader) {
+    public void setBioFileLoader(ExhibitDataLoader bioFileLoader) {
         this.bioFileLoader = bioFileLoader;
     }
     
@@ -59,124 +98,108 @@ public class ExhibitListViewController extends ListController<GMExhibit> {
     }
     
     public void setExhibitListModel(ExhibitListModel exhibitListModel) {
-        setSource(null);
+        getSource().clear();
         
         this.exhibitListModel = exhibitListModel;
         
-        fetch();
+        if (exhibitListModel != null) {
+            fetch();
+        }
     }
     
-    public void loadToModel(List<File> fileList) {
-        getBioFileLoader().loadFilesRecursive(getExhibitListModel(), fileList);
+    // Filter text
+    public String getFilterText() {
+        return filterText;
     }
     
-    @Override
-    protected List<GMExhibit> retrieve() {
-        List<GMExhibit> exhibitList = super.retrieve();
-        boxContent = null;
-        
-        if (exhibitListModel instanceof FreeExhibitBoxModel) {
-            long boxId = ((FreeExhibitBoxModel) exhibitListModel).getId();
-            boxContent = getFreeBoxContent(boxId);
-            
-            if (boxContent.size() != exhibitList.size()) {
-                Map<Long, GMExhibit> exibitMap = toIdMap(exhibitList);
-                List<GMExhibit> realList = new ArrayList<GMExhibit>(boxContent.size());
-                
-                for (Long id: boxContent) {
-                    GMExhibit exhibit = exibitMap.get(id);
-                    if (exhibit == null)
-                        throw new IllegalStateException("invalid id: " + id);
-                    realList.add(exhibit);
-                }
-                
-                exhibitList = realList;
-            }
+    public void setFilterText(String newText) {
+        textMatcherEditor.refilter(newText);
+        firePropertyChange("filterText", this.filterText, this.filterText = newText);
+    }
+    
+    boolean isModelAppendable() {
+        return getExhibitListModel() instanceof FreeExhibitCollectionModel
+                || getExhibitListModel() instanceof ExhibitLibrary;
+    }
+    
+    MuseumExhibit createExhibit(File file) {
+        MuseumExhibit exhibit = getBioFileLoader().newMuseumExhibit(file.toURI());
+        try {
+            getBioFileLoader().updateFileFormat(exhibit);
+        }
+        catch (IOException e) {
+            logger.info("", e);
         }
         
-        return exhibitList;
+        return exhibit;
+    }
+    
+    Future<?> loadExhibit(MuseumExhibit exhibit) {
+        ExhibitListModel model = getExhibitListModel();
+        model.storeExhibit(exhibit);
+        
+        SwingWorker<LoadResult, ?> task = getBioFileLoader().executeReload(exhibit);
+        
+        LoadedDataUpdateHandler updateHandler = new LoadedDataUpdateHandler(task, model);
+        updateHandler.execute();
+        
+        return updateHandler;
+    }
+    
+    public void fetch() {
+        List<MuseumExhibit> list = getExhibitListModel().fetchExhibits();
+        
+        setSource(list);
     }
 
-    private static Map<Long, GMExhibit> toIdMap(final List<GMExhibit> exhibitList) {
-        Map<Long, GMExhibit> exibitMap = new HashMap<Long, GMExhibit>(exhibitList.size());
-        for (GMExhibit exhibit: exhibitList) {
-            exibitMap.put(exhibit.getId(), exhibit);
+    @Override
+    public void stateChanged(ChangeEvent e) {
+        if (getExhibitListModel() != null) {
+            fetch();
         }
-        return exibitMap;
-    }
-    
-    List<Long> getFreeBoxContent(long boxId) {
-        // TODO
-        return null;
-    }
-    
-    protected void requestFetching() {
-        
     }
     
     @Override
-    public void add(int index, GMExhibit exhibit) {
-        if (exhibitListModel instanceof FreeExhibitBoxModel) {
-            ((FreeExhibitBoxModel) exhibitListModel).add(index, exhibit);
-            
-            requestFetching();
-        }
+    public void add(int index, MuseumExhibit exhibit) {
+        int count = listModel.size();
+        super.add(count, exhibit);
         
-        super.add(index, exhibit);
+        boolean executed = exhibitListModel.storeExhibit(exhibit);
+        if (!executed) {
+            logger.warn("element is not persisted: {}", exhibit);
+        }
+
+        if (exhibitListModel instanceof FreeExhibitCollectionModel) {
+            move(new int[]{count}, index);
+            // TODO move index
+            ((FreeExhibitCollectionModel) exhibitListModel).addExhibit(index, exhibit);
+        }
     }
     
     @Override
     public void move(int[] indices, int dest) {
-        if (exhibitListModel instanceof FreeExhibitBoxModel) {
+        if (exhibitListModel instanceof FreeExhibitCollectionModel) {
             super.move(indices, dest);
             
-//            FreeExhibitBoxModel model = (FreeExhibitBoxModel) exhibitListModel;
-//            Iterator<Element> elementIte = boxElementList.iterator();
-//            Iterator<GMExhibit> dataIte = listModel.iterator();
-//            
-//            while (elementIte.hasNext() && dataIte.hasNext()) {
-//                Element element = elementIte.next();
-//                GMExhibit exhibit = dataIte.next();
-//                
-//                if (!element.exhibit().getId().equals(exhibit.getId())) {
-//                    model.updateIndexOfElement(element.orderIndex(), exhibit);
-//                }
-//            }
+            // TODO
         }
     }
     
     @Override
     public void removeAt(int index) {
+        MuseumExhibit exhibit = getTransformedElements().remove(index);
         
-        ContentRemoveHandler removeHandler = null;
-        
-        if (exhibitListModel instanceof FreeExhibitBoxModel) {
-            
-            removeHandler = new ContentRemoveHandler();
-            listModel.addListEventListener(removeHandler);
+        if (exhibitListModel instanceof ExhibitLibrary) {
+            // TODO alert
+            ((ExhibitLibrary) exhibitListModel).deleteExhibit(exhibit);
         }
-        
-        listModel.remove(index);
-    }
-    
-    static class ContentRemoveHandler<E> implements ListEventListener<E> {
-        
-        public static <E> ContentRemoveHandler<E> install(EventList<E> list) {
-            ContentRemoveHandler<E> removeHandler = new ContentRemoveHandler<E>();
-            list.addListEventListener(removeHandler);
-            return removeHandler;
+        else if (exhibitListModel instanceof FreeExhibitCollectionModel) {
+            // TODO alert
+            ((FreeExhibitCollectionModel) exhibitListModel).deleteExhibit(exhibit);
         }
-        
-        @Override
-        public void listChanged(ListEvent<E> listChanges) {
-            // TODO Auto-generated method stub
-            
-            listChanges.getSourceList().removeListEventListener(this);
+        else {
+            logger.warn("element is not removed");
         }
-    }
-    
-    public void bindExhibitListView(ExhibitListView view) {
-        bindTable(view.dataTable);
     }
     
     @Override
@@ -188,10 +211,131 @@ public class ExhibitListViewController extends ListController<GMExhibit> {
         table.getInputMap().put(KeyStroke.getKeyStroke('-'), "delete");
         table.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_DELETE, 0), "delete");
         table.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_BACK_SPACE, 0), "delete");
+        table.setDropMode(DropMode.INSERT_ROWS);
+        table.setTransferHandler(transferHandler);
+        
+        if (table.getParent() instanceof JComponent) {
+            ((JComponent) table.getParent()).setTransferHandler(transferHandler);
+        }
+        
+        if (table.getTableHeader() != null) {
+            orderStatementHandler.bindTableHeader(table.getTableHeader());
+        }
+    }
+    
+    public TextComponentTextConnector bindFilterTextField(JTextField field) {
+        TextComponentTextConnector connector = bindings.bindText("filterText").toText(field);
+        return connector;
     }
     
     @Override
-    public TableFormat<GMExhibit> getTableFormat() {
+    public TableFormat<MuseumExhibit> getTableFormat() {
         return tableFormat;
+    }
+    
+    static class ExhibitTransferHandler extends TransferHandler {
+        ExhibitListViewController controller;
+        
+        public ExhibitTransferHandler(ExhibitListViewController controller) {
+            this.controller = controller;
+        }
+        
+        @Override
+        public boolean canImport(TransferSupport support) {
+            if (support.isDataFlavorSupported(DataFlavor.javaFileListFlavor)) {
+                return controller.isModelAppendable();
+            }
+            return false;
+        }
+        
+        @Override
+        public boolean importData(TransferSupport support) {
+            final boolean result;
+            
+            if (support.isDataFlavorSupported(DataFlavor.javaFileListFlavor)) {
+                List<File> files = getImportFileList(support);
+                int loadFileCount = 0;
+                
+                for (File file: files) {
+                    MuseumExhibit exhibit = controller.createExhibit(file);
+                    if (exhibit.getFileType() != FileType.UNKNOWN) {
+                        controller.add(exhibit);
+                        controller.loadExhibit(exhibit);
+                        loadFileCount++;
+                    }
+                }
+                
+                result = loadFileCount > 0;
+            }
+            else {
+                result = false;
+            }
+            
+            return result;
+        }
+
+        @SuppressWarnings("unchecked")
+        List<File> getImportFileList(TransferSupport support) {
+            List<File> files = Collections.emptyList();
+            try {
+                files = (List<File>) support.getTransferable().getTransferData(DataFlavor.javaFileListFlavor);
+            }
+            catch (UnsupportedFlavorException e) {
+                logger.warn("cannot import file", e);
+            }
+            catch (IOException e) {
+                logger.warn("cannot import file", e);
+            }
+            return files;
+        }
+    }
+
+    class LoadedDataUpdateHandler extends SwingWorker<MuseumExhibit, Void> {
+        private final SwingWorker<LoadResult, ?> task;
+        private final ExhibitListModel model;
+        
+        public LoadedDataUpdateHandler(SwingWorker<LoadResult, ?> task, ExhibitListModel model) {
+            this.task = task;
+            this.model = model;
+        }
+        
+        @Override
+        protected MuseumExhibit doInBackground() throws Exception {
+            return task.get().exhibit();
+        }
+        
+        @Override
+        protected void done() {
+            if (isCancelled())
+                return;
+            
+            MuseumExhibit exhibit;
+            try {
+                exhibit = get();
+            }
+            catch (InterruptedException e) {
+                logger.warn("loading failure", e);
+                return;
+            }
+            catch (ExecutionException e) {
+                logger.warn("loading failure", e);
+                return;
+            }
+            
+            model.storeExhibit(exhibit);
+            elementChanged(exhibit);
+        }
+    }
+    
+    static class ExhibitTextFilterator implements TextFilterator<MuseumExhibit> {
+        @Override
+        public void getFilterStrings(List<String> baseList, MuseumExhibit element) {
+            baseList.add(element.getAccession());
+            baseList.add(element.getDefinition());
+            baseList.add(element.getName());
+            baseList.add(element.getNamespace());
+            baseList.add(element.getOrganism());
+            baseList.add(element.getSourceText());
+        }
     }
 }
