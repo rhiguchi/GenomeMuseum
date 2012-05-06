@@ -85,7 +85,7 @@ public class CollectionBoxService extends JooqEntityService<CollectionBox, BoxTr
         
         return record;
     }
-
+    
     public List<CollectionBox> fetchChildren(Long parentId) {
         final List<CollectionBox> children;
         

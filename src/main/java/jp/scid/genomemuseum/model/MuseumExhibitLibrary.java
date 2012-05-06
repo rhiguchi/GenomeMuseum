@@ -6,6 +6,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.Reader;
+import java.io.StringReader;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
@@ -44,7 +45,7 @@ public class MuseumExhibitLibrary extends AbstractExhibitListModel implements Ex
     MuseumExhibitService exhibitService;
     
     @SuppressWarnings("unchecked")
-    public MuseumExhibitLibrary(Factory factory) {
+    MuseumExhibitLibrary(Factory factory) {
         genBankFormat = new GenBankFormat();
         fastaFormat = new FastaFormat();
         searcher = new SequenceBioDataFormatSearcher(Arrays.asList(genBankFormat, fastaFormat));
@@ -52,8 +53,7 @@ public class MuseumExhibitLibrary extends AbstractExhibitListModel implements Ex
         this.factory = factory;
     }
     
-    @Override
-    public MuseumExhibit createExhibit() {
+    public MuseumExhibit newMuseumExhibit() {
         return exhibitService.newElement();
     }
     
@@ -70,13 +70,8 @@ public class MuseumExhibitLibrary extends AbstractExhibitListModel implements Ex
     }
 
     @Override
-    public void deleteExhibit(MuseumExhibit exhibit) {
-        exhibitService.delete(exhibit);
-    }
-    
-    public FreeExhibitCollectionModel getCollectionModel(long boxId) {
-        FreeExhibitCollectionModelImpl model = new FreeExhibitCollectionModelImpl(factory, boxId);
-        return model;
+    public boolean deleteExhibit(MuseumExhibit exhibit) {
+        return exhibitService.delete(exhibit);
     }
     
     int recourdCount() {
@@ -124,7 +119,7 @@ public class MuseumExhibitLibrary extends AbstractExhibitListModel implements Ex
     }
     
     public boolean delete(MuseumExhibit exhibit) {
-        return delete(exhibit, false);
+        return deleteExhibit(exhibit, false);
     }
     
     public boolean deleteContent(Long contentId) {
@@ -134,7 +129,7 @@ public class MuseumExhibitLibrary extends AbstractExhibitListModel implements Ex
     }
     
     @Override
-    public boolean delete(MuseumExhibit exhibit, boolean withFile) {
+    public boolean deleteExhibit(MuseumExhibit exhibit, boolean withFile) {
         if (withFile) {
             File exhibitFile = new File(URI.create(exhibit.getFileUri()));
             exhibitFile.delete();
@@ -222,7 +217,7 @@ public class MuseumExhibitLibrary extends AbstractExhibitListModel implements Ex
             // TODO identifier
         }
     }
-    
+
     @Override
     public String toString() {
         return "Local Files";

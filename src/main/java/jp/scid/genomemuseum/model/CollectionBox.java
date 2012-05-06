@@ -126,6 +126,12 @@ public abstract class CollectionBox implements ExhibitListModel {
         return getId() != null;
     }
     
+    @Override
+    public boolean storeExhibit(MuseumExhibit exhibit) {
+        boolean result = exhibit.store();
+        return result;
+    }
+    
     public int setParent(GroupCollectionBox newParent) {
         if (getId() == null || newParent.isAncestorOf(getId())) {
             throw new IllegalArgumentException("cannot set parent to " + newParent);
@@ -175,7 +181,7 @@ public abstract class CollectionBox implements ExhibitListModel {
         }
     }
     
-    public static class FreeCollectionBox extends CollectionBox {
+    public static class FreeCollectionBox extends CollectionBox implements FreeExhibitCollectionModel {
         private FreeCollectionBox(BoxTreeNodeRecord record) {
             super(record);
         }
@@ -194,6 +200,22 @@ public abstract class CollectionBox implements ExhibitListModel {
 
         public boolean removeContent(long contentId) {
             return service.removeContent(contentId);
+        }
+
+        @Override
+        public boolean deleteExhibit(MuseumExhibit e) {
+            if (e.hasRowId()) {
+                return removeContent(e.getRowId());
+            }
+            else {
+                return false;
+            }
+        }
+
+        @Override
+        public void addExhibit(int index, MuseumExhibit e) {
+            // TODO Auto-generated method stub
+            addContent(e.getId());
         }
     }
     

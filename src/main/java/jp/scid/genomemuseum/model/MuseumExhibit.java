@@ -1,6 +1,6 @@
 package jp.scid.genomemuseum.model;
 
-import static jp.scid.genomemuseum.model.sql.Tables.MUSEUM_EXHIBIT;
+import static jp.scid.genomemuseum.model.sql.Tables.*;
 
 import java.net.MalformedURLException;
 import java.net.URI;
@@ -254,5 +254,10 @@ public class MuseumExhibit {
         }
         
         return url;
+    }
+    
+    boolean store() {
+        int count = getRecord().store();
+        return count > 0;
     }
 }
