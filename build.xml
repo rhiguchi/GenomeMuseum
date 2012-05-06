@@ -133,6 +133,7 @@
             <transaction>create schema V1_0_0;</transaction>
             <transaction>SET SCHEMA V1_0_0;</transaction>
             <transaction src="${src.main.resources.dir}/jp/scid/genomemuseum/model/sql/schema.sql" />
+            <transaction src="${src.main.resources.dir}/jp/scid/genomemuseum/model/sql/sequences.sql" />
         </sql>
         
         <!-- Task definition -->

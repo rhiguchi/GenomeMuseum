@@ -39,8 +39,12 @@
 	    <dependency org="org.jooq" name="jooq" rev="2.2.1" conf="default"/>
 	    <dependency org="org.jooq" name="jooq-meta" rev="2.2.1" conf="jooq->default"/>
 	    <dependency org="org.jooq" name="jooq-codegen" rev="2.2.1" conf="jooq->default"/>
+	    
+	    <dependency org="org.jdesktop.bsaf" name="bsaf" rev="1.9.2"/>
+	    <dependency org="net.java.dev.glazedlists" name="glazedlists_java15" rev="1.8.0"/>
+	    <dependency org="com.explodingpixels" name="mac_widgets" rev="0.9.6-SNAPSHOT"/>
+	    
 	    <dependency org="javax.persistence" name="persistence-api" rev="1.0.2" conf="default"/>
-	    <dependency org="jp.scid" name="scid-bio" rev="0.1-local-20120423091117" conf="default"/>
 		<dependency org="junit" name="junit" rev="4.10" conf="test->default"/>
 		<dependency org="org.mockito" name="mockito-all" rev="1.8.4"  conf="test->default"/>
 	</dependencies>
