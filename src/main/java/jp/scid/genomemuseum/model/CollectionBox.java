@@ -5,9 +5,11 @@ import static jp.scid.genomemuseum.model.sql.Tables.*;
 import java.util.Collections;
 import java.util.List;
 
+import javax.swing.event.ChangeListener;
+
 import jp.scid.genomemuseum.model.sql.tables.records.BoxTreeNodeRecord;
 
-public abstract class CollectionBox {
+public abstract class CollectionBox implements ExhibitListModel {
     public static enum BoxType {
         GROUP(0),
         FREE(1),
@@ -142,6 +144,18 @@ public abstract class CollectionBox {
     public boolean delete() {
         int count = getRecord().delete();
         return count > 0;
+    }
+    
+    @Override
+    public void addExhibitsChangeListener(ChangeListener listener) {
+        // TODO Auto-generated method stub
+        
+    }
+    
+    @Override
+    public void removeExhibitsChangeListener(ChangeListener listener) {
+        // TODO Auto-generated method stub
+        
     }
     
     @Override

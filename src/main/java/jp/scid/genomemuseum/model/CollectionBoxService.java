@@ -17,25 +17,6 @@ import org.jooq.RecordHandler;
 import org.jooq.impl.Factory;
 
 public class CollectionBoxService extends JooqEntityService<CollectionBox, BoxTreeNodeRecord> {
-    static class ContentsExhibitHandler implements RecordHandler<Record> {
-        private final List<MuseumExhibit> list = new LinkedList<MuseumExhibit>();
-        
-        @Override
-        public void next(Record record) {
-            MuseumExhibitRecord exhibitRecord = record.into(MUSEUM_EXHIBIT);
-            MuseumExhibit element = new MuseumExhibit(exhibitRecord);
-            
-            Integer rowId = record.getValueAsInteger(COLLECTION_BOX_ITEM.ID);
-            element.setRowId(rowId);
-            
-            list.add(element);
-        }
-    
-        public List<MuseumExhibit> getElements() {
-            return new ArrayList<MuseumExhibit>(list);
-        }
-    }
-
     final GroupCollectionBox groupingDelegate;
     
     CollectionBoxService(Factory factory) {
@@ -158,6 +139,25 @@ public class CollectionBoxService extends JooqEntityService<CollectionBox, BoxTr
     public void setParent(CollectionBox box, Long parentId) {
         box.setParentId(parentId);
         box.getRecord().store();
+    }
+    
+    static class ContentsExhibitHandler implements RecordHandler<Record> {
+        private final List<MuseumExhibit> list = new LinkedList<MuseumExhibit>();
+        
+        @Override
+        public void next(Record record) {
+            MuseumExhibitRecord exhibitRecord = record.into(MUSEUM_EXHIBIT);
+            MuseumExhibit element = new MuseumExhibit(exhibitRecord);
+            
+            Integer rowId = record.getValueAsInteger(COLLECTION_BOX_ITEM.ID);
+            element.setRowId(rowId);
+            
+            list.add(element);
+        }
+    
+        public List<MuseumExhibit> getElements() {
+            return new ArrayList<MuseumExhibit>(list);
+        }
     }
 }
 
