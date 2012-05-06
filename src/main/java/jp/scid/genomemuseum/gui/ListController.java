@@ -9,8 +9,6 @@ import java.util.List;
 
 import javax.swing.AbstractAction;
 import javax.swing.JTable;
-import javax.swing.event.ListSelectionEvent;
-import javax.swing.event.ListSelectionListener;
 import javax.swing.table.TableModel;
 
 import org.jdesktop.application.AbstractBean;
@@ -24,7 +22,7 @@ import ca.odell.glazedlists.gui.TableFormat;
 import ca.odell.glazedlists.swing.EventSelectionModel;
 import ca.odell.glazedlists.swing.EventTableModel;
 
-class ListController<E> extends AbstractBean implements ListSelectionListener {
+class ListController<E> extends AbstractBean {
     protected EventTableModel<E> tableModel;
     
     protected final EventList<E> listModel;
@@ -34,10 +32,6 @@ class ListController<E> extends AbstractBean implements ListSelectionListener {
     protected final FilterList<E> filterList;
 
     protected final EventSelectionModel<E> selectionModel;
-
-    E selection = null;
-    
-    List<E> selections = Collections.emptyList();
     
     // Actions
     protected final AddAction addAction;
@@ -55,7 +49,6 @@ class ListController<E> extends AbstractBean implements ListSelectionListener {
         filterList = new FilterList<E>(sortedList);
         
         selectionModel = new EventSelectionModel<E>(filterList);
-        selectionModel.addListSelectionListener(this);
         
         addAction = createAddAction();
         addAction.setEnabled(canAdd());
@@ -106,21 +99,32 @@ class ListController<E> extends AbstractBean implements ListSelectionListener {
     
     // selection
     public E getSelection() {
-        return selection;
+        List<E> list = getSelections();
+        if (list.isEmpty()) {
+            return null;
+        }
+        else {
+            return list.get(0);
+        }
     }
     
     public void setSelection(E newSelection) {
-        firePropertyChange("selection", this.selection, this.selection = newSelection);
+        if (newSelection == null) {
+            setSelections(Collections.<E>emptyList());
+        }
+        else {
+            setSelections(Collections.singletonList(newSelection));
+        }
     }
     
     // selections
     public List<E> getSelections() {
-        return Collections.unmodifiableList(selections);
+        ArrayList<E> selections = new ArrayList<E>(selectionModel.getSelected());
+        return selections;
     }
     
     public void setSelections(List<E> selections) {
-        firePropertyChange("selections",
-                this.selections, this.selections = new ArrayList<E>(selections));
+        selectionModel.getTogglingSelected().addAll(selections);
     }
     
     public void bindTable(JTable table) {
@@ -245,13 +249,6 @@ class ListController<E> extends AbstractBean implements ListSelectionListener {
     
     protected RemoveAction createRemoveAction() {
         return new RemoveAction("Remove");
-    }
-    
-    @Override
-    public void valueChanged(ListSelectionEvent e) {
-        
-        // TODO Auto-generated method stub
-        
     }
     
     // Actions

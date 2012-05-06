@@ -6,7 +6,6 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.Reader;
-import java.io.StringReader;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
@@ -22,14 +21,13 @@ import jp.scid.bio.GenBankFormat;
 import jp.scid.bio.SequenceBioDataFormat;
 import jp.scid.bio.SequenceBioDataFormatSearcher;
 import jp.scid.bio.SequenceBioDataReader;
-import jp.scid.genomemuseum.model.MuseumExhibit.FileType;
 import jp.scid.genomemuseum.model.MuseumDataSchema.MuseumExhibitService;
+import jp.scid.genomemuseum.model.MuseumExhibit.FileType;
 import jp.scid.genomemuseum.model.sql.tables.records.CollectionBoxItemRecord;
 import jp.scid.genomemuseum.model.sql.tables.records.MuseumExhibitRecord;
 
 import org.jooq.Record;
 import org.jooq.RecordHandler;
-import org.jooq.UpdatableTable;
 import org.jooq.impl.Factory;
 
 public class MuseumExhibitLibrary extends AbstractExhibitListModel implements ExhibitLibrary {
@@ -39,8 +37,6 @@ public class MuseumExhibitLibrary extends AbstractExhibitListModel implements Ex
     private final SequenceBioDataFormatSearcher searcher;
     
     final Factory factory;
-    
-    private UpdatableTable<MuseumExhibitRecord> table = MUSEUM_EXHIBIT;
     
     MuseumExhibitService exhibitService;
     
@@ -137,6 +133,18 @@ public class MuseumExhibitLibrary extends AbstractExhibitListModel implements Ex
         
         int count = factory.executeDelete(MUSEUM_EXHIBIT, MUSEUM_EXHIBIT.ID.equal(exhibit.getId()));
         return count > 0;
+    }
+    
+    public SequenceBioDataFormat<?> getFormat(FileType fileType) {
+        SequenceBioDataFormat<?> format;
+        
+        switch (fileType) {
+        case GENBANK: format = genBankFormat; break;
+        case FASTA: format = fastaFormat; break;
+        default: format = null; break;
+        }
+        
+        return format;
     }
 
     public FileType findFileType(URL url) throws IOException {

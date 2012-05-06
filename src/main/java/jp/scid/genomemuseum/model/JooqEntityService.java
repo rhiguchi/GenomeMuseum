@@ -51,8 +51,12 @@ abstract class JooqEntityService<E, R extends UpdatableRecord<R>> implements Ent
     
     @Override
     public E newElement() {
-        R record = factory.newRecord(table);
+        R record = newRecord();
         return createElement(record);
+    }
+
+    R newRecord() {
+        return factory.newRecord(table);
     }
 
     public boolean store(E box) {

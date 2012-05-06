@@ -12,7 +12,7 @@ import javax.swing.table.TableCellRenderer;
 import javax.swing.text.JTextComponent;
 
 import jp.scid.gui.MessageFormatTableCell;
-import jp.scid.motifviewer.gui.OverviewMotifListView;
+import jp.scid.motifviewer.gui.MotifViewerView;
 
 import com.explodingpixels.macwidgets.plaf.ITunesTableUI;
 
@@ -27,7 +27,7 @@ public class ExhibitListView {
     public final FileContentView fileContentView = new FileContentView();
     
     // Overview
-    public final OverviewMotifListView overviewMotifView = new OverviewMotifListView();
+    public final MotifViewerView overviewMotifView = new MotifViewerView();
     
     // Tab view
     public final JTabbedPane contentsViewTabbedPane =
@@ -69,7 +69,7 @@ public class ExhibitListView {
      * @return tabbed pane
      */
     private static JTabbedPane createContentsViewTabbedPane(
-            FileContentView fileContentView, OverviewMotifListView overviewMotifView) {
+            FileContentView fileContentView, MotifViewerView overviewMotifView) {
         JTabbedPane contentsViewTabbedPane = new JTabbedPane();
         
         contentsViewTabbedPane.addTab("Content", fileContentView.getContentPane());

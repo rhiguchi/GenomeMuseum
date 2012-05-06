@@ -9,6 +9,8 @@ import java.util.EventObject;
 import javax.swing.AbstractButton;
 import javax.swing.JFrame;
 import javax.swing.JTree;
+import javax.swing.event.ListSelectionEvent;
+import javax.swing.event.ListSelectionListener;
 import javax.swing.event.TreeSelectionEvent;
 import javax.swing.event.TreeSelectionListener;
 import javax.swing.tree.DefaultMutableTreeNode;
@@ -30,7 +32,7 @@ import org.jdesktop.application.Application.ExitListener;
 
 
 public class MainFrameController extends AbstractBean
-        implements ExitListener, TreeSelectionListener, PropertyChangeListener {
+        implements ExitListener, TreeSelectionListener, PropertyChangeListener, ListSelectionListener {
     public static final String PROPKEY_FRAME_VISIBLED = "frameVisibled";
 
     boolean frameVisibled = false;
@@ -55,6 +57,7 @@ public class MainFrameController extends AbstractBean
         sourceListController.getSelectionModel().addTreeSelectionListener(this);
         
         exhibitListViewController = new ExhibitListViewController();
+        exhibitListViewController.getSelectionModel().addListSelectionListener(this);
         exhibitListViewController.addPropertyChangeListener(this);
         
         museumExhibitContentViewer = new MuseumExhibitContentViewer();
@@ -91,6 +94,7 @@ public class MainFrameController extends AbstractBean
         if (newSchema != null) {
             sourceListController.setCollectionBoxSource(newSchema.getCollectionBoxService());
             sourceListController.setLocalLibrarySource(newSchema.getMuseumExhibitLibrary());
+            museumExhibitContentViewer.setLibrary(newSchema.getMuseumExhibitLibrary());
         }
         
     }
@@ -111,18 +115,10 @@ public class MainFrameController extends AbstractBean
     // Action methods
     public void reloadExhibitDetailsView() {
         MuseumExhibit exhibit = getSelectedExhibit();
-        
-        getBioFileLoader().executeReload(exhibit);
-//        motifViewerController.s
-        // TODO Auto-generated method stub
-        
+        museumExhibitContentViewer.setExhibit(exhibit);
+        museumExhibitContentViewer.reload();
     }
 
-    public void reloadExhibitList() {
-        // TODO Auto-generated method stub
-        
-    }
-    
     // Bindings
     public void bindFrame(JFrame frame) {
         frame.pack();
@@ -193,19 +189,14 @@ public class MainFrameController extends AbstractBean
     }
     
     @Override
+    public void valueChanged(ListSelectionEvent e) {
+        reloadExhibitDetailsView();
+    }
+    
+    @Override
     public void propertyChange(PropertyChangeEvent evt) {
         Object source = evt.getSource();
         String propertyName = evt.getPropertyName();
         
-        if (source == sourceListController) {
-            if ("selection".equals(propertyName)) {
-                reloadExhibitList();
-            }
-        }
-        else if (source == exhibitListViewController) {
-            if ("selection".equals(propertyName)) {
-                reloadExhibitDetailsView();
-            }
-        }
     }
 }

@@ -20,9 +20,10 @@ import jp.scid.bio.SequenceBioData;
 import jp.scid.bio.SequenceBioDataFormat;
 import jp.scid.bio.SequenceBioDataReader;
 import jp.scid.genomemuseum.model.MuseumExhibit;
+import jp.scid.genomemuseum.model.MuseumExhibitLibrary;
 import jp.scid.genomemuseum.view.FileContentView;
 import jp.scid.motifviewer.gui.MotifViewerController;
-import jp.scid.motifviewer.gui.OverviewMotifListView;
+import jp.scid.motifviewer.gui.MotifViewerView;
 
 import org.jdesktop.application.AbstractBean;
 
@@ -31,10 +32,10 @@ public class MuseumExhibitContentViewer extends AbstractBean {
     
     private MuseumExhibit exhibit = null;
     
-    private SequenceBioDataFormat<SequenceBioData> format;
-    
     // Controller
     final MotifViewerController motifViewerController;
+    
+    MuseumExhibitLibrary library = null;
     
     public MuseumExhibitContentViewer() {
         motifViewerController = new MotifViewerController();
@@ -43,11 +44,15 @@ public class MuseumExhibitContentViewer extends AbstractBean {
     public void setExhibit(MuseumExhibit exhibit) {
         this.exhibit = exhibit;
     }
-    
-    public SequenceBioDataFormat<SequenceBioData> getFormat() {
-        return format;
+
+    public MuseumExhibitLibrary getLibrary() {
+        return library;
     }
 
+    public void setLibrary(MuseumExhibitLibrary library) {
+        this.library = library;
+    }
+    
     // sequence
     public String getSequence() {
         return motifViewerController.getSequence();
@@ -55,6 +60,16 @@ public class MuseumExhibitContentViewer extends AbstractBean {
     
     public void setSequence(String sequence) {
         motifViewerController.setSequence(sequence);
+    }
+    
+    public void clearContent() {
+        try {
+            document.remove(0, document.getLength());
+        }
+        catch (BadLocationException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
     }
     
     // contentText
@@ -71,6 +86,8 @@ public class MuseumExhibitContentViewer extends AbstractBean {
     
     // Actions
     public void reload() {
+        clearContent();
+        
         ContentLoader task = new ContentLoader();
         task.execute();
     }
@@ -80,7 +97,7 @@ public class MuseumExhibitContentViewer extends AbstractBean {
         bindFileContentTextArea(view.textArea);
     }
 
-    public void bindOverviewMotifView(OverviewMotifListView view) {
+    public void bindOverviewMotifView(MotifViewerView view) {
         motifViewerController.bind(view);
     }
 
@@ -113,25 +130,34 @@ public class MuseumExhibitContentViewer extends AbstractBean {
             // get bio data
             Reader source = new StringReader(content.toString());
             
-            SequenceBioDataReader<SequenceBioData> bioDataReader =
-                    new SequenceBioDataReader<SequenceBioData>(source, getFormat());
+            SequenceBioDataFormat<?> format = library.getFormat(exhibit.getFileType());
             
+            if (format != null) {
+                loadBioData(source, format);
+            }
+            
+            return null;
+        }
+
+        void loadBioData(Reader source, SequenceBioDataFormat<?> format) throws IOException {
+            @SuppressWarnings({ "rawtypes", "unchecked" })
+            SequenceBioDataReader bioDataReader =
+            new SequenceBioDataReader(source, format);
+
             // TODO multisection
             if (bioDataReader.hasNext()) {
                 SequenceBioData bioData = bioDataReader.next();
-                
+
                 setSequence(bioData.getSequence());
-                
+
                 if (bioData instanceof GenBank) {
                     List<Feature> features = ((GenBank) bioData).getFeatures();
                 }
-                
+
                 // TODO set to controller
             }
-            
+
             bioDataReader.close();
-            
-            return null;
         }
         
         @Override
