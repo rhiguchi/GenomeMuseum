@@ -40,6 +40,5 @@ public class GenomeMuseum {
         logger.info("Welcome to GenomeMuseum.");
         
         Application.launch(jp.scid.genomemuseum.gui.GenomeMuseum.class, args);
-//        Application.launch(GenomeMuseumGUI.class, args);
     }
 }
