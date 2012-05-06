@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.sql.Connection;
+import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -17,16 +18,20 @@ import jp.scid.genomemuseum.model.sql.V1_0_0Factory;
 public class SchemaBuilder {
     public static final String DEFAULT_SCHEMA_NAME = "V1_0_0";
     public static final String DEFAULT_SCHEMA_SQL_RESOURCE = "sql/schema.sql";
-    private Connection connection = null;
+    public static final String DEFAULT_SEQUENCES_SQL_RESOURCE = "sql/sequences.sql";
     
-    private final String schemaName;
+    String schemaName;
+    Connection connection;
     
-    public SchemaBuilder(String schemaName) {
+    public SchemaBuilder(Connection connection, String schemaName) {
+        if (connection == null) throw new IllegalArgumentException("connection must not be null");
+        
         this.schemaName = schemaName;
+        this.connection = connection;
     }
     
-    public SchemaBuilder() {
-        this(V1_0_0.V1_0_0.getName());
+    public SchemaBuilder(Connection connection) {
+        this(connection, V1_0_0.V1_0_0.getName());
     }
     
     public MuseumDataSchema getDataSchema() throws SQLException {
@@ -43,6 +48,8 @@ public class SchemaBuilder {
     }
     
     public void setConnection(Connection connection) {
+        if (connection == null) throw new IllegalArgumentException("connection must not be null");
+        
         this.connection = connection;
     }
     
@@ -67,8 +74,10 @@ public class SchemaBuilder {
         getConnection().prepareStatement(sql).execute();
         
         String schemaSql;
+        String sequenceSql;
         try {
             schemaSql = getSchemaSql();
+            sequenceSql = getSequenceSql();
         }
         catch (IOException e) {
             throw new SQLException(e);
@@ -76,12 +85,24 @@ public class SchemaBuilder {
         PreparedStatement statement = getConnection().prepareStatement(schemaSql);
         statement.execute();
         statement.close();
+        
+        PreparedStatement seqStmt = getConnection().prepareStatement(sequenceSql);
+        seqStmt.execute();
+        seqStmt.close();
     }
 
     String getSchemaSql() throws IOException {
+        return getResourceText(DEFAULT_SCHEMA_SQL_RESOURCE);
+    }
+    
+    String getSequenceSql() throws IOException {
+        return getResourceText(DEFAULT_SEQUENCES_SQL_RESOURCE);
+    }
+    
+    String getResourceText(String resourceAddr) throws IOException {
         StringBuilder sqlBuilder = new StringBuilder();
         
-        InputStream schemaSqlInst = getClass().getResourceAsStream(DEFAULT_SCHEMA_SQL_RESOURCE);
+        InputStream schemaSqlInst = getClass().getResourceAsStream(resourceAddr);
         
         try {
             BufferedReader reader = new BufferedReader(new InputStreamReader(schemaSqlInst));
@@ -117,5 +138,33 @@ public class SchemaBuilder {
     
     private String getSchemaChangeSql(String schemaName) {
         return format("SET SCHEMA %s", schemaName);
+    }
+    
+
+    public static void main(String[] args) {
+        if (args.length < 4)
+            return;
+        String url = args[0];
+        String user = args[1];
+        String password = args[2];
+        String schemaName = args[3];
+        
+        final Connection connection;
+        try {
+            connection = DriverManager.getConnection(url, user, password);
+            SchemaBuilder builder = new SchemaBuilder(connection, schemaName);
+            builder.buildSchema();
+        }
+        catch (SQLException e) {
+            e.printStackTrace();
+            return;
+        }
+        
+        try {
+            connection.close();
+        }
+        catch (SQLException e) {
+            e.printStackTrace();
+        }
     }
 }
