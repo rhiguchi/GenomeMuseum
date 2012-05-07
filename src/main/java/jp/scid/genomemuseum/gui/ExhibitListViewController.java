@@ -5,8 +5,10 @@ import java.awt.datatransfer.UnsupportedFlavorException;
 import java.awt.event.KeyEvent;
 import java.io.File;
 import java.io.IOException;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
@@ -35,6 +37,8 @@ import jp.scid.gui.control.TextComponentTextConnector;
 import jp.scid.gui.model.ValueModel;
 import jp.scid.gui.model.ValueModels;
 
+import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.filefilter.HiddenFileFilter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -253,7 +257,7 @@ public class ExhibitListViewController extends ListController<MuseumExhibit> imp
             final boolean result;
             
             if (support.isDataFlavorSupported(DataFlavor.javaFileListFlavor)) {
-                List<File> files = getImportFileList(support);
+                List<File> files = listFiles(getImportFileList(support));
                 int loadFileCount = 0;
                 
                 for (File file: files) {
@@ -287,6 +291,23 @@ public class ExhibitListViewController extends ListController<MuseumExhibit> imp
                 logger.warn("cannot import file", e);
             }
             return files;
+        }
+        
+        List<File> listFiles(List<File> base) {
+            List<File> list = new LinkedList<File>();
+            
+            for (File file: base) {
+                if (file.isDirectory()) {
+                    Collection<File> files =
+                            FileUtils.listFiles(file, HiddenFileFilter.VISIBLE, HiddenFileFilter.VISIBLE);
+                    list.addAll(files);
+                }
+                else {
+                    list.add(file);
+                }
+            }
+            
+            return list;
         }
     }
 
