@@ -31,6 +31,18 @@
     </description>
 
     <!-- ================================= 
+          target: Resolve dependency              
+         ================================= -->
+    <target name="resolve" description="resolve dependencies with ivy">
+        <ivy:resolve file="${ivy.file}"/>
+
+        <!-- Class Paths -->
+        <ivy:cachepath pathid="lib.compile.classpath" conf="compile" />
+        <ivy:cachepath pathid="lib.test.classpath" conf="test" />
+        
+    </target>
+    
+    <!-- ================================= 
           target: default              
          ================================= -->
     <target name="sbt-proguard" depends="depends" description="GenomeMuseum 0.9"

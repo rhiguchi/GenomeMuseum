@@ -44,6 +44,8 @@
 	    <dependency org="net.java.dev.glazedlists" name="glazedlists_java15" rev="1.8.0"/>
 	    <dependency org="com.explodingpixels" name="mac_widgets" rev="0.9.6-SNAPSHOT"/>
 	    
+	    <dependency org="jp.scid" name="scid-bio" rev="0.1.1"/>
+	    
 	    <dependency org="javax.persistence" name="persistence-api" rev="1.0.2" conf="default"/>
 		<dependency org="junit" name="junit" rev="4.10" conf="test->default"/>
 		<dependency org="org.mockito" name="mockito-all" rev="1.8.4"  conf="test->default"/>
