@@ -138,11 +138,11 @@ public class ExhibitListViewController extends ListController<MuseumExhibit> imp
         return exhibit;
     }
     
-    Future<?> loadExhibit(MuseumExhibit exhibit) {
+    Future<?> loadExhibit(MuseumExhibit exhibit, File file) {
         ExhibitListModel model = getExhibitListModel();
         model.storeExhibit(exhibit);
         
-        SwingWorker<LoadResult, ?> task = getBioFileLoader().executeReload(exhibit);
+        SwingWorker<LoadResult, ?> task = getBioFileLoader().executeImporting(exhibit, file);
         
         LoadedDataUpdateHandler updateHandler = new LoadedDataUpdateHandler(task, model);
         updateHandler.execute();
@@ -264,7 +264,7 @@ public class ExhibitListViewController extends ListController<MuseumExhibit> imp
                     MuseumExhibit exhibit = controller.createExhibit(file);
                     if (exhibit.getFileType() != FileType.UNKNOWN) {
                         controller.add(exhibit);
-                        controller.loadExhibit(exhibit);
+                        controller.loadExhibit(exhibit, file);
                         loadFileCount++;
                     }
                 }

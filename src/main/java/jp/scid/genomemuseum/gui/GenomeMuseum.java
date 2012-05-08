@@ -11,6 +11,7 @@ import javax.swing.JFrame;
 
 import jp.scid.genomemuseum.model.CollectionBox.BoxType;
 import jp.scid.genomemuseum.model.CollectionBoxService;
+import jp.scid.genomemuseum.model.ExhibitFileManager;
 import jp.scid.genomemuseum.model.MuseumDataSchema;
 import jp.scid.genomemuseum.model.MuseumExhibitLibrary;
 import jp.scid.genomemuseum.model.MuseumSourceModel;
@@ -22,6 +23,7 @@ import org.jdesktop.application.Application;
 
 public class GenomeMuseum extends Application {
     private static final String DATABASE_LOCAL_DIRECTORY = "Library";
+    private static final String LOCAL_FILES_DIRECTORY_NAME = "Files";
 
     public enum ProgramArgument {
         USE_LOCAL_LIBRARY() {
@@ -106,6 +108,16 @@ public class GenomeMuseum extends Application {
         }
         catch (SQLException e) {
             throw new IllegalStateException("schema initialization failure", e);
+        }
+        
+        // file library
+        if (useLocalLibrary) {
+            File filesDir = new File(getContext().getLocalStorage().getDirectory(),
+                        LOCAL_FILES_DIRECTORY_NAME);
+            ExhibitFileManager fileManager = new ExhibitFileManager(); 
+            fileManager.setDirectory(filesDir);
+            
+            getFileLoader().setFileManager(fileManager);
         }
         
         CollectionBoxService boxService = dataSchema.getCollectionBoxService();

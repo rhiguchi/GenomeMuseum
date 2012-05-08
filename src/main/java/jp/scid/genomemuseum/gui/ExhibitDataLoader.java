@@ -1,5 +1,6 @@
 package jp.scid.genomemuseum.gui;
 
+import java.io.File;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -8,8 +9,10 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
+import javax.media.j3d.IllegalSharingException;
 import javax.swing.SwingWorker;
 
+import jp.scid.genomemuseum.model.ExhibitFileManager;
 import jp.scid.genomemuseum.model.MuseumExhibit;
 import jp.scid.genomemuseum.model.MuseumExhibit.FileType;
 import jp.scid.genomemuseum.model.MuseumExhibitLibrary;
@@ -21,6 +24,7 @@ public class ExhibitDataLoader {
     private final static Logger logger = LoggerFactory.getLogger(ExhibitDataLoader.class);
     final Executor taskExecutor;
     final MuseumExhibitLibrary library;
+    ExhibitFileManager fileManager = null;
     
     public ExhibitDataLoader(Executor taskExecutor, MuseumExhibitLibrary library) {
         this.taskExecutor = taskExecutor;
@@ -53,6 +57,30 @@ public class ExhibitDataLoader {
         execute(task);
         
         return task;
+    }
+    
+    public SwingWorker<LoadResult, ?> executeImporting(MuseumExhibit exhibit, File file) {
+        final BioFileLoadTask task;
+        
+        if (fileManager == null) {
+            logger.info("need fileManager to import file to library");
+            task = new BioFileLoadTask(exhibit);
+        }
+        else {
+            task = new BioFileImportTask(exhibit, file);
+        }
+        
+        execute(task);
+        
+        return task;
+    }
+    
+    public ExhibitFileManager getFileManager() {
+        return fileManager;
+    }
+    
+    public void setFileManager(ExhibitFileManager fileManager) {
+        this.fileManager = fileManager;
     }
     
     protected void execute(SwingWorker<?, ?> task) {
@@ -111,6 +139,40 @@ public class ExhibitDataLoader {
             }
             
             processDoneLoading(loadResult);
+        }
+    }
+    
+    class BioFileImportTask extends BioFileLoadTask {
+        private final File sourceFile;
+        
+        public BioFileImportTask(MuseumExhibit exhibit, File sourceFile) {
+            super(exhibit);
+            this.sourceFile = sourceFile;
+        }
+        
+        @Override
+        protected LoadResult doInBackground() throws Exception {
+            LoadResult loadingResult = super.doInBackground();
+            
+            LoadResult newResult;
+            
+            if (loadingResult instanceof Success) {
+                MuseumExhibit exhibit = loadingResult.exhibit();
+                try {
+                    File dest = fileManager.storeFileToLibrary(exhibit, sourceFile);
+                    exhibit.setFileUri(dest.toURI().toString());
+                    
+                    newResult = loadingResult;
+                }
+                catch (IOException e) {
+                    newResult = new IOExceptionThrown(exhibit, e);
+                }
+            }
+            else {
+                newResult = loadingResult;
+            }
+            
+            return newResult;
         }
     }
     
