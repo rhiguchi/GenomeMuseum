@@ -8,6 +8,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import javax.swing.JFrame;
+import javax.swing.JMenuItem;
 
 import jp.scid.genomemuseum.model.CollectionBox.BoxType;
 import jp.scid.genomemuseum.model.CollectionBoxService;
@@ -16,11 +17,16 @@ import jp.scid.genomemuseum.model.MuseumDataSchema;
 import jp.scid.genomemuseum.model.MuseumExhibitLibrary;
 import jp.scid.genomemuseum.model.MuseumSourceModel;
 import jp.scid.genomemuseum.model.SchemaBuilder;
+import jp.scid.genomemuseum.view.MainMenuBar;
 import jp.scid.genomemuseum.view.MainView;
 
 import org.h2.jdbcx.JdbcConnectionPool;
+import org.jdesktop.application.Action;
 import org.jdesktop.application.Application;
+import org.jdesktop.application.ApplicationActionMap;
+import org.jdesktop.application.ProxyActions;
 
+@ProxyActions({"selectAll", "deselect"})
 public class GenomeMuseum extends Application {
     private static final String DATABASE_LOCAL_DIRECTORY = "Library";
     private static final String LOCAL_FILES_DIRECTORY_NAME = "Files";
@@ -50,6 +56,8 @@ public class GenomeMuseum extends Application {
     private boolean useLocalLibrary = false;
     
     MainView mainView;
+    
+    MainMenuBar mainMenuBar;
     
     JFrame mainFrame;
     
@@ -121,7 +129,7 @@ public class GenomeMuseum extends Application {
         }
         
         CollectionBoxService boxService = dataSchema.getCollectionBoxService();
-        boxService.addChild(BoxType.FREE);
+        boxService.addRootItem(BoxType.FREE);
         
         // test source
         MuseumExhibitLibrary exhibitService = getExhibitLibrary();
@@ -145,6 +153,11 @@ public class GenomeMuseum extends Application {
         if (connectionPool != null) {
             connectionPool.dispose();
         }
+    }
+    
+    @Action
+    public void open() {
+        // TODO
     }
 
     MainFrameController getMainFrameController() {
@@ -196,6 +209,7 @@ public class GenomeMuseum extends Application {
     public JFrame getMainFrame() {
         if (mainFrame == null){
             mainFrame = createMainFrame(getMainView());
+            mainFrame.setJMenuBar(getMainMenuBar().getMenuBar());
         }
         
         return mainFrame;
@@ -206,6 +220,17 @@ public class GenomeMuseum extends Application {
             mainView = new MainView();
         }
         return mainView;
+    }
+    
+    public MainMenuBar getMainMenuBar() {
+        if (mainMenuBar == null) {
+            mainMenuBar = new MainMenuBar();
+            bindEditMenuItems(
+                    mainMenuBar.cut, mainMenuBar.copy, mainMenuBar.paste, mainMenuBar.selectAll,
+                    mainMenuBar.deselect, mainMenuBar.delete);
+            bindFileMenuItems(mainMenuBar.open, mainMenuBar.quit);
+        }
+        return mainMenuBar;
     }
     
     public FileDialog getOpenFileDialog() {
@@ -224,6 +249,25 @@ public class GenomeMuseum extends Application {
         return fileLoader;
     }
     
+    // Bindings
+    public void bindEditMenuItems(
+            JMenuItem cut, JMenuItem copy, JMenuItem paste, JMenuItem selectAll,
+            JMenuItem deselect, JMenuItem delete) {
+        ApplicationActionMap actionMap = getContext().getActionMap(this);
+        cut.setAction(actionMap.get("cut"));
+        copy.setAction(actionMap.get("copy"));
+        paste.setAction(actionMap.get("paste"));
+        selectAll.setAction(actionMap.get("selectAll"));
+        deselect.setAction(actionMap.get("deselect"));
+        delete.setAction(actionMap.get("delete"));
+    }
+
+    public void bindFileMenuItems(
+            JMenuItem open, JMenuItem quit) {
+        ApplicationActionMap actionMap = getContext().getActionMap(this);
+        open.setAction(actionMap.get("open"));
+        quit.setAction(actionMap.get("quit"));
+    }
     static JFrame createMainFrame(MainView mainView) {
         JFrame frame = new JFrame();
         frame.setContentPane(mainView.getContentPane());

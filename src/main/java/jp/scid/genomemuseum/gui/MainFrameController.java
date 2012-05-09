@@ -1,7 +1,5 @@
 package jp.scid.genomemuseum.gui;
 
-import static java.lang.String.*;
-
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.util.EventObject;
@@ -17,7 +15,6 @@ import javax.swing.tree.DefaultMutableTreeNode;
 import javax.swing.tree.MutableTreeNode;
 import javax.swing.tree.TreePath;
 
-import jp.scid.bio.Features;
 import jp.scid.genomemuseum.model.CollectionBox;
 import jp.scid.genomemuseum.model.ExhibitListModel;
 import jp.scid.genomemuseum.model.MuseumDataSchema;
@@ -25,6 +22,7 @@ import jp.scid.genomemuseum.model.MuseumExhibit;
 import jp.scid.genomemuseum.model.MuseumSourceModel;
 import jp.scid.genomemuseum.model.MuseumSourceModel.CollectionBoxNode;
 import jp.scid.genomemuseum.view.ExhibitListView;
+import jp.scid.genomemuseum.view.MainMenuBar;
 import jp.scid.genomemuseum.view.MainView;
 
 import org.jdesktop.application.AbstractBean;
@@ -137,6 +135,10 @@ public class MainFrameController extends AbstractBean
         exhibitListViewController.bindTable(mainView.exhibitListView.dataTable);
         exhibitListViewController.bindFilterTextField(mainView.quickSearchField);
         bindExhibitContentView(mainView.exhibitListView);
+    }
+    
+    public void bindMainMenuBar(MainMenuBar mainMenuBar) {
+        // TOOD
     }
     
     void bindSourceList(JTree tree) {
