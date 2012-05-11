@@ -2,6 +2,7 @@ package jp.scid.genomemuseum.model;
 
 import static jp.scid.genomemuseum.model.sql.Tables.*;
 
+import java.io.File;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -254,6 +255,22 @@ public class MuseumExhibit {
         }
         
         return url;
+    }
+    
+    public File getSourceFileAsFile() {
+        String uriString = getFileUri();
+        if (uriString == null) {
+            return null;
+        }
+        
+        URI uri = URI.create(uriString);
+        
+        if (uri != null && "file".equals(uri.getScheme())) {
+            return new File(uri);
+        }
+        else {
+            return null;
+        }
     }
     
     boolean store() {
