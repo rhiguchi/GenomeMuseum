@@ -50,7 +50,7 @@ public class ExhibitTransferHandler extends TransferHandler {
             result = false;
         }
         else if (support.isDataFlavorSupported(DataFlavor.javaFileListFlavor)) {
-            List<File> files = listFiles(getImportFileList(support));
+            List<File> files = listFiles(getTransferFile(support));
             int loadFileCount = 0;
             
             for (File file: files) {
@@ -98,7 +98,7 @@ public class ExhibitTransferHandler extends TransferHandler {
     }
 
     @SuppressWarnings("unchecked")
-    List<File> getImportFileList(TransferSupport support) {
+    static List<File> getTransferFile(TransferSupport support) {
         List<File> files = Collections.emptyList();
         try {
             files = (List<File>) support.getTransferable().getTransferData(DataFlavor.javaFileListFlavor);
