@@ -269,7 +269,11 @@ public class MuseumSourceModel {
         int getPriority();
     }
     
-    public static interface CollectionBoxNode extends MutableTreeNode {
+    public static interface ExhibitCollectionNode extends MutableTreeNode {
+        
+    }
+    
+    public static interface CollectionBoxNode extends ExhibitCollectionNode {
         CollectionBox getCollectionBox();
         
         void setChildren(List<CollectionBoxNode> newChildren);
