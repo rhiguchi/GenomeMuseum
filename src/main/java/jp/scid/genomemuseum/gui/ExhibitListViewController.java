@@ -62,6 +62,7 @@ public class ExhibitListViewController extends ListController<MuseumExhibit> imp
     private final SearchEngineTextMatcherEditor<MuseumExhibit> textMatcherEditor;
 
     protected ExhibitDataLoader bioFileLoader = null;
+
     
     public ExhibitListViewController() {
         tableFormat = new MuseumExhibitTableFormat();
@@ -224,6 +225,7 @@ public class ExhibitListViewController extends ListController<MuseumExhibit> imp
     
     public TextComponentTextConnector bindFilterTextField(JTextField field) {
         TextComponentTextConnector connector = bindings.bindText("filterText").toText(field);
+        connector.listenEditingTo(field.getDocument());
         return connector;
     }
     

@@ -72,4 +72,12 @@ public class DefaultTransferMuseumExhibit implements Transferable, TransferMuseu
         
         return data;
     }
+
+    @Override
+    public String toString() {
+        StringBuilder builder = new StringBuilder();
+        builder.append("exhibits=");
+        builder.append(exhibits);
+        return builder.toString();
+    }
 }
