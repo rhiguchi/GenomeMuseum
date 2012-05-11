@@ -68,7 +68,7 @@ public class MuseumSourceModel {
     
     private final DefaultCategoryNode librariesNode;
     
-    private DefaultMutableTreeNode localLibraryNode = null;
+    private LocalLibraryNode localLibraryNode = null;
     
     private CollectionBoxTreeRootNode collectionBoxTreeRootNode = null;
     
@@ -121,7 +121,7 @@ public class MuseumSourceModel {
         localLibraryNode = null;
         
         if (librarySource != null) {
-            localLibraryNode = new DefaultMutableTreeNode(librarySource, false);
+            localLibraryNode = new LocalLibraryNode(librarySource);
             addLibraryElement(localLibraryNode);
         }
     }
@@ -327,6 +327,12 @@ public class MuseumSourceModel {
                 return box.getName();
             }
             return super.toString();
+        }
+    }
+
+    static class LocalLibraryNode extends DefaultMutableTreeNode implements ExhibitCollectionNode {
+        public LocalLibraryNode(Object userObject) {
+            super(userObject, false);
         }
     }
     
