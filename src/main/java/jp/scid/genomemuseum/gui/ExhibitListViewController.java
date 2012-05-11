@@ -1,17 +1,11 @@
 package jp.scid.genomemuseum.gui;
 
-import java.awt.datatransfer.DataFlavor;
-import java.awt.datatransfer.UnsupportedFlavorException;
 import java.awt.event.KeyEvent;
 import java.io.File;
 import java.io.IOException;
-import java.util.Collection;
-import java.util.Collections;
 import java.util.Comparator;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
 
 import javax.swing.DropMode;
 import javax.swing.JComponent;
@@ -19,12 +13,12 @@ import javax.swing.JTable;
 import javax.swing.JTextField;
 import javax.swing.KeyStroke;
 import javax.swing.SwingWorker;
-import javax.swing.TransferHandler;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 
 import jp.scid.genomemuseum.gui.ExhibitDataLoader.LoadResult;
-import jp.scid.genomemuseum.model.ExhibitCollectionModel;
+import jp.scid.genomemuseum.gui.ExhibitDataLoader.MuseumExhibitLoadTask;
+import jp.scid.genomemuseum.gui.transfer.ExhibitTransferHandler;
 import jp.scid.genomemuseum.model.ExhibitLibrary;
 import jp.scid.genomemuseum.model.ExhibitListModel;
 import jp.scid.genomemuseum.model.FreeExhibitCollectionModel;
@@ -37,8 +31,6 @@ import jp.scid.gui.control.TextComponentTextConnector;
 import jp.scid.gui.model.ValueModel;
 import jp.scid.gui.model.ValueModels;
 
-import org.apache.commons.io.FileUtils;
-import org.apache.commons.io.filefilter.HiddenFileFilter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -121,33 +113,29 @@ public class ExhibitListViewController extends ListController<MuseumExhibit> imp
         firePropertyChange("filterText", this.filterText, this.filterText = newText);
     }
     
-    boolean isModelAppendable() {
-        return getExhibitListModel() instanceof FreeExhibitCollectionModel
-                || getExhibitListModel() instanceof ExhibitLibrary;
-    }
-    
-    MuseumExhibit createExhibit(File file) {
-        MuseumExhibit exhibit = getBioFileLoader().newMuseumExhibit(file.toURI());
+    public boolean addExhibitFromFile(File file) {
+        FileType fileType;
         try {
-            getBioFileLoader().updateFileFormat(exhibit);
+            fileType = bioFileLoader.findFileType(file);
         }
         catch (IOException e) {
-            logger.info("", e);
+            logger.info("cannot load file " + file, e);
+            fileType = FileType.UNKNOWN;
         }
         
-        return exhibit;
-    }
-    
-    Future<?> loadExhibit(MuseumExhibit exhibit, File file) {
-        ExhibitListModel model = getExhibitListModel();
-        model.storeExhibit(exhibit);
+        boolean accepted;
         
-        SwingWorker<LoadResult, ?> task = getBioFileLoader().executeImporting(exhibit, file);
+        if (fileType != FileType.UNKNOWN) {
+            MuseumExhibitLoadTask<?> task = bioFileLoader.executeLoading(file, fileType);
+            MuseumExhibit exhibit = task.getMuseumExhibit();
+            add(exhibit);
+            accepted = true;
+        }
+        else {
+            accepted = false;
+        }
         
-        LoadedDataUpdateHandler updateHandler = new LoadedDataUpdateHandler(task, model);
-        updateHandler.execute();
-        
-        return updateHandler;
+        return accepted;
     }
     
     public void fetch() {
@@ -161,6 +149,12 @@ public class ExhibitListViewController extends ListController<MuseumExhibit> imp
         if (getExhibitListModel() != null) {
             fetch();
         }
+    }
+    
+    @Override
+    public boolean canAdd() {
+        return getExhibitListModel() instanceof FreeExhibitCollectionModel
+                || getExhibitListModel() instanceof ExhibitLibrary;
     }
     
     @Override
@@ -217,6 +211,7 @@ public class ExhibitListViewController extends ListController<MuseumExhibit> imp
         table.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_BACK_SPACE, 0), "delete");
         table.setDropMode(DropMode.INSERT_ROWS);
         table.setTransferHandler(transferHandler);
+        table.setDragEnabled(true);
         
         if (table.getParent() instanceof JComponent) {
             ((JComponent) table.getParent()).setTransferHandler(transferHandler);
@@ -237,80 +232,6 @@ public class ExhibitListViewController extends ListController<MuseumExhibit> imp
         return tableFormat;
     }
     
-    static class ExhibitTransferHandler extends TransferHandler {
-        ExhibitListViewController controller;
-        
-        public ExhibitTransferHandler(ExhibitListViewController controller) {
-            this.controller = controller;
-        }
-        
-        @Override
-        public boolean canImport(TransferSupport support) {
-            if (support.isDataFlavorSupported(DataFlavor.javaFileListFlavor)) {
-                return controller.isModelAppendable();
-            }
-            return false;
-        }
-        
-        @Override
-        public boolean importData(TransferSupport support) {
-            final boolean result;
-            
-            if (support.isDataFlavorSupported(DataFlavor.javaFileListFlavor)) {
-                List<File> files = listFiles(getImportFileList(support));
-                int loadFileCount = 0;
-                
-                for (File file: files) {
-                    MuseumExhibit exhibit = controller.createExhibit(file);
-                    if (exhibit.getFileType() != FileType.UNKNOWN) {
-                        controller.add(exhibit);
-                        controller.loadExhibit(exhibit, file);
-                        loadFileCount++;
-                    }
-                }
-                
-                result = loadFileCount > 0;
-            }
-            else {
-                result = false;
-            }
-            
-            return result;
-        }
-
-        @SuppressWarnings("unchecked")
-        List<File> getImportFileList(TransferSupport support) {
-            List<File> files = Collections.emptyList();
-            try {
-                files = (List<File>) support.getTransferable().getTransferData(DataFlavor.javaFileListFlavor);
-            }
-            catch (UnsupportedFlavorException e) {
-                logger.warn("cannot import file", e);
-            }
-            catch (IOException e) {
-                logger.warn("cannot import file", e);
-            }
-            return files;
-        }
-        
-        List<File> listFiles(List<File> base) {
-            List<File> list = new LinkedList<File>();
-            
-            for (File file: base) {
-                if (file.isDirectory()) {
-                    Collection<File> files =
-                            FileUtils.listFiles(file, HiddenFileFilter.VISIBLE, HiddenFileFilter.VISIBLE);
-                    list.addAll(files);
-                }
-                else {
-                    list.add(file);
-                }
-            }
-            
-            return list;
-        }
-    }
-
     class LoadedDataUpdateHandler extends SwingWorker<MuseumExhibit, Void> {
         private final SwingWorker<LoadResult, ?> task;
         private final ExhibitListModel model;
