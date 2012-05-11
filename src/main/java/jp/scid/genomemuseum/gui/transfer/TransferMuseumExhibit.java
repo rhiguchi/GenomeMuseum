@@ -12,6 +12,10 @@ import jp.scid.genomemuseum.model.MuseumExhibit;
 public interface TransferMuseumExhibit {
     List<MuseumExhibit> getMuseumExhibitList();
     
+    boolean hasCollectionOwner(); 
+    
+    long getCollectionOwnerId(); 
+    
     class Flavor {
         private final static DataFlavor FLAVOR = new DataFlavor(TransferMuseumExhibit.class, "MuseumExhibit");
         

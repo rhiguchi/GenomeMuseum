@@ -16,18 +16,34 @@ import jp.scid.genomemuseum.model.MuseumExhibit;
 public class DefaultTransferMuseumExhibit implements Transferable, TransferMuseumExhibit {
     final List<MuseumExhibit> exhibits;
     final List<DataFlavor> flavors;
+    private final Long collectionOwnerId;
 
-    public DefaultTransferMuseumExhibit(List<MuseumExhibit> exhibits) {
+    public DefaultTransferMuseumExhibit(List<MuseumExhibit> exhibits, Long collectionOwnerId) {
         this.exhibits = new ArrayList<MuseumExhibit>(exhibits);
         
         flavors = Arrays.asList(
                 TransferMuseumExhibit.Flavor.getInstance(), DataFlavor.javaFileListFlavor);
+        this.collectionOwnerId = collectionOwnerId;
+    }
+    
+    public DefaultTransferMuseumExhibit(List<MuseumExhibit> exhibits) {
+        this(exhibits, null);
     }
     
     public List<MuseumExhibit> getMuseumExhibitList() {
         return Collections.unmodifiableList(exhibits);
     }
 
+    @Override
+    public long getCollectionOwnerId() {
+        return collectionOwnerId.longValue();
+    }
+    
+    @Override
+    public boolean hasCollectionOwner() {
+        return collectionOwnerId != null;
+    }
+    
     @Override
     public DataFlavor[] getTransferDataFlavors() {
         return flavors.toArray(new DataFlavor[0]);
