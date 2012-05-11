@@ -1,7 +1,11 @@
 package jp.scid.genomemuseum.gui.transfer;
 
 import java.awt.datatransfer.DataFlavor;
+import java.awt.datatransfer.UnsupportedFlavorException;
+import java.io.IOException;
 import java.util.List;
+
+import javax.swing.TransferHandler.TransferSupport;
 
 import jp.scid.genomemuseum.model.MuseumExhibit;
 
@@ -20,6 +24,23 @@ public interface TransferMuseumExhibit {
         
         static boolean equals(DataFlavor flavor) {
             return getInstance().equals(flavor);
+        }
+
+        static List<MuseumExhibit> getTransferMuseumExhibit(TransferSupport support) {
+            TransferMuseumExhibit source;
+            try {
+                source = (TransferMuseumExhibit)
+                        support.getTransferable().getTransferData(getInstance());
+            }
+            catch (UnsupportedFlavorException e) {
+                throw new IllegalStateException("cannot get a TransferMuseumExhibit", e);
+            }
+            catch (IOException e) {
+                throw new IllegalStateException("cannot get a TransferMuseumExhibit", e);
+            }
+            
+            List<MuseumExhibit> list = source.getMuseumExhibitList();
+            return list;
         }
     }
 }
