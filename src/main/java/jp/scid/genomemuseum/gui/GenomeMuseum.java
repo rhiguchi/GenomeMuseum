@@ -2,6 +2,7 @@ package jp.scid.genomemuseum.gui;
 
 import java.awt.FileDialog;
 import java.io.File;
+import java.io.IOException;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.concurrent.ExecutorService;
@@ -14,6 +15,7 @@ import jp.scid.genomemuseum.model.CollectionBox.BoxType;
 import jp.scid.genomemuseum.model.CollectionBoxService;
 import jp.scid.genomemuseum.model.ExhibitFileManager;
 import jp.scid.genomemuseum.model.MuseumDataSchema;
+import jp.scid.genomemuseum.model.MuseumExhibit.FileType;
 import jp.scid.genomemuseum.model.MuseumExhibitLibrary;
 import jp.scid.genomemuseum.model.MuseumSourceModel;
 import jp.scid.genomemuseum.model.SchemaBuilder;
@@ -156,8 +158,25 @@ public class GenomeMuseum extends Application {
     }
     
     @Action
-    public void open() {
-        // TODO
+    public void open() throws IOException {
+        FileDialog dialog = new FileDialog(getMainFrame());
+        
+        dialog.setVisible(true);
+        
+        if (dialog.getFile() != null) {
+            File file = new File(dialog.getDirectory(), dialog.getFile());
+            FileType fileType = getFileLoader().findFileType(file);
+            
+            if (fileType == FileType.UNKNOWN) {
+                // TODO alerting
+            }
+            else {
+                getFileLoader().executeLoading(file, fileType);
+            }
+        }
+        else {
+            // TODO alerting
+        }
     }
 
     MainFrameController getMainFrameController() {
