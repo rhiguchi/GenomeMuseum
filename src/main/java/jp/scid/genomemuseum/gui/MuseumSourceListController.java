@@ -1,11 +1,15 @@
 package jp.scid.genomemuseum.gui;
 
+import java.io.File;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 
 import javax.swing.AbstractButton;
 import javax.swing.Action;
+import javax.swing.DropMode;
 import javax.swing.JTree;
 import javax.swing.event.TreeExpansionEvent;
 import javax.swing.event.TreeSelectionEvent;
@@ -20,14 +24,16 @@ import javax.swing.tree.TreeNode;
 import javax.swing.tree.TreePath;
 import javax.swing.tree.TreeSelectionModel;
 
+import jp.scid.genomemuseum.gui.transfer.MuseumSourceTransferHandler;
 import jp.scid.genomemuseum.model.CollectionBox;
 import jp.scid.genomemuseum.model.CollectionBox.BoxType;
 import jp.scid.genomemuseum.model.CollectionBoxService;
 import jp.scid.genomemuseum.model.EntityService;
+import jp.scid.genomemuseum.model.MuseumExhibit;
 import jp.scid.genomemuseum.model.MuseumSourceModel;
 import jp.scid.genomemuseum.model.MuseumSourceModel.CollectionBoxNode;
+import jp.scid.genomemuseum.model.MuseumSourceModel.ExhibitCollectionNode;
 import jp.scid.gui.control.ActionManager;
-import jp.scid.gui.control.TreeController;
 
 import org.jdesktop.application.AbstractBean;
 
@@ -51,6 +57,8 @@ public class MuseumSourceListController extends AbstractBean implements TreeSele
     final BindingSupport bindings = new BindingSupport(this);
     
     // Controller
+    private final MuseumSourceTransferHandler transferHandler;
+    
     private final NodeReloadHandler reloadHandler = new NodeReloadHandler();
     
     public MuseumSourceListController() {
@@ -67,6 +75,8 @@ public class MuseumSourceListController extends AbstractBean implements TreeSele
         addGroupBoxAction = actionManager.getAction("addGroupBox");
         addSmartBoxAction = actionManager.getAction("addSmartBox");
         removeBoxAction = actionManager.getAction("removeSelectedBox");
+        
+        transferHandler = new MuseumSourceTransferHandler(this);
     }
 
     public TreeModel getTreeModel() {
@@ -94,8 +104,16 @@ public class MuseumSourceListController extends AbstractBean implements TreeSele
     }
     
     public void addExhibit(URL source) {
-        // TODO
-//        getBioFileLoader().executeWithSourceUrl(source);
+        URI uri;
+        try {
+            uri = source.toURI();
+        }
+        catch (URISyntaxException e) {
+            throw new IllegalArgumentException(e);
+        }
+        
+        MuseumExhibit museumExhibit = getBioFileLoader().newMuseumExhibit(uri);
+        getBioFileLoader().executeReload(museumExhibit);
     }
     
     public boolean isSelectable(TreePath path) {
@@ -146,6 +164,16 @@ public class MuseumSourceListController extends AbstractBean implements TreeSele
         }
     }
     
+    public boolean canMoveNode(ExhibitCollectionNode source, CollectionBoxNode target) {
+        // TODO
+        return true;
+    }
+    
+    
+    public void moveNode(ExhibitCollectionNode source, CollectionBoxNode target) {
+        // TODO
+    }
+    
     public void moveBox(CollectionBoxNode node, CollectionBoxNode targetNode) {
         sourceModel.moveCollectionBox(node, targetNode);
     }
@@ -154,6 +182,25 @@ public class MuseumSourceListController extends AbstractBean implements TreeSele
         TreePath selection = getSelectionPath();
         CollectionBoxNode node = (CollectionBoxNode) selection.getLastPathComponent();
         moveBox(node, targetNode);
+    }
+    
+    public boolean canImportExhibit(CollectionBoxNode node) {
+        // TODO
+        return true;
+    }
+    
+    public void importExhibit(CollectionBoxNode node, List<MuseumExhibit> data) {
+        // TODO
+    }
+    
+    public boolean canImportFile(ExhibitCollectionNode node) {
+        // TODO
+        return true;
+    }
+    
+    public boolean importFile(ExhibitCollectionNode node, List<File> data) {
+        // TODO
+        return false;
     }
     
     protected void insertCollectionBox(BoxType boxType) {
@@ -188,6 +235,10 @@ public class MuseumSourceListController extends AbstractBean implements TreeSele
         tree.setRootVisible(false);
         tree.setSelectionModel(getSelectionModel());
         reloadHandler.installTo(tree);
+        
+        tree.setTransferHandler(transferHandler);
+        tree.setDragEnabled(true);
+        tree.setDropMode(DropMode.ON);
     }
     
     public void bindAddFreeBox(AbstractButton button) {
