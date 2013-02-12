@@ -8,6 +8,9 @@
      higuchi                                                                
      ====================================================================== -->
 <project name="GenomeMuseum" default="run-jar" xmlns:ivy="antlib:org.apache.ivy.ant">
+    <description>
+            GenomeMuseum 0.9
+    </description>
     <property name="genomemuseum.assembled"
         value="${basedir}/target/scala-2.9.1/genomemuseum_2.9.1-0.9a1.min.jar"/>
     
@@ -21,27 +24,113 @@
     
     <property file="project/build.properties"/>
     
+    <condition property="ivy.home" value="${env.IVY_HOME}">
+        <isset property="env.IVY_HOME" />
+    </condition>
+    <property name="ivy.home" value="${user.home}/.ivy2" />
+    <property name="ivy.install.dir" value="${ivy.home}/lib" />
+    <property name="ivy.install.dest" value="${ivy.install.dir}/ivy.jar" />
+    
+    <!-- for ivy -->
+    <target name="-check-ivy-user-installed" description="check ivy jar file existence on user's ivy home">
+        <available file="${ivy.install.dest}" property="ivy.install.dest.exisits" />
+    </target>
+
+    <target name="-taskdef-user-ivy" depends="-check-ivy-user-installed" if="ivy.install.dest.exisits">
+        <path id="ivy.install.path">
+            <fileset dir="${ivy.install.dir}" includes="*.jar" />
+        </path>
+        <taskdef resource="org/apache/ivy/ant/antlib.xml" 
+                 uri="antlib:org.apache.ivy.ant" classpathref="ivy.install.path"/>
+    </target>
+
     <!-- jar ファイルが存在するかどうか -->
     <condition property="genomemuseum.assembled.exists">
         <available file="${genomemuseum.assembled}"></available>
     </condition>
+    
+    <!-- Classpaths -->
+    <path id="classpath.main">
+        <pathelement location="${classes.main.dir}"/>
+        <pathelement location="${src.main.resources.dir}" />
+    </path>
+    <path id="classpath.test">
+        <pathelement location="${classes.test.dir}"/>
+        <pathelement location="${src.test.resources.dir}" />
+    </path>
 
-    <description>
-            GenomeMuseum 0.9
-    </description>
+    <!-- - - - - - - - - - - - - - - - - - 
+          target: init                      
+         - - - - - - - - - - - - - - - - - -->
+    <target name="init">
+    </target>
+    
+    <!-- ================================= 
+          target: clean              
+         ================================= -->
+    <target name="clean">
+        <delete dir="${build.dir}"/>
+        <delete dir="${lib.dir}"/>
+    </target>
 
     <!-- ================================= 
           target: Resolve dependency              
          ================================= -->
-    <target name="resolve" description="resolve dependencies with ivy">
-        <ivy:resolve file="${ivy.file}"/>
-
-        <!-- Class Paths -->
-        <ivy:cachepath pathid="lib.compile.classpath" conf="compile" />
-        <ivy:cachepath pathid="lib.test.classpath" conf="test" />
+    <target name="resolve" description="Resolve dependency" depends="-taskdef-user-ivy">
+        <property name="ivy.retrieve.pattern" value="${ivy.lib.dir}/[conf]/[artifact]-[revision].[ext]" />
         
+        <mkdir dir="${ivy.lib.dir}/default"/>
+        <mkdir dir="${ivy.lib.dir}/test"/>
+        <ivy:retrieve symlink="${ivy.retrieve.symlink}" />
+        
+        <!-- Class Paths -->
+        <path id="classpath.lib.default" >
+            <fileset dir="${ivy.lib.dir}/default" includes="*.jar" />
+        </path>
+        <path id="classpath.lib.test" >
+            <fileset dir="${ivy.lib.dir}/test" includes="*.jar" />
+        </path>
     </target>
     
+    <!-- ================================= 
+          target: Compile              
+         ================================= -->
+    <target name="compile" depends="init, resolve" description="Compile main java sources">
+        <mkdir dir="${classes.main.dir}"/>
+        <javac destdir="${classes.main.dir}" source="${javac.source}" target="${javac.target}"
+                encoding="UTF-8" debug="${javac.debug}" debuglevel="source,lines,vars" includeantruntime="false">
+            <src path="${src.main.java.dir}" />
+            <classpath refid="classpath.lib.default" />
+        </javac>
+    </target>
+
+    <!-- ================================= 
+          target: create jar file              
+         ================================= -->
+    <target name="jar" depends="compile" description="Create jar file">
+        <jar destfile="${build.jar.file}">
+            <fileset dir="${classes.main.dir}" />
+            <fileset dir="${src.main.resources.dir}" />
+            <manifest>
+                <attribute name="Main-Class" value="${run.main}" />
+            </manifest>
+        </jar>
+    </target>
+    
+    <!-- ================================= 
+          target: Compile for test              
+         ================================= -->
+    <target name="compile-test" depends="compile" description="compile sources for testing">
+        <mkdir dir="${classes.test.dir}"/>
+        <javac destdir="${classes.test.dir}" source="${javac.source}" target="${javac.target}"
+                encoding="UTF-8" debug="${javac.debug}" debuglevel="source,lines,vars" includeantruntime="false">
+            <compilerarg value="-Xlint:all"/>
+            <src path="${src.test.java.dir}" />
+            <classpath refid="classpath.main" />
+            <classpath refid="classpath.lib.test" />
+        </javac>
+    </target>
+
     <!-- ================================= 
           target: default              
          ================================= -->
@@ -63,8 +152,23 @@
     <!-- ================================= 
           target: run-jar              
          ================================= -->
-    <target name="run-jar" depends="depends, assemble-jar" description="target ディレクトリの jar を実行する">
-        <java jar="${build.jar.assembled}" fork="true"></java>
+    <target name="run-jar" depends="resolve" description="target ディレクトリの jar を実行する">
+        <pathconvert pathsep=":" dirsep="/" property="jar.runtime.classpath">
+            <path refid="classpath.lib.default" />
+        </pathconvert>
+
+        <echoproperties prefix="jar.runtime.classpath">
+        </echoproperties>
+
+        <exec executable="java">
+            <arg value="-Dfile.encoding=UTF-8"/>
+            <arg value="-Xms128m"/>
+            <arg value="-Xmx1024m"/>
+            <arg value="-classpath"/>
+            <arg value="${jar.runtime.classpath}"/>
+            <arg value="-jar"/>
+            <arg value="${build.jar.file}"/>
+        </exec>
     </target>
 
     
