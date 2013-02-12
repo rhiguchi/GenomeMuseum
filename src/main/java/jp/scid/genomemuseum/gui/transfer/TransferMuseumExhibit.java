@@ -30,7 +30,7 @@ public interface TransferMuseumExhibit {
             return getInstance().equals(flavor);
         }
 
-        static List<MuseumExhibit> getTransferMuseumExhibit(TransferSupport support) {
+        public static List<MuseumExhibit> getTransferMuseumExhibit(TransferSupport support) {
             TransferMuseumExhibit source;
             try {
                 source = (TransferMuseumExhibit)

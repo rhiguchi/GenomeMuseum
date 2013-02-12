@@ -1,129 +1,99 @@
 package jp.scid.genomemuseum.gui;
 
+import java.awt.FileDialog;
+import java.awt.event.ActionEvent;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.util.EventObject;
 
+import javax.swing.AbstractAction;
 import javax.swing.AbstractButton;
+import javax.swing.Action;
 import javax.swing.JFrame;
 import javax.swing.JTree;
-import javax.swing.event.ListSelectionEvent;
-import javax.swing.event.ListSelectionListener;
-import javax.swing.event.TreeSelectionEvent;
-import javax.swing.event.TreeSelectionListener;
-import javax.swing.tree.DefaultMutableTreeNode;
-import javax.swing.tree.MutableTreeNode;
-import javax.swing.tree.TreePath;
 
 import jp.scid.genomemuseum.model.CollectionBox;
-import jp.scid.genomemuseum.model.ExhibitListModel;
-import jp.scid.genomemuseum.model.MuseumDataSchema;
-import jp.scid.genomemuseum.model.MuseumExhibit;
 import jp.scid.genomemuseum.model.MuseumSourceModel;
-import jp.scid.genomemuseum.model.MuseumSourceModel.CollectionBoxNode;
-import jp.scid.genomemuseum.view.ExhibitListView;
 import jp.scid.genomemuseum.view.MainMenuBar;
 import jp.scid.genomemuseum.view.MainView;
 
 import org.jdesktop.application.AbstractBean;
 import org.jdesktop.application.Application.ExitListener;
-
+import org.jooq.impl.Factory;
 
 public class MainFrameController extends AbstractBean
-        implements ExitListener, TreeSelectionListener, PropertyChangeListener, ListSelectionListener {
-    public static final String PROPKEY_FRAME_VISIBLED = "frameVisibled";
+        implements ExitListener, PropertyChangeListener {
+    static final String PROPERTY_VISIBLE = "visible";
 
-    boolean frameVisibled = false;
-    
-    protected MuseumDataSchema schema = null;
-    
     // Properties
+//    boolean visible = false;
     
     // Controllers
-    final MuseumSourceListController sourceListController;
+    final JFrame frame;
     
-    final ExhibitListViewController exhibitListViewController;
+//    final MuseumExhibitController exhibitListController;
     
-    final MuseumExhibitContentViewer museumExhibitContentViewer;
-
-    final BindingSupport bindings = new BindingSupport(this);
+//    final MuseumSourceListController sourceListController;
+    
+    // actions
+    final Action openAction = new AbstractAction("open") {
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            open();
+        }
+    };
+    
+//    MainFrameController(JFrame frame, MuseumExhibitController exhibitListController,
+//            MuseumSourceListController sourceListController) {
+//        this.frame = frame;
+////        this.exhibitListController = exhibitListController;
+////        this.sourceListController = sourceListController;
+//        
+//        sourceListController.addPropertyChangeListener(this);
+//    }
+    
+    public MainFrameController(JFrame frame) {
+//        this(frame, new MuseumExhibitController(new FileDialog(frame, "")), new MuseumSourceListController());
+        this.frame = frame;
+    }
     
     public MainFrameController() {
-        sourceListController = new MuseumSourceListController();
-        sourceListController.addPropertyChangeListener(this);
-        
-        sourceListController.getSelectionModel().addTreeSelectionListener(this);
-        
-        exhibitListViewController = new ExhibitListViewController();
-        exhibitListViewController.getSelectionModel().addListSelectionListener(this);
-        exhibitListViewController.addPropertyChangeListener(this);
-        
-        museumExhibitContentViewer = new MuseumExhibitContentViewer();
+        this(new JFrame());
     }
     
-    // frameVisibled
-    public boolean isFrameVisibled() {
-        return frameVisibled;
-    }
-
-    public void setFrameVisibled(boolean newValue) {
-        firePropertyChange(PROPKEY_FRAME_VISIBLED, this.frameVisibled, this.frameVisibled = newValue);
+    public void setFactory(Factory factory) {
+//        exhibitListController.setFactory(factory);
     }
     
     // Controllers
-    public ExhibitDataLoader getBioFileLoader() {
-        return exhibitListViewController.getBioFileLoader();
+    @Override
+    public void propertyChange(PropertyChangeEvent evt) {
+//        if (sourceListController == evt.getSource()
+//                && MuseumSourceListController.PROPETY_SELECTED_ROOM.equals(evt.getPropertyName())) {
+//            // TODO updating
+//        }
+    }
+    
+    // Actions
+    public void show() {
+        frame.setVisible(true);
     }
 
-    public void setBioFileLoader(ExhibitDataLoader bioFileLoader) {
-        exhibitListViewController.setBioFileLoader(bioFileLoader);
-    }
-
-    public void showFrame() {
-        setFrameVisibled(true);
-    }
-
-    public void setDataSchema(MuseumDataSchema newSchema) {
-        sourceListController.setCollectionBoxSource(null);
-//        exhibitListViewController.setMuseumSchema(newSchema);
-        
-        schema = newSchema;
-        
-        if (newSchema != null) {
-            sourceListController.setCollectionBoxSource(newSchema.getCollectionBoxService());
-            sourceListController.setLocalLibrarySource(newSchema.getMuseumExhibitLibrary());
-            museumExhibitContentViewer.setLibrary(newSchema.getMuseumExhibitLibrary());
-        }
-        
-    }
-
-    public void setExhibitListSource(ExhibitListModel newModel) {
-        exhibitListViewController.setExhibitListModel(newModel);
+    public void open() {
+//        exhibitListController.open();
     }
     
     public CollectionBox getSelectedSource() {
         // TODO
         return null;
     }
-    
-    public MuseumExhibit getSelectedExhibit() {
-        return exhibitListViewController.getSelection();
-    }
-
-    // Action methods
-    public void reloadExhibitDetailsView() {
-        MuseumExhibit exhibit = getSelectedExhibit();
-        museumExhibitContentViewer.setExhibit(exhibit);
-        museumExhibitContentViewer.reload();
-    }
 
     // Bindings
+    @Deprecated
     public void bindFrame(JFrame frame) {
         frame.pack();
         frame.setLocationByPlatform(true);
         frame.setLocationRelativeTo(null);
-        
-        bindings.bind(PROPKEY_FRAME_VISIBLED).to(frame, "visible");
     }
     
     public void bindMainView(MainView mainView) {
@@ -131,10 +101,6 @@ public class MainFrameController extends AbstractBean
         bindSourceListControlls(
                 mainView.addListBox, mainView.addBoxFolder, mainView.addSmartBox,
                 mainView.removeBoxButton);
-
-        exhibitListViewController.bindTable(mainView.exhibitListView.dataTable);
-        exhibitListViewController.bindFilterTextField(mainView.quickSearchField);
-        bindExhibitContentView(mainView.exhibitListView);
     }
     
     public void bindMainMenuBar(MainMenuBar mainMenuBar) {
@@ -142,25 +108,20 @@ public class MainFrameController extends AbstractBean
     }
     
     void bindSourceList(JTree tree) {
-        sourceListController.bindTree(tree);
+//        sourceListController.bindTree(tree);
     }
     
     void bindSourceListControlls(AbstractButton addFreeBoxButton,
             AbstractButton addGroupBoxButton, AbstractButton addSmartBoxButton,
             AbstractButton removeBoxButton) {
-        sourceListController.bindAddFreeBox(addFreeBoxButton);
-        sourceListController.bindAddGroupBox(addGroupBoxButton);
-        sourceListController.bindAddSmartBox(addSmartBoxButton);
-        sourceListController.bindRemoveBox(removeBoxButton);
-    }
-    
-    void bindExhibitContentView(ExhibitListView view) {
-        museumExhibitContentViewer.bindFileContentView(view.fileContentView);
-        museumExhibitContentViewer.bindOverviewMotifView(view.overviewMotifView);
+//        sourceListController.bindAddFreeBox(addFreeBoxButton);
+//        sourceListController.bindAddGroupBox(addGroupBoxButton);
+//        sourceListController.bindAddSmartBox(addSmartBoxButton);
+//        sourceListController.bindRemoveBox(removeBoxButton);
     }
     
     MuseumSourceModel getMuseumSourceModel() {
-        return sourceListController.sourceModel;
+        return null; //sourceListController.sourceModel;
     }
     
     @Override
@@ -172,33 +133,23 @@ public class MainFrameController extends AbstractBean
     public void willExit(EventObject event) {
     }
     
-    @Override
-    public void valueChanged(TreeSelectionEvent e) {
-        TreePath path = e.getPath();
-        if (path != null) {
-            MutableTreeNode node = (MutableTreeNode) path.getLastPathComponent();
-            
-            if (node instanceof CollectionBoxNode) {
-                ExhibitListModel model = ((CollectionBoxNode) node).getCollectionBox(); 
-                setExhibitListSource(model);
-            }
-            else if (node instanceof DefaultMutableTreeNode &&
-                    ((DefaultMutableTreeNode) node).getUserObject() instanceof ExhibitListModel) {
-                ExhibitListModel model = (ExhibitListModel) ((DefaultMutableTreeNode) node).getUserObject();
-                setExhibitListSource(model);
-            }
+    public class Builder {
+        public Builder() {
         }
-    }
-    
-    @Override
-    public void valueChanged(ListSelectionEvent e) {
-        reloadExhibitDetailsView();
-    }
-    
-    @Override
-    public void propertyChange(PropertyChangeEvent evt) {
-        Object source = evt.getSource();
-        String propertyName = evt.getPropertyName();
         
+//        public MainFrameController build() {
+//            
+//        }
+        
+        public void bindToMenus(MainMenuBar mainMenuBar) {
+            mainMenuBar.open.setAction(openAction);
+        }
+        
+        public void bindToMainView(MainView mainView) {
+//            exhibitListController.bind(mainView.exhibitListView);
+//            exhibitListController.bindFilterTextField(mainView.quickSearchField);
+            
+            bindSourceList(mainView.sourceList);
+        }
     }
 }

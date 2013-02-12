@@ -22,8 +22,8 @@ import jp.scid.bio.SequenceBioDataReader;
 import jp.scid.genomemuseum.model.MuseumExhibit;
 import jp.scid.genomemuseum.model.MuseumExhibitLibrary;
 import jp.scid.genomemuseum.view.FileContentView;
-import jp.scid.motifviewer.gui.MotifViewerController;
-import jp.scid.motifviewer.gui.MotifViewerView;
+//import jp.scid.motifviewer.gui.MotifViewerController;
+//import jp.scid.motifviewer.gui.MotifViewerView;
 
 import org.jdesktop.application.AbstractBean;
 
@@ -33,12 +33,12 @@ public class MuseumExhibitContentViewer extends AbstractBean {
     private MuseumExhibit exhibit = null;
     
     // Controller
-    final MotifViewerController motifViewerController;
+//    final MotifViewerController motifViewerController;
     
     MuseumExhibitLibrary library = null;
     
     public MuseumExhibitContentViewer() {
-        motifViewerController = new MotifViewerController();
+//        motifViewerController = new MotifViewerController();
     }
 
     public void setExhibit(MuseumExhibit exhibit) {
@@ -55,11 +55,11 @@ public class MuseumExhibitContentViewer extends AbstractBean {
     
     // sequence
     public String getSequence() {
-        return motifViewerController.getSequence();
+        return ""; //motifViewerController.getSequence();
     }
     
     public void setSequence(String sequence) {
-        motifViewerController.setSequence(sequence);
+        //motifViewerController.setSequence(sequence);
     }
     
     public void clearContent() {
@@ -97,8 +97,9 @@ public class MuseumExhibitContentViewer extends AbstractBean {
         bindFileContentTextArea(view.textArea);
     }
 
-    public void bindOverviewMotifView(MotifViewerView view) {
-        motifViewerController.bind(view);
+//    public void bindOverviewMotifView(MotifViewerView view) {
+    public void bindOverviewMotifView(Object view) {
+//        motifViewerController.bind(view);
     }
 
     void bindFileContentTextArea(JTextArea textArea) {

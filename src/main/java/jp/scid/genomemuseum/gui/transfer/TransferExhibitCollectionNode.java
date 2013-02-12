@@ -26,7 +26,7 @@ public interface TransferExhibitCollectionNode {
             return getInstance().equals(flavor);
         }
 
-        static ExhibitCollectionNode getTransferExhibitCollectionNode(TransferSupport support) {
+        public static ExhibitCollectionNode getTransferExhibitCollectionNode(TransferSupport support) {
             TransferExhibitCollectionNode source;
             try {
                 source = (TransferExhibitCollectionNode)

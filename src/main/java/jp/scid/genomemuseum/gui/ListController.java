@@ -1,75 +1,139 @@
 package jp.scid.genomemuseum.gui;
 
+import java.awt.datatransfer.Transferable;
 import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.event.KeyEvent;
+import java.io.File;
+import java.io.IOException;
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
+import java.util.EventListener;
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
 
 import javax.swing.AbstractAction;
+import javax.swing.Action;
+import javax.swing.DropMode;
+import javax.swing.JComponent;
 import javax.swing.JTable;
-import javax.swing.table.TableModel;
+import javax.swing.JTextField;
+import javax.swing.KeyStroke;
+import javax.swing.TransferHandler;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
+import javax.swing.event.ListSelectionEvent;
+import javax.swing.event.ListSelectionListener;
+import javax.swing.table.JTableHeader;
 
-import org.jdesktop.application.AbstractBean;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import ca.odell.glazedlists.BasicEventList;
 import ca.odell.glazedlists.EventList;
 import ca.odell.glazedlists.FilterList;
 import ca.odell.glazedlists.GlazedLists;
+import ca.odell.glazedlists.ObservableElementList;
+import ca.odell.glazedlists.ObservableElementList.Connector;
 import ca.odell.glazedlists.SortedList;
+import ca.odell.glazedlists.TextFilterator;
+import ca.odell.glazedlists.gui.AdvancedTableFormat;
 import ca.odell.glazedlists.gui.TableFormat;
+import ca.odell.glazedlists.impl.filter.StringTextFilterator;
+import ca.odell.glazedlists.matchers.SearchEngineTextMatcherEditor;
 import ca.odell.glazedlists.swing.EventSelectionModel;
 import ca.odell.glazedlists.swing.EventTableModel;
 
-class ListController<E> extends AbstractBean {
-    protected EventTableModel<E> tableModel;
+public abstract class ListController<E> {
+    private final static Logger logger = LoggerFactory.getLogger(ListController.class);
     
-    protected final EventList<E> listModel;
+    /** source */
+    protected final EventList<E> source;
+    /** sorter */
+    private final SortedList<E> sortedList;
+    // filtering
+    /** matcher editor */
+    private SearchEngineTextMatcherEditor<E> matcherEditor;
+    private final FilterList<E> filterList;
     
-    protected final SortedList<E> sortedList;
-    
-    protected final FilterList<E> filterList;
-
+    /** selection model */
     protected final EventSelectionModel<E> selectionModel;
     
-    // Actions
-    protected final AddAction addAction;
+    // properties
+    private boolean canAdd = true;
+    private boolean canRemove = false;
+    // actions
+    /** remove */
+    protected final Action addAction;
+    protected final Action removeAction;
     
-    protected final RemoveAction removeAction;
-    
-    public ListController(EventList<E> listModel) {
-        if (listModel == null) {
-            listModel = createModelEventList();
-        }
-        this.listModel = listModel;
-
-        sortedList = new SortedList<E>(listModel, null);
+    public ListController() {
+        this.source = new BasicEventList<E>();
+        this.sortedList = new SortedList<E>(this.source, null);
         
-        filterList = new FilterList<E>(sortedList);
+        matcherEditor = createTextMatcherEditor();
+        filterList = new FilterList<E>(sortedList, matcherEditor);
         
-        selectionModel = new EventSelectionModel<E>(filterList);
+        selectionModel = createSelectionModel(getViewList());
         
         addAction = createAddAction();
-        addAction.setEnabled(canAdd());
-        
         removeAction = createRemoveAction();
+        
+        updateCanRemoveBySelection();
     }
 
-    public ListController() {
-        this(null);
+    @SuppressWarnings("unused")
+    private Connector<E> createObserveConnector() {
+        return new EmptyConnector<E>();
     }
 
-    public List<E> getSource() {
-        return listModel;
+    public EventList<E> getViewList() {
+        return filterList;
     }
     
-    public List<E> getTransformedElements() {
-        return filterList;
+    // adding methods
+    public boolean canAdd() {
+        return canAdd;
+    }
+    
+    public void setCanAdd(boolean canAdd) {
+        this.canAdd = canAdd;
+    }
+
+    public void add(E newElement) {
+        int index = selectionModel.getMaxSelectionIndex() + 1;
+        add(index, newElement);
+    }
+    
+    public void addAll(Collection<E> elements) {
+        int index = selectionModel.getMaxSelectionIndex() + 1;
+        getViewList().addAll(index, elements);
+    }
+
+    public void add(int index, E newElement) {
+        getViewList().add(index, newElement);
+    }
+    
+    public E add() {
+        int index = selectionModel.getMaxSelectionIndex() + 1;
+
+        return add(index);
+    }
+
+    public E add(int index) {
+        E newElement = createElement();
+        
+        add(index, newElement);
+        return newElement;
     }
 
     public void setSource(List<E> newSource) {
-        EventList<E> list = getModel();
+        EventList<E> list = source;
         
         list.getReadWriteLock().writeLock().lock();
         try {
@@ -77,132 +141,87 @@ class ListController<E> extends AbstractBean {
                 list.clear();
             }
             else {
-                GlazedLists.replaceAll(list, newSource, true);
+                GlazedLists.replaceAll(list, newSource, false);
             }
         }
         finally {
             list.getReadWriteLock().writeLock().unlock();
         }
     }
-    
-    EventList<E> getModel() {
-        return listModel;
-    }
-    
-    public void replaceSource(List<E> newSource, boolean updates) {
-        GlazedLists.replaceAll(getModel(), newSource, updates);
-    }
-    
-    public EventSelectionModel<E> getSelectionModel() {
-        return selectionModel;
-    }
-    
-    // selection
-    public E getSelection() {
-        List<E> list = getSelections();
-        if (list.isEmpty()) {
-            return null;
-        }
-        else {
-            return list.get(0);
-        }
-    }
-    
-    public void setSelection(E newSelection) {
-        if (newSelection == null) {
-            setSelections(Collections.<E>emptyList());
-        }
-        else {
-            setSelections(Collections.singletonList(newSelection));
-        }
-    }
-    
-    // selections
-    public List<E> getSelections() {
-        ArrayList<E> selections = new ArrayList<E>(selectionModel.getSelected());
-        return selections;
-    }
-    
-    public void setSelections(List<E> selections) {
-        selectionModel.getTogglingSelected().addAll(selections);
-    }
-    
-    public void bindTable(JTable table) {
-        table.setModel(getTableModel());
-        table.setSelectionModel(selectionModel);
-        
-        table.getActionMap().put("delete", removeAction);
-        table.getActionMap().put("add", addAction);
-    }
-
-    protected TableFormat<E> getTableFormat() {
-        throw new UnsupportedOperationException("method must implement to use tableformat");
-    }
-    
-    public TableModel getTableModel() {
-        if (tableModel == null) {
-            tableModel = new EventTableModel<E>(getModel(), getTableFormat());
-        }
-        return tableModel;
-    }
-    
-    // Add
-    public boolean canAdd() {
-        return addAction.isEnabled();
-    }
-    
-    protected void setCanAdd(boolean newValue) {
-        addAction.setEnabled(newValue);
-    }
-    
-    public void add() {
-        int index = selectionModel.getMaxSelectionIndex() + 1;
-
-        add(index);
-    }
-
-    public void add(int index) {
-        E newElement = createElement();
-        
-        add(index, newElement);
-    }
-    
-    public void add(E element) {
-        int index = selectionModel.getMaxSelectionIndex() + 1;
-        
-        add(index, element);
-    }
-    
-    public void add(int index, E element) {
-        getTransformedElements().add(index, element);
-    }
 
     protected E createElement() {
-        throw new UnsupportedOperationException("must implement to create element");
+        throw new UnsupportedOperationException("to create element must be implemented");
     }
     
-    // Move
-    public void move(int[] indices, int dest) {
-        // TODO
-        for (int i = indices.length - 1; i >= 0; i--) {
-            int sourceIndex = indices[i];
-            
-            List<E> subList = listModel.subList(dest, sourceIndex + 1);
-            Collections.rotate(subList, 1);
+    /**
+     * @param file 
+     * @throws IOException  
+     */
+    public boolean importFromFile(File file) throws IOException {
+        logger.error("importFromFile must be implemented");
+        return false;
+    }
+    
+    // change
+    public void elementChange(int index) {
+        EventList<E> list = getViewList();
+        list.set(index, list.get(index));
+    }
+ 
+    public void elementChanged(E exhibit) {
+        EventList<E> list = getViewList();
+        int index = 0;
+        for (Iterator<E> ite = list.iterator(); ite.hasNext(); index++) {
+            E element = ite.next();
+             
+            if (exhibit.equals(element)) {
+                list.set(index, exhibit);
+            }
         }
+    }
+    
+    // removing methods
+    public void clear() {
+        source.clear();
+    }
+
+    public boolean canRemove() {
+        return canRemove;
+    }
+    
+    public void setCanRemove(boolean newValue) {
+        canRemove = newValue;
+        removeAction.setEnabled(newValue);
+    }
+    
+    private void updateCanRemoveBySelection() {
+        setCanRemove(!isSelectionEmpty());
+    }
+
+    // sorting
+    public Comparator<? super E> getComparator() {
+        return sortedList.getComparator();
+    }
+
+    public void setComparator(Comparator<? super E> comparator) {
+        sortedList.setComparator(comparator);
     }
     
     // Remove
-    public void removeAt(int index) {
-        E element = getTransformedElements().remove(index);
+    public E removeAt(int index) {
+        return getViewList().remove(index);
+    }
+
+    public boolean remove(E element) {
+        return getViewList().remove(element);
     }
     
-    public void remove() {
+    public List<E> remove() {
         int minSelectionIndex = selectionModel.getMinSelectionIndex();
         int maxSelectionIndex = selectionModel.getMaxSelectionIndex();
         
         if (minSelectionIndex < 0 || maxSelectionIndex < 0)
-            return;
+            return Collections.emptyList();
         
         int[] indices = new int[maxSelectionIndex - minSelectionIndex + 1];
         int count = 0;
@@ -213,64 +232,241 @@ class ListController<E> extends AbstractBean {
         }
         
         int[] selectedIndices = Arrays.copyOf(indices, count);
-        removeAt(selectedIndices);
+        return removeAt(selectedIndices);
     }
-    
-    public void removeAt(int[] indices) {
+
+    public List<E> removeAt(int... indices) {
+        List<E> removedList = new LinkedList<E>();
+        
         for (int i = indices.length - 1; i >= 0; i--) {
             int index = indices[i];
-            removeAt(index);
-        }
-    }
-    
-    public void elementChange(int index) {
-        getTransformedElements().set(index, getTransformedElements().get(index));
-    }
-
-    public void elementChanged(E exhibit) {
-        int index = 0;
-        for (Iterator<E> ite = listModel.iterator(); ite.hasNext(); index++) {
-            E element = ite.next();
-            
-            if (exhibit.equals(element)) {
-                listModel.set(index, exhibit);
-            }
-        }
-    }
-    
-    protected EventList<E> createModelEventList() {
-        return new BasicEventList<E>();
-    }
-    
-    // Action factories
-    protected AddAction createAddAction() {
-        return new AddAction("Add");
-    }
-    
-    protected RemoveAction createRemoveAction() {
-        return new RemoveAction("Remove");
-    }
-    
-    // Actions
-    protected class AddAction extends AbstractAction {
-        public AddAction(String name) {
-            super(name);
-        }
-
-        @Override
-        public void actionPerformed(ActionEvent e) {
-            add();
-        }
-    }
-    
-    protected class RemoveAction extends AbstractAction {
-        public RemoveAction(String name) {
-            super(name);
+            E removed = removeAt(index);
+            removedList.add(removed);
         }
         
+        return removedList;
+    }
+    
+    // selections
+    protected boolean isSelectionEmpty() {
+        return selectionModel.isSelectionEmpty();
+    }
+    
+    public List<E> getSelections() {
+        return new ArrayList<E>(selectionModel.getSelected());
+    }
+
+    public void setSelections(List<E> selections) {
+        EventList<E> selected = selectionModel.getTogglingSelected();
+        selected.clear();
+        selected.addAll(selections);
+    }
+
+    public E getSelection() {
+        List<E> list = getSelections();
+        if (list.isEmpty()) {
+            return null;
+        }
+        return list.get(0);
+    }
+    
+    public void setSelection(E newSelection) {
+        if (newSelection == null) {
+            clearSelection();
+        }
+        else {
+            setSelections(Collections.singletonList(newSelection));
+        }
+    }
+    
+    public void clearSelection() {
+        selectionModel.clearSelection();
+    }
+    
+    // filtering
+    public void refilter(String text) {
+        matcherEditor.refilter(text);
+    }
+    
+    public void setMatcherEditor(SearchEngineTextMatcherEditor<E> matcherEditor) {
+        this.matcherEditor = matcherEditor;
+        filterList.setMatcherEditor(matcherEditor);
+    }
+    
+    public void setTextFilterator(TextFilterator<? super E> filterator) {
+        matcherEditor.setFilterator(filterator);
+    }
+    
+    // transferring
+    protected Transferable createTransferData() {
+        if (isSelectionEmpty()) {
+            return null;
+        }
+        
+        List<E> selections = getSelections();
+        ListTransferData<E> data = new ListTransferData<E>(selections);
+        
+        List<File> files = new LinkedList<File>();
+        for (E e: selections) {
+            File file = getFile(e);
+            if (file != null) {
+                files.add(file);
+            }
+        }
+        data.setFiles(files);
+        
+        return data;
+    }
+    
+    protected URI getUri(E element) {
+        logger.warn("must be implemented to get file of %s", element);
+        return null;
+    }
+    
+    protected File getFile(E element) {
+        URI uri = getUri(element);
+        
+        if (uri == null || !"file".equals(uri.getScheme())) {
+            return null;
+        }
+        File file = new File(uri);
+        return file;
+    }
+    
+    // factories
+    protected EventSelectionModel<E> createSelectionModel(EventList<E> viewList) {
+        EventSelectionModel<E> selectionModel = new EventSelectionModel<E>(viewList);
+        selectionModel.addListSelectionListener(new ListSelectionListener() {
+            @Override
+            public void valueChanged(ListSelectionEvent e) {
+                updateCanRemoveBySelection();
+            }
+        });
+        return selectionModel;
+    }
+    
+    SearchEngineTextMatcherEditor<E> createTextMatcherEditor() {
+        return new SearchEngineTextMatcherEditor<E>(createTextFilterator());
+    }
+
+    protected TextFilterator<E> createTextFilterator() {
+        return new StringTextFilterator<E>();
+    }
+
+    // Action factories
+    protected Action createAddAction() {
+        return new AbstractAction("Add") {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                add();
+            }
+        };
+    }
+    
+    protected Action createRemoveAction() {
+        return new AbstractAction("Remove") {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                remove();
+            }
+        };
+    }
+    
+    private static class EmptyConnector<E> implements ObservableElementList.Connector<E> {
+        public EmptyConnector() {
+        }
         @Override
-        public void actionPerformed(ActionEvent e) {
-            remove();
+        public EventListener installListener(E element) {
+            return null;
+        }
+
+        @Override
+        public void uninstallListener(E element, EventListener listener) {
+            // Do nothing
+        }
+
+        @Override
+        public void setObservableElementList(ObservableElementList<? extends E> list) {
+            // Do nothing
+        }
+    }
+
+    public static class Binding<E> {
+        final ListController<E> controller;
+        final TransferHandler transferHandler;
+        
+        public Binding(ListController<E> controller) {
+            super();
+            this.controller = controller;
+            transferHandler = createTransferHandler(controller);
+        }
+
+        protected TransferHandler createTransferHandler(ListController<E> controller) {
+            return new ListTransferHandler(controller);
+        }
+
+        public void bindTable(JTable table, TableFormat<? super E> tableFormat) {
+            EventTableModel<?> tableModel =
+                    new EventTableModel<E>(controller.getViewList(), tableFormat);
+            table.setModel(tableModel);
+            table.setSelectionModel(controller.selectionModel);
+            table.putClientProperty("Binding.controller", controller);
+        }
+        
+        public void bindTableTransferHandler(JTable table) {
+            table.setTransferHandler(transferHandler);
+            table.setDropMode(DropMode.INSERT_ROWS);
+            table.setDragEnabled(true);
+            table.setFocusable(true);
+            
+            table.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_DELETE, 0), "delete");
+            table.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_BACK_SPACE, 0), "delete");
+
+            table.getActionMap().put("add", controller.addAction);
+            table.getActionMap().put("delete", controller.removeAction);
+            
+            if (table.getParent() instanceof JComponent) {
+                ((JComponent) table.getParent()).setTransferHandler(transferHandler);
+            }
+        }
+
+        public TableHeaderClickHandler.Binder bindSortableTableHeader(
+                JTableHeader header, AdvancedTableFormat<? super E> tableFormat) {
+            TableHeaderClickHandler.Binder binder =
+                    TableHeaderClickHandler.installTo(header, controller.sortedList, tableFormat);
+            
+
+//            orderStatementHandler = new ColumnOrderStatementHandler<MuseumExhibit>(comparator, tableFormat);
+            return binder;
+        }
+        
+        public void bindSearchEngineTextField(JTextField field, boolean incrementalSearch) {
+            FilterHandler filterHandler = new FilterHandler(field);
+            filterHandler.refilter();
+            
+            field.addActionListener(filterHandler);
+            
+            if (incrementalSearch) {
+                field.getDocument().addDocumentListener(filterHandler);
+            }
+        }
+        
+        private class FilterHandler implements ActionListener, DocumentListener {
+            private final JTextField textField;
+            
+            public FilterHandler(JTextField textField) {
+                this.textField = textField;
+            }
+            
+            
+            public void refilter() {
+                controller.refilter(textField.getText());
+            }
+            
+            public void insertUpdate(DocumentEvent e) { refilter(); }
+            public void removeUpdate(DocumentEvent e) { refilter(); }
+            public void changedUpdate(DocumentEvent e) { refilter(); }
+            public void actionPerformed(ActionEvent e) { refilter(); }
         }
     }
 }

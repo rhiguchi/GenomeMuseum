@@ -1,8 +1,9 @@
-package jp.scid.genomemuseum.gui.transfer;
+package jp.scid.genomemuseum.gui;
 
 import java.awt.datatransfer.DataFlavor;
 import java.awt.datatransfer.Transferable;
 import java.io.File;
+import java.io.IOException;
 import java.util.List;
 
 import javax.swing.JComponent;
@@ -11,9 +12,12 @@ import javax.swing.TransferHandler;
 import javax.swing.tree.MutableTreeNode;
 import javax.swing.tree.TreePath;
 
-import jp.scid.genomemuseum.gui.MuseumSourceListController;
+import jp.scid.genomemuseum.gui.transfer.DefaultTransferExhibitCollectionNode;
+import jp.scid.genomemuseum.gui.transfer.TransferExhibitCollectionNode;
+import jp.scid.genomemuseum.gui.transfer.TransferMuseumExhibit;
+import jp.scid.genomemuseum.gui.transfer.TransferExhibitCollectionNode.Flavor;
 import jp.scid.genomemuseum.model.MuseumExhibit;
-import jp.scid.genomemuseum.model.MuseumSourceModel.CollectionBoxNode;
+import jp.scid.genomemuseum.model.MuseumSourceModel.CollectionNode;
 import jp.scid.genomemuseum.model.MuseumSourceModel.ExhibitCollectionNode;
 
 import org.slf4j.Logger;
@@ -38,8 +42,8 @@ public class MuseumSourceTransferHandler extends TransferHandler {
                     TransferExhibitCollectionNode.Flavor.getTransferExhibitCollectionNode(support);
             MutableTreeNode targetNode = getTargetNode(support);
             
-            if (targetNode instanceof CollectionBoxNode) {
-                canImport = controller.canMoveNode(sourceNode, (CollectionBoxNode) targetNode);
+            if (targetNode instanceof CollectionNode) {
+                canImport = controller.canMoveNode(sourceNode, (CollectionNode) targetNode);
             }
             else {
                 canImport = false;
@@ -55,8 +59,8 @@ public class MuseumSourceTransferHandler extends TransferHandler {
             
             // TODO compare box id
             
-            if (targetNode instanceof CollectionBoxNode) {
-                canImport = controller.canImportExhibit((CollectionBoxNode) targetNode);
+            if (targetNode instanceof CollectionNode) {
+                canImport = controller.canImportExhibit((CollectionNode) targetNode);
             }
             else {
                 canImport = targetNode == null;
@@ -86,8 +90,6 @@ public class MuseumSourceTransferHandler extends TransferHandler {
             canImport = false;
         }
         
-        System.out.println("canImport: " + canImport);
-        
         return canImport;
     }
 
@@ -100,7 +102,7 @@ public class MuseumSourceTransferHandler extends TransferHandler {
                     TransferExhibitCollectionNode.Flavor.getTransferExhibitCollectionNode(support);
             MutableTreeNode targetNode = getTargetNode(support);
             
-            controller.moveNode(sourceNode, (CollectionBoxNode) targetNode);
+            controller.moveNode(sourceNode, (CollectionNode) targetNode);
             
             result = true;
         }
@@ -108,12 +110,19 @@ public class MuseumSourceTransferHandler extends TransferHandler {
             List<MuseumExhibit> data = TransferMuseumExhibit.Flavor.getTransferMuseumExhibit(support);
             MutableTreeNode targetNode = getTargetNode(support);
             
-            controller.importExhibit((CollectionBoxNode) targetNode, data);
+            controller.importExhibit((CollectionNode) targetNode, data);
             result = true;
         }
         else if (support.isDataFlavorSupported(DataFlavor.javaFileListFlavor)) {
-            List<File> fileList = ExhibitTransferHandler.getTransferFile(support);
-            MutableTreeNode targetNode = getTargetNode(support);
+            List<File> fileList;
+            MutableTreeNode targetNode;
+            try {
+                fileList = ListTransferHandler.getTransferFile(support);
+                targetNode = getTargetNode(support);
+            }
+            catch (IOException e) {
+                return false;
+            }
             
             result = controller.importFile((ExhibitCollectionNode) targetNode, fileList);
         }

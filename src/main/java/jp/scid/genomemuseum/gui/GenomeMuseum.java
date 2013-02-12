@@ -1,296 +1,253 @@
 package jp.scid.genomemuseum.gui;
 
 import java.awt.FileDialog;
+import java.awt.event.ActionEvent;
 import java.io.File;
-import java.io.IOException;
-import java.sql.Connection;
 import java.sql.SQLException;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import javax.swing.AbstractAction;
+import javax.swing.AbstractButton;
+import javax.swing.Action;
+import javax.swing.JComponent;
 import javax.swing.JFrame;
-import javax.swing.JMenuItem;
+import javax.swing.JMenuBar;
 
-import jp.scid.genomemuseum.model.CollectionBox.BoxType;
-import jp.scid.genomemuseum.model.CollectionBoxService;
-import jp.scid.genomemuseum.model.ExhibitFileManager;
-import jp.scid.genomemuseum.model.MuseumDataSchema;
-import jp.scid.genomemuseum.model.MuseumExhibit.FileType;
-import jp.scid.genomemuseum.model.MuseumExhibitLibrary;
-import jp.scid.genomemuseum.model.MuseumSourceModel;
-import jp.scid.genomemuseum.model.SchemaBuilder;
+import jp.scid.bio.store.FileLibrary;
+import jp.scid.bio.store.LibrarySchemaManager;
+import jp.scid.bio.store.SequenceLibrary;
+import jp.scid.genomemuseum.gui.GeneticSequenceListController.PersistentGeneticSequenceLibrary;
+import jp.scid.genomemuseum.model.sql.tables.records.MuseumExhibitRecord;
 import jp.scid.genomemuseum.view.MainMenuBar;
 import jp.scid.genomemuseum.view.MainView;
 
-import org.h2.jdbcx.JdbcConnectionPool;
-import org.jdesktop.application.Action;
 import org.jdesktop.application.Application;
-import org.jdesktop.application.ApplicationActionMap;
 import org.jdesktop.application.ProxyActions;
+import org.jooq.Field;
+import org.jooq.UpdatableTable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import ca.odell.glazedlists.gui.AdvancedTableFormat;
 
 @ProxyActions({"selectAll", "deselect"})
 public class GenomeMuseum extends Application {
-    private static final String DATABASE_LOCAL_DIRECTORY = "Library";
+    private final static Logger logger = LoggerFactory.getLogger(GenomeMuseum.class);
+    private static final String DATABASE_LOCAL_DIRECTORY = "schema";
     private static final String LOCAL_FILES_DIRECTORY_NAME = "Files";
-
-    public enum ProgramArgument {
-        USE_LOCAL_LIBRARY() {
-            @Override
-            public int apply(GenomeMuseum application, String[] args) {
-                if (!args[0].equals("--LocalLibrary"))
-                    return 0;
-                
-                application.useLocalLibrary = true; 
-                return 1;
-            }
-        },
-        ;
-        
-        public abstract int apply(GenomeMuseum application, String[] args);
-    }
-    // property
-    private String databaseAddr = "jdbc:h2:mem:test";
     
-    private final static String databaseUser = "genomemuseum";
+    private LibrarySchemaManager schemaManager = null;
+    FileLibrary fileLibrary;
     
-    private final static String databasePassword = "";
+    private FileDialog openFileDialog;
     
-    private boolean useLocalLibrary = false;
+    private JFrame mainFrame;
+    private GeneticSequenceListController geneticSequenceListController;
+    private MuseumSourceListController sourceListController;
     
-    MainView mainView;
+    private ExecutorService taskExecutor;
     
-    MainMenuBar mainMenuBar;
-    
-    JFrame mainFrame;
-    
-    FileDialog openFileDialog;
-    
-    // models
-    private JdbcConnectionPool connectionPool = null;
-    
-    private MuseumDataSchema dataSchema = null;
-    
-    // Controllers
-    private ExhibitDataLoader fileLoader;
-    
-    MainFrameController mainFrameController = null;
+    // actions
+    final Action openAction = new AbstractAction("open") {
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            open();
+        }
+    };
     
     public GenomeMuseum() {
+        getContext().getResourceManager().setResourceFolder(null);
+    }
+
+    private LibrarySchemaManager openSchema() throws SQLException {
+        LibrarySchemaManager manager = new LibrarySchemaManager();
+        
+        manager.setDatabaseUser("genomemuseum");
+        // addr
+        File databasePath =
+                new File(getContext().getLocalStorage().getDirectory(),
+                        DATABASE_LOCAL_DIRECTORY);
+        databasePath.getParentFile().mkdirs();
+        String namespace = databasePath.getPath() + ";AUTO_SERVER=TRUE";
+        manager.setDatabaseNamespace(namespace);
+        
+        logger.info("try to open library schema from {}", namespace);
+        manager.open();
+        if (!manager.isSchemaReady())  {
+            logger.info("schema setup");
+            manager.setUpSchema();
+        }
+        
+        return manager;
     }
     
     @Override
     protected void initialize(String[] args) {
-        ProgramArgument[] argumentFunctions = ProgramArgument.values();
+        logger.debug("initialize with args: {}", Arrays.asList(args));
         
-        while (args.length > 0) {
-            for (ProgramArgument arg: argumentFunctions) {
-                int usedArg = arg.apply(this, args);
-                
-                if (usedArg > 0) {
-                    int nextLength = args.length - usedArg;
-                    if (nextLength <= 0)
-                        break;
-                    
-                    String[] newArgs = new String[args.length - usedArg];
-                    System.arraycopy(arg, usedArg, newArgs, 0, newArgs.length);
-                    args = newArgs;
-                }
-            }
-        }
+        taskExecutor = Executors.newSingleThreadExecutor();
+        initViews();
     }
     
-    @Override
-    protected void startup() {
-        // Model
-        if (useLocalLibrary) {
-            File databaseDir =
-                    new File(getContext().getLocalStorage().getDirectory(),
-                            DATABASE_LOCAL_DIRECTORY);
-            
-            databaseDir.mkdirs();
-            
-            File databaseNamespace = new File(databaseDir, "store");
-            
-            databaseAddr = "jdbc:h2:file:" + databaseNamespace.getPath();
-        }
-        try {
-            initDataSchema();
-        }
-        catch (SQLException e) {
-            throw new IllegalStateException("schema initialization failure", e);
-        }
+    protected void initViews() {
+        openFileDialog = createOpenFileDialog();
+        MainView mainView = new MainView();
+        MainMenuBar mainMenuBar = createMainMenuBar();
+        mainFrame = createMainFrame(mainView.getContentPane(), mainMenuBar.getMenuBar());
         
-        // file library
-        if (useLocalLibrary) {
-            File filesDir = new File(getContext().getLocalStorage().getDirectory(),
-                        LOCAL_FILES_DIRECTORY_NAME);
-            ExhibitFileManager fileManager = new ExhibitFileManager(); 
-            fileManager.setDirectory(filesDir);
-            
-            getFileLoader().setFileManager(fileManager);
-        }
+        // elements
         
-        CollectionBoxService boxService = dataSchema.getCollectionBoxService();
-        boxService.addRootItem(BoxType.FREE);
+        geneticSequenceListController = new GeneticSequenceListController();
+        GeneticSequenceListController.Binding listBinding =
+                new GeneticSequenceListController.Binding(geneticSequenceListController);
+        listBinding.bindTable(mainView.exhibitListView.dataTable);
+        listBinding.bindSearchEngineTextField(mainView.quickSearchField, false);
         
-        // test source
-        MuseumExhibitLibrary exhibitService = getExhibitLibrary();
-        exhibitService.save(exhibitService.newElement());
-        exhibitService.save(exhibitService.newElement());
-        exhibitService.save(exhibitService.newElement());
-        
-        // Controller
-        MainFrameController mainFrameController = getMainFrameController();
-        mainFrameController.bindFrame(getMainFrame());
-        mainFrameController.bindMainView(getMainView());
-        
-        // add local library
-        getMuseumSourceModel().setLocalLibrarySource(getExhibitLibrary());
-        
-        mainFrameController.showFrame();
-    }
-    
-    @Override
-    protected void shutdown() {
-        if (connectionPool != null) {
-            connectionPool.dispose();
-        }
-    }
-    
-    @Action
-    public void open() throws IOException {
-        FileDialog dialog = new FileDialog(getMainFrame());
-        
-        dialog.setVisible(true);
-        
-        if (dialog.getFile() != null) {
-            File file = new File(dialog.getDirectory(), dialog.getFile());
-            FileType fileType = getFileLoader().findFileType(file);
-            
-            if (fileType == FileType.UNKNOWN) {
-                // TODO alerting
-            }
-            else {
-                getFileLoader().executeLoading(file, fileType);
-            }
-        }
-        else {
-            // TODO alerting
-        }
+        sourceListController = new MuseumSourceListController();
+        sourceListController.bindTree(mainView.sourceList);
     }
 
-    MainFrameController getMainFrameController() {
-        if (mainFrameController == null) {
-            mainFrameController = new MainFrameController();
-            mainFrameController.setDataSchema(getDataSchema());
-            mainFrameController.setBioFileLoader(getFileLoader());
-            
-            addExitListener(mainFrameController);
+    @Override
+    protected void startup() {
+        java.util.logging.Logger.getLogger(getClass().toString()).fine("test");
+        logger.debug("startup");
+        
+        try {
+            schemaManager = openSchema();
         }
-        return mainFrameController;
-    }
-    
-    MuseumSourceModel getMuseumSourceModel() {
-        return getMainFrameController().sourceListController.sourceModel;
-    }
-    
-    // Data Models
-    public Connection getConnection() throws SQLException {
-        if (connectionPool == null) {
-            try {
-                Class.forName("org.h2.Driver");
-            }
-            catch (ClassNotFoundException e) {
-                throw new IllegalStateException("need h2 database driber", e);
-            }
-            
-            connectionPool = JdbcConnectionPool.create(databaseAddr, databaseUser, databasePassword);
-        }
-        return connectionPool.getConnection();
-    }
-    
-    public void initDataSchema() throws SQLException {
-        SchemaBuilder builder = new SchemaBuilder(getConnection());
-        dataSchema = builder.getDataSchema();
-    }
-    
-    public MuseumDataSchema getDataSchema() {
-        if (dataSchema == null)
-            throw new IllegalStateException("schema needs initialize before using");
-        return dataSchema;
-    }
-    
-    public MuseumExhibitLibrary getExhibitLibrary() {
-        return dataSchema.getMuseumExhibitLibrary();
-    }
-    
-    // Application Views
-    public JFrame getMainFrame() {
-        if (mainFrame == null){
-            mainFrame = createMainFrame(getMainView());
-            mainFrame.setJMenuBar(getMainMenuBar().getMenuBar());
+        catch (SQLException e) {
+            throw new IllegalStateException(e);
         }
         
+        // sequenceModel
+        SequenceLibrary sequenceLibrary = schemaManager.createSequenceLibrary();
+        PersistentGeneticSequenceLibrary senquenceModel = new PersistentGeneticSequenceLibrary(sequenceLibrary);
+        
+        // file lib
+        File filesDir = new File(getContext().getLocalStorage().getDirectory(),
+                LOCAL_FILES_DIRECTORY_NAME);
+        fileLibrary = FileLibrary.newFileLibrary(filesDir);
+        
+        geneticSequenceListController.setModel(senquenceModel);
+        geneticSequenceListController.setFileLibrary(fileLibrary);
+        
+        // bindings
+        
+        
+        showMainFrame();
+    }
+    
+    public void showMainFrame() {
+        mainFrame.setVisible(true);
+    }
+
+    public void open() {
+        openFileDialog.setVisible(true);
+        
+        if (openFileDialog.getFile() == null) {
+            return;
+        }
+        
+        File file = new File(openFileDialog.getDirectory(), openFileDialog.getFile());
+        geneticSequenceListController.importFromFile(file);
+    }
+
+    @Override
+    protected void shutdown() {
+        if (schemaManager != null) {
+            schemaManager.close();
+        }
+        
+        if (taskExecutor != null) {
+            taskExecutor.shutdownNow();
+        }
+    }
+    
+    JFrame createMainFrame(JComponent contentPane, JMenuBar menuBar) {
+        JFrame mainFrame = new JFrame();
+        mainFrame.setContentPane(contentPane);
+        mainFrame.setJMenuBar(menuBar);
+        mainFrame.pack();
+        mainFrame.setLocationByPlatform(true);
+        mainFrame.setLocationRelativeTo(null);
         return mainFrame;
     }
-    
-    public MainView getMainView() {
-        if (mainView == null) {
-            mainView = new MainView();
-        }
-        return mainView;
+
+    FileDialog createOpenFileDialog() {
+        FileDialog dialog = new FileDialog(mainFrame, "");
+        dialog.setModal(true);
+        dialog.setMode(FileDialog.LOAD);
+        
+        return dialog;
     }
-    
-    public MainMenuBar getMainMenuBar() {
-        if (mainMenuBar == null) {
-            mainMenuBar = new MainMenuBar();
-            bindEditMenuItems(
-                    mainMenuBar.cut, mainMenuBar.copy, mainMenuBar.paste, mainMenuBar.selectAll,
-                    mainMenuBar.deselect, mainMenuBar.delete);
-            bindFileMenuItems(mainMenuBar.open, mainMenuBar.quit);
-        }
+
+    private MainMenuBar createMainMenuBar() {
+        MainMenuBar mainMenuBar = new MainMenuBar();
+        bindButtonAction(mainMenuBar.cut, "cut");
+        bindButtonAction(mainMenuBar.copy, "copy");
+        bindButtonAction(mainMenuBar.paste, "paste");
+        bindButtonAction(mainMenuBar.selectAll, "selectAll");
+        bindButtonAction(mainMenuBar.deselect, "deselect");
+        bindButtonAction(mainMenuBar.delete, "delete");
+        
+        bindButtonAction(mainMenuBar.open, "open");
+        bindButtonAction(mainMenuBar.quit, "quit");
+        
         return mainMenuBar;
     }
     
-    public FileDialog getOpenFileDialog() {
-        if (openFileDialog == null) {
-            openFileDialog = new FileDialog(getMainFrame(), "", FileDialog.LOAD);
-        }
-        return openFileDialog;
+    void bindButtonAction(AbstractButton menuItem, String actionName) {
+        Action buttonAction = getContext().getActionMap(this).get(actionName);
+        menuItem.setAction(buttonAction);
     }
     
-    // Application controllers
-    public ExhibitDataLoader getFileLoader() {
-        if (fileLoader == null) {
-            ExecutorService taskExecutor = Executors.newSingleThreadExecutor();
-            fileLoader = new ExhibitDataLoader(taskExecutor, getExhibitLibrary());
-        }
-        return fileLoader;
-    }
-    
-    // Bindings
-    public void bindEditMenuItems(
-            JMenuItem cut, JMenuItem copy, JMenuItem paste, JMenuItem selectAll,
-            JMenuItem deselect, JMenuItem delete) {
-        ApplicationActionMap actionMap = getContext().getActionMap(this);
-        cut.setAction(actionMap.get("cut"));
-        copy.setAction(actionMap.get("copy"));
-        paste.setAction(actionMap.get("paste"));
-        selectAll.setAction(actionMap.get("selectAll"));
-        deselect.setAction(actionMap.get("deselect"));
-        delete.setAction(actionMap.get("delete"));
-    }
 
-    public void bindFileMenuItems(
-            JMenuItem open, JMenuItem quit) {
-        ApplicationActionMap actionMap = getContext().getActionMap(this);
-        open.setAction(actionMap.get("open"));
-        quit.setAction(actionMap.get("quit"));
-    }
-    static JFrame createMainFrame(MainView mainView) {
-        JFrame frame = new JFrame();
-        frame.setContentPane(mainView.getContentPane());
+    static class ExhibitTableFormat implements AdvancedTableFormat<MuseumExhibitRecord> {
+        protected final UpdatableTable<MuseumExhibitRecord> table;
         
-        return frame;
+        public ExhibitTableFormat(UpdatableTable<MuseumExhibitRecord> table) {
+            super();
+            this.table = table;
+        }
+
+        @Override
+        public int getColumnCount() {
+            return getFields().size();
+        }
+
+        List<Field<?>> getFields() {
+            return table.getFields();
+        }
+
+        @Override
+        public String getColumnName(int column) {
+            return getField(column).getName();
+        }
+
+        Field<?> getField(int column) {
+            return getFields().get(column);
+        }
+
+        @Override
+        public Object getColumnValue(MuseumExhibitRecord baseObject, int column) {
+            return baseObject.getValue(getField(column), Object.class);
+        }
+
+        @Override
+        public Class<?> getColumnClass(int column) {
+            return getField(column).getType();
+        }
+
+        @Override
+        public Comparator<?> getColumnComparator(int column) {
+            // TODO Auto-generated method stub
+            return null;
+        }
     }
 }
+
+

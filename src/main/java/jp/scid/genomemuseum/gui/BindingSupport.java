@@ -19,6 +19,7 @@ import jp.scid.gui.control.TextComponentTextConnector;
 import jp.scid.gui.model.ValueModel;
 import jp.scid.gui.model.ValueModels;
 
+@Deprecated
 class BindingSupport {
     final Object bean;
     
