@@ -1,7 +1,6 @@
 package jp.scid.genomemuseum.gui;
 
 import java.awt.FileDialog;
-import java.awt.event.ActionEvent;
 import java.io.File;
 import java.sql.SQLException;
 import java.util.Arrays;
@@ -10,7 +9,6 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import javax.swing.AbstractAction;
 import javax.swing.AbstractButton;
 import javax.swing.Action;
 import javax.swing.JComponent;
@@ -20,7 +18,8 @@ import javax.swing.JMenuBar;
 import jp.scid.bio.store.FileLibrary;
 import jp.scid.bio.store.LibrarySchemaManager;
 import jp.scid.bio.store.SequenceLibrary;
-import jp.scid.genomemuseum.gui.GeneticSequenceListController.PersistentGeneticSequenceLibrary;
+import jp.scid.genomemuseum.gui.FolderDirectoryTreeController.GenomeMuseumTreeSource;
+import jp.scid.genomemuseum.model.PersistentGeneticSequenceLibrary;
 import jp.scid.genomemuseum.model.sql.tables.records.MuseumExhibitRecord;
 import jp.scid.genomemuseum.view.MainMenuBar;
 import jp.scid.genomemuseum.view.MainView;
@@ -40,31 +39,27 @@ public class GenomeMuseum extends Application {
     private static final String DATABASE_LOCAL_DIRECTORY = "schema";
     private static final String LOCAL_FILES_DIRECTORY_NAME = "Files";
     
-    private LibrarySchemaManager schemaManager = null;
-    FileLibrary fileLibrary;
+    private final LibrarySchemaManager schemaManager;
     
-    private FileDialog openFileDialog;
-    
-    private JFrame mainFrame;
+    private MainFrameController mainFrameController;
     private GeneticSequenceListController geneticSequenceListController;
-    private MuseumSourceListController sourceListController;
+    private FolderDirectoryTreeController folderDirectoryTreeController;
     
     private ExecutorService taskExecutor;
     
     // actions
-    final Action openAction = new AbstractAction("open") {
-        @Override
-        public void actionPerformed(ActionEvent e) {
-            open();
-        }
-    };
-    
     public GenomeMuseum() {
         getContext().getResourceManager().setResourceFolder(null);
+        
+        schemaManager = new LibrarySchemaManager();
+
+        mainFrameController = new MainFrameController();
+        geneticSequenceListController = new GeneticSequenceListController();
+        folderDirectoryTreeController = new FolderDirectoryTreeController();
     }
 
-    private LibrarySchemaManager openSchema() throws SQLException {
-        LibrarySchemaManager manager = new LibrarySchemaManager();
+    private void openSchema() throws SQLException {
+        LibrarySchemaManager manager = schemaManager;
         
         manager.setDatabaseUser("genomemuseum");
         // addr
@@ -81,8 +76,6 @@ public class GenomeMuseum extends Application {
             logger.info("schema setup");
             manager.setUpSchema();
         }
-        
-        return manager;
     }
     
     @Override
@@ -90,25 +83,25 @@ public class GenomeMuseum extends Application {
         logger.debug("initialize with args: {}", Arrays.asList(args));
         
         taskExecutor = Executors.newSingleThreadExecutor();
-        initViews();
-    }
-    
-    protected void initViews() {
-        openFileDialog = createOpenFileDialog();
+        
         MainView mainView = new MainView();
         MainMenuBar mainMenuBar = createMainMenuBar();
-        mainFrame = createMainFrame(mainView.getContentPane(), mainMenuBar.getMenuBar());
         
-        // elements
+        // main frame
+        JFrame mainFrame = createMainFrame(mainView.getContentPane(), mainMenuBar.getMenuBar());
+        mainFrameController.setView(mainFrame);
         
-        geneticSequenceListController = new GeneticSequenceListController();
+        FileDialog openFileDialog = createOpenFileDialog(mainFrame);
+        geneticSequenceListController.setFileDialog(openFileDialog);
+        
         GeneticSequenceListController.Binding listBinding =
                 new GeneticSequenceListController.Binding(geneticSequenceListController);
         listBinding.bindTable(mainView.exhibitListView.dataTable);
         listBinding.bindSearchEngineTextField(mainView.quickSearchField, false);
         
-        sourceListController = new MuseumSourceListController();
-        sourceListController.bindTree(mainView.sourceList);
+        FolderDirectoryTreeController.Binding treeBinding =
+                new FolderDirectoryTreeController.Binding(folderDirectoryTreeController);
+        treeBinding.bindTree(mainView.sourceList);
     }
 
     @Override
@@ -117,7 +110,7 @@ public class GenomeMuseum extends Application {
         logger.debug("startup");
         
         try {
-            schemaManager = openSchema();
+            openSchema();
         }
         catch (SQLException e) {
             throw new IllegalStateException(e);
@@ -125,35 +118,28 @@ public class GenomeMuseum extends Application {
         
         // sequenceModel
         SequenceLibrary sequenceLibrary = schemaManager.createSequenceLibrary();
-        PersistentGeneticSequenceLibrary senquenceModel = new PersistentGeneticSequenceLibrary(sequenceLibrary);
-        
-        // file lib
-        File filesDir = new File(getContext().getLocalStorage().getDirectory(),
-                LOCAL_FILES_DIRECTORY_NAME);
-        fileLibrary = FileLibrary.newFileLibrary(filesDir);
+        PersistentGeneticSequenceLibrary senquenceModel =
+                new PersistentGeneticSequenceLibrary(sequenceLibrary);
+        senquenceModel.setFileLibrary(createFileLibrary());
         
         geneticSequenceListController.setModel(senquenceModel);
-        geneticSequenceListController.setFileLibrary(fileLibrary);
         
-        // bindings
-        
+        // tree model
+        GenomeMuseumTreeSource treeSource = new GenomeMuseumTreeSource(sequenceLibrary);
+        folderDirectoryTreeController.setTreeSource(treeSource);
         
         showMainFrame();
     }
+
+    protected FileLibrary createFileLibrary() {
+        File filesDir = new File(getContext().getLocalStorage().getDirectory(),
+                LOCAL_FILES_DIRECTORY_NAME);
+        FileLibrary fileLibrary = FileLibrary.newFileLibrary(filesDir);
+        return fileLibrary;
+    }
     
     public void showMainFrame() {
-        mainFrame.setVisible(true);
-    }
-
-    public void open() {
-        openFileDialog.setVisible(true);
-        
-        if (openFileDialog.getFile() == null) {
-            return;
-        }
-        
-        File file = new File(openFileDialog.getDirectory(), openFileDialog.getFile());
-        geneticSequenceListController.importFromFile(file);
+        mainFrameController.show();
     }
 
     @Override
@@ -177,8 +163,8 @@ public class GenomeMuseum extends Application {
         return mainFrame;
     }
 
-    FileDialog createOpenFileDialog() {
-        FileDialog dialog = new FileDialog(mainFrame, "");
+    FileDialog createOpenFileDialog(JFrame parent) {
+        FileDialog dialog = new FileDialog(parent, "");
         dialog.setModal(true);
         dialog.setMode(FileDialog.LOAD);
         
@@ -194,7 +180,7 @@ public class GenomeMuseum extends Application {
         bindButtonAction(mainMenuBar.deselect, "deselect");
         bindButtonAction(mainMenuBar.delete, "delete");
         
-        bindButtonAction(mainMenuBar.open, "open");
+//        bindButtonAction(mainMenuBar.open, "open");
         bindButtonAction(mainMenuBar.quit, "quit");
         
         return mainMenuBar;
@@ -203,50 +189,6 @@ public class GenomeMuseum extends Application {
     void bindButtonAction(AbstractButton menuItem, String actionName) {
         Action buttonAction = getContext().getActionMap(this).get(actionName);
         menuItem.setAction(buttonAction);
-    }
-    
-
-    static class ExhibitTableFormat implements AdvancedTableFormat<MuseumExhibitRecord> {
-        protected final UpdatableTable<MuseumExhibitRecord> table;
-        
-        public ExhibitTableFormat(UpdatableTable<MuseumExhibitRecord> table) {
-            super();
-            this.table = table;
-        }
-
-        @Override
-        public int getColumnCount() {
-            return getFields().size();
-        }
-
-        List<Field<?>> getFields() {
-            return table.getFields();
-        }
-
-        @Override
-        public String getColumnName(int column) {
-            return getField(column).getName();
-        }
-
-        Field<?> getField(int column) {
-            return getFields().get(column);
-        }
-
-        @Override
-        public Object getColumnValue(MuseumExhibitRecord baseObject, int column) {
-            return baseObject.getValue(getField(column), Object.class);
-        }
-
-        @Override
-        public Class<?> getColumnClass(int column) {
-            return getField(column).getType();
-        }
-
-        @Override
-        public Comparator<?> getColumnComparator(int column) {
-            // TODO Auto-generated method stub
-            return null;
-        }
     }
 }
 

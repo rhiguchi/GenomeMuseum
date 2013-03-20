@@ -45,9 +45,9 @@ abstract class JooqEntityService<E, R extends UpdatableRecord<R>> implements Ent
         return list;
     }
     
-    abstract protected E createElement(R record);
+    abstract E createElement(R record);
     
-    abstract protected R recordOfElement(E element);
+    abstract R recordOfElement(E element);
     
     @Override
     public E newElement() {

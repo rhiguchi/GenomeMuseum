@@ -106,12 +106,12 @@ public abstract class ListController<E> {
     }
 
     public void add(E newElement) {
-        int index = selectionModel.getMaxSelectionIndex() + 1;
+        int index = getInsertIndex();
         add(index, newElement);
     }
     
     public void addAll(Collection<E> elements) {
-        int index = selectionModel.getMaxSelectionIndex() + 1;
+        int index = getInsertIndex();
         getViewList().addAll(index, elements);
     }
 
@@ -120,9 +120,13 @@ public abstract class ListController<E> {
     }
     
     public E add() {
-        int index = selectionModel.getMaxSelectionIndex() + 1;
+        int index = getInsertIndex();
 
         return add(index);
+    }
+
+    private int getInsertIndex() {
+        return selectionModel.getMaxSelectionIndex() + 1;
     }
 
     public E add(int index) {
@@ -213,7 +217,8 @@ public abstract class ListController<E> {
     }
 
     public boolean remove(E element) {
-        return getViewList().remove(element);
+        int index = getViewList().indexOf(element);
+        return removeAt(index) != null;
     }
     
     public List<E> remove() {

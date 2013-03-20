@@ -1,5 +1,6 @@
 package jp.scid.genomemuseum.model;
 
+import static java.lang.String.*;
 import static jp.scid.genomemuseum.model.sql.Tables.*;
 
 import java.io.File;
@@ -21,16 +22,18 @@ import jp.scid.bio.GenBankFormat;
 import jp.scid.bio.SequenceBioDataFormat;
 import jp.scid.bio.SequenceBioDataFormatSearcher;
 import jp.scid.bio.SequenceBioDataReader;
-import jp.scid.genomemuseum.model.MuseumDataSchema.MuseumExhibitService;
 import jp.scid.genomemuseum.model.MuseumExhibit.FileType;
 import jp.scid.genomemuseum.model.sql.tables.records.CollectionBoxItemRecord;
 import jp.scid.genomemuseum.model.sql.tables.records.MuseumExhibitRecord;
 
 import org.jooq.Record;
 import org.jooq.RecordHandler;
+import org.jooq.Result;
 import org.jooq.impl.Factory;
 
-public class MuseumExhibitLibrary extends AbstractExhibitListModel implements ExhibitLibrary {
+public class MuseumExhibitLibrary {
+    final ExhibitFileManager fileManager; 
+    
     private final GenBankFormat genBankFormat;
     private final FastaFormat fastaFormat;
     
@@ -38,52 +41,61 @@ public class MuseumExhibitLibrary extends AbstractExhibitListModel implements Ex
     
     final Factory factory;
     
-    MuseumExhibitService exhibitService;
-    
     @SuppressWarnings("unchecked")
-    MuseumExhibitLibrary(Factory factory) {
+    public MuseumExhibitLibrary(Factory factory) {
         genBankFormat = new GenBankFormat();
         fastaFormat = new FastaFormat();
         searcher = new SequenceBioDataFormatSearcher(Arrays.asList(genBankFormat, fastaFormat));
+        fileManager = new ExhibitFileManager(); 
         
         this.factory = factory;
     }
-    
-    public MuseumExhibit newMuseumExhibit() {
-        return exhibitService.newElement();
+
+    public void setFileBase(File filesDir) {
+        fileManager.setDirectory(filesDir);
     }
     
-    @Override
-    public boolean storeExhibit(MuseumExhibit exhibit) {
-        return exhibitService.store(exhibit);
-    }
-    
-    
-    @Override
-    public List<MuseumExhibit> fetchExhibits() {
-        List<MuseumExhibit> list = exhibitService.search(null);
+    public List<MuseumExhibitRecord> getAllExhibits() {
+        Result<MuseumExhibitRecord> list = factory.selectFrom(MUSEUM_EXHIBIT).fetch();
+        
         return list;
     }
-
-    @Override
-    public boolean deleteExhibit(MuseumExhibit exhibit) {
-        return exhibitService.delete(exhibit);
-    }
     
-    int recourdCount() {
-        return exhibitService.getCount();
+    public void deleteExhibit(long id) {
+        MuseumExhibitRecord exhibit = factory.selectFrom(MUSEUM_EXHIBIT)
+                .where(MUSEUM_EXHIBIT.ID.equal(id))
+                .fetchOne();
+        if (exhibit == null) {
+            return;
+        }
+        
+        URI fileUri = URI.create(exhibit.getFileUri());
+        if (fileUri != null) {
+            File exhibitFile = new File(fileUri);
+            exhibitFile.delete();
+        }
+        
+        exhibit.delete();
+    }
+
+    public MuseumExhibitRecord createExhibit() {
+        MuseumExhibitRecord record = factory.newRecord(MUSEUM_EXHIBIT);
+        record.setName("Untitled");
+        return record;
+    }
+
+    public boolean save(MuseumExhibitRecord exhibit) {
+        return exhibit.store() > 0;
     }
     
     public List<MuseumExhibit> getBoxContents(long boxId) {
-        ContentsExhibitHandler handler = new ContentsExhibitHandler();
-        
         List<MuseumExhibit> elements = factory.select()
                 .from(COLLECTION_BOX_ITEM)
                 .join(MUSEUM_EXHIBIT)
                 .on(COLLECTION_BOX_ITEM.EXHIBIT_ID.equal(MUSEUM_EXHIBIT.ID))
                 .where(COLLECTION_BOX_ITEM.BOX_ID.equal(boxId))
                 .orderBy(COLLECTION_BOX_ITEM.ID)
-                .fetchInto(handler)
+                .fetchInto(new ContentsExhibitHandler())
                 .getElements();
         
         return elements;
@@ -100,39 +112,6 @@ public class MuseumExhibitLibrary extends AbstractExhibitListModel implements Ex
         .and(COLLECTION_BOX_ITEM.ID.lessThan(record.getId())).fetchOne(0, Integer.class);
         
         return count;
-    }
-    
-    public MuseumExhibit newElement() {
-        MuseumExhibitRecord record = factory.newRecord(MUSEUM_EXHIBIT);
-        record.setName("Untitled");
-        MuseumExhibit newExibit = new MuseumExhibit(record);
-        return newExibit;
-    }
-
-    public boolean save(MuseumExhibit element) {
-        int count = element.getRecord().store();
-        return count > 0;
-    }
-    
-    public boolean delete(MuseumExhibit exhibit) {
-        return deleteExhibit(exhibit, false);
-    }
-    
-    public boolean deleteContent(Long contentId) {
-        int count = factory.executeDeleteOne(
-                COLLECTION_BOX_ITEM, COLLECTION_BOX_ITEM.ID.equal(contentId));
-        return count > 0;
-    }
-    
-    @Override
-    public boolean deleteExhibit(MuseumExhibit exhibit, boolean withFile) {
-        if (withFile) {
-            File exhibitFile = new File(URI.create(exhibit.getFileUri()));
-            exhibitFile.delete();
-        }
-        
-        int count = factory.executeDelete(MUSEUM_EXHIBIT, MUSEUM_EXHIBIT.ID.equal(exhibit.getId()));
-        return count > 0;
     }
     
     public SequenceBioDataFormat<?> getFormat(FileType fileType) {
@@ -163,39 +142,8 @@ public class MuseumExhibitLibrary extends AbstractExhibitListModel implements Ex
         return newFileType;
     }
     
-    public boolean reloadExhibit(MuseumExhibit exhibit) throws URISyntaxException, IOException {
-        URL sourceUrl = exhibit.getSourceFileAsUrl();
-        
-        Reader source = new InputStreamReader(sourceUrl.openStream());
-        
-        boolean result;
-        try {
-            FileType fileType = exhibit.getFileType();
-            if (fileType == FileType.GENBANK) {
-                SequenceBioDataReader<GenBank> dataReader =
-                        new SequenceBioDataReader<GenBank>(source, genBankFormat);
-                loadGenBank(exhibit, dataReader);
-                result = true;
-            }
-            else if (fileType == FileType.FASTA) {
-                SequenceBioDataReader<Fasta> dataReader =
-                        new SequenceBioDataReader<Fasta>(source, fastaFormat);
-                loadFasta(exhibit, dataReader);
-                result = true;
-            }
-            else {
-                result = false;
-            }
-        }
-        finally {
-            source.close();
-        }
-        
-        return result;
-    }
-        
-    void loadGenBank(MuseumExhibit element, SequenceBioDataReader<GenBank> dataReader) {
-        element.setFileType(FileType.GENBANK);
+    void loadGenBank(MuseumExhibitRecord element, SequenceBioDataReader<GenBank> dataReader) {
+        element.setFileType(FileType.GENBANK.ordinal());
         
         if (dataReader.hasNext()) {
             GenBank data = dataReader.next();
@@ -209,8 +157,8 @@ public class MuseumExhibitLibrary extends AbstractExhibitListModel implements Ex
         }
     }
     
-    void loadFasta(MuseumExhibit element, SequenceBioDataReader<Fasta> dataReader) {
-        element.setFileType(FileType.GENBANK);
+    void loadFasta(MuseumExhibitRecord element, SequenceBioDataReader<Fasta> dataReader) {
+        element.setFileType(FileType.FASTA.ordinal());
         
         if (dataReader.hasNext()) {
             Fasta data = dataReader.next();
@@ -226,6 +174,38 @@ public class MuseumExhibitLibrary extends AbstractExhibitListModel implements Ex
         }
     }
 
+    public void reloadExhibit(MuseumExhibitRecord exhibit, URL source, FileType fileType) throws IOException {
+        Reader reader = new InputStreamReader(source.openStream());
+        
+        try {
+            if (fileType == FileType.GENBANK) {
+                SequenceBioDataReader<GenBank> dataReader =
+                        new SequenceBioDataReader<GenBank>(reader, genBankFormat);
+                loadGenBank(exhibit, dataReader);
+            }
+            else if (fileType == FileType.FASTA) {
+                SequenceBioDataReader<Fasta> dataReader =
+                        new SequenceBioDataReader<Fasta>(reader, fastaFormat);
+                loadFasta(exhibit, dataReader);
+            }
+            else {
+                throw new IllegalArgumentException(format("file type %s is not supported", fileType));
+            }
+        }
+        finally {
+            reader.close();
+        }
+        
+        exhibit.setFileType(fileType.ordinal());
+        
+        try {
+            exhibit.setFileUri(source.toURI().toString());
+        }
+        catch (URISyntaxException e) {
+            throw new IOException(e);
+        }
+    }
+    
     @Override
     public String toString() {
         return "Local Files";
@@ -265,4 +245,5 @@ public class MuseumExhibitLibrary extends AbstractExhibitListModel implements Ex
             return new ArrayList<MuseumExhibit>(list);
         }
     }
+
 }

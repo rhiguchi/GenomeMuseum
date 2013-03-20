@@ -36,13 +36,13 @@ public class CollectionBoxServiceTest {
     
     @Test
     public void addChild() {
-        CollectionBox box = service.addChild(BoxType.FREE);
+        CollectionBox box = service.addRootItem(BoxType.FREE);
         
         assertTrue("free box", box instanceof FreeCollectionBox);
         assertEquals("inserted", 1, service.getCount());
         assertNotNull("id inserted", box.getId());
         
-        CollectionBox groupBox = service.addChild(BoxType.GROUP);
+        CollectionBox groupBox = service.addRootItem(BoxType.GROUP);
         
         assertTrue("group box", groupBox instanceof GroupCollectionBox);
         assertEquals("inserted", 2, service.getCount());

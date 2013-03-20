@@ -16,23 +16,24 @@ import org.jooq.Record;
 import org.jooq.RecordHandler;
 import org.jooq.impl.Factory;
 
+@Deprecated
 public class CollectionBoxService extends JooqEntityService<CollectionBox, BoxTreeNodeRecord> {
     final GroupCollectionBox groupingDelegate;
     
     CollectionBoxService(Factory factory) {
         super(factory, BOX_TREE_NODE);
         
-        groupingDelegate = (GroupCollectionBox) CollectionBox.newCollectionBox(BoxType.GROUP, this);
+        groupingDelegate = (GroupCollectionBox) newCollectionBox(BoxType.GROUP);
     }
     
     @Override
-    protected CollectionBox createElement(BoxTreeNodeRecord record) {
-        CollectionBox box = CollectionBox.newCollectionBox(record, this);
+    CollectionBox createElement(BoxTreeNodeRecord record) {
+        CollectionBox box = CollectionBox.newCollectionBox(record);
         return box;
     }
     
     @Override
-    protected BoxTreeNodeRecord recordOfElement(CollectionBox element) {
+    BoxTreeNodeRecord recordOfElement(CollectionBox element) {
         return element.getRecord();
     }
     
@@ -40,16 +41,12 @@ public class CollectionBoxService extends JooqEntityService<CollectionBox, BoxTr
         return groupingDelegate;
     }
 
-    public List<CollectionBox> fetchChildren() {
-        return groupingDelegate.fetchChildren();
-    }
-    
-    public CollectionBox addChild(BoxType boxType) {
-        return groupingDelegate.addChild(boxType);
+    public CollectionBox addRootItem(BoxType boxType) {
+        return addChild(boxType, groupingDelegate.getId());
     }
     
     public CollectionBox addChild(BoxType boxType, Long parentId) {
-        CollectionBox box = CollectionBox.newCollectionBox(boxType, this);
+        CollectionBox box = newCollectionBox(boxType);
         
         box.setName("New Box");
         box.setParentId(parentId);
@@ -77,6 +74,12 @@ public class CollectionBoxService extends JooqEntityService<CollectionBox, BoxTr
         return factory.select(BOX_TREE_NODE.PARENT_ID).from(BOX_TREE_NODE)
                 .where(BOX_TREE_NODE.ID.equal(boxId))
                 .fetchOne(0, Long.class);
+    }
+    
+    CollectionBox newCollectionBox(BoxType boxType) {
+        BoxTreeNodeRecord record = newRecord(boxType);
+        CollectionBox box = CollectionBox.newCollectionBox(record);
+        return box;
     }
     
     BoxTreeNodeRecord newRecord(BoxType boxType) {

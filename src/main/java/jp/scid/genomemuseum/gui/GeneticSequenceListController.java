@@ -2,27 +2,26 @@ package jp.scid.genomemuseum.gui;
 
 import static jp.scid.bio.store.jooq.Tables.*;
 
+import java.awt.FileDialog;
+import java.awt.Frame;
+import java.awt.event.ActionEvent;
 import java.io.File;
-import java.io.IOException;
-import java.net.URL;
-import java.text.ParseException;
-import java.util.Collection;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 
+import javax.swing.AbstractAction;
+import javax.swing.Action;
 import javax.swing.JTable;
 import javax.swing.SwingWorker;
+import javax.swing.event.ListDataEvent;
+import javax.swing.event.ListDataListener;
 
-import jp.scid.bio.store.FileLibrary;
-import jp.scid.bio.store.GeneticSequenceParser;
-import jp.scid.bio.store.SequenceLibrary;
 import jp.scid.bio.store.jooq.tables.records.GeneticSequenceRecord;
-import jp.scid.genomemuseum.model.MuseumExhibit.FileType;
+import jp.scid.genomemuseum.model.GeneticSequenceCollection;
+import jp.scid.genomemuseum.model.GeneticSequenceLibrary;
+import jp.scid.genomemuseum.model.MutableGeneticSequenceCollection;
 import jp.scid.genomemuseum.model.sql.tables.records.MuseumExhibitRecord;
 
-import org.apache.commons.io.FileUtils;
-import org.apache.commons.io.filefilter.HiddenFileFilter;
 import org.jooq.Field;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,134 +33,110 @@ import ca.odell.glazedlists.gui.AdvancedTableFormat;
 public class GeneticSequenceListController extends ListController<GeneticSequenceRecord> {
     private final static Logger logger = LoggerFactory.getLogger(GeneticSequenceListController.class);
     
-    private GeneticSequenceParser geneticSequenceparser;
-    GeneticSequenceCollection model;
+    private final ModelChangeListener modelChangeListener = new ModelChangeListener();
     
-    FileLibrary fileLibrary = null;
+    private FileDialog fileDialog = null;
+    
+    private GeneticSequenceCollection model;
     
     public GeneticSequenceListController() {
-        geneticSequenceparser = new GeneticSequenceParser();
+    }
+    
+    public FileDialog getFileDialog() {
+        if (fileDialog == null) {
+            fileDialog = new FileDialog((Frame) null);
+        }
+        return fileDialog;
+    }
+    
+    public void setFileDialog(FileDialog fileDialog) {
+        this.fileDialog = fileDialog;
     }
     
     @Override
     public boolean importFromFile(File source) {
         logger.debug("add file: %s", source);
-        MutableGeneticSequenceCollection model = (MutableGeneticSequenceCollection) this.model;
-        boolean result = false;
+        MutableGeneticSequenceCollection model = mutableModel();
         
-        try {
-            for (File file: listFiles(source)) {
-                List<GeneticSequenceRecord> records;
-                
-                try {
-                    records = geneticSequenceparser.parse(file);
-                }
-                catch (ParseException e) {
-                    logger.info("file {} is invalid genetic sequence", file, e);
-                    continue;
-                }
-                
-                if (records.isEmpty()) {
-                    logger.info("file {} is not a genetic sequence", file);
-                    continue;
-                }
-                
-                addAll(records);
-                
-                // store to local storage
-                File path = storeGeneticSequenceFile(file, records.get(0));
-                for (GeneticSequenceRecord record: records) {
-                    record.setFileUri(path.toString());
-                    elementChanged(record);
-                }
-                
-                model.add(records);
-                result = true;
-            }
-        }
-        catch (IOException e) {
-            logger.error("fail to read gene file", e);
+        FileImportTask task = new FileImportTask(model, source);
+        task.execute();
+        
+        return true;
+    }
+    
+    public void addFile() {
+        FileDialog dialog = getFileDialog();
+        
+        dialog.setVisible(true);
+        
+        if (dialog.getFile() == null) {
+            return;
         }
         
-        return result;
+        File file = new File(dialog.getDirectory(), dialog.getFile());
+        importFromFile(file);
     }
     
     @Override
-    public boolean canRemove() {
-        return super.canRemove() && model instanceof MutableGeneticSequenceCollection;
+    protected Action createAddAction() {
+        return new AbstractAction("add") {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                addFile();
+            }
+        };
     }
     
     @Override
     public List<GeneticSequenceRecord> remove() {
-        MutableGeneticSequenceCollection model = (MutableGeneticSequenceCollection) this.model;
-        boolean removeLibraryFile = false;
+        MutableGeneticSequenceCollection model = mutableModel();
+        List<GeneticSequenceRecord> list;
         
         if (model instanceof GeneticSequenceLibrary) {
-            removeLibraryFile = true;
+            ((GeneticSequenceLibrary) model).remove(list = super.remove(), true);
         }
-        
-        List<GeneticSequenceRecord> list = super.remove();
-        for (GeneticSequenceRecord record: list) {
-            model.remove(record);
-            
-            // file deletion
-            if (!removeLibraryFile) {
-                continue;
-            }
-            
-            
-            File file = getFile(record);
-            if (file == null) {
-                continue;
-            }
-            
-            if (file.delete()) {
-                logger.info("delete file %s", file);
-            }
+        else {
+            model.remove(list = super.remove());
         }
         
         return list;
     }
     
-    public void setFileLibrary(FileLibrary fileLibrary) {
-        this.fileLibrary = fileLibrary;
-    }
-    
-    private File storeGeneticSequenceFile(File file, GeneticSequenceRecord record) throws IOException {
-        File dest = fileLibrary.storeFile(file, record);
-        logger.info("copy file {} to {}", file, dest);
-        
-        File relativePath = fileLibrary.convertLibraryRelativePath(dest);
-        return relativePath;
-    }
-    
     @Override
     protected File getFile(GeneticSequenceRecord element) {
-        String uriString = element.getFileUri();
-        if (uriString == null) {
-            return null;
-        }
-
-        File file = new File(uriString);
-        if (fileLibrary == null || file.isAbsolute()) {
-            return file;
-        }
-
-        file = fileLibrary.convertLibraryAbsolutePath(file);
-        return file;
+        return model.getFilePath(element);
     }
     
     // model
     public GeneticSequenceCollection getModel() {
         return model;
     }
+
+    private MutableGeneticSequenceCollection mutableModel() {
+        return (MutableGeneticSequenceCollection) this.model;
+    }
     
-    public void setModel(GeneticSequenceCollection model) {
-        this.model = model;
+    public void setModel(GeneticSequenceCollection newModel) {
+        if (model != null) {
+            model.removeListDataListener(modelChangeListener);
+        }
         
-        setCanAdd(model instanceof MutableGeneticSequenceCollection);
+        this.model = newModel;
         
-        fetch();
+        clear();
+        
+        if (newModel != null) {
+            setCanAdd(newModel instanceof MutableGeneticSequenceCollection);
+            setCanRemove(newModel instanceof MutableGeneticSequenceCollection);
+            
+            newModel.addListDataListener(modelChangeListener);
+            addAll(newModel.fetch());
+        }
+    }
+    
+    @Override
+    protected GeneticSequenceRecord createElement() {
+        return mutableModel().newElement();
     }
     
     @Override
@@ -173,11 +148,32 @@ public class GeneticSequenceListController extends ListController<GeneticSequenc
      * fetch entities
      */
     public void fetch() {
+        fetch(false);
+    }
+    
+    public void fetch(boolean updates) {
         if (model == null) {
             clear();
         }
         else {
-            GlazedLists.replaceAll(source, model.fetch(), false);
+            GlazedLists.replaceAll(source, model.fetch(), updates);
+        }
+    }
+
+    private class ModelChangeListener implements ListDataListener {
+        @Override
+        public void intervalAdded(ListDataEvent e) {
+            fetch();
+        }
+
+        @Override
+        public void intervalRemoved(ListDataEvent e) {
+            fetch();
+        }
+
+        @Override
+        public void contentsChanged(ListDataEvent e) {
+            fetch(true);
         }
     }
     
@@ -194,60 +190,6 @@ public class GeneticSequenceListController extends ListController<GeneticSequenc
             bindTable(table, tableFormat);
             bindTableTransferHandler(table);
             bindSortableTableHeader(table.getTableHeader(), tableFormat);
-        }
-    }
-    
-    public static interface GeneticSequenceCollection {
-        List<GeneticSequenceRecord> fetch();
-        
-        boolean update(GeneticSequenceRecord record);
-    }
-    
-    public static interface MutableGeneticSequenceCollection extends GeneticSequenceCollection {
-        boolean add(GeneticSequenceRecord record);
-        
-        boolean add(Collection<GeneticSequenceRecord> record);
-
-        boolean remove(GeneticSequenceRecord record);
-    }
-    
-    public static interface GeneticSequenceLibrary extends MutableGeneticSequenceCollection {
-    }
-    
-    public static class PersistentGeneticSequenceLibrary implements GeneticSequenceLibrary {
-        private final SequenceLibrary sequenceLibrary;
-        
-        public PersistentGeneticSequenceLibrary(SequenceLibrary sequenceLibrary) {
-            this.sequenceLibrary = sequenceLibrary;
-        }
-        
-        @Override
-        public boolean remove(GeneticSequenceRecord record) {
-            return sequenceLibrary.delete(record);
-        }
-
-        @Override
-        public List<GeneticSequenceRecord> fetch() {
-            return sequenceLibrary.findAll();
-        }
-
-        @Override
-        public boolean update(GeneticSequenceRecord record) {
-            return sequenceLibrary.store(record);
-        }
-
-        @Override
-        public boolean add(GeneticSequenceRecord record) {
-            return sequenceLibrary.addNew(record);
-        }
-
-        @Override
-        public boolean add(Collection<GeneticSequenceRecord> records) {
-            boolean result = false;
-            for (GeneticSequenceRecord record: records) {
-                result |= sequenceLibrary.addNew(record);
-            }
-            return result;
         }
     }
     
@@ -294,33 +236,19 @@ public class GeneticSequenceListController extends ListController<GeneticSequenc
             baseList.add(element.getSource());
         }
     }
-    
-    private static Collection<File> listFiles(File file) {
-        Collection<File> files;
-        
-        if (file.isDirectory()) {
-            files = FileUtils.listFiles(file, HiddenFileFilter.VISIBLE, HiddenFileFilter.VISIBLE);
-        }
-        else {
-            files = Collections.singleton(file);
-        }
-        
-        return files;
-    }
 
-    class BioFileImportTask extends SwingWorker<Result, Void> {
-        private final URL source;
-        private final FileType fileType;
+    static class FileImportTask extends SwingWorker<Result, Void> {
+        private final File file;
+        private final MutableGeneticSequenceCollection model;
         
-        public BioFileImportTask(URL source, FileType fileType) {
-            this.source = source;
-            this.fileType = fileType;
+        public FileImportTask(MutableGeneticSequenceCollection model, File file) {
+            this.model = model;
+            this.file = file;
         }
 
         @Override
         protected Result doInBackground() throws Exception {
-//            controller.loadExhibit(source, fileType);
-            
+            model.addFile(file);
             return null;
         }
     }

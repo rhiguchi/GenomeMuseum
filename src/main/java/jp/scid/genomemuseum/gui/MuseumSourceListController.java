@@ -7,8 +7,10 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Enumeration;
+import java.util.LinkedList;
 import java.util.List;
 
 import javax.swing.AbstractButton;
@@ -99,10 +101,6 @@ public class MuseumSourceListController extends TreeController {
         transferHandler = new MuseumSourceTransferHandler(this);
     }
     
-    @Override
-    public boolean canSelect(TreePath path) {
-        return path.getPathCount() > 2;
-    }
 
     // local lib source
     public void setLocalLibrarySource(Object librarySource) {
@@ -277,37 +275,45 @@ abstract class JooqRecordTreeController<E extends UpdatableRecord<E>> extends Tr
 abstract class TreeController<E> extends AbstractBean implements TreeWillExpandListener, TreeSelectionListener {
     private final int expandPathCount = 2;
     
-    // sub-controller
-    private TransferHandler transferHandler = null;
+    // view models
+    private final TransferHandler transferHandler = null;
     
-    final TreeSelectionModel selectionModel;
+    private final TreeSelectionModel selectionModel;
     
-    final DefaultTreeModel treeModel;
+    private final DefaultTreeModel treeModel;
+    
     
     // Model
-    TreeSource treeSource;
+    private TreeSource treeSource = null;
     
-    List<E> allElements = Collections.emptyList();
+    private boolean canRemove = true;
+    private boolean canAdd = true;
     
     // property
+    private List<Object> selections = Collections.emptyList();
+    
     boolean emptySelectionAllowed = false;
     
+    // sub controller
+    private TreePathEditor treePathEditor = null;
+    
     public TreeController() {
-        treeSource = createTreeSource();
         treeModel = createTreeModel();
         
         selectionModel = createSelectionModel();
-        
         selectionModel.addTreeSelectionListener(this);
     }
 
-    protected DefaultTreeModel createTreeModel() {
-        DefaultMutableTreeNode rootNode = new DefaultMutableTreeNode("root");
-        return new DefaultTreeModel(rootNode, true);
+    public Object getRootObject() {
+        return treeSource;
     }
     
-    protected TreeSource createTreeSource() {
-        return new DefaultTreeSource();
+    protected DefaultTreeModel createTreeModel() {
+        return new DefaultTreeModel(null, true);
+    }
+    
+    public TreeSource getTreeSource() {
+        return treeSource;
     }
     
     public void setTreeSource(TreeSource treeSource) {
@@ -316,11 +322,175 @@ abstract class TreeController<E> extends AbstractBean implements TreeWillExpandL
         reload();
     }
     
-    public void reload() {
-        LazyChildLoadingTreeNode node = new LazyChildLoadingTreeNode(null, treeSource, null);
-        defaultTreeModel().setRoot(node);
+    // remove
+    public boolean canRemove() {
+        return canRemove;
+    }
+    
+    public void setCanRemove(boolean newValue) {
+        firePropertyChange("canRemove", this.canRemove, this.canRemove = newValue);
+    }
+    
+    public void remove() {
+        DefaultMutableTreeNode target = getSelectedTreeNode();
+        if (target != null) {
+            remove(target);
+        }
+    }
+    
+    public void remove(MutableTreeNode node) {
+        treeModel.removeNodeFromParent(node);
+    }
+    
+    // add
+    public boolean canAdd() {
+        return canAdd;
+    }
+    
+    public void setCanAdd(boolean newValue) {
+        firePropertyChange("canAdd", this.canAdd, this.canAdd = newValue);
+    }
+    
+    public DefaultMutableTreeNode add() {
+        Object nodeObject = createElement();
+        return add(nodeObject);
+    }
+    
+    public void add(MutableTreeNode child, MutableTreeNode parent, int insertIndex) {
+        MutableTreeNode realParent;
+        if (parent == null) {
+            realParent = (MutableTreeNode) treeModel.getRoot();
+        }
+        else {
+            realParent = parent;
+        }
+        
+        int realInsertIndex;
+        if (insertIndex < 0) {
+            realInsertIndex = realParent.getChildCount();
+        }
+        else {
+            realInsertIndex = insertIndex;
+        }
+        
+        treeModel.insertNodeInto(child, realParent, realInsertIndex);
+    }
+    
+    public DefaultMutableTreeNode add(Object nodeObject) {
+        DefaultMutableTreeNode childNode = createTreeNode(nodeObject);
+        
+        DefaultMutableTreeNode parentNode;
+        int insertIndex;
+        
+        DefaultMutableTreeNode target = getSelectedTreeNode();
+        if (target != null) {
+            if (target.getAllowsChildren()) {
+                parentNode = target;
+                insertIndex = target.getChildCount();
+            }
+            else {
+                parentNode = (DefaultMutableTreeNode) target.getParent();
+                insertIndex = parentNode.getIndex(target);
+            }
+        }
+        else {
+            parentNode = null;
+            insertIndex = -1;
+        }
+        
+        add(childNode, parentNode, insertIndex);
+        return childNode;
     }
 
+    protected DefaultMutableTreeNode createTreeNode(Object child) {
+        boolean allowsChildren = getAllowsChildren(child);
+        DefaultMutableTreeNode childNode = new DefaultMutableTreeNode(child, allowsChildren);
+        return childNode;
+    }
+    
+    // children reloading
+    public void reload() {
+        Object rootObject = getRootObject();
+        DefaultMutableTreeNode rootNode = new DefaultMutableTreeNode(rootObject);
+        treeModel.setRoot(rootNode);
+        
+        reloadChildren(rootNode);
+        treeModel.setRoot(rootNode);
+    }
+    
+    public void reload(MutableTreeNode node) {
+        reloadChildren((DefaultMutableTreeNode) node);
+        treeModel.reload(node);
+    }
+
+    private void reloadChildren(DefaultMutableTreeNode parent) {
+        parent.removeAllChildren();
+        
+        Collection<?> children = getChildren(parent.getUserObject());
+
+        for (Object child: children) {
+            DefaultMutableTreeNode childNode = createTreeNode(child);
+            parent.add(childNode);
+        }
+    }
+
+    // children
+    protected boolean getAllowsChildren(Object nodeObject) {
+        if (treeSource == null || nodeObject == null) {
+            return false;
+        }
+        return !treeSource.isLeaf(nodeObject);
+    }
+
+    protected Collection<?> getChildren(Object parentObject) {
+        List<?> children;
+        
+        if (treeSource != null && treeSource != null) {
+            children = treeSource.children(parentObject);
+        }
+        else {
+            children = Collections.emptyList();
+        }
+
+        return children;
+    }
+
+    // element selection
+    public Object getSelection() {
+        if (selections == null || selections.isEmpty()) {
+            return null;
+        }
+        return selections.get(0);
+    }
+    
+    public List<?> getSelections() {
+        return selections;
+    }
+    
+    public void setSelections(List<Object> selections) {
+        this.selections = selections;
+        
+        firePropertyChange("selections", this.selections,
+                this.selections = new LinkedList<Object>(selections));
+    }
+    
+    public void setSelection(Object element) {
+        setSelections(Collections.singletonList(element));
+    }
+
+    public boolean isSelectable(Object element) {
+        return element != null;
+    }
+    
+    @Override
+    public void valueChanged(TreeSelectionEvent e) {
+        TreeSelectionModel model = (TreeSelectionModel) e.getSource();
+        
+        if (model.isSelectionEmpty() && !emptySelectionAllowed) {
+            selectFirstRow();
+        }
+    }
+    
     protected TreeSelectionModel createSelectionModel() {
         return new SelectableSelectionModel();
     }
@@ -332,88 +502,13 @@ abstract class TreeController<E> extends AbstractBean implements TreeWillExpandL
     public TransferHandler getTransferHandler() {
         return transferHandler;
     }
-
-    List<E> getChildren(E parent) {
-        
-        return allElements;
-    }
-    
-    // nodes
-//    protected boolean getAllowesChildren(E element) {
-//        return true;
-//    }
-//    
-//    protected MutableTreeNode createTreeNode(Object nodeObject, boolean allowsChildren) {
-//        return new DefaultMutableTreeNode(nodeObject, allowsChildren);
-//    }
-//    
-//    protected MutableTreeNode createRootNode() {
-//        return createTreeNode(this, true);
-//    }
-//    
-    
     
     // contents
     public void setContent(List<E> newElements) {
     }
     
-    
-    
     private E elementForNode(TreeNode node) {
         return (E) ((DefaultMutableTreeNode) node).getUserObject();
-    }
-    
-//    protected void reload(E element, MutableTreeNode node) {
-//        List<E> children = getChildren(element);
-//        
-//        while (node.getChildCount() > 0) {
-//            node.remove(node.getChildCount() - 1);
-//        }
-//        
-//        for (E child: children) {
-//            boolean allowsChildren = getAllowesChildren(child);
-//            MutableTreeNode childNode = createTreeNode(child, allowsChildren);
-//            // TODO
-//            
-//            node.insert(childNode, node.getChildCount());
-//        }
-//        
-//        if (node.getParent() == null) {
-//            defaultTreeModel().setRoot(node);
-//        }
-//        else {
-//            defaultTreeModel().reload(node);
-//        }
-//    }
-//    
-//    protected void reload() {
-//        MutableTreeNode root = createRootNode();
-//        reload(null, root);
-//    }
-//    
-    public void add() {
-        E e = createElement();
-        add(e);
-    }
-    
-    public void add(E element) {
-        TreePath path = getSelectionPath();
-        if (path == null) {
-            path = new TreePath(treeModel.getRoot());
-        }
-        
-        MutableTreeNode parent = (MutableTreeNode) path.getLastPathComponent();
-        int index = parent.getChildCount();
-        
-        insertNodeInto(element, path, index);
-    }
-    
-    public void insertNodeInto(E element, TreePath path, int index) {
-//        boolean allowsChildren = getAllowesChildren(element);
-//        MutableTreeNode newChild = createTreeNode(element, allowsChildren);
-//        MutableTreeNode parent = (MutableTreeNode) path.getLastPathComponent();
-//        
-//        defaultTreeModel().insertNodeInto(newChild, parent, index);
     }
     
     // selection
@@ -421,18 +516,13 @@ abstract class TreeController<E> extends AbstractBean implements TreeWillExpandL
         return selectionModel;
     }
 
-    public TreePath getSelectionPath() {
-        return selectionModel.getSelectionPath();
-    }
-    
-    public void setSelectionPath(TreePath path) {
-        if (canSelect(path)) {
-            selectionModel.setSelectionPath(path);
+    public DefaultMutableTreeNode getSelectedTreeNode() {
+        TreePath path = selectionModel.getSelectionPath();
+        if (path != null && path.getLastPathComponent() instanceof DefaultMutableTreeNode) {
+            return (DefaultMutableTreeNode) path.getLastPathComponent();
         }
-    }
-    
-    public boolean canSelect(TreePath path) {
-        return true;
+        
+        return null;
     }
     
     private DefaultTreeModel defaultTreeModel() {
@@ -447,13 +537,20 @@ abstract class TreeController<E> extends AbstractBean implements TreeWillExpandL
         // TODO
     }
 
-    @Override
-    public void valueChanged(TreeSelectionEvent e) {
-        TreeSelectionModel model = (TreeSelectionModel) e.getSource();
-        
-        if (model.isSelectionEmpty() && !emptySelectionAllowed) {
-            selectFirstRow();
-        }
+    @Deprecated
+    TreePath getSelectionPath() {
+        return selectionModel.getSelectionPath();
+    }
+    
+    // editor
+    public void setTreePathEditor(TreePathEditor treePathEditor) {
+        this.treePathEditor = treePathEditor;
+    }
+    
+    public void editNode(TreeNode node) {
+        Object[] pathToRoot = treeModel.getPathToRoot(node);
+        TreePath path = new TreePath(pathToRoot);
+        treePathEditor.startEditingAtPath(path);
     }
 
     // expansion
@@ -481,7 +578,7 @@ abstract class TreeController<E> extends AbstractBean implements TreeWillExpandL
         }
     }
 
-    private void updateExpansion(JTree tree) {
+    void updateExpansion(JTree tree) {
         for (int row = 0; row < tree.getRowCount(); row++) {
             if (!canCollapse(tree.getPathForRow(row)) && tree.isCollapsed(row)) {
                 tree.expandRow(row);
@@ -497,6 +594,7 @@ abstract class TreeController<E> extends AbstractBean implements TreeWillExpandL
         
         updateExpansion(tree);
         tree.addTreeWillExpandListener(this);
+        
 
         if (transferHandler != null) {
             tree.setTransferHandler(transferHandler);
@@ -507,7 +605,7 @@ abstract class TreeController<E> extends AbstractBean implements TreeWillExpandL
         List<?> children(Object parent);
         boolean isLeaf(Object node);
     }
-    
+
     static class DefaultTreeSource implements TreeSource {
 
         @Override
@@ -522,6 +620,15 @@ abstract class TreeController<E> extends AbstractBean implements TreeWillExpandL
         }
     }
 
+    static interface TreePathEditor {
+        void startEditingAtPath(TreePath path);
+        
+        boolean canEdit(TreePath path);
+    }
+    
+    
+    
+    @Deprecated
     static class LazyChildLoadingTreeNode implements TreeNode {
         private final Object nodeObject;
         
@@ -601,25 +708,12 @@ abstract class TreeController<E> extends AbstractBean implements TreeWillExpandL
         }
     }
     
-    public static interface ListHolder {
-        Iterable<?> fetch();
-    }
-    
-    public static class DefaultListHolder implements ListHolder {
-        List<?> elementList;
-
-        public DefaultListHolder(List<?> elementList) {
-            super();
-            this.elementList = elementList;
+    static class SelectableSelectionModel extends DefaultTreeSelectionModel {
+        
+        public boolean canSelect(TreePath path) {
+            return true;
         }
         
-        @Override
-        public Iterable<?> fetch() {
-            return elementList;
-        }
-    }
-    
-    class SelectableSelectionModel extends DefaultTreeSelectionModel {
         @Override
         public void setSelectionPath(TreePath path) {
             if (canSelect(path))

@@ -1,0 +1,68 @@
+FEATURES             Location/Qualifiers
+     source          1..3444
+                     /organism="Pyrococcus abyssi GE5"
+                     /mol_type="genomic DNA"
+                     /strain="GE5"
+                     /db_xref="taxon:272844"
+                     /plasmid="pGT5"
+     rep_origin      1..114
+                     /note="putative single-stranded origin; sso"
+     repeat_region   22..68
+                     /note="repeat region RI"
+                     /rpt_type=inverted
+     gene            103..2067
+                     /locus_tag="pGT5_01"
+                     /db_xref="GeneID:3648457"
+     CDS             103..2067
+                     /locus_tag="pGT5_01"
+                     /note="ORF1; contains possible alternative initiation
+                     site"
+                     /codon_start=1
+                     /transl_table=11
+                     /product="replication initiator protein"
+                     /protein_id="YP_308887.1"
+                     /db_xref="GI:74076684"
+                     /db_xref="GeneID:3648457"
+                     /translation="MVIYTSKFKNSLLDGLGVGHLSYDDQPILCNEVHPTLTLDTFIS
+                     GGSSGSRPRPRWVYLDISTTNEGISEEFSSNTESKSPLLKVCGVSSKSSEGDGSSFIW
+                     FDKYRSVISRLEHSGFVEVERTVLKLRKISKELRSINKQLSRLFLDDRERAKLLSRKR
+                     KYLDFARALIGSISKSLTLYADRFFVEVPQDYAKLIQKLGFSSDTLLLHLFVNSGVLE
+                     VFLDDNSSHKFRIAYISKVHAGKYHPVKGISKGSQEAKRVLRDLLVLSELLEGSLVSY
+                     RSGGVETIHHLIPVRHFVLTAPKDVSFSIWASLKKGDSSLFRAFKDAGAKAIKEFLSY
+                     LASKEHISGNLLFGFTINVHVTGDKNPFEPHFHIDAIVTFICYDKSSTKWFRLNPLLS
+                     ESDLKKLRDIWKNVLLSYFGELLSEDTKSKDFDVWAGDNYYSLPLDVPQVFFELKYAS
+                     RKLFVNFVNYFEQSNFDESSVSDWDFVRFVFEYSNRTERYGFLTNIKRYLSMSCSHLV
+                     EKRVQELEEFISRIEFDLSVNGNKMSDSLKRALLERLEYLKDELSELKERGFEYLFER
+                     ALEKAEELLSNDNLTLERVIHILETLFTALGKSIVNYNFYVELEDVSFREFVDYLYDN
+                     HLSDVLVFSDRHRSITIIRLIPPPDGGVPV"
+     rep_origin      266..280
+                     /locus_tag="pGT5_01"
+                     /note="putative double-stranded origin; dso; similar to
+                     dso seequences from pC194 plasmids"
+     repeat_region   550..607
+                     /note="repeat region RII"
+     repeat_region   2051..2123
+                     /note="repeat region RIII"
+                     /rpt_type=inverted
+     gene            2230..3423
+                     /locus_tag="pGT5_02"
+                     /db_xref="GeneID:3648458"
+     CDS             2230..3423
+                     /locus_tag="pGT5_02"
+                     /note="ORF2"
+                     /codon_start=1
+                     /transl_table=11
+                     /product="hypothetical protein"
+                     /protein_id="YP_308888.1"
+                     /db_xref="GI:74076685"
+                     /db_xref="GeneID:3648458"
+                     /translation="MRLHVHINDKLGELFKKRVHLVYGDRRGALSHAIEEAIILWLLH
+                     TDYIVKLQKVNAMSLQTQRIDSDSSHYLPISRLPQTIDEFRAFYNRFGAKATLLVYLL
+                     VRGKPLRLYDLFRFHQAIAGVSSDNSTRKVLKRLLRDGLIYRKGKLYYPSPDALLLMW
+                     DSIDWSRVRTKRYTGNGVVSKPSKRRVRGVGSQVRRVVRIARSLARRGDTLRAVSLLT
+                     HTLLGVRQTGVLLYRKGGLFIVYEHKDRSVRVLFSERIGKLFDDLGLPEGSLYMHMYY
+                     RAGRIIHNVFGGYRVARRMFYFLREHGFFYVPASEVDRVGEYRYDPHSGKLIVRIGNW
+                     TYEVDADLDAIDSYVENLNSRRTRKSKKKSSSLVSYPRERFGIVRVSKHTKVENDVYY
+                     LNYTP"
+     repeat_region   2925..3207
+                     /note="repeat region RIV"

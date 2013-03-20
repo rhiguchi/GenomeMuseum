@@ -12,7 +12,7 @@ import javax.swing.table.TableCellRenderer;
 import javax.swing.text.JTextComponent;
 
 import jp.scid.gui.MessageFormatTableCell;
-import jp.scid.motifviewer.gui.MotifViewerView;
+//import jp.scid.motifviewer.gui.MotifViewerView;
 
 import com.explodingpixels.macwidgets.plaf.ITunesTableUI;
 
@@ -27,11 +27,12 @@ public class ExhibitListView {
     public final FileContentView fileContentView = new FileContentView();
     
     // Overview
-    public final MotifViewerView overviewMotifView = new MotifViewerView();
+//    public final MotifViewerView overviewMotifView = new MotifViewerView();
     
     // Tab view
     public final JTabbedPane contentsViewTabbedPane =
-            createContentsViewTabbedPane(fileContentView, overviewMotifView);
+            createContentsViewTabbedPane(fileContentView);
+//            createContentsViewTabbedPane(fileContentView, overviewMotifView);
     
     // Data and content area
     public final JSplitPane dataListContentSplit =
@@ -68,12 +69,14 @@ public class ExhibitListView {
     /**
      * @return tabbed pane
      */
+//    private static JTabbedPane createContentsViewTabbedPane(
+//            FileContentView fileContentView, MotifViewerView overviewMotifView) {
     private static JTabbedPane createContentsViewTabbedPane(
-            FileContentView fileContentView, MotifViewerView overviewMotifView) {
+            FileContentView fileContentView) {
         JTabbedPane contentsViewTabbedPane = new JTabbedPane();
         
         contentsViewTabbedPane.addTab("Content", fileContentView.getContentPane());
-        contentsViewTabbedPane.addTab("MotifView", overviewMotifView.getContentPane());
+//        contentsViewTabbedPane.addTab("MotifView", overviewMotifView.getContentPane());
         
         return contentsViewTabbedPane;
     }

@@ -35,7 +35,7 @@ public class MuseumDataSchema {
     public MuseumExhibitLibrary getMuseumExhibitLibrary() {
         if (library == null) {
             library = new MuseumExhibitLibrary(factory);
-            library.exhibitService = new MuseumExhibitService(factory, MUSEUM_EXHIBIT);
+//            library.exhibitService = new MuseumExhibitService(factory, MUSEUM_EXHIBIT);
         }
         return library;
     }

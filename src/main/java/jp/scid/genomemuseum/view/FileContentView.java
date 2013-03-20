@@ -31,9 +31,4 @@ public class FileContentView implements GenomeMuseumView {
     public JComponent getContentPane() {
         return contentPane;
     }
-    
-    // view test
-    public static void main(String[] args) {
-        GUICheckApp.launch(args, FileContentView.class);
-    }
 }
