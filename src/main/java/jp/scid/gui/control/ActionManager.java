@@ -5,6 +5,8 @@ import static java.lang.String.*;
 import java.awt.event.ActionEvent;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -15,36 +17,69 @@ public class ActionManager {
     private static final Logger logger = Logger.getLogger(ActionManager.class.getName());
             
     private final Object controller;
+    
+    private final Map<String, Method> methodMap;
+    private boolean methodMapInitialized = false;
 
     public ActionManager(Object controller) {
         super();
         if (controller == null)
             throw new IllegalArgumentException("controller must not be null");
         this.controller = controller;
+        
+        methodMap = new HashMap<String, Method>();
     }
 
     public Action getAction(String methodName) {
         Method actionMethod = findMethod(methodName);
-        ActionEntry action = new ActionEntry(actionMethod, methodName);
+        Action action;
         
         if (actionMethod == null) {
             logger.log(Level.WARNING, format(
                     "Method '%s' is not defined on '%s'.",
                     methodName, controller.getClass()));
             
-            action.setEnabled(false);
+            action = NoMethodAction.newInstance(methodName);
+        }
+        else {
+            action = new ActionEntry(actionMethod, methodName);
         }
         
         return action;
     }
 
     Method findMethod(String methodName) {
-        Class<? extends Object> controllerClass = controller.getClass();
-        for (Method method: controllerClass.getDeclaredMethods()) {
-            if (method.getName().equals(methodName))
-                return method;
+        if (!methodMapInitialized) {
+            Class<? extends Object> controllerClass = controller.getClass();
+            for (Method method: controllerClass.getDeclaredMethods()) {
+                methodMap.put(method.getName(), method);
+            }
+            methodMapInitialized = true;
         }
-        return null;
+        
+        return methodMap.get(methodName);
+    }
+    
+    public static class NoMethodAction extends AbstractAction {
+        private NoMethodAction(String name) {
+            super(name);
+        }
+        
+        static Action newInstance(String methodName) {
+            NoMethodAction a = new NoMethodAction(methodName);
+            a.setEnabled(false);
+            return a;
+        }
+
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            // do nothing
+        }
+        
+        @Override
+        public final void setEnabled(boolean newValue) {
+            super.setEnabled(false);
+        }
     }
     
     class ActionEntry extends AbstractAction {
@@ -93,8 +128,8 @@ public class ActionManager {
             }
             catch (InvocationTargetException e) {
                 logger.log(Level.WARNING, format(
-                        "The method '%s' of '%s' is not invoked.",
-                        name, controller), e);
+                        "The method '%s' of '%s' is fail to invoke.",
+                        name, controller), e.getCause());
             }
         }
     }

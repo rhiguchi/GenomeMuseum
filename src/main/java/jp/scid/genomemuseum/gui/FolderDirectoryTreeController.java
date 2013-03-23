@@ -1,13 +1,15 @@
 package jp.scid.genomemuseum.gui;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 
+import javax.swing.Action;
 import javax.swing.JTree;
 import javax.swing.tree.DefaultMutableTreeNode;
 import javax.swing.tree.MutableTreeNode;
-import javax.swing.tree.TreeNode;
+import javax.swing.tree.TreePath;
 
 import jp.scid.bio.store.FolderDirectory;
 import jp.scid.bio.store.SequenceLibrary;
@@ -15,45 +17,90 @@ import jp.scid.bio.store.SequenceLibrary.FolderType;
 import jp.scid.bio.store.SequenceLibrary.FolderTypeConverter;
 import jp.scid.bio.store.jooq.Tables;
 import jp.scid.bio.store.jooq.tables.records.FolderRecord;
+import jp.scid.gui.control.ActionManager;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.explodingpixels.widgets.TextProvider;
+
 public class FolderDirectoryTreeController extends TreeController<FolderDirectory> {
     private final static Logger logger = LoggerFactory.getLogger(FolderDirectoryTreeController.class);
     
-    private GenomeMuseumTreeSource treeSource = null;
+    final Action nodeFolderAddAction;
+    final Action collectionFolderAddAction;
+    final Action filterFolderAddAction;
     
     public FolderDirectoryTreeController() {
+        ActionManager actionManager = new ActionManager(this);
+        nodeFolderAddAction = actionManager.getAction("addNodeFolder");
+        collectionFolderAddAction = actionManager.getAction("addCollectionFolder");
+        filterFolderAddAction = actionManager.getAction("addFilterFolder");
     }
     
-    public void addCollectionElement() {
-        TreeNode node = addBox(FolderType.COLLECTION);
-        editNode(node);
+    public void addCollectionFolder() {
+        TreePath path = addFolder(FolderType.COLLECTION);
+        startEditingAtPath(path);
     }
     
-    public void addNodeElement() {
-        TreeNode node = addBox(FolderType.COLLECTION);
-        editNode(node);
+    public void addNodeFolder() {
+        TreePath path = addFolder(FolderType.NODE);
+        startEditingAtPath(path);
     }
     
-    public TreeNode addBox(FolderType type) {
+    public void addFilterFolder() {
+        TreePath path = addFolder(FolderType.FILTER);
+        startEditingAtPath(path);
+    }
+    
+    private GenomeMuseumTreeSource treeSource() {
+        return (GenomeMuseumTreeSource) getTreeSource();
+    }
+    
+    public TreePath addFolder(FolderType type) {
+        GenomeMuseumTreeSource treeSource = treeSource();
         FolderRecord newFolder = treeSource.createFolder(type);
-        TreeNode newNode = add(newFolder);
+        DefaultMutableTreeNode parent = getInsertParent();
         
-        FolderRecord parent = getSelectedFolder();
-        treeSource.insertFolder(newFolder, parent);
+        TreePath path = add(newFolder, parent);
         
-        return newNode;
+        Long parentId;
+        if (parent.getUserObject() instanceof FolderRecord) {
+            parentId = ((FolderRecord) parent.getUserObject()).getId();
+        }
+        else {
+            parentId = null;
+        }
+        
+        newFolder.setParentId(parentId);
+        treeSource.add(newFolder);
+        
+        return path;
     }
     
-    private FolderRecord getSelectedFolder() {
-        Object userObject = getSelection();
-        if (userObject instanceof FolderRecord) {
-            return (FolderRecord) userObject;
+    protected DefaultMutableTreeNode getInsertParent() {
+        DefaultMutableTreeNode node = getSelectedTreeNode();
+        if (node != null && node.getUserObject() instanceof FolderRecord) {
+            return node;
         }
-        return null;
+        
+        return getFoldersRoot(); 
     }
+    
+    protected DefaultMutableTreeNode getFoldersRoot() {
+        GenomeMuseumTreeSource treeSource = treeSource();
+        int[] indices = treeSource.getIndexPathForFoldersRoot();
+        TreePath path = getTreePath(indices);
+        return (DefaultMutableTreeNode) path.getLastPathComponent(); 
+    }
+    
+//    private FolderRecord getSelectedFolder() {
+//        Object userObject = getSelection();
+//        if (userObject instanceof FolderRecord) {
+//            return (FolderRecord) userObject;
+//        }
+//        return null;
+//    }
     
     @Override
     public void remove(MutableTreeNode node) {
@@ -61,7 +108,7 @@ public class FolderDirectoryTreeController extends TreeController<FolderDirector
             super.remove(node);
             
             FolderRecord folder = (FolderRecord) ((DefaultMutableTreeNode) node).getUserObject();
-            treeSource.removeFolder(folder.getId().longValue());
+            treeSource().removeFolder(folder.getId().longValue());
         }
         
         logger.warn("remove node {} is not allowed", node);
@@ -81,6 +128,8 @@ public class FolderDirectoryTreeController extends TreeController<FolderDirector
             this.sequenceLibrary = sequenceLibrary;
             
             librariesNode = new Category("Libraries");
+            librariesNode.addChild(sequenceLibrary);
+            
             userCollectionsNode = new Category("Collections");
             
             rootElements = new LinkedList<Category>();
@@ -88,24 +137,23 @@ public class FolderDirectoryTreeController extends TreeController<FolderDirector
             
         }
 
-        public void removeFolder(long folderId) {
-            Long parentId = sequenceLibrary.getParentId(folderId);
-            sequenceLibrary.deleteFolder(folderId);
-            
-            // TODO fire node removed
+        public void add(FolderRecord newFolder) {
+            sequenceLibrary.insertFolder(newFolder);
         }
 
-        public void insertFolder(FolderRecord newFolder, FolderRecord parent) {
-            Long parentId = parent == null ? null : parent.getId();
-            sequenceLibrary.insertFolderInto(newFolder, parentId);
-            
-            // TODO fire node inserted
+        public void removeFolder(long folderId) {
+            sequenceLibrary.deleteFolder(folderId);
         }
 
         public FolderRecord createFolder(FolderType type) {
             return sequenceLibrary.createFolder(type);
         }
 
+        public int[] getIndexPathForFoldersRoot() {
+            int index = rootElements.indexOf(userCollectionsNode);
+            return new int[]{index};
+        }
+        
         @Override
         public List<?> children(Object parent) {
             if (parent == null) {
@@ -116,6 +164,9 @@ public class FolderDirectoryTreeController extends TreeController<FolderDirector
             }
             else if (parent instanceof FolderRecord) {
                 return getFolders(((FolderRecord) parent).getId());
+            }
+            else if (parent instanceof Category) {
+                return ((Category) parent).children();
             }
             
             logger.warn("unknown parent node {}", parent);
@@ -144,12 +195,15 @@ public class FolderDirectoryTreeController extends TreeController<FolderDirector
                     return true;
                 }
             }
+            else if (node instanceof SequenceLibrary) {
+                return true;
+            }
             
             logger.warn("unknown node {}", node);
             return true;
         }
         
-        public static abstract class TreeElement {
+        public static abstract class TreeElement implements TextProvider {
             private final String name;
 
             public TreeElement(String name) {
@@ -161,16 +215,31 @@ public class FolderDirectoryTreeController extends TreeController<FolderDirector
             }
             
             public abstract boolean isLeaf();
+            
+            @Override
+            public String getText() {
+                return name;
+            }
         }
         
         public static class Category extends TreeElement {
+            private final List<Object> childList;
             public Category(String name) {
                 super(name);
+                childList = new ArrayList<Object>();
             }
             
             @Override
             public final boolean isLeaf() {
                 return false;
+            }
+            
+            public void addChild(Object object) {
+                childList.add(object);
+            }
+            
+            public List<?> children() {
+                return Collections.unmodifiableList(childList);
             }
         }
         

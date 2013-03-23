@@ -15,7 +15,6 @@ import javax.swing.tree.TreePath;
 import jp.scid.genomemuseum.gui.transfer.DefaultTransferExhibitCollectionNode;
 import jp.scid.genomemuseum.gui.transfer.TransferExhibitCollectionNode;
 import jp.scid.genomemuseum.gui.transfer.TransferMuseumExhibit;
-import jp.scid.genomemuseum.gui.transfer.TransferExhibitCollectionNode.Flavor;
 import jp.scid.genomemuseum.model.MuseumExhibit;
 import jp.scid.genomemuseum.model.MuseumSourceModel.CollectionNode;
 import jp.scid.genomemuseum.model.MuseumSourceModel.ExhibitCollectionNode;
@@ -27,9 +26,9 @@ public class MuseumSourceTransferHandler extends TransferHandler {
     @SuppressWarnings("unused")
     private final static Logger logger = LoggerFactory.getLogger(MuseumSourceTransferHandler.class);
     
-    final MuseumSourceListController controller;
+    final FolderDirectoryTreeController controller;
 
-    public MuseumSourceTransferHandler(MuseumSourceListController controller) {
+    public MuseumSourceTransferHandler(FolderDirectoryTreeController controller) {
         this.controller = controller;
     }
 
@@ -43,7 +42,7 @@ public class MuseumSourceTransferHandler extends TransferHandler {
             MutableTreeNode targetNode = getTargetNode(support);
             
             if (targetNode instanceof CollectionNode) {
-                canImport = controller.canMoveNode(sourceNode, (CollectionNode) targetNode);
+                canImport = false; // TODO controller.canMoveNode(sourceNode, (CollectionNode) targetNode);
             }
             else {
                 canImport = false;
@@ -60,7 +59,7 @@ public class MuseumSourceTransferHandler extends TransferHandler {
             // TODO compare box id
             
             if (targetNode instanceof CollectionNode) {
-                canImport = controller.canImportExhibit((CollectionNode) targetNode);
+                canImport = false; // TODO controller.canImportExhibit((CollectionNode) targetNode);
             }
             else {
                 canImport = targetNode == null;
@@ -75,7 +74,7 @@ public class MuseumSourceTransferHandler extends TransferHandler {
             MutableTreeNode targetNode = getTargetNode(support);
             
             if (targetNode instanceof ExhibitCollectionNode) {
-                canImport = controller.canImportFile((ExhibitCollectionNode) targetNode);
+                canImport = false; // TODO controller.canImportFile((ExhibitCollectionNode) targetNode);
             }
             else {
                 canImport = targetNode == null;
@@ -102,7 +101,7 @@ public class MuseumSourceTransferHandler extends TransferHandler {
                     TransferExhibitCollectionNode.Flavor.getTransferExhibitCollectionNode(support);
             MutableTreeNode targetNode = getTargetNode(support);
             
-            controller.moveNode(sourceNode, (CollectionNode) targetNode);
+//            controller.moveNode(sourceNode, (CollectionNode) targetNode);
             
             result = true;
         }
@@ -110,7 +109,7 @@ public class MuseumSourceTransferHandler extends TransferHandler {
             List<MuseumExhibit> data = TransferMuseumExhibit.Flavor.getTransferMuseumExhibit(support);
             MutableTreeNode targetNode = getTargetNode(support);
             
-            controller.importExhibit((CollectionNode) targetNode, data);
+//            controller.importExhibit((CollectionNode) targetNode, data);
             result = true;
         }
         else if (support.isDataFlavorSupported(DataFlavor.javaFileListFlavor)) {
@@ -124,7 +123,7 @@ public class MuseumSourceTransferHandler extends TransferHandler {
                 return false;
             }
             
-            result = controller.importFile((ExhibitCollectionNode) targetNode, fileList);
+            result = false; //controller.importFile((ExhibitCollectionNode) targetNode, fileList);
         }
         else {
             result = false;

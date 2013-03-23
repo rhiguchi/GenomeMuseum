@@ -99,9 +99,10 @@ public class GenomeMuseum extends Application {
         listBinding.bindTable(mainView.exhibitListView.dataTable);
         listBinding.bindSearchEngineTextField(mainView.quickSearchField, false);
         
-        FolderDirectoryTreeController.Binding treeBinding =
-                new FolderDirectoryTreeController.Binding(folderDirectoryTreeController);
-        treeBinding.bindTree(mainView.sourceList);
+        folderDirectoryTreeController.installTo(mainView.sourceList);
+        mainView.addBoxFolder.setAction(folderDirectoryTreeController.nodeFolderAddAction);
+        mainView.addListBox.setAction(folderDirectoryTreeController.collectionFolderAddAction);
+        mainView.addSmartBox.setAction(folderDirectoryTreeController.filterFolderAddAction);
     }
 
     @Override
