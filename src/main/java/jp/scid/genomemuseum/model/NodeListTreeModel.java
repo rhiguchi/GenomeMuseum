@@ -98,6 +98,21 @@ public class NodeListTreeModel implements TreeModel {
         return new DefaultMutableTreeNode(nodeObject, allowsChildren);
     }
     
+    public TreePath getPathForRoot(TreeNode node) {
+        TreeNode[] nodes = delegate.getPathToRoot(node);
+        TreePath path = new TreePath(nodes);
+        return path;
+    }
+
+    public TreePath getPathOfIndex(int[] indices) {
+        TreePath path = new TreePath(getRoot());
+        for (int index: indices) {
+            Object child = getChild(path.getLastPathComponent(), index);
+            path = path.pathByAddingChild(child);
+        }
+        return path;
+    }
+    
     // treeSource
     public TreeSource getTreeSource() {
         return treeSource;

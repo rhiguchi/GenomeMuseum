@@ -4,8 +4,6 @@ import java.awt.FileDialog;
 import java.io.File;
 import java.sql.SQLException;
 import java.util.Arrays;
-import java.util.Comparator;
-import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -18,20 +16,15 @@ import javax.swing.JMenuBar;
 import jp.scid.bio.store.FileLibrary;
 import jp.scid.bio.store.LibrarySchemaManager;
 import jp.scid.bio.store.SequenceLibrary;
-import jp.scid.genomemuseum.gui.FolderDirectoryTreeController.GenomeMuseumTreeSource;
+import jp.scid.genomemuseum.model.MuseumTreeSource;
 import jp.scid.genomemuseum.model.PersistentGeneticSequenceLibrary;
-import jp.scid.genomemuseum.model.sql.tables.records.MuseumExhibitRecord;
 import jp.scid.genomemuseum.view.MainMenuBar;
 import jp.scid.genomemuseum.view.MainView;
 
 import org.jdesktop.application.Application;
 import org.jdesktop.application.ProxyActions;
-import org.jooq.Field;
-import org.jooq.UpdatableTable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import ca.odell.glazedlists.gui.AdvancedTableFormat;
 
 @ProxyActions({"selectAll", "deselect"})
 public class GenomeMuseum extends Application {
@@ -43,7 +36,7 @@ public class GenomeMuseum extends Application {
     
     private MainFrameController mainFrameController;
     private GeneticSequenceListController geneticSequenceListController;
-    private FolderDirectoryTreeController folderDirectoryTreeController;
+    private FolderTreeController folderDirectoryTreeController;
     
     private ExecutorService taskExecutor;
     
@@ -55,7 +48,7 @@ public class GenomeMuseum extends Application {
 
         mainFrameController = new MainFrameController();
         geneticSequenceListController = new GeneticSequenceListController();
-        folderDirectoryTreeController = new FolderDirectoryTreeController();
+        folderDirectoryTreeController = new FolderTreeController();
     }
 
     private void openSchema() throws SQLException {
@@ -99,10 +92,11 @@ public class GenomeMuseum extends Application {
         listBinding.bindTable(mainView.exhibitListView.dataTable);
         listBinding.bindSearchEngineTextField(mainView.quickSearchField, false);
         
-        folderDirectoryTreeController.installTo(mainView.sourceList);
-        mainView.addBoxFolder.setAction(folderDirectoryTreeController.nodeFolderAddAction);
-        mainView.addListBox.setAction(folderDirectoryTreeController.collectionFolderAddAction);
-        mainView.addSmartBox.setAction(folderDirectoryTreeController.filterFolderAddAction);
+        folderDirectoryTreeController.bindTree(mainView.sourceList);
+        folderDirectoryTreeController.bindBasicFolderAddButton(mainView.addBoxFolder);
+        folderDirectoryTreeController.bindGroupFolderAddButton(mainView.addListBox);
+        folderDirectoryTreeController.bindFilterFolderAddButton(mainView.addSmartBox);
+        folderDirectoryTreeController.bindFolderRemoveButton(mainView.removeBoxButton);
     }
 
     @Override
@@ -126,8 +120,9 @@ public class GenomeMuseum extends Application {
         geneticSequenceListController.setModel(senquenceModel);
         
         // tree model
-        GenomeMuseumTreeSource treeSource = new GenomeMuseumTreeSource(sequenceLibrary);
-        folderDirectoryTreeController.setTreeSource(treeSource);
+        MuseumTreeSource treeSource = new MuseumTreeSource();
+        treeSource.setSequenceLibrary(sequenceLibrary);
+        folderDirectoryTreeController.setModel(treeSource);
         
         showMainFrame();
     }
