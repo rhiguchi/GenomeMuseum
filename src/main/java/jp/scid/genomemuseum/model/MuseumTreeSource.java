@@ -138,6 +138,12 @@ public class MuseumTreeSource implements NodeListTreeModel.TreeSource {
             // TODO Auto-generated method stub
             return null;
         }
+        
+        @Override
+        public boolean canMove(FolderTreeNode node) {
+            // TODO Auto-generated method stub
+            return false;
+        }
     }
     
     private static abstract class TreeElement implements TextProvider {
@@ -205,6 +211,7 @@ public class MuseumTreeSource implements NodeListTreeModel.TreeSource {
 
         FolderTreeNode addChild(CollectionType type);
         
+        boolean canMove(FolderTreeNode node);
     }
     
     public interface FolderTreeNode {
@@ -212,6 +219,13 @@ public class MuseumTreeSource implements NodeListTreeModel.TreeSource {
         FolderContainer getParentContainer();
 
         void remove();
+        
+    }
+    
+
+    public interface SequenceImportable {
+
+        FolderTreeNode addChild(CollectionType type);
         
     }
 

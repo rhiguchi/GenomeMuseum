@@ -4,6 +4,7 @@ import javax.swing.AbstractButton;
 import javax.swing.Action;
 import javax.swing.JTree;
 import javax.swing.tree.DefaultMutableTreeNode;
+import javax.swing.tree.TreeModel;
 import javax.swing.tree.TreePath;
 import javax.swing.tree.TreeSelectionModel;
 
@@ -22,6 +23,7 @@ public class FolderTreeController {
     
     private final NodeListTreeModel treeModel;
     private final TreeSelectionModel selectionModel;
+    private final FolderTreeTransferHandler transferHandler;
     
     private final Action basicFolderAddAction;
     private final Action groupFolderAddAction;
@@ -33,6 +35,7 @@ public class FolderTreeController {
     public FolderTreeController() {
         treeModel = new NodeListTreeModel();
         selectionModel = new TreeController.SelectableSelectionModel();
+        transferHandler = new FolderTreeTransferHandler(this);
         
         ActionManager actionManager = new ActionManager(this);
         basicFolderAddAction = actionManager.getAction("addBasicFolder");
@@ -45,6 +48,16 @@ public class FolderTreeController {
         treeModel.setTreeSource(treeSource);
         this.treeSource = treeSource;
     }
+    
+    public TreeModel getTreeModel() {
+        return treeModel;
+    }
+
+    public TreePath getSelectionPath() {
+        return selectionModel.getSelectionPath();
+    }
+    
+    // Transfer
     
     // Actions
     public boolean canAdd() {
@@ -96,7 +109,7 @@ public class FolderTreeController {
     }
 
     private Object getSelectedNodeObject() {
-        TreePath selectionPath = selectionModel.getSelectionPath();
+        TreePath selectionPath = getSelectionPath();
         Object selectedNodeObject;
         if (selectionPath.getLastPathComponent() instanceof DefaultMutableTreeNode) {
             selectedNodeObject = ((DefaultMutableTreeNode) selectionPath.getLastPathComponent()).getUserObject();
@@ -106,6 +119,7 @@ public class FolderTreeController {
         }
         return selectedNodeObject;
     }
+
     
     public boolean canRemove() {
         return getSelectedNodeObject() instanceof FolderTreeNode;
@@ -125,8 +139,8 @@ public class FolderTreeController {
 
 //        updateExpansion(tree);
 //        tree.addTreeWillExpandListener(this);
-//
-//        tree.setTransferHandler(getTransferHandler());
+        
+        tree.setTransferHandler(transferHandler);
     }
     
     public void bindBasicFolderAddButton(AbstractButton button) {
