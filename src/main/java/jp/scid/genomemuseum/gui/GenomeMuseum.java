@@ -17,7 +17,6 @@ import jp.scid.bio.store.FileLibrary;
 import jp.scid.bio.store.LibrarySchemaManager;
 import jp.scid.bio.store.SequenceLibrary;
 import jp.scid.genomemuseum.model.MuseumTreeSource;
-import jp.scid.genomemuseum.model.PersistentGeneticSequenceLibrary;
 import jp.scid.genomemuseum.view.MainMenuBar;
 import jp.scid.genomemuseum.view.MainView;
 
@@ -113,11 +112,11 @@ public class GenomeMuseum extends Application {
         
         // sequenceModel
         SequenceLibrary sequenceLibrary = schemaManager.createSequenceLibrary();
-        PersistentGeneticSequenceLibrary senquenceModel =
-                new PersistentGeneticSequenceLibrary(sequenceLibrary);
-        senquenceModel.setFileLibrary(createFileLibrary());
-        
-        geneticSequenceListController.setModel(senquenceModel);
+//        PersistentGeneticSequenceLibrary senquenceModel =
+//                new PersistentGeneticSequenceLibrary(sequenceLibrary);
+//        senquenceModel.setFileLibrary(createFileLibrary());
+//        
+//        geneticSequenceListController.setModel(senquenceModel);
         
         // tree model
         MuseumTreeSource treeSource = new MuseumTreeSource();

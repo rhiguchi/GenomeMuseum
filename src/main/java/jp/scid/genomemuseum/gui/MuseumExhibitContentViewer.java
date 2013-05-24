@@ -14,18 +14,13 @@ import javax.swing.text.BadLocationException;
 import javax.swing.text.Document;
 import javax.swing.text.PlainDocument;
 
-import jp.scid.bio.Feature;
-import jp.scid.bio.GenBank;
-import jp.scid.bio.SequenceBioData;
-import jp.scid.bio.SequenceBioDataFormat;
-import jp.scid.bio.SequenceBioDataReader;
 import jp.scid.genomemuseum.model.MuseumExhibit;
 import jp.scid.genomemuseum.model.MuseumExhibitLibrary;
 import jp.scid.genomemuseum.view.FileContentView;
-//import jp.scid.motifviewer.gui.MotifViewerController;
-//import jp.scid.motifviewer.gui.MotifViewerView;
 
 import org.jdesktop.application.AbstractBean;
+//import jp.scid.motifviewer.gui.MotifViewerController;
+//import jp.scid.motifviewer.gui.MotifViewerView;
 
 public class MuseumExhibitContentViewer extends AbstractBean {
     private Document document = new PlainDocument();
@@ -129,36 +124,8 @@ public class MuseumExhibitContentViewer extends AbstractBean {
             }
             
             // get bio data
-            Reader source = new StringReader(content.toString());
-            
-            SequenceBioDataFormat<?> format = library.getFormat(exhibit.getFileType());
-            
-            if (format != null) {
-                loadBioData(source, format);
-            }
             
             return null;
-        }
-
-        void loadBioData(Reader source, SequenceBioDataFormat<?> format) throws IOException {
-            @SuppressWarnings({ "rawtypes", "unchecked" })
-            SequenceBioDataReader bioDataReader =
-            new SequenceBioDataReader(source, format);
-
-            // TODO multisection
-            if (bioDataReader.hasNext()) {
-                SequenceBioData bioData = bioDataReader.next();
-
-                setSequence(bioData.getSequence());
-
-                if (bioData instanceof GenBank) {
-                    List<Feature> features = ((GenBank) bioData).getFeatures();
-                }
-
-                // TODO set to controller
-            }
-
-            bioDataReader.close();
         }
         
         @Override

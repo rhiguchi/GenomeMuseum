@@ -15,13 +15,12 @@ import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 
-import jp.scid.bio.Fasta;
-import jp.scid.bio.FastaFormat;
-import jp.scid.bio.GenBank;
-import jp.scid.bio.GenBankFormat;
-import jp.scid.bio.SequenceBioDataFormat;
-import jp.scid.bio.SequenceBioDataFormatSearcher;
-import jp.scid.bio.SequenceBioDataReader;
+import jp.scid.bio.sequence.SequenceBioDataFormat;
+import jp.scid.bio.sequence.SequenceBioDataReader;
+import jp.scid.bio.sequence.fasta.Fasta;
+import jp.scid.bio.sequence.fasta.FastaFormat;
+import jp.scid.bio.sequence.genbank.GenBank;
+import jp.scid.bio.sequence.genbank.GenBankFormat;
 import jp.scid.genomemuseum.model.MuseumExhibit.FileType;
 import jp.scid.genomemuseum.model.sql.tables.records.CollectionBoxItemRecord;
 import jp.scid.genomemuseum.model.sql.tables.records.MuseumExhibitRecord;
@@ -31,13 +30,12 @@ import org.jooq.RecordHandler;
 import org.jooq.Result;
 import org.jooq.impl.Factory;
 
+@Deprecated
 public class MuseumExhibitLibrary {
     final ExhibitFileManager fileManager; 
     
     private final GenBankFormat genBankFormat;
     private final FastaFormat fastaFormat;
-    
-    private final SequenceBioDataFormatSearcher searcher;
     
     final Factory factory;
     
@@ -45,7 +43,6 @@ public class MuseumExhibitLibrary {
     public MuseumExhibitLibrary(Factory factory) {
         genBankFormat = new GenBankFormat();
         fastaFormat = new FastaFormat();
-        searcher = new SequenceBioDataFormatSearcher(Arrays.asList(genBankFormat, fastaFormat));
         fileManager = new ExhibitFileManager(); 
         
         this.factory = factory;
@@ -126,85 +123,6 @@ public class MuseumExhibitLibrary {
         return format;
     }
 
-    public FileType findFileType(URL url) throws IOException {
-        SequenceBioDataFormat<?> format = searcher.findFormat(url);
-        final FileType newFileType;
-        
-        if (format instanceof GenBankFormat) {
-            newFileType = FileType.GENBANK;
-        }
-        else if (format instanceof FastaFormat) {
-            newFileType = FileType.FASTA;
-        }
-        else {
-            newFileType = FileType.UNKNOWN;
-        }
-        return newFileType;
-    }
-    
-    void loadGenBank(MuseumExhibitRecord element, SequenceBioDataReader<GenBank> dataReader) {
-        element.setFileType(FileType.GENBANK.ordinal());
-        
-        if (dataReader.hasNext()) {
-            GenBank data = dataReader.next();
-            
-            element.setName(data.getLocus().getName());
-            element.setSequenceLength(data.getLocus().getSequenceLength());
-            element.setAccession(data.getAccession().primary());
-            element.setNamespace(data.getLocus().getTopology());
-            
-            // TODO
-        }
-    }
-    
-    void loadFasta(MuseumExhibitRecord element, SequenceBioDataReader<Fasta> dataReader) {
-        element.setFileType(FileType.FASTA.ordinal());
-        
-        if (dataReader.hasNext()) {
-            Fasta data = dataReader.next();
-            
-            element.setName(data.name());
-            element.setSequenceLength(data.sequence().length());
-            element.setAccession(data.accession());
-            element.setNamespace(data.namespace());
-            element.setDefinition(data.description());
-            element.setVersion(data.version());
-            
-            // TODO identifier
-        }
-    }
-
-    public void reloadExhibit(MuseumExhibitRecord exhibit, URL source, FileType fileType) throws IOException {
-        Reader reader = new InputStreamReader(source.openStream());
-        
-        try {
-            if (fileType == FileType.GENBANK) {
-                SequenceBioDataReader<GenBank> dataReader =
-                        new SequenceBioDataReader<GenBank>(reader, genBankFormat);
-                loadGenBank(exhibit, dataReader);
-            }
-            else if (fileType == FileType.FASTA) {
-                SequenceBioDataReader<Fasta> dataReader =
-                        new SequenceBioDataReader<Fasta>(reader, fastaFormat);
-                loadFasta(exhibit, dataReader);
-            }
-            else {
-                throw new IllegalArgumentException(format("file type %s is not supported", fileType));
-            }
-        }
-        finally {
-            reader.close();
-        }
-        
-        exhibit.setFileType(fileType.ordinal());
-        
-        try {
-            exhibit.setFileUri(source.toURI().toString());
-        }
-        catch (URISyntaxException e) {
-            throw new IOException(e);
-        }
-    }
     
     @Override
     public String toString() {
