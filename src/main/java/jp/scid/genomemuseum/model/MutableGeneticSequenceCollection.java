@@ -5,17 +5,12 @@ import java.util.Collection;
 import java.util.List;
 
 import jp.scid.bio.store.jooq.tables.records.GeneticSequenceRecord;
+import jp.scid.bio.store.sequence.GeneticSequence;
 
 public interface MutableGeneticSequenceCollection extends GeneticSequenceCollection {
-    GeneticSequenceRecord newElement();
     
-    int remove(List<GeneticSequenceRecord> list);
 
-    boolean addFile(File file);
-    
     boolean add(GeneticSequenceRecord record);
     
     boolean add(Collection<GeneticSequenceRecord> record);
-
-    boolean remove(GeneticSequenceRecord record);
 }

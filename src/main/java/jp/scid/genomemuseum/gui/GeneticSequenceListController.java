@@ -19,6 +19,9 @@ import jp.scid.genomemuseum.model.GeneticSequenceCollection;
 import jp.scid.genomemuseum.model.MutableGeneticSequenceCollection;
 import jp.scid.genomemuseum.model.SequenceImportable;
 import jp.scid.genomemuseum.model.sql.tables.records.MuseumExhibitRecord;
+import jp.scid.gui.control.BooleanModelBindings;
+import jp.scid.gui.model.ValueModel;
+import jp.scid.gui.model.ValueModels;
 
 import org.jooq.Field;
 import org.slf4j.Logger;
@@ -28,6 +31,8 @@ import ca.odell.glazedlists.BasicEventList;
 import ca.odell.glazedlists.EventList;
 import ca.odell.glazedlists.TextFilterator;
 import ca.odell.glazedlists.gui.AdvancedTableFormat;
+import ca.odell.glazedlists.swing.DefaultEventListModel;
+import ca.odell.glazedlists.swing.EventListModel;
 
 public class GeneticSequenceListController extends ListController<GeneticSequence> {
     private final static Logger logger = LoggerFactory.getLogger(GeneticSequenceListController.class);
@@ -45,6 +50,10 @@ public class GeneticSequenceListController extends ListController<GeneticSequenc
         listSource = ListModelEventListAdapter.newInstanceOf(GeneticSequence.class, source);
         
         transferHandler = new GeneticSequenceListTransferHandler(this);
+        
+        ListModel selection = new DefaultEventListModel<GeneticSequence>(selectionModel.getSelected());
+        ValueModel<Boolean> isNonEmpty = ValueModels.newListElementsExistenceModel(selection);
+        new BooleanModelBindings(isNonEmpty).bindToActionEnabled(removeAction);
     }
     
     public GeneticSequenceListController() {
@@ -62,11 +71,6 @@ public class GeneticSequenceListController extends ListController<GeneticSequenc
         this.fileDialog = fileDialog;
     }
     
-    @Override
-    public boolean canRemove() {
-        return model instanceof MutableGeneticSequenceCollection;
-    }
-
     // addFile
     public boolean canImportFile() {
         return model instanceof SequenceImportable;
@@ -106,21 +110,16 @@ public class GeneticSequenceListController extends ListController<GeneticSequenc
 //        File file = new File(dialog.getDirectory(), dialog.getFile());
 //        importFile(file);
 //    }
-    
-//    @Override
-//    public List<GeneticSequence> remove() {
-//        MutableGeneticSequenceCollection model = mutableModel();
-//        List<GeneticSequence> list;
-//        
-//        if (model instanceof GeneticSequenceLibrary) {
-//            ((GeneticSequenceLibrary) model).remove(list = super.remove(), true);
-//        }
-//        else {
-//            model.remove(list = super.remove());
-//        }
-//        
-//        return list;
-//    }
+
+    @Override
+    public boolean canRemove() {
+        return model instanceof SequenceImportable;
+    }
+
+    @Override
+    public void remove() {
+        ((SequenceImportable) model).remove(getSelections());
+    }
     
     // model
     public GeneticSequenceCollection getModel() {
@@ -150,7 +149,7 @@ public class GeneticSequenceListController extends ListController<GeneticSequenc
     
     protected class Binding extends ListController<GeneticSequence>.Binding {
         final GeneticSequenceTableFormat tableFormat = new GeneticSequenceTableFormat();
-        
+
         public Binding() {
         }
 
@@ -216,7 +215,7 @@ public class GeneticSequenceListController extends ListController<GeneticSequenc
 
         @Override
         protected Result doInBackground() throws Exception {
-            model.addFile(file);
+//            model.addFile(file);
             return null;
         }
     }

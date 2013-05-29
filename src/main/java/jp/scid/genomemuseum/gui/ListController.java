@@ -41,6 +41,8 @@ import ca.odell.glazedlists.ObservableElementList.Connector;
 import ca.odell.glazedlists.PluggableList;
 import ca.odell.glazedlists.SortedList;
 import ca.odell.glazedlists.TextFilterator;
+import ca.odell.glazedlists.event.ListEvent;
+import ca.odell.glazedlists.event.ListEventListener;
 import ca.odell.glazedlists.gui.AdvancedTableFormat;
 import ca.odell.glazedlists.gui.TableFormat;
 import ca.odell.glazedlists.impl.filter.StringTextFilterator;
@@ -198,12 +200,13 @@ public abstract class ListController<E> {
         return removeAt(index) != null;
     }
     
-    public List<E> remove() {
+    public void remove() {
         int minSelectionIndex = selectionModel.getMinSelectionIndex();
         int maxSelectionIndex = selectionModel.getMaxSelectionIndex();
         
-        if (minSelectionIndex < 0 || maxSelectionIndex < 0)
-            return Collections.emptyList();
+        if (minSelectionIndex < 0 || maxSelectionIndex < 0) {
+            return;
+        }
         
         int[] indices = new int[maxSelectionIndex - minSelectionIndex + 1];
         int count = 0;
@@ -212,21 +215,16 @@ public abstract class ListController<E> {
                 indices[count++] = index;
             }
         }
-        
         int[] selectedIndices = Arrays.copyOf(indices, count);
-        return removeAt(selectedIndices);
+        
+        removeAt(selectedIndices);
     }
 
-    public List<E> removeAt(int... indices) {
-        List<E> removedList = new LinkedList<E>();
-        
+    public void removeAt(int... indices) {
         for (int i = indices.length - 1; i >= 0; i--) {
             int index = indices[i];
             E removed = removeAt(index);
-            removedList.add(removed);
         }
-        
-        return removedList;
     }
     
     // selections
