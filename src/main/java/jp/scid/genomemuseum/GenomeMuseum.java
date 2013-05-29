@@ -12,6 +12,7 @@ public class GenomeMuseum {
         System.setProperty("com.apple.mrj.application.apple.menu.about.name", "GenomeMuseum");
         
         logger.info("Welcome to GenomeMuseum.");
+        logger.fine("Debug logging mode");
         
         Application.launch(jp.scid.genomemuseum.gui.GenomeMuseum.class, args);
     }
