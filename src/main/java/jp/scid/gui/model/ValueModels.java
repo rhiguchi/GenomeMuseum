@@ -1,7 +1,13 @@
 package jp.scid.gui.model;
 
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
 import java.util.Collections;
 import java.util.List;
+
+import javax.swing.ListModel;
+import javax.swing.event.ListDataEvent;
+import javax.swing.event.ListDataListener;
 
 import jp.scid.gui.model.Transformers.BooleanElementValue;
 import jp.scid.gui.model.Transformers.CollectionSelector;
@@ -54,4 +60,131 @@ public class ValueModels {
         
         return model; 
     }
+    
+    public static ValueModel<Boolean> newListElementsExistenceModel(ListModel source) {
+        ListCountModelAdapter adapter = new ListCountModelAdapter(newIntegerModel(0));
+        adapter.setSource(source);
+        
+        NumberThresholdModel<Integer> model = new NumberThresholdModel<Integer>(0);
+        model.setSource(adapter.getValueModel());
+        
+        return model.getValueModel();
+    }
+    
+    static class ListCountModelAdapter extends ValueModelConnector<Integer, ListModel> implements ListDataListener {
+        public ListCountModelAdapter(ValueModel<Integer> target) {
+            super(target);
+        }
+        
+        @Override
+        protected Integer getModelValue(ListModel source) {
+            return source.getSize();
+        }
+
+        @Override
+        public void intervalAdded(ListDataEvent e) {
+            updateModelValue();
+        }
+        
+        @Override
+        public void intervalRemoved(ListDataEvent e) {
+            updateModelValue();
+        }
+        
+        @Override
+        public void contentsChanged(ListDataEvent e) {
+            updateModelValue();
+        }
+        
+        @Override
+        protected void installSourceChangeListener(ListModel source) {
+            source.addListDataListener(this);
+        }
+        
+        @Override
+        protected void uninstallSourceChangeListener(ListModel source) {
+            source.removeListDataListener(this);
+        }
+    }
+}
+
+class NumberThresholdModel<T extends Number & Comparable<T>> extends ValueModelConnector<Boolean, ValueModel<T>> implements PropertyChangeListener {
+    private final T thresholdValue;
+    
+    public NumberThresholdModel(T thresholdValue) {
+        super(ValueModels.newBooleanModel(false));
+        
+        if (thresholdValue == null) throw new IllegalArgumentException("thresholdValue must not be null");
+        this.thresholdValue = thresholdValue;
+    }
+
+
+    @Override
+    public void propertyChange(PropertyChangeEvent evt) {
+        updateModelValue();
+    }
+
+
+    @Override
+    protected Boolean getModelValue(ValueModel<T> source) {
+        T value = source.getValue();
+        
+        return thresholdValue.compareTo(value) < 0;
+    }
+
+    @Override
+    protected void installSourceChangeListener(ValueModel<T> source) {
+        source.addPropertyChangeListener(this);
+    }
+
+    @Override
+    protected void uninstallSourceChangeListener(ValueModel<T> source) {
+        source.removePropertyChangeListener(this);
+    }
+}
+
+abstract class ValueModelConnector<T, S> {
+    private final ValueModel<T> target;
+    private S source;
+
+    protected ValueModelConnector(ValueModel<T> target) {
+        if (target == null) throw new IllegalArgumentException("target must not be null");
+        this.target = target;
+    }
+    
+    public ValueModelConnector(T initialValue) {
+        this(ValueModels.newValueModel(initialValue));
+    }
+
+    public ValueModel<T> getValueModel() {
+        return target;
+    }
+
+    protected void setValue(T newValue) {
+        target.setValue(newValue);
+    }
+    
+    public void updateModelValue() {
+        T newValue = getModelValue(source);
+        setValue(newValue);
+    }
+    
+    abstract protected T getModelValue(S source);
+    
+    public void setSource(S source) {
+        if (this.source != null) {
+            uninstallSourceChangeListener(this.source);
+        }
+        
+        this.source = source;
+        updateModelValue();
+        
+        if (source != null) {
+            installSourceChangeListener(source);
+        }
+    }
+    
+    abstract protected void installSourceChangeListener(S source);
+    
+    abstract protected void uninstallSourceChangeListener(S source);
 }
