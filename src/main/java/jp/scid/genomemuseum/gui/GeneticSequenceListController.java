@@ -4,42 +4,51 @@ import static jp.scid.bio.store.jooq.Tables.*;
 
 import java.awt.FileDialog;
 import java.awt.Frame;
-import java.awt.event.ActionEvent;
 import java.io.File;
+import java.io.IOException;
+import java.text.ParseException;
 import java.util.Comparator;
 import java.util.List;
 
-import javax.swing.AbstractAction;
-import javax.swing.Action;
 import javax.swing.JTable;
+import javax.swing.ListModel;
 import javax.swing.SwingWorker;
-import javax.swing.event.ListDataEvent;
-import javax.swing.event.ListDataListener;
 
-import jp.scid.bio.store.jooq.tables.records.GeneticSequenceRecord;
+import jp.scid.bio.store.sequence.GeneticSequence;
 import jp.scid.genomemuseum.model.GeneticSequenceCollection;
-import jp.scid.genomemuseum.model.GeneticSequenceLibrary;
 import jp.scid.genomemuseum.model.MutableGeneticSequenceCollection;
+import jp.scid.genomemuseum.model.SequenceImportable;
 import jp.scid.genomemuseum.model.sql.tables.records.MuseumExhibitRecord;
 
 import org.jooq.Field;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import ca.odell.glazedlists.GlazedLists;
+import ca.odell.glazedlists.BasicEventList;
+import ca.odell.glazedlists.EventList;
 import ca.odell.glazedlists.TextFilterator;
 import ca.odell.glazedlists.gui.AdvancedTableFormat;
 
-public class GeneticSequenceListController extends ListController<GeneticSequenceRecord> {
+public class GeneticSequenceListController extends ListController<GeneticSequence> {
     private final static Logger logger = LoggerFactory.getLogger(GeneticSequenceListController.class);
     
-    private final ModelChangeListener modelChangeListener = new ModelChangeListener();
+    private final GeneticSequenceListTransferHandler transferHandler;
+    
+    private final ListModelEventListAdapter<GeneticSequence> listSource;
     
     private FileDialog fileDialog = null;
     
     private GeneticSequenceCollection model;
     
+    public GeneticSequenceListController(EventList<GeneticSequence> source) {
+        super(source);
+        listSource = ListModelEventListAdapter.newInstanceOf(GeneticSequence.class, source);
+        
+        transferHandler = new GeneticSequenceListTransferHandler(this);
+    }
+    
     public GeneticSequenceListController() {
+        this(new BasicEventList<GeneticSequence>());
     }
     
     public FileDialog getFileDialog() {
@@ -54,58 +63,64 @@ public class GeneticSequenceListController extends ListController<GeneticSequenc
     }
     
     @Override
-    public boolean importFromFile(File source) {
-        logger.debug("add file: %s", source);
-        MutableGeneticSequenceCollection model = mutableModel();
+    public boolean canRemove() {
+        return model instanceof MutableGeneticSequenceCollection;
+    }
+
+    // addFile
+    public boolean canImportFile() {
+        return model instanceof SequenceImportable;
+    }
+    
+    @Override
+    public boolean importFile(File source) throws IOException {
+        logger.debug("importFile: {}", source);
         
-        FileImportTask task = new FileImportTask(model, source);
-        task.execute();
+        SequenceImportable model = (SequenceImportable) this.model;
+        
+        // TODO use import asynchronous queue
+        try {
+            model.importSequence(source);
+        }
+        catch (ParseException e) {
+            logger.info("cannot parse to import: {}", e.getLocalizedMessage());
+            return false;
+        }
+        
+        
+//        FileImportTask task = new FileImportTask(model, source);
+//        task.execute();
         
         return true;
     }
     
-    public void addFile() {
-        FileDialog dialog = getFileDialog();
-        
-        dialog.setVisible(true);
-        
-        if (dialog.getFile() == null) {
-            return;
-        }
-        
-        File file = new File(dialog.getDirectory(), dialog.getFile());
-        importFromFile(file);
-    }
+//    public void addFile() {
+//        FileDialog dialog = getFileDialog();
+//        
+//        dialog.setVisible(true);
+//        
+//        if (dialog.getFile() == null) {
+//            return;
+//        }
+//        
+//        File file = new File(dialog.getDirectory(), dialog.getFile());
+//        importFile(file);
+//    }
     
-    @Override
-    protected Action createAddAction() {
-        return new AbstractAction("add") {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                addFile();
-            }
-        };
-    }
-    
-    @Override
-    public List<GeneticSequenceRecord> remove() {
-        MutableGeneticSequenceCollection model = mutableModel();
-        List<GeneticSequenceRecord> list;
-        
-        if (model instanceof GeneticSequenceLibrary) {
-            ((GeneticSequenceLibrary) model).remove(list = super.remove(), true);
-        }
-        else {
-            model.remove(list = super.remove());
-        }
-        
-        return list;
-    }
-    
-    @Override
-    protected File getFile(GeneticSequenceRecord element) {
-        return model.getFilePath(element);
-    }
+//    @Override
+//    public List<GeneticSequence> remove() {
+//        MutableGeneticSequenceCollection model = mutableModel();
+//        List<GeneticSequence> list;
+//        
+//        if (model instanceof GeneticSequenceLibrary) {
+//            ((GeneticSequenceLibrary) model).remove(list = super.remove(), true);
+//        }
+//        else {
+//            model.remove(list = super.remove());
+//        }
+//        
+//        return list;
+//    }
     
     // model
     public GeneticSequenceCollection getModel() {
@@ -117,26 +132,10 @@ public class GeneticSequenceListController extends ListController<GeneticSequenc
     }
     
     public void setModel(GeneticSequenceCollection newModel) {
-        if (model != null) {
-            model.removeListDataListener(modelChangeListener);
-        }
-        
         this.model = newModel;
         
-        clear();
-        
-        if (newModel != null) {
-            setCanAdd(newModel instanceof MutableGeneticSequenceCollection);
-            setCanRemove(newModel instanceof MutableGeneticSequenceCollection);
-            
-            newModel.addListDataListener(modelChangeListener);
-            addAll(newModel.fetch());
-        }
-    }
-    
-    @Override
-    protected GeneticSequenceRecord createElement() {
-        return mutableModel().newElement();
+        ListModel collection = newModel == null ? null : newModel.getCollection();
+        listSource.setSource(collection);
     }
     
     @Override
@@ -144,46 +143,15 @@ public class GeneticSequenceListController extends ListController<GeneticSequenc
         return new ExhibitTextFilterator();
     }
     
-    /**
-     * fetch entities
-     */
-    public void fetch() {
-        fetch(false);
+    @Override
+    public GeneticSequenceListTransferHandler getTransferHandler() {
+        return transferHandler;
     }
     
-    public void fetch(boolean updates) {
-        if (model == null) {
-            clear();
-        }
-        else {
-            GlazedLists.replaceAll(source, model.fetch(), updates);
-        }
-    }
-
-    private class ModelChangeListener implements ListDataListener {
-        @Override
-        public void intervalAdded(ListDataEvent e) {
-            fetch();
-        }
-
-        @Override
-        public void intervalRemoved(ListDataEvent e) {
-            fetch();
-        }
-
-        @Override
-        public void contentsChanged(ListDataEvent e) {
-            fetch(true);
-        }
-    }
-    
-    protected static class Binding extends ListController.Binding<GeneticSequenceRecord> {
-        final GeneticSequenceListController controller;
+    protected class Binding extends ListController<GeneticSequence>.Binding {
         final GeneticSequenceTableFormat tableFormat = new GeneticSequenceTableFormat();
         
-        public Binding(GeneticSequenceListController controller) {
-            super(controller);
-            this.controller = controller;
+        public Binding() {
         }
 
         public void bindTable(JTable table) {
@@ -193,7 +161,7 @@ public class GeneticSequenceListController extends ListController<GeneticSequenc
         }
     }
     
-    static class GeneticSequenceTableFormat implements AdvancedTableFormat<GeneticSequenceRecord> {
+    static class GeneticSequenceTableFormat implements AdvancedTableFormat<GeneticSequence> {
         List<Field<?>> fields = GENETIC_SEQUENCE.getFields();
                 
         @Override
@@ -208,7 +176,7 @@ public class GeneticSequenceListController extends ListController<GeneticSequenc
         }
 
         @Override
-        public Object getColumnValue(GeneticSequenceRecord baseObject, int column) {
+        public Object getColumnValue(GeneticSequence baseObject, int column) {
             Field<?> field = fields.get(column);
             return baseObject.getValue(field);
         }
@@ -225,15 +193,15 @@ public class GeneticSequenceListController extends ListController<GeneticSequenc
         }
     }
 
-    private static class ExhibitTextFilterator implements TextFilterator<GeneticSequenceRecord> {
+    private static class ExhibitTextFilterator implements TextFilterator<GeneticSequence> {
         @Override
-        public void getFilterStrings(List<String> baseList, GeneticSequenceRecord element) {
-            baseList.add(element.getAccession());
-            baseList.add(element.getDefinition());
-            baseList.add(element.getName());
-            baseList.add(element.getNamespace());
-            baseList.add(element.getOrganism());
-            baseList.add(element.getSource());
+        public void getFilterStrings(List<String> baseList, GeneticSequence element) {
+//            baseList.add(element.getAccession());
+//            baseList.add(element.getDefinition());
+//            baseList.add(element.getName());
+//            baseList.add(element.getNamespace());
+//            baseList.add(element.getOrganism());
+//            baseList.add(element.getSource());
         }
     }
 

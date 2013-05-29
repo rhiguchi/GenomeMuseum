@@ -34,26 +34,25 @@ import javax.swing.table.JTableHeader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import ca.odell.glazedlists.BasicEventList;
 import ca.odell.glazedlists.EventList;
 import ca.odell.glazedlists.FilterList;
-import ca.odell.glazedlists.GlazedLists;
 import ca.odell.glazedlists.ObservableElementList;
 import ca.odell.glazedlists.ObservableElementList.Connector;
+import ca.odell.glazedlists.PluggableList;
 import ca.odell.glazedlists.SortedList;
 import ca.odell.glazedlists.TextFilterator;
 import ca.odell.glazedlists.gui.AdvancedTableFormat;
 import ca.odell.glazedlists.gui.TableFormat;
 import ca.odell.glazedlists.impl.filter.StringTextFilterator;
 import ca.odell.glazedlists.matchers.SearchEngineTextMatcherEditor;
+import ca.odell.glazedlists.swing.DefaultEventTableModel;
 import ca.odell.glazedlists.swing.EventSelectionModel;
-import ca.odell.glazedlists.swing.EventTableModel;
 
 public abstract class ListController<E> {
     private final static Logger logger = LoggerFactory.getLogger(ListController.class);
     
     /** source */
-    protected final EventList<E> source;
+    protected final PluggableList<E> base;
     /** sorter */
     private final SortedList<E> sortedList;
     // filtering
@@ -65,16 +64,15 @@ public abstract class ListController<E> {
     protected final EventSelectionModel<E> selectionModel;
     
     // properties
-    private boolean canAdd = true;
     private boolean canRemove = false;
     // actions
     /** remove */
     protected final Action addAction;
     protected final Action removeAction;
     
-    public ListController() {
-        this.source = new BasicEventList<E>();
-        this.sortedList = new SortedList<E>(this.source, null);
+    public ListController(EventList<E> source) {
+        this.base = new PluggableList<E>(source);
+        this.sortedList = new SortedList<E>(this.base, null);
         
         matcherEditor = createTextMatcherEditor();
         filterList = new FilterList<E>(sortedList, matcherEditor);
@@ -98,11 +96,7 @@ public abstract class ListController<E> {
     
     // adding methods
     public boolean canAdd() {
-        return canAdd;
-    }
-    
-    public void setCanAdd(boolean canAdd) {
-        this.canAdd = canAdd;
+        return false;
     }
 
     public void add(E newElement) {
@@ -136,23 +130,6 @@ public abstract class ListController<E> {
         return newElement;
     }
 
-    public void setSource(List<E> newSource) {
-        EventList<E> list = source;
-        
-        list.getReadWriteLock().writeLock().lock();
-        try {
-            if (newSource == null || newSource.isEmpty()) {
-                list.clear();
-            }
-            else {
-                GlazedLists.replaceAll(list, newSource, false);
-            }
-        }
-        finally {
-            list.getReadWriteLock().writeLock().unlock();
-        }
-    }
-
     protected E createElement() {
         throw new UnsupportedOperationException("to create element must be implemented");
     }
@@ -161,7 +138,7 @@ public abstract class ListController<E> {
      * @param file 
      * @throws IOException  
      */
-    public boolean importFromFile(File file) throws IOException {
+    public boolean importFile(File file) throws IOException {
         logger.error("importFromFile must be implemented");
         return false;
     }
@@ -186,7 +163,7 @@ public abstract class ListController<E> {
     
     // removing methods
     public void clear() {
-        source.clear();
+        base.clear();
     }
 
     public boolean canRemove() {
@@ -377,6 +354,10 @@ public abstract class ListController<E> {
         };
     }
     
+    protected TransferHandler getTransferHandler() {
+        throw new UnsupportedOperationException("must be implemented for use");
+    }
+    
     private static class EmptyConnector<E> implements ObservableElementList.Connector<E> {
         public EmptyConnector() {
         }
@@ -396,29 +377,21 @@ public abstract class ListController<E> {
         }
     }
 
-    public static class Binding<E> {
-        final ListController<E> controller;
-        final TransferHandler transferHandler;
-        
-        public Binding(ListController<E> controller) {
-            super();
-            this.controller = controller;
-            transferHandler = createTransferHandler(controller);
-        }
-
-        protected TransferHandler createTransferHandler(ListController<E> controller) {
-            return new ListTransferHandler(controller);
+    public class Binding {
+        public Binding() {
         }
 
         public void bindTable(JTable table, TableFormat<? super E> tableFormat) {
-            EventTableModel<?> tableModel =
-                    new EventTableModel<E>(controller.getViewList(), tableFormat);
+            DefaultEventTableModel<?> tableModel =
+                    new DefaultEventTableModel<E>(getViewList(), tableFormat);
             table.setModel(tableModel);
-            table.setSelectionModel(controller.selectionModel);
-            table.putClientProperty("Binding.controller", controller);
+            table.setSelectionModel(selectionModel);
+            table.putClientProperty("Binding.controller", ListController.this);
         }
         
         public void bindTableTransferHandler(JTable table) {
+            TransferHandler transferHandler = getTransferHandler();
+            
             table.setTransferHandler(transferHandler);
             table.setDropMode(DropMode.INSERT_ROWS);
             table.setDragEnabled(true);
@@ -427,8 +400,8 @@ public abstract class ListController<E> {
             table.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_DELETE, 0), "delete");
             table.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_BACK_SPACE, 0), "delete");
 
-            table.getActionMap().put("add", controller.addAction);
-            table.getActionMap().put("delete", controller.removeAction);
+            table.getActionMap().put("add", addAction);
+            table.getActionMap().put("delete", removeAction);
             
             if (table.getParent() instanceof JComponent) {
                 ((JComponent) table.getParent()).setTransferHandler(transferHandler);
@@ -438,7 +411,7 @@ public abstract class ListController<E> {
         public TableHeaderClickHandler.Binder bindSortableTableHeader(
                 JTableHeader header, AdvancedTableFormat<? super E> tableFormat) {
             TableHeaderClickHandler.Binder binder =
-                    TableHeaderClickHandler.installTo(header, controller.sortedList, tableFormat);
+                    TableHeaderClickHandler.installTo(header, sortedList, tableFormat);
             
 
 //            orderStatementHandler = new ColumnOrderStatementHandler<MuseumExhibit>(comparator, tableFormat);
@@ -465,7 +438,7 @@ public abstract class ListController<E> {
             
             
             public void refilter() {
-                controller.refilter(textField.getText());
+                ListController.this.refilter(textField.getText());
             }
             
             public void insertUpdate(DocumentEvent e) { refilter(); }

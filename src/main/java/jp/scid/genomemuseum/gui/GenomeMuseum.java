@@ -16,6 +16,8 @@ import javax.swing.JMenuBar;
 import jp.scid.bio.store.FileLibrary;
 import jp.scid.bio.store.LibrarySchemaManager;
 import jp.scid.bio.store.SequenceLibrary;
+import jp.scid.genomemuseum.model.GeneticSequenceCollection;
+import jp.scid.genomemuseum.model.GeneticSequenceCollections;
 import jp.scid.genomemuseum.model.MuseumTreeSource;
 import jp.scid.genomemuseum.view.MainMenuBar;
 import jp.scid.genomemuseum.view.MainView;
@@ -87,7 +89,7 @@ public class GenomeMuseum extends Application {
         geneticSequenceListController.setFileDialog(openFileDialog);
         
         GeneticSequenceListController.Binding listBinding =
-                new GeneticSequenceListController.Binding(geneticSequenceListController);
+                geneticSequenceListController.new Binding();
         listBinding.bindTable(mainView.exhibitListView.dataTable);
         listBinding.bindSearchEngineTextField(mainView.quickSearchField, false);
         
@@ -112,11 +114,13 @@ public class GenomeMuseum extends Application {
         
         // sequenceModel
         SequenceLibrary sequenceLibrary = schemaManager.createSequenceLibrary();
+        GeneticSequenceCollection collection = GeneticSequenceCollections.fromSequenceLibrary(sequenceLibrary);
+        
 //        PersistentGeneticSequenceLibrary senquenceModel =
 //                new PersistentGeneticSequenceLibrary(sequenceLibrary);
 //        senquenceModel.setFileLibrary(createFileLibrary());
 //        
-//        geneticSequenceListController.setModel(senquenceModel);
+        geneticSequenceListController.setModel(collection);
         
         // tree model
         MuseumTreeSource treeSource = new MuseumTreeSource();

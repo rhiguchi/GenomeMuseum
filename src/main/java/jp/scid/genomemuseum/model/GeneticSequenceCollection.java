@@ -4,6 +4,7 @@ import java.io.File;
 import java.util.LinkedList;
 import java.util.List;
 
+import javax.swing.ListModel;
 import javax.swing.event.EventListenerList;
 import javax.swing.event.ListDataEvent;
 import javax.swing.event.ListDataListener;
@@ -11,15 +12,8 @@ import javax.swing.event.ListDataListener;
 import jp.scid.bio.store.jooq.tables.records.GeneticSequenceRecord;
 
 public interface GeneticSequenceCollection {
-    List<GeneticSequenceRecord> fetch();
     
-    File getFilePath(GeneticSequenceRecord record);
-    
-    boolean update(GeneticSequenceRecord record);
-    
-    void addListDataListener(ListDataListener listener);
-    
-    void removeListDataListener(ListDataListener listener);
+    ListModel getCollection();
 }
 
 abstract class AbstractGeneticSequenceCollection implements GeneticSequenceCollection {

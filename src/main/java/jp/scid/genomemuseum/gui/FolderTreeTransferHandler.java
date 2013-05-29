@@ -21,7 +21,7 @@ import jp.scid.genomemuseum.model.MuseumSourceModel.CollectionNode;
 import jp.scid.genomemuseum.model.MuseumSourceModel.ExhibitCollectionNode;
 import jp.scid.genomemuseum.model.MuseumTreeSource.FolderContainer;
 import jp.scid.genomemuseum.model.MuseumTreeSource.FolderTreeNode;
-import jp.scid.genomemuseum.model.MuseumTreeSource.SequenceImportable;
+import jp.scid.genomemuseum.model.SequenceImportable;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -99,15 +99,8 @@ public class FolderTreeTransferHandler extends TransferHandler {
             result = true;
         }
         else if (support.isDataFlavorSupported(DataFlavor.javaFileListFlavor)) {
-            List<File> fileList;
-            MutableTreeNode targetNode;
-            try {
-                fileList = ListTransferHandler.getTransferFile(support);
-                targetNode = getTargetNode(support);
-            }
-            catch (IOException e) {
-                return false;
-            }
+            List<File> fileList = GeneticSequenceListTransferHandler.getTransferFile(support);
+            MutableTreeNode targetNode = getTargetNode(support);
             
             result = false; //controller.importFile((ExhibitCollectionNode) targetNode, fileList);
         }

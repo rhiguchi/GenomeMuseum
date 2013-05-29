@@ -223,12 +223,6 @@ public class MuseumTreeSource implements NodeListTreeModel.TreeSource {
     }
     
 
-    public interface SequenceImportable {
-
-        FolderTreeNode addChild(CollectionType type);
-        
-    }
-
     public FolderTreeNode addFolder(CollectionType type, FolderTreeNode parent) {
         // TODO Auto-generated method stub
         return null;

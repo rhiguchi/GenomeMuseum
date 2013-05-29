@@ -5,6 +5,7 @@ import java.awt.datatransfer.Transferable;
 import java.awt.datatransfer.UnsupportedFlavorException;
 import java.io.File;
 import java.io.IOException;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
@@ -14,71 +15,80 @@ import javax.swing.TransferHandler;
 
 import jp.scid.genomemuseum.gui.transfer.TransferMuseumExhibit;
 
+import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.filefilter.HiddenFileFilter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class ListTransferHandler extends TransferHandler {
-    private final static Logger logger = LoggerFactory.getLogger(ListTransferHandler.class);
+public class GeneticSequenceListTransferHandler extends TransferHandler {
+    private final static Logger logger = LoggerFactory.getLogger(GeneticSequenceListTransferHandler.class);
 
-    final ListController<?> controller;
+    final GeneticSequenceListController controller;
     
-    public ListTransferHandler(ListController<?> controller) {
+    public GeneticSequenceListTransferHandler(GeneticSequenceListController controller) {
         this.controller = controller;
     }
     
     @Override
     public boolean canImport(TransferSupport support) {
+        logger.debug("canImport");
+        
         if (support.isDataFlavorSupported(TransferMuseumExhibit.Flavor.getInstance())) {
             return controller.canAdd();
         }
         else if (support.isDataFlavorSupported(DataFlavor.javaFileListFlavor)) {
-            return controller.canAdd();
+            return controller.canImportFile();
         }
         return false;
     }
-    
-    @Override
-    public boolean importData(TransferSupport support) {
-        final boolean result;
-        
-        if (support.isDataFlavorSupported(TransferMuseumExhibit.Flavor.getInstance())) {
-            logger.debug("entity import");
-            
-            result = false;
-        }
-        else if (support.isDataFlavorSupported(DataFlavor.javaFileListFlavor)) {
-            logger.debug("file import");
-            
-            int loadFileCount = 0;
-            
-            try {
-                List<File> files = getTransferFile(support);
-                
-                for (File file: files) {
-                    boolean accepted = controller.importFromFile(file);
 
-                    if (accepted) {
-                        loadFileCount++;
-                    }
-                }
-            }
-            catch (IOException e) {
-                return false;
+    private boolean importFiles(Collection<File> files) throws IOException {
+        boolean result = false;
+        
+        for (File file: files) {
+            if (file.isDirectory()) {
+                Collection<File> children =
+                        FileUtils.listFiles(file, HiddenFileFilter.VISIBLE, HiddenFileFilter.VISIBLE);
+                result |= importFiles(children);
+                continue;
             }
             
-            result = loadFileCount > 0;
-        }
-        else {
-            result = false;
+            // File
+            result |= controller.importFile(file);
         }
         
         return result;
     }
     
     @Override
+    public boolean importData(TransferSupport support) {
+        logger.debug("importData");
+        
+        if (support.isDataFlavorSupported(TransferMuseumExhibit.Flavor.getInstance())) {
+            logger.debug("entity import");
+        }
+        else if (support.isDataFlavorSupported(DataFlavor.javaFileListFlavor)) {
+            logger.debug("file import");
+            
+            List<File> files = getTransferFile(support);
+            try {
+                return importFiles(files);
+            }
+            catch (IOException e) {
+                logger.error("cannot import files", e);
+                return false;
+            }
+            catch (RuntimeException e) {
+                logger.error("cannot import files", e);
+            }
+        }
+        
+        return false;
+    }
+    
+    @Override
     public int getSourceActions(JComponent c) {
-        if (c.getClientProperty("Binding.controller") == controller
-                && c instanceof JTable) {
+        if (c instanceof JTable) {
             return COPY;
         }
         
@@ -96,13 +106,16 @@ public class ListTransferHandler extends TransferHandler {
     }
 
     @SuppressWarnings("unchecked")
-    static List<File> getTransferFile(TransferSupport support) throws IOException {
+    static List<File> getTransferFile(TransferSupport support) {
         List<File> files = Collections.emptyList();
         try {
             files = (List<File>) support.getTransferable().getTransferData(DataFlavor.javaFileListFlavor);
         }
         catch (UnsupportedFlavorException e) {
-            throw new IOException(e);
+            logger.error("cannot import files", e);
+        }
+        catch (IOException e) {
+            logger.error("cannot import files", e);
         }
         return files;
     }
