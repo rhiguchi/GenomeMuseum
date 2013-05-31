@@ -68,6 +68,7 @@ public class GenomeMuseum extends Application {
         connbuilder.databaseNamespace(namespace);
         
         connectionPool = connbuilder.build();
+        logger.info("database stores at {}", databasePath);
     }
     
     @Override
@@ -100,12 +101,13 @@ public class GenomeMuseum extends Application {
 
     @Override
     protected void startup() {
-        java.util.logging.Logger.getLogger(getClass().toString()).fine("test");
         logger.debug("startup");
         
         // sequenceModel
         SequenceLibrary sequenceLibrary = SequenceLibrary.create(getConnection());
-        sequenceLibrary.setFilesStoreRoot(getFilesStoreDirectory());
+        File filesDir = getFilesStoreDirectory();
+        sequenceLibrary.setFilesStoreRoot(filesDir);
+        logger.info("sequence files store at {}", filesDir);
         
         GeneticSequenceCollection collection = GeneticSequenceCollections.fromSequenceLibrary(sequenceLibrary);
         geneticSequenceListController.setModel(collection);

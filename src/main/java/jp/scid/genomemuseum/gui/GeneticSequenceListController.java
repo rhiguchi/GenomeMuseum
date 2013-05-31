@@ -7,6 +7,7 @@ import java.awt.Frame;
 import java.io.File;
 import java.io.IOException;
 import java.text.ParseException;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
 
@@ -117,7 +118,10 @@ public class GeneticSequenceListController extends ListController<GeneticSequenc
 
     @Override
     public void remove() {
-        ((SequenceImportable) model).remove(getSelections());
+        for (GeneticSequence sequence: selectionModel.getSelected()) {
+            sequence.delete();
+        }
+        model.fetchSequences();
     }
     
     // model
@@ -194,12 +198,11 @@ public class GeneticSequenceListController extends ListController<GeneticSequenc
     private static class ExhibitTextFilterator implements TextFilterator<GeneticSequence> {
         @Override
         public void getFilterStrings(List<String> baseList, GeneticSequence element) {
-//            baseList.add(element.getAccession());
-//            baseList.add(element.getDefinition());
-//            baseList.add(element.getName());
-//            baseList.add(element.getNamespace());
-//            baseList.add(element.getOrganism());
-//            baseList.add(element.getSource());
+            baseList.add(element.accession());
+            baseList.add(element.definition());
+            baseList.add(element.name());
+            baseList.add(element.organism());
+            baseList.add(element.source());
         }
     }
 

@@ -3,12 +3,10 @@ package jp.scid.genomemuseum.model;
 import java.io.File;
 import java.io.IOException;
 import java.text.ParseException;
-import java.util.Collection;
 
 import javax.swing.ListModel;
 
 import jp.scid.bio.store.SequenceLibrary;
-import jp.scid.bio.store.folder.CollectionType;
 import jp.scid.bio.store.folder.Folder;
 import jp.scid.bio.store.sequence.GeneticSequence;
 
@@ -28,7 +26,7 @@ class SequenceLibraryGeneticSequenceCollection implements GeneticSequenceCollect
 
     @Override
     public ListModel getCollection() {
-        return library.getAllSequences();
+        return library.fetchSequences();
     }
 
     @Override
@@ -37,9 +35,13 @@ class SequenceLibraryGeneticSequenceCollection implements GeneticSequenceCollect
     }
     
     @Override
-    public int remove(Collection<GeneticSequence> list) {
-        // TODO Auto-generated method stub
-        return 0;
+    public GeneticSequence deleteSequence(int index) {
+        return library.deleteSequenceAt(index);
+    }
+    
+    @Override
+    public void fetchSequences() {
+        library.fetchSequences();
     }
 }
 

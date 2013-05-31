@@ -10,6 +10,8 @@ import javax.swing.event.ListDataListener;
 public interface GeneticSequenceCollection {
     
     ListModel getCollection();
+
+    void fetchSequences();
 }
 
 abstract class AbstractGeneticSequenceCollection implements GeneticSequenceCollection {
