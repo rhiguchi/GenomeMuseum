@@ -2,6 +2,7 @@ package jp.scid.genomemuseum.gui;
 
 import java.awt.FileDialog;
 import java.io.File;
+import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.concurrent.ExecutorService;
@@ -13,8 +14,7 @@ import javax.swing.JComponent;
 import javax.swing.JFrame;
 import javax.swing.JMenuBar;
 
-import jp.scid.bio.store.FileLibrary;
-import jp.scid.bio.store.LibrarySchemaManager;
+import jp.scid.bio.store.ConnectionBuilder;
 import jp.scid.bio.store.SequenceLibrary;
 import jp.scid.genomemuseum.model.GeneticSequenceCollection;
 import jp.scid.genomemuseum.model.GeneticSequenceCollections;
@@ -22,6 +22,7 @@ import jp.scid.genomemuseum.model.MuseumTreeSource;
 import jp.scid.genomemuseum.view.MainMenuBar;
 import jp.scid.genomemuseum.view.MainView;
 
+import org.h2.jdbcx.JdbcConnectionPool;
 import org.jdesktop.application.Application;
 import org.jdesktop.application.ProxyActions;
 import org.slf4j.Logger;
@@ -33,7 +34,7 @@ public class GenomeMuseum extends Application {
     private static final String DATABASE_LOCAL_DIRECTORY = "schema";
     private static final String LOCAL_FILES_DIRECTORY_NAME = "Files";
     
-    private final LibrarySchemaManager schemaManager;
+    private JdbcConnectionPool connectionPool;
     
     private MainFrameController mainFrameController;
     private GeneticSequenceListController geneticSequenceListController;
@@ -45,31 +46,28 @@ public class GenomeMuseum extends Application {
     public GenomeMuseum() {
         getContext().getResourceManager().setResourceFolder(null);
         
-        schemaManager = new LibrarySchemaManager();
-
         mainFrameController = new MainFrameController();
         geneticSequenceListController = new GeneticSequenceListController();
         folderDirectoryTreeController = new FolderTreeController();
     }
 
-    private void openSchema() throws SQLException {
-        LibrarySchemaManager manager = schemaManager;
+    private void openConnectionPool() {
+        if (connectionPool != null) {
+            throw new IllegalArgumentException("connection already open");
+        }
         
-        manager.setDatabaseUser("genomemuseum");
+        ConnectionBuilder connbuilder = new ConnectionBuilder();
+        connbuilder.databaseUser("genomemuseum");
+        
         // addr
         File databasePath =
                 new File(getContext().getLocalStorage().getDirectory(),
                         DATABASE_LOCAL_DIRECTORY);
         databasePath.getParentFile().mkdirs();
         String namespace = databasePath.getPath() + ";AUTO_SERVER=TRUE";
-        manager.setDatabaseNamespace(namespace);
+        connbuilder.databaseNamespace(namespace);
         
-        logger.info("try to open library schema from {}", namespace);
-        manager.open();
-        if (!manager.isSchemaReady())  {
-            logger.info("schema setup");
-            manager.setUpSchema();
-        }
+        connectionPool = connbuilder.build();
     }
     
     @Override
@@ -105,21 +103,11 @@ public class GenomeMuseum extends Application {
         java.util.logging.Logger.getLogger(getClass().toString()).fine("test");
         logger.debug("startup");
         
-        try {
-            openSchema();
-        }
-        catch (SQLException e) {
-            throw new IllegalStateException(e);
-        }
-        
         // sequenceModel
-        SequenceLibrary sequenceLibrary = schemaManager.createSequenceLibrary();
-        GeneticSequenceCollection collection = GeneticSequenceCollections.fromSequenceLibrary(sequenceLibrary);
+        SequenceLibrary sequenceLibrary = SequenceLibrary.create(getConnection());
+        sequenceLibrary.setFilesStoreRoot(getFilesStoreDirectory());
         
-//        PersistentGeneticSequenceLibrary senquenceModel =
-//                new PersistentGeneticSequenceLibrary(sequenceLibrary);
-//        senquenceModel.setFileLibrary(createFileLibrary());
-//        
+        GeneticSequenceCollection collection = GeneticSequenceCollections.fromSequenceLibrary(sequenceLibrary);
         geneticSequenceListController.setModel(collection);
         
         // tree model
@@ -130,11 +118,22 @@ public class GenomeMuseum extends Application {
         showMainFrame();
     }
 
-    protected FileLibrary createFileLibrary() {
+    private Connection getConnection() {
+        openConnectionPool();
+        Connection connection;
+        try {
+            connection = connectionPool.getConnection();
+        }
+        catch (SQLException e) {
+            throw new IllegalStateException(e);
+        }
+        return connection;
+    }
+
+    File getFilesStoreDirectory() {
         File filesDir = new File(getContext().getLocalStorage().getDirectory(),
                 LOCAL_FILES_DIRECTORY_NAME);
-        FileLibrary fileLibrary = FileLibrary.newFileLibrary(filesDir);
-        return fileLibrary;
+        return filesDir;
     }
     
     public void showMainFrame() {
@@ -143,8 +142,8 @@ public class GenomeMuseum extends Application {
 
     @Override
     protected void shutdown() {
-        if (schemaManager != null) {
-            schemaManager.close();
+        if (connectionPool != null) {
+            connectionPool.dispose();
         }
         
         if (taskExecutor != null) {

@@ -11,8 +11,6 @@ import jp.scid.bio.store.SequenceLibrary;
 import jp.scid.bio.store.folder.CollectionType;
 import jp.scid.bio.store.folder.Folder;
 import jp.scid.bio.store.sequence.GeneticSequence;
-import jp.scid.genomemuseum.model.MuseumTreeSource.FolderContainer;
-import jp.scid.genomemuseum.model.MuseumTreeSource.FolderTreeNode;
 
 public class GeneticSequenceCollections {
     public static GeneticSequenceCollection fromSequenceLibrary(SequenceLibrary library) {
@@ -31,12 +29,6 @@ class SequenceLibraryGeneticSequenceCollection implements GeneticSequenceCollect
     @Override
     public ListModel getCollection() {
         return library.getAllSequences();
-    }
-
-    @Override
-    public FolderTreeNode addChild(CollectionType type) {
-        Folder folder = library.addFolder(type);
-        return new FolderTreeNodeAdapter(folder);
     }
 
     @Override

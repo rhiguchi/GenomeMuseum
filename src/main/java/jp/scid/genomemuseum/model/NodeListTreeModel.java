@@ -20,7 +20,7 @@ public class NodeListTreeModel implements TreeModel {
 
     private final DefaultTreeModel delegate;
     
-    private final Map<Object, ChildrenSync> childrenSyncs;
+    private final Map<TreeNode, ChildrenSync> childrenSyncs;
     
     private final Map<TreeModelListener, TreeModelListenerProxy> listenerProxyMap;
     
@@ -30,7 +30,7 @@ public class NodeListTreeModel implements TreeModel {
         if (delegate == null) throw new IllegalArgumentException("delegate must not be null");
         this.delegate = delegate;
         
-        childrenSyncs = new HashMap<Object, ChildrenSync>();
+        childrenSyncs = new HashMap<TreeNode, ChildrenSync>();
         listenerProxyMap = new HashMap<TreeModelListener, TreeModelListenerProxy>();
     }
 
@@ -91,7 +91,7 @@ public class NodeListTreeModel implements TreeModel {
         ListModel children = getChildren(node.getUserObject());
         sync.setListModel(children);
         
-        childrenSyncs.put(parent, sync);
+        childrenSyncs.put(node, sync);
     }
 
     protected DefaultMutableTreeNode createTreeNode(Object nodeObject, boolean allowsChildren) {
@@ -120,7 +120,7 @@ public class NodeListTreeModel implements TreeModel {
     
     public void setTreeSource(TreeSource treeSource) {
         this.treeSource = treeSource;
-        for (Entry<Object, ChildrenSync> entry: childrenSyncs.entrySet()) {
+        for (Entry<?, ChildrenSync> entry: childrenSyncs.entrySet()) {
             entry.getValue().dispose();
         }
         

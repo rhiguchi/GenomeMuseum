@@ -36,16 +36,12 @@
 	    <dependency org="org.slf4j" name="slf4j-api" rev="1.7.2"/>
 	    <dependency org="org.slf4j" name="slf4j-jdk14" rev="1.7.2"/>
 	    
-	    <dependency org="com.h2database" name="h2" rev="1.3.160" conf="default,jooq->default"/>
-	    <dependency org="org.jooq" name="jooq" rev="2.6.0" conf="default"/>
-	    
 	    <dependency org="org.jdesktop.bsaf" name="bsaf" rev="1.9.2"/>
 	    <dependency org="net.java.dev.glazedlists" name="glazedlists_java15" rev="1.9.0"/>
 	    <dependency org="com.explodingpixels" name="mac_widgets" rev="0.9.6-SNAPSHOT"/>
 	    <dependency org="commons-io" name="commons-io" rev="2.3"/>
 	    
-	    <!-- <dependency org="jp.scid" name="scid-bio" rev="0.1.1"/> -->
-	    <dependency org="jp.scid" name="scid-bio-store" rev="0.2"/>
+	    <dependency org="jp.scid" name="scid-bio-store" rev="0.3.1" conf="default"/>
 	    
 	    <dependency org="javax.persistence" name="persistence-api" rev="1.0.2" conf="default"/>
 		<dependency org="junit" name="junit" rev="4.10" conf="test->default"/>

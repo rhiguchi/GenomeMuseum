@@ -16,11 +16,11 @@ import javax.swing.tree.TreePath;
 import jp.scid.genomemuseum.gui.transfer.DefaultTransferExhibitCollectionNode;
 import jp.scid.genomemuseum.gui.transfer.TransferExhibitCollectionNode;
 import jp.scid.genomemuseum.gui.transfer.TransferMuseumExhibit;
+import jp.scid.genomemuseum.model.FolderContainer;
+import jp.scid.genomemuseum.model.FolderTreeNode;
 import jp.scid.genomemuseum.model.MuseumExhibit;
 import jp.scid.genomemuseum.model.MuseumSourceModel.CollectionNode;
 import jp.scid.genomemuseum.model.MuseumSourceModel.ExhibitCollectionNode;
-import jp.scid.genomemuseum.model.MuseumTreeSource.FolderContainer;
-import jp.scid.genomemuseum.model.MuseumTreeSource.FolderTreeNode;
 import jp.scid.genomemuseum.model.SequenceImportable;
 
 import org.slf4j.Logger;

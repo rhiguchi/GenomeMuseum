@@ -32,7 +32,6 @@ import ca.odell.glazedlists.EventList;
 import ca.odell.glazedlists.TextFilterator;
 import ca.odell.glazedlists.gui.AdvancedTableFormat;
 import ca.odell.glazedlists.swing.DefaultEventListModel;
-import ca.odell.glazedlists.swing.EventListModel;
 
 public class GeneticSequenceListController extends ListController<GeneticSequence> {
     private final static Logger logger = LoggerFactory.getLogger(GeneticSequenceListController.class);

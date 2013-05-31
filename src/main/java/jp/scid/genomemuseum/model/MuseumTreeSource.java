@@ -9,9 +9,8 @@ import javax.swing.ListModel;
 
 import jp.scid.bio.store.SequenceLibrary;
 import jp.scid.bio.store.folder.CollectionType;
+import jp.scid.bio.store.folder.Folder;
 import jp.scid.bio.store.folder.GroupFolder;
-import jp.scid.genomemuseum.model.MuseumTreeSource.FolderContainer;
-import jp.scid.genomemuseum.model.MuseumTreeSource.FolderTreeNode;
 
 import com.explodingpixels.widgets.TextProvider;
 
@@ -41,17 +40,30 @@ public class MuseumTreeSource implements NodeListTreeModel.TreeSource {
             return rootItemList;
         }
         else if (parent instanceof Category) {
-            if (parent == rootItemList.userCollections) {
-                return sequenceLibrary.getRootFolderList();
-            }
             return ((Category) parent).children();
         }
         else if (parent instanceof SequenceLibrary) {
             return ((SequenceLibrary) parent).getRootFolderList();
         }
         else if (parent instanceof GroupFolder) {
-            return ((GroupFolder) parent).getChildFolders();
+            return ((GroupFolder) parent).getContentFolders();
         }
+        return null;
+    }
+
+    public Folder addFolder(CollectionType type) {
+        Folder folder = sequenceLibrary.addFolder(type);
+        return folder;
+    }
+    
+    public Object getParent(Object node) {
+//        if (node instanceof GroupFolder) {
+//            return this;
+//        }
+        if (node instanceof Category) {
+            return this;
+        }
+        
         return null;
     }
     
@@ -61,9 +73,9 @@ public class MuseumTreeSource implements NodeListTreeModel.TreeSource {
         this.sequenceLibrary = sequenceLibrary;
     }
     
-    public UserCollectionsRoot getUserCollectionRoot() {
-        return rootItemList.userCollections; // TODO
-    }
+//    public UserCollectionsRoot getUserCollectionRoot() {
+//        return rootItemList.userCollections; // TODO
+//    }
     
     public int[] getIndexPath(Object object) {
         return null; // TODO
@@ -75,7 +87,7 @@ public class MuseumTreeSource implements NodeListTreeModel.TreeSource {
         private static final String DEFAULT_LOCAL_FILES_NAME = "Local Files";
         
         private final Category librariesNode;
-        private UserCollectionsRoot userCollections;
+        private SequenceLibrary userCollectionsRoot;
         
         private LeafElement localFilesSourceNode;
         
@@ -98,15 +110,15 @@ public class MuseumTreeSource implements NodeListTreeModel.TreeSource {
             }
         }
         
-        public void setUserCollectionsRoot(Object source) {
-            if (userCollections != null) {
-                items.remove(userCollections);
-                userCollections = null;
+        public void setUserCollectionsRoot(SequenceLibrary source) {
+            if (this.userCollectionsRoot != null) {
+                items.remove(this.userCollectionsRoot);
             }
             
+            this.userCollectionsRoot = source;
+            
             if (source != null) {
-                userCollections = new UserCollectionsRoot();
-                items.add(userCollections);
+                items.add(userCollectionsRoot);
             }
         }
         
@@ -123,9 +135,10 @@ public class MuseumTreeSource implements NodeListTreeModel.TreeSource {
     
     public static class UserCollectionsRoot implements TextProvider, FolderContainer {
         private static final String DEFAULT_COLLECTIONS_NAME = "Collections";
+        private final SequenceLibrary rootObject;
         
-        UserCollectionsRoot() {
-            // TODO Auto-generated constructor stub
+        UserCollectionsRoot(SequenceLibrary rootObject) {
+            this.rootObject = rootObject;
         }
         
         @Override
@@ -135,6 +148,7 @@ public class MuseumTreeSource implements NodeListTreeModel.TreeSource {
 
         @Override
         public FolderTreeNode addChild(CollectionType type) {
+            Folder folder = rootObject.addFolder(type);
             // TODO Auto-generated method stub
             return null;
         }
@@ -148,6 +162,7 @@ public class MuseumTreeSource implements NodeListTreeModel.TreeSource {
     
     private static abstract class TreeElement implements TextProvider {
         private final String name;
+        private Object parent;
         
         public TreeElement(String name) {
             this.name = name;
@@ -156,6 +171,14 @@ public class MuseumTreeSource implements NodeListTreeModel.TreeSource {
         @Override
         public String getText() {
             return name;
+        }
+
+        public Object getParent() {
+            return parent;
+        }
+
+        public void setParent(Object parent) {
+            this.parent = parent;
         }
     }
     
@@ -181,11 +204,11 @@ public class MuseumTreeSource implements NodeListTreeModel.TreeSource {
             return this.getText().compareTo(o.getText());
         }
         
-        void addChild(Object object) {
+        void addChild(TreeElement object) {
             children.addElement(object);
         }
 
-        void removeChild(Object element) {
+        void removeChild(TreeElement element) {
             children.removeElement(element);
         }
         
@@ -207,25 +230,10 @@ public class MuseumTreeSource implements NodeListTreeModel.TreeSource {
         }
     }
     
-    public interface FolderContainer {
-
-        FolderTreeNode addChild(CollectionType type);
-        
-        boolean canMove(FolderTreeNode node);
-    }
-    
-    public interface FolderTreeNode {
-
-        FolderContainer getParentContainer();
-
-        void remove();
-        
-    }
-    
-
     public FolderTreeNode addFolder(CollectionType type, FolderTreeNode parent) {
         // TODO Auto-generated method stub
         return null;
     }
+
 }
 

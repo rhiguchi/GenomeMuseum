@@ -73,6 +73,17 @@
         <delete dir="${lib.dir}"/>
     </target>
 
+    <target name="clean-lib" description="clean lib dir">
+        <delete dir="${lib.dir}"/>
+    </target>
+    
+    <!-- ================================= 
+          target: Resolve dependency              
+         ================================= -->
+    <target name="retrieve" description="retrieve dependencies with ivy">
+        <ivy:retrieve symlink="true" />
+    </target>
+    
     <!-- ================================= 
           target: Resolve dependency              
          ================================= -->

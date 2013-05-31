@@ -9,9 +9,11 @@ import javax.swing.tree.TreePath;
 import javax.swing.tree.TreeSelectionModel;
 
 import jp.scid.bio.store.folder.CollectionType;
+import jp.scid.bio.store.folder.Folder;
+import jp.scid.bio.store.folder.GroupFolder;
+import jp.scid.genomemuseum.model.FolderContainer;
+import jp.scid.genomemuseum.model.FolderTreeNode;
 import jp.scid.genomemuseum.model.MuseumTreeSource;
-import jp.scid.genomemuseum.model.MuseumTreeSource.FolderContainer;
-import jp.scid.genomemuseum.model.MuseumTreeSource.FolderTreeNode;
 import jp.scid.genomemuseum.model.NodeListTreeModel;
 import jp.scid.gui.control.ActionManager;
 
@@ -90,26 +92,31 @@ public class FolderTreeController {
     TreePath addFolder(CollectionType type) {
         Object selectedNodeObject = getSelectedNodeObject();
         
-        FolderContainer parent;
-        if (selectedNodeObject instanceof FolderContainer) {
-            parent = (FolderContainer) selectedNodeObject;
+        Folder child;
+        if (selectedNodeObject instanceof GroupFolder) {
+            child = ((GroupFolder) selectedNodeObject).addContentFolder(type);
         }
-        else if (selectedNodeObject instanceof FolderTreeNode) {
-            parent = ((FolderTreeNode) selectedNodeObject).getParentContainer();
-        }
+        // TODO folder's parent
+//        else if (selectedNodeObject instanceof Folder) {
+//            
+//        }
         else {
-            parent = treeSource.getUserCollectionRoot();
+            child = treeSource.addFolder(type);
         }
         
-        FolderTreeNode newFolder = parent.addChild(type);
-        int[] indexPath = treeSource.getIndexPath(newFolder);
-        TreePath path = treeModel.getPathOfIndex(indexPath);
-        
-        return path;
+        return null;
+//        int[] indexPath = treeSource.getIndexPath(newFolder);
+//        TreePath path = treeModel.getPathOfIndex(indexPath);
+//        
+//        return path;
     }
 
     private Object getSelectedNodeObject() {
         TreePath selectionPath = getSelectionPath();
+        if (selectionPath == null) {
+            return null;
+        }
+        
         Object selectedNodeObject;
         if (selectionPath.getLastPathComponent() instanceof DefaultMutableTreeNode) {
             selectedNodeObject = ((DefaultMutableTreeNode) selectionPath.getLastPathComponent()).getUserObject();
