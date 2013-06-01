@@ -2,12 +2,9 @@ package jp.scid.genomemuseum.gui;
 
 import static jp.scid.bio.store.jooq.Tables.*;
 
-import java.awt.FileDialog;
-import java.awt.Frame;
 import java.io.File;
 import java.io.IOException;
 import java.text.ParseException;
-import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
 
@@ -41,8 +38,6 @@ public class GeneticSequenceListController extends ListController<GeneticSequenc
     
     private final ListModelEventListAdapter<GeneticSequence> listSource;
     
-    private FileDialog fileDialog = null;
-    
     private GeneticSequenceCollection model;
     
     public GeneticSequenceListController(EventList<GeneticSequence> source) {
@@ -58,17 +53,6 @@ public class GeneticSequenceListController extends ListController<GeneticSequenc
     
     public GeneticSequenceListController() {
         this(new BasicEventList<GeneticSequence>());
-    }
-    
-    public FileDialog getFileDialog() {
-        if (fileDialog == null) {
-            fileDialog = new FileDialog((Frame) null);
-        }
-        return fileDialog;
-    }
-    
-    public void setFileDialog(FileDialog fileDialog) {
-        this.fileDialog = fileDialog;
     }
     
     // addFile
@@ -98,18 +82,6 @@ public class GeneticSequenceListController extends ListController<GeneticSequenc
         return true;
     }
     
-//    public void addFile() {
-//        FileDialog dialog = getFileDialog();
-//        
-//        dialog.setVisible(true);
-//        
-//        if (dialog.getFile() == null) {
-//            return;
-//        }
-//        
-//        File file = new File(dialog.getDirectory(), dialog.getFile());
-//        importFile(file);
-//    }
 
     @Override
     public boolean canRemove() {

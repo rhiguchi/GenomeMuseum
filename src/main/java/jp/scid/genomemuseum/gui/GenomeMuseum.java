@@ -39,6 +39,7 @@ public class GenomeMuseum extends Application {
     private MainFrameController mainFrameController;
     private GeneticSequenceListController geneticSequenceListController;
     private FolderTreeController folderDirectoryTreeController;
+    private FileOpenHandler fileOpenHandler;
     
     private ExecutorService taskExecutor;
     
@@ -49,6 +50,7 @@ public class GenomeMuseum extends Application {
         mainFrameController = new MainFrameController();
         geneticSequenceListController = new GeneticSequenceListController();
         folderDirectoryTreeController = new FolderTreeController();
+        fileOpenHandler = new FileOpenHandler(geneticSequenceListController);
     }
 
     private void openConnectionPool() {
@@ -85,7 +87,8 @@ public class GenomeMuseum extends Application {
         mainFrameController.setView(mainFrame);
         
         FileDialog openFileDialog = createOpenFileDialog(mainFrame);
-        geneticSequenceListController.setFileDialog(openFileDialog);
+        fileOpenHandler.setFileDialog(openFileDialog);
+        fileOpenHandler.bindOpenMenu(mainMenuBar.open);
         
         GeneticSequenceListController.Binding listBinding =
                 geneticSequenceListController.new Binding();
