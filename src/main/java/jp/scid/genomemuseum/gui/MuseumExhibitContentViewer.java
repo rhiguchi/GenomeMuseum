@@ -1,11 +1,10 @@
 package jp.scid.genomemuseum.gui;
 
 import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.io.Reader;
-import java.io.StringReader;
-import java.net.URL;
 import java.util.List;
 
 import javax.swing.JTextArea;
@@ -14,8 +13,7 @@ import javax.swing.text.BadLocationException;
 import javax.swing.text.Document;
 import javax.swing.text.PlainDocument;
 
-import jp.scid.genomemuseum.model.MuseumExhibit;
-import jp.scid.genomemuseum.model.MuseumExhibitLibrary;
+import jp.scid.bio.store.sequence.GeneticSequence;
 import jp.scid.genomemuseum.view.FileContentView;
 
 import org.jdesktop.application.AbstractBean;
@@ -25,28 +23,28 @@ import org.jdesktop.application.AbstractBean;
 public class MuseumExhibitContentViewer extends AbstractBean {
     private Document document = new PlainDocument();
     
-    private MuseumExhibit exhibit = null;
+    private GeneticSequence sequence = null;
     
     // Controller
 //    final MotifViewerController motifViewerController;
     
-    MuseumExhibitLibrary library = null;
+//    MuseumExhibitLibrary library = null;
     
     public MuseumExhibitContentViewer() {
 //        motifViewerController = new MotifViewerController();
     }
 
-    public void setExhibit(MuseumExhibit exhibit) {
-        this.exhibit = exhibit;
+    public void setExhibit(GeneticSequence sequence) {
+        this.sequence = sequence;
     }
 
-    public MuseumExhibitLibrary getLibrary() {
-        return library;
-    }
-
-    public void setLibrary(MuseumExhibitLibrary library) {
-        this.library = library;
-    }
+//    public MuseumExhibitLibrary getLibrary() {
+//        return library;
+//    }
+//
+//    public void setLibrary(MuseumExhibitLibrary library) {
+//        this.library = library;
+//    }
     
     // sequence
     public String getSequence() {
@@ -69,9 +67,8 @@ public class MuseumExhibitContentViewer extends AbstractBean {
     
     // contentText
     Reader getContentReader() throws IOException {
-        URL url = exhibit.getSourceFileAsUrl();
-        InputStreamReader reader = new InputStreamReader(url.openStream());
-        return reader;
+        File file = sequence.getFile();
+        return new FileReader(file);
     }
     
     void appendDocumentString(String text) throws BadLocationException {

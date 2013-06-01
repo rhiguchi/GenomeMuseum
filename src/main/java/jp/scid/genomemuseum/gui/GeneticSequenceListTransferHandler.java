@@ -18,7 +18,6 @@ import javax.swing.JTable;
 import javax.swing.TransferHandler;
 
 import jp.scid.bio.store.sequence.GeneticSequence;
-import jp.scid.genomemuseum.gui.transfer.GeneticSequenceList;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.filefilter.HiddenFileFilter;
@@ -139,18 +138,6 @@ public class GeneticSequenceListTransferHandler extends TransferHandler {
         return sequence.toString();
     }
     
-    private List<File> getFiles(Collection<GeneticSequence> elements) {
-        List<File> files = new LinkedList<File>();
-        
-        for (GeneticSequence sequence: elements) {
-            File file = sequence.getFile();
-            if (file != null) {
-                files.add(file);
-            }
-        }
-        return files;
-    }
-    
     class GeneticSequenceTransferObject implements Transferable {
         private final ProxyGeneticSequenceTransferObject elements;
         private List<DataFlavor> flavors = null;
@@ -180,7 +167,7 @@ public class GeneticSequenceListTransferHandler extends TransferHandler {
                     return getText();
                 }
                 else if (flavor.equals(DataFlavor.javaFileListFlavor)) {
-                    return getFiles(elements);
+                    return ProxyGeneticSequenceTransferObject.getFiles(elements);
                 }
             }
             
@@ -218,7 +205,7 @@ public class GeneticSequenceListTransferHandler extends TransferHandler {
 class ProxyGeneticSequenceTransferObject extends AbstractList<GeneticSequence> implements GeneticSequenceList {
     private final List<GeneticSequence> delegate;
     
-    public ProxyGeneticSequenceTransferObject(List<GeneticSequence> delegate) {
+    public ProxyGeneticSequenceTransferObject(List<? extends GeneticSequence> delegate) {
         this.delegate = new ArrayList<GeneticSequence>(delegate);
     }
     
@@ -244,5 +231,17 @@ class ProxyGeneticSequenceTransferObject extends AbstractList<GeneticSequence> i
     @Override
     public Iterator<GeneticSequence> iterator() {
         return delegate.iterator();
+    }
+
+    static List<File> getFiles(Collection<GeneticSequence> elements) {
+        List<File> files = new LinkedList<File>();
+        
+        for (GeneticSequence sequence: elements) {
+            File file = sequence.getFile();
+            if (file != null) {
+                files.add(file);
+            }
+        }
+        return files;
     }
 }
