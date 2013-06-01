@@ -5,15 +5,20 @@ import java.awt.datatransfer.Transferable;
 import java.awt.datatransfer.UnsupportedFlavorException;
 import java.io.File;
 import java.io.IOException;
+import java.util.AbstractList;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
 
 import javax.swing.JComponent;
 import javax.swing.JTable;
 import javax.swing.TransferHandler;
 
-import jp.scid.genomemuseum.gui.transfer.TransferMuseumExhibit;
+import jp.scid.bio.store.sequence.GeneticSequence;
+import jp.scid.genomemuseum.gui.transfer.GeneticSequenceList;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.filefilter.HiddenFileFilter;
@@ -33,7 +38,7 @@ public class GeneticSequenceListTransferHandler extends TransferHandler {
     public boolean canImport(TransferSupport support) {
         logger.debug("canImport");
         
-        if (support.isDataFlavorSupported(TransferMuseumExhibit.Flavor.getInstance())) {
+        if (support.isDataFlavorSupported(GeneticSequenceList.FLAVOR)) {
             return controller.canAdd();
         }
         else if (support.isDataFlavorSupported(DataFlavor.javaFileListFlavor)) {
@@ -64,7 +69,7 @@ public class GeneticSequenceListTransferHandler extends TransferHandler {
     public boolean importData(TransferSupport support) {
         logger.debug("importData");
         
-        if (support.isDataFlavorSupported(TransferMuseumExhibit.Flavor.getInstance())) {
+        if (support.isDataFlavorSupported(GeneticSequenceList.FLAVOR)) {
             logger.debug("entity import");
         }
         else if (support.isDataFlavorSupported(DataFlavor.javaFileListFlavor)) {
@@ -97,9 +102,8 @@ public class GeneticSequenceListTransferHandler extends TransferHandler {
     
     @Override
     protected Transferable createTransferable(JComponent c) {
-        if (c.getClientProperty("Binding.controller") == controller
-                && c instanceof JTable) {
-            return controller.createTransferData();
+        if (c instanceof JTable) {
+            return createTransferData();
         }
         
         return super.createTransferable(c);
@@ -118,5 +122,127 @@ public class GeneticSequenceListTransferHandler extends TransferHandler {
             logger.error("cannot import files", e);
         }
         return files;
+    }
+
+    // transferring
+    protected Transferable createTransferData() {
+        if (controller.isSelectionEmpty()) {
+            return null;
+        }
+        
+        List<GeneticSequence> selections = controller.getSelections();
+        return new GeneticSequenceTransferObject(selections);
+    }
+    
+    private CharSequence getElementText(GeneticSequence sequence) {
+        // TODO
+        return sequence.toString();
+    }
+    
+    private List<File> getFiles(Collection<GeneticSequence> elements) {
+        List<File> files = new LinkedList<File>();
+        
+        for (GeneticSequence sequence: elements) {
+            File file = sequence.getFile();
+            if (file != null) {
+                files.add(file);
+            }
+        }
+        return files;
+    }
+    
+    class GeneticSequenceTransferObject implements Transferable {
+        private final ProxyGeneticSequenceTransferObject elements;
+        private List<DataFlavor> flavors = null;
+        
+        public GeneticSequenceTransferObject(List<GeneticSequence> elements) {
+            this.elements = new ProxyGeneticSequenceTransferObject(elements);
+        }
+
+        @Override
+        public DataFlavor[] getTransferDataFlavors() {
+            return getFlavors().toArray(new DataFlavor[0]);
+        }
+
+        @Override
+        public boolean isDataFlavorSupported(DataFlavor flavor) {
+            return getFlavors().contains(flavor);
+        }
+
+        @Override
+        public Object getTransferData(DataFlavor flavor)
+                throws UnsupportedFlavorException, IOException {
+            if (getFlavors().contains(flavor)) {
+                if (flavor.equals(GeneticSequenceList.FLAVOR)) {
+                    return elements;
+                }
+                else if (flavor.equals(DataFlavor.stringFlavor)) {
+                    return getText();
+                }
+                else if (flavor.equals(DataFlavor.javaFileListFlavor)) {
+                    return getFiles(elements);
+                }
+            }
+            
+            throw new UnsupportedFlavorException(flavor);
+        }
+        
+        public String getText() {
+            String ln = System.getProperty("line.separator");
+            StringBuilder text = new StringBuilder();
+            
+            for (GeneticSequence sequence: elements) {
+                CharSequence elementText = getElementText(sequence);
+                if (elementText != null) {
+                    text.append(elementText).append(ln);
+                }
+            }
+            return text.toString();
+        }
+        
+        public List<DataFlavor> getFlavors() {
+            if (flavors == null) {
+                flavors = new ArrayList<DataFlavor>(3);
+                flavors.add(GeneticSequenceList.FLAVOR);
+                flavors.add(DataFlavor.stringFlavor);
+                
+                if (elements.hasFile()) {
+                    flavors.add(DataFlavor.javaFileListFlavor);
+                }
+            }
+            return flavors;
+        }
+    }
+}
+
+class ProxyGeneticSequenceTransferObject extends AbstractList<GeneticSequence> implements GeneticSequenceList {
+    private final List<GeneticSequence> delegate;
+    
+    public ProxyGeneticSequenceTransferObject(List<GeneticSequence> delegate) {
+        this.delegate = new ArrayList<GeneticSequence>(delegate);
+    }
+    
+    public boolean hasFile() {
+        for (GeneticSequence sequence: delegate) {
+            if (sequence.getFile() != null) {
+                return true;
+            }
+        }
+        return false;
+    }
+    
+    @Override
+    public GeneticSequence get(int index) {
+        return delegate.get(index);
+    }
+    
+    @Override
+    public int size() {
+        return delegate.size();
+    }
+    
+    @Override
+    public Iterator<GeneticSequence> iterator() {
+        return delegate.iterator();
     }
 }

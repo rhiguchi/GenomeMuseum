@@ -1,12 +1,10 @@
 package jp.scid.genomemuseum.gui;
 
-import java.awt.datatransfer.Transferable;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.KeyEvent;
 import java.io.File;
 import java.io.IOException;
-import java.net.URI;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -14,7 +12,6 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.EventListener;
 import java.util.Iterator;
-import java.util.LinkedList;
 import java.util.List;
 
 import javax.swing.AbstractAction;
@@ -41,8 +38,6 @@ import ca.odell.glazedlists.ObservableElementList.Connector;
 import ca.odell.glazedlists.PluggableList;
 import ca.odell.glazedlists.SortedList;
 import ca.odell.glazedlists.TextFilterator;
-import ca.odell.glazedlists.event.ListEvent;
-import ca.odell.glazedlists.event.ListEventListener;
 import ca.odell.glazedlists.gui.AdvancedTableFormat;
 import ca.odell.glazedlists.gui.TableFormat;
 import ca.odell.glazedlists.impl.filter.StringTextFilterator;
@@ -275,42 +270,6 @@ public abstract class ListController<E> {
     
     public void setTextFilterator(TextFilterator<? super E> filterator) {
         matcherEditor.setFilterator(filterator);
-    }
-    
-    // transferring
-    protected Transferable createTransferData() {
-        if (isSelectionEmpty()) {
-            return null;
-        }
-        
-        List<E> selections = getSelections();
-        ListTransferData<E> data = new ListTransferData<E>(selections);
-        
-        List<File> files = new LinkedList<File>();
-        for (E e: selections) {
-            File file = getFile(e);
-            if (file != null) {
-                files.add(file);
-            }
-        }
-        data.setFiles(files);
-        
-        return data;
-    }
-    
-    protected URI getUri(E element) {
-        logger.warn("must be implemented to get file of %s", element);
-        return null;
-    }
-    
-    protected File getFile(E element) {
-        URI uri = getUri(element);
-        
-        if (uri == null || !"file".equals(uri.getScheme())) {
-            return null;
-        }
-        File file = new File(uri);
-        return file;
     }
     
     // factories
