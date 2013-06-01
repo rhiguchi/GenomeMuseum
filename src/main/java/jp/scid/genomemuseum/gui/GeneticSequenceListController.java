@@ -1,11 +1,8 @@
 package jp.scid.genomemuseum.gui;
 
-import static jp.scid.bio.store.jooq.Tables.*;
-
 import java.io.File;
 import java.io.IOException;
 import java.text.ParseException;
-import java.util.Comparator;
 import java.util.List;
 
 import javax.swing.JTable;
@@ -14,6 +11,7 @@ import javax.swing.SwingWorker;
 
 import jp.scid.bio.store.sequence.GeneticSequence;
 import jp.scid.genomemuseum.model.GeneticSequenceCollection;
+import jp.scid.genomemuseum.model.GeneticSequenceTableFormat;
 import jp.scid.genomemuseum.model.MutableGeneticSequenceCollection;
 import jp.scid.genomemuseum.model.SequenceImportable;
 import jp.scid.genomemuseum.model.sql.tables.records.MuseumExhibitRecord;
@@ -21,14 +19,12 @@ import jp.scid.gui.control.BooleanModelBindings;
 import jp.scid.gui.model.ValueModel;
 import jp.scid.gui.model.ValueModels;
 
-import org.jooq.Field;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import ca.odell.glazedlists.BasicEventList;
 import ca.odell.glazedlists.EventList;
 import ca.odell.glazedlists.TextFilterator;
-import ca.odell.glazedlists.gui.AdvancedTableFormat;
 import ca.odell.glazedlists.swing.DefaultEventListModel;
 
 public class GeneticSequenceListController extends ListController<GeneticSequence> {
@@ -132,38 +128,6 @@ public class GeneticSequenceListController extends ListController<GeneticSequenc
             bindTable(table, tableFormat);
             bindTableTransferHandler(table);
             bindSortableTableHeader(table.getTableHeader(), tableFormat);
-        }
-    }
-    
-    static class GeneticSequenceTableFormat implements AdvancedTableFormat<GeneticSequence> {
-        List<Field<?>> fields = GENETIC_SEQUENCE.getFields();
-                
-        @Override
-        public int getColumnCount() {
-            return fields.size();
-        }
-
-        @Override
-        public String getColumnName(int column) {
-            Field<?> field = fields.get(column);
-            return field.getName();
-        }
-
-        @Override
-        public Object getColumnValue(GeneticSequence baseObject, int column) {
-            Field<?> field = fields.get(column);
-            return baseObject.getValue(field);
-        }
-
-        @Override
-        public Class<?> getColumnClass(int column) {
-            return fields.get(column).getType();
-        }
-
-        @Override
-        public Comparator<?> getColumnComparator(int column) {
-            // TODO Auto-generated method stub
-            return null;
         }
     }
 

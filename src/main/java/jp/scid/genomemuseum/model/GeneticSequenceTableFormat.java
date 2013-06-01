@@ -1,90 +1,95 @@
 package jp.scid.genomemuseum.model;
 
+import java.io.File;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
 
+import jp.scid.bio.store.jooq.Tables;
+import jp.scid.bio.store.sequence.GeneticSequence;
+import jp.scid.bio.store.sequence.SequenceUnit;
+
 import ca.odell.glazedlists.gui.AdvancedTableFormat;
 
-public class MuseumExhibitTableFormat implements AdvancedTableFormat<MuseumExhibit>{
-    static enum Column implements Comparator<MuseumExhibit> {
+public class GeneticSequenceTableFormat implements AdvancedTableFormat<GeneticSequence>{
+    static enum Column implements Comparator<GeneticSequence> {
         ID("id") {
             @Override
-            public Long getValue(MuseumExhibit e) {
-                return e.getId();
+            public Long getValue(GeneticSequence e) {
+                return e.id();
             }
         },
         NAME("name") {
             @Override
-            public String getValue(MuseumExhibit e) {
-                return e.getName();
+            public String getValue(GeneticSequence e) {
+                return e.name();
             }
         },
         SEQUENCE_LENGTH("sequenceLength", Integer.class) {
             @Override
-            public Integer getValue(MuseumExhibit e) {
-                return e.getSequenceLength();
+            public Integer getValue(GeneticSequence e) {
+                return e.length();
             }
         },
         ACCESSION("accession") {
             @Override
-            public String getValue(MuseumExhibit e) {
-                return e.getAccession();
+            public String getValue(GeneticSequence e) {
+                return e.accession();
             }
         },
         NAMESPACE("namespace") {
             @Override
-            public String getValue(MuseumExhibit e) {
-                return e.getNamespace();
+            public String getValue(GeneticSequence e) {
+                return e.getValue(Tables.GENETIC_SEQUENCE.NAMESPACE);
             }
         },
         VERSION("version", Integer.class) {
             @Override
-            public Integer getValue(MuseumExhibit e) {
-                return e.getVersion();
+            public Integer getValue(GeneticSequence e) {
+                return e.version();
             }
         },
         DEFINITION("definition") {
             @Override
-            public String getValue(MuseumExhibit e) {
-                return e.getDefinition();
+            public String getValue(GeneticSequence e) {
+                return e.definition();
             }
         },
         SOURCE_TEXT("sourceText") {
             @Override
-            public String getValue(MuseumExhibit e) {
-                return e.getSourceText();
+            public String getValue(GeneticSequence e) {
+                return e.source();
             }
         },
         ORGANISM("organism") {
             @Override
-            public String getValue(MuseumExhibit e) {
-                return e.getOrganism();
+            public String getValue(GeneticSequence e) {
+                return e.organism();
             }
         },
         DATE("date", Date.class) {
             @Override
-            public Date getValue(MuseumExhibit e) {
-                return e.getDate();
+            public Date getValue(GeneticSequence e) {
+                return e.date();
             }
         },
-        SEQUENCE_UNIT("sequenceUnit", MuseumExhibit.SequenceUnitType.class) {
+        SEQUENCE_UNIT("sequenceUnit", SequenceUnit.class) {
             @Override
-            public MuseumExhibit.SequenceUnitType getValue(MuseumExhibit e) {
-                return e.getSequenceUnitAsTypeValue();
+            public SequenceUnit getValue(GeneticSequence e) {
+                return e.sequenceUnit();
             }
         },
         MOLECULE_TYPE("moleculeType") {
             @Override
-            public String getValue(MuseumExhibit e) {
-                return e.getMoleculeType();
+            public String getValue(GeneticSequence e) {
+                return e.moleculeType();
             }
         },
         FILE_URI("fileUri") {
             @Override
-            public String getValue(MuseumExhibit e) {
-                return e.getFileUri();
+            public File getValue(GeneticSequence e) {
+                return e.getFile();
             }
         },
         ;
@@ -105,11 +110,11 @@ public class MuseumExhibitTableFormat implements AdvancedTableFormat<MuseumExhib
             return name;
         }
         
-        public abstract Object getValue(MuseumExhibit e); 
+        public abstract Object getValue(GeneticSequence e); 
         
         @SuppressWarnings("unchecked")
         @Override
-        public int compare(MuseumExhibit o1, MuseumExhibit o2) {
+        public int compare(GeneticSequence o1, GeneticSequence o2) {
             Comparable<Object> v1 = (Comparable<Object>) getValue(o1);
             Comparable<Object> v2 = (Comparable<Object>) getValue(o2);
             
@@ -123,7 +128,7 @@ public class MuseumExhibitTableFormat implements AdvancedTableFormat<MuseumExhib
             return v1.compareTo(v2);
         }
         
-        public Comparator<MuseumExhibit> getComparator() {
+        public Comparator<GeneticSequence> getComparator() {
             return this;
         }
         
@@ -134,11 +139,11 @@ public class MuseumExhibitTableFormat implements AdvancedTableFormat<MuseumExhib
 
     private final List<Column> columns;
     
-    public MuseumExhibitTableFormat(Column... columns) {
+    public GeneticSequenceTableFormat(Column... columns) {
         this.columns = Arrays.asList(columns);
     }
     
-    public MuseumExhibitTableFormat() {
+    public GeneticSequenceTableFormat() {
         this(Column.values());
     }
     
@@ -157,7 +162,7 @@ public class MuseumExhibitTableFormat implements AdvancedTableFormat<MuseumExhib
     }
 
     @Override
-    public Object getColumnValue(MuseumExhibit baseObject, int column) {
+    public Object getColumnValue(GeneticSequence baseObject, int column) {
         return getColumn(column).getValue(baseObject);
     }
 
@@ -167,7 +172,7 @@ public class MuseumExhibitTableFormat implements AdvancedTableFormat<MuseumExhib
     }
 
     @Override
-    public Comparator<MuseumExhibit> getColumnComparator(int column) {
+    public Comparator<GeneticSequence> getColumnComparator(int column) {
         return getColumn(column).getComparator();
     }
 }
