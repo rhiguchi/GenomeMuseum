@@ -14,7 +14,6 @@ import jp.scid.genomemuseum.model.GeneticSequenceCollection;
 import jp.scid.genomemuseum.model.GeneticSequenceTableFormat;
 import jp.scid.genomemuseum.model.MutableGeneticSequenceCollection;
 import jp.scid.genomemuseum.model.SequenceImportable;
-import jp.scid.genomemuseum.model.sql.tables.records.MuseumExhibitRecord;
 import jp.scid.gui.control.BooleanModelBindings;
 import jp.scid.gui.model.ValueModel;
 import jp.scid.gui.model.ValueModels;
@@ -159,26 +158,26 @@ public class GeneticSequenceListController extends ListController<GeneticSequenc
     }
     
     static abstract class Result {
-        private final MuseumExhibitRecord exhibit;
+        private final GeneticSequence sequence;
         
-        Result(MuseumExhibitRecord exhibit) {
-            this.exhibit = exhibit;
+        Result(GeneticSequence sequence) {
+            this.sequence = sequence;
         }
         
-        public MuseumExhibitRecord exhibit() {
-            return exhibit;
+        public GeneticSequence sequence() {
+            return sequence;
         }
     }
     
     static class Success extends Result {
-        Success(MuseumExhibitRecord exhibit) {
-            super(exhibit);
+        Success(GeneticSequence sequence) {
+            super(sequence);
         }
     }
     
     static class InvalidFileFormat extends Result {
-        InvalidFileFormat(MuseumExhibitRecord exhibit) {
-            super(exhibit);
+        InvalidFileFormat(GeneticSequence sequence) {
+            super(sequence);
         }
     }
 }
