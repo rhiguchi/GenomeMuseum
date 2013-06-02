@@ -1,30 +1,36 @@
 package jp.scid.genomemuseum.gui;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import javax.swing.AbstractButton;
 import javax.swing.Action;
 import javax.swing.JTree;
+import javax.swing.event.TreeSelectionEvent;
+import javax.swing.event.TreeSelectionListener;
 import javax.swing.tree.DefaultMutableTreeNode;
+import javax.swing.tree.DefaultTreeSelectionModel;
 import javax.swing.tree.TreeModel;
 import javax.swing.tree.TreePath;
-import javax.swing.tree.TreeSelectionModel;
 
 import jp.scid.bio.store.folder.CollectionType;
 import jp.scid.bio.store.folder.Folder;
-import jp.scid.bio.store.folder.GroupFolder;
-import jp.scid.genomemuseum.model.FolderContainer;
-import jp.scid.genomemuseum.model.FolderTreeNode;
+import jp.scid.bio.store.folder.FoldersContainer;
 import jp.scid.genomemuseum.model.MuseumTreeSource;
 import jp.scid.genomemuseum.model.NodeListTreeModel;
 import jp.scid.gui.control.ActionManager;
+import jp.scid.gui.control.BooleanModelBindings;
+import jp.scid.gui.model.ValueModel;
+import jp.scid.gui.model.ValueModels;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class FolderTreeController {
+public class FolderTreeController implements TreeSelectionListener {
     private final static Logger logger = LoggerFactory.getLogger(FolderTreeController.class);
     
     private final NodeListTreeModel treeModel;
-    private final TreeSelectionModel selectionModel;
+    private final SourceSelectionModel selectionModel;
     private final FolderTreeTransferHandler transferHandler;
     
     private final Action basicFolderAddAction;
@@ -32,18 +38,24 @@ public class FolderTreeController {
     private final Action filterFolderAddAction;
     private final Action folderRemoveAction;
     
+    private ValueModel<Boolean> hasSelection;
+    
     private MuseumTreeSource treeSource;
     
     public FolderTreeController() {
         treeModel = new NodeListTreeModel();
-        selectionModel = new TreeController.SelectableSelectionModel();
+        selectionModel = new SourceSelectionModel();
         transferHandler = new FolderTreeTransferHandler(this);
+        
+        hasSelection = ValueModels.newBooleanModel(!selectionModel.isSelectionEmpty());
         
         ActionManager actionManager = new ActionManager(this);
         basicFolderAddAction = actionManager.getAction("addBasicFolder");
         groupFolderAddAction = actionManager.getAction("addGroupFolder");
         filterFolderAddAction = actionManager.getAction("addFilterFolder");
         folderRemoveAction = actionManager.getAction("remove");
+        
+        new BooleanModelBindings(hasSelection).bindToActionEnabled(folderRemoveAction);
     }
     
     public void setModel(MuseumTreeSource treeSource) {
@@ -85,6 +97,7 @@ public class FolderTreeController {
     }
 
     private void startEditingAtPath(TreePath path) {
+        selectionModel.setSelectionPath(path);
         // TODO Auto-generated method stub
         
     }
@@ -92,23 +105,21 @@ public class FolderTreeController {
     TreePath addFolder(CollectionType type) {
         Object selectedNodeObject = getSelectedNodeObject();
         
-        Folder child;
-        if (selectedNodeObject instanceof GroupFolder) {
-            child = ((GroupFolder) selectedNodeObject).addContentFolder(type);
+        FoldersContainer parent;
+        if (selectedNodeObject instanceof FoldersContainer) {
+            parent = (FoldersContainer) selectedNodeObject;
         }
-        // TODO folder's parent
-//        else if (selectedNodeObject instanceof Folder) {
-//            
-//        }
+        else if (selectedNodeObject instanceof Folder) {
+            parent = ((Folder) selectedNodeObject).getParent();
+        }
         else {
-            child = treeSource.addFolder(type);
+            parent = treeSource.getUserCollectionsRoot();
         }
         
-        return null;
-//        int[] indexPath = treeSource.getIndexPath(newFolder);
-//        TreePath path = treeModel.getPathOfIndex(indexPath);
-//        
-//        return path;
+        Folder child = parent.createContentFolder(type);
+        int[] indexPath = treeSource.getIndexPath(child);
+        TreePath path = treeModel.getPathOfIndex(indexPath);
+        return path;
     }
 
     private Object getSelectedNodeObject() {
@@ -126,16 +137,24 @@ public class FolderTreeController {
         }
         return selectedNodeObject;
     }
-
+    
     
     public boolean canRemove() {
-        return getSelectedNodeObject() instanceof FolderTreeNode;
+        return getSelectedNodeObject() instanceof Folder;
     }
     
     public void remove() {
         logger.debug("FolderTreeController#remove");
-        Object selectedNodeObject = getSelectedNodeObject();
-        ((FolderTreeNode) selectedNodeObject).remove();
+        Folder folder = (Folder) getSelectedNodeObject();
+        if (folder != null) {
+            folder.deleteFromParent();
+        }
+    }
+    
+    // Selection
+    @Override
+    public void valueChanged(TreeSelectionEvent e) {
+        hasSelection.setValue(canRemove());
     }
     
     // Bindings
@@ -143,6 +162,7 @@ public class FolderTreeController {
         tree.setRootVisible(false);
         tree.setModel(treeModel);
         tree.setSelectionModel(selectionModel);
+        tree.addTreeSelectionListener(this);
 
 //        updateExpansion(tree);
 //        tree.addTreeWillExpandListener(this);
@@ -164,5 +184,45 @@ public class FolderTreeController {
     
     public void bindFolderRemoveButton(AbstractButton button) {
         button.setAction(folderRemoveAction);
+    }
+
+    static class SourceSelectionModel extends DefaultTreeSelectionModel {
+        public boolean canSelect(TreePath path) {
+            return path.getPathCount() > 2;
+        }
+        
+        @Override
+        public void setSelectionPath(TreePath path) {
+            if (canSelect(path))
+                super.setSelectionPath(path);
+        }
+        
+        @Override
+        public void setSelectionPaths(TreePath[] paths) {
+            super.setSelectionPaths(filterSelectable(paths));
+        }
+
+        @Override
+        public void addSelectionPath(TreePath path) {
+            if (canSelect(path))
+                super.addSelectionPath(path);
+        }
+        
+        @Override
+        public void addSelectionPaths(TreePath[] paths) {
+            super.addSelectionPaths(filterSelectable(paths));
+        }
+
+        TreePath[] filterSelectable(TreePath[] pPaths) {
+            if (pPaths == null)
+                return null;
+            
+            List<TreePath> pathList = new ArrayList<TreePath>(pPaths.length);
+            for (TreePath path: pPaths) {
+                if (canSelect(path))
+                    pathList.add(path);
+            }
+            return pathList.toArray(new TreePath[0]);
+        }
     }
 }
