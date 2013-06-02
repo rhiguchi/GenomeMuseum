@@ -20,9 +20,7 @@ public class NodeListTreeModel implements TreeModel {
 
     private final DefaultTreeModel delegate;
     
-    private final Map<TreeNode, ChildrenSync> childrenSyncs;
-    
-    private final Map<TreeModelListener, TreeModelListenerProxy> listenerProxyMap;
+    private final Map<DefaultMutableTreeNode, ChildrenSync> childrenSyncs;
     
     protected TreeSource treeSource;
     
@@ -30,8 +28,7 @@ public class NodeListTreeModel implements TreeModel {
         if (delegate == null) throw new IllegalArgumentException("delegate must not be null");
         this.delegate = delegate;
         
-        childrenSyncs = new HashMap<TreeNode, ChildrenSync>();
-        listenerProxyMap = new HashMap<TreeModelListener, TreeModelListenerProxy>();
+        childrenSyncs = new HashMap<DefaultMutableTreeNode, ChildrenSync>();
     }
 
     public NodeListTreeModel() {
@@ -69,16 +66,24 @@ public class NodeListTreeModel implements TreeModel {
     @Override
     public void addTreeModelListener(TreeModelListener listener) {
         TreeModelListenerProxy proxy = new TreeModelListenerProxy(listener);
-        listenerProxyMap.put(listener, proxy);
         delegate.addTreeModelListener(proxy);
     }
     
     @Override
     public void removeTreeModelListener(TreeModelListener listener) {
-        TreeModelListenerProxy proxy = listenerProxyMap.remove(listener);
+        TreeModelListenerProxy proxy = findProxyListener(listener);
         if (proxy != null) {
             delegate.removeTreeModelListener(proxy);
         }
+    }
+
+    private TreeModelListenerProxy findProxyListener(TreeModelListener listener) {
+        for (TreeModelListener l: delegate.getTreeModelListeners()) {
+            if (((TreeModelListenerProxy) l).original.equals(listener)) {
+                return (TreeModelListenerProxy) l;
+            }
+        }
+        return null;
     }
     
     private void ensureChildrenRetrieved(Object parent) {
@@ -123,6 +128,7 @@ public class NodeListTreeModel implements TreeModel {
         for (Entry<?, ChildrenSync> entry: childrenSyncs.entrySet()) {
             entry.getValue().dispose();
         }
+        childrenSyncs.clear();
         
         MutableTreeNode root;
         if (treeSource == null) {
