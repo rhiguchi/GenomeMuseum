@@ -46,22 +46,29 @@ public class GeneticSequenceListTransferHandler extends TransferHandler {
         return false;
     }
 
-    private boolean importFiles(Collection<File> files) throws IOException {
-        boolean result = false;
+    private boolean importFiles(Collection<File> base) throws IOException {
+        List<File> files = new LinkedList<File>();
         
-        for (File file: files) {
+        for (File file: base) {
             if (file.isDirectory()) {
-                Collection<File> children =
-                        FileUtils.listFiles(file, HiddenFileFilter.VISIBLE, HiddenFileFilter.VISIBLE);
-                result |= importFiles(children);
-                continue;
+                Collection<File> children = FileUtils.listFiles(file, null, true);
+                files.addAll(children);
             }
-            
-            // File
-            result |= controller.importFile(file);
+            else {
+                files.add(file);
+            }
         }
         
-        return result;
+        for (Iterator<File> it = files.iterator(); it.hasNext();) {
+            File file = it.next();
+            if (file.isHidden()) {
+                it.remove();
+            }
+        }
+        
+        controller.importFiles(files);
+        
+        return !files.isEmpty();
     }
     
     @Override

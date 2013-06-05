@@ -5,7 +5,10 @@ import java.beans.PropertyChangeListener;
 import java.io.File;
 import java.io.IOException;
 import java.text.ParseException;
+import java.util.Collection;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import javax.swing.JTable;
 import javax.swing.ListModel;
@@ -15,6 +18,7 @@ import jp.scid.bio.store.SequenceLibrary;
 import jp.scid.bio.store.sequence.GeneticSequence;
 import jp.scid.genomemuseum.model.GeneticSequenceCollection;
 import jp.scid.genomemuseum.model.GeneticSequenceCollections;
+import jp.scid.genomemuseum.model.GeneticSequenceFileLoadingManager;
 import jp.scid.genomemuseum.model.GeneticSequenceTableFormat;
 import jp.scid.genomemuseum.model.MutableGeneticSequenceCollection;
 import jp.scid.genomemuseum.model.SequenceImportable;
@@ -39,6 +43,8 @@ public class GeneticSequenceListController extends ListController<GeneticSequenc
     
     private GeneticSequenceCollection model;
     
+    private GeneticSequenceFileLoadingManager loadingManager;
+    
     public GeneticSequenceListController(EventList<GeneticSequence> source) {
         super(source);
         listSource = ListModelEventListAdapter.newInstanceOf(GeneticSequence.class, source);
@@ -48,6 +54,9 @@ public class GeneticSequenceListController extends ListController<GeneticSequenc
         ListModel selection = new DefaultEventListModel<GeneticSequence>(selectionModel.getSelected());
         ValueModel<Boolean> isNonEmpty = ValueModels.newListElementsExistenceModel(selection);
         new BooleanModelBindings(isNonEmpty).bindToActionEnabled(removeAction);
+        
+        ExecutorService executorService = Executors.newFixedThreadPool(1);
+        loadingManager = new GeneticSequenceFileLoadingManager(executorService);
     }
     
     public GeneticSequenceListController() {
@@ -81,7 +90,11 @@ public class GeneticSequenceListController extends ListController<GeneticSequenc
         return true;
     }
     
-
+    public void importFiles(Collection<File> files) {
+        SequenceImportable model = (SequenceImportable) this.model;
+        loadingManager.executeLoading(files, model);
+    }
+    
     @Override
     public boolean canRemove() {
         return model instanceof SequenceImportable;
@@ -164,46 +177,6 @@ public class GeneticSequenceListController extends ListController<GeneticSequenc
             baseList.add(element.name());
             baseList.add(element.organism());
             baseList.add(element.source());
-        }
-    }
-
-    static class FileImportTask extends SwingWorker<Result, Void> {
-        private final File file;
-        private final MutableGeneticSequenceCollection model;
-        
-        public FileImportTask(MutableGeneticSequenceCollection model, File file) {
-            this.model = model;
-            this.file = file;
-        }
-
-        @Override
-        protected Result doInBackground() throws Exception {
-//            model.addFile(file);
-            return null;
-        }
-    }
-    
-    static abstract class Result {
-        private final GeneticSequence sequence;
-        
-        Result(GeneticSequence sequence) {
-            this.sequence = sequence;
-        }
-        
-        public GeneticSequence sequence() {
-            return sequence;
-        }
-    }
-    
-    static class Success extends Result {
-        Success(GeneticSequence sequence) {
-            super(sequence);
-        }
-    }
-    
-    static class InvalidFileFormat extends Result {
-        InvalidFileFormat(GeneticSequence sequence) {
-            super(sequence);
         }
     }
 }
