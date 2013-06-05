@@ -34,7 +34,6 @@ import javax.swing.JPopupMenu;
 import javax.swing.JProgressBar;
 import javax.swing.JScrollPane;
 import javax.swing.JSplitPane;
-import javax.swing.JTabbedPane;
 import javax.swing.JTable;
 import javax.swing.JTextField;
 import javax.swing.JToggleButton;
@@ -50,6 +49,7 @@ import javax.swing.table.TableCellRenderer;
 import javax.swing.tree.DefaultTreeCellEditor;
 
 import jp.scid.genomemuseum.model.TaskProgressModel;
+import jp.scid.genomemuseum.view.folder.FolderTreeCellRenderer;
 import jp.scid.gui.MessageFormatTableCell;
 import jp.scid.gui.plaf.SourceListTreeUI;
 import jp.scid.gui.view.SDDefaultTableCellRenderer;
@@ -100,8 +100,7 @@ public class MainView implements GenomeMuseumView {
     public final JLabel loadingIconLabel = new JLabel(loadingIcon);
 
     // Source List Area
-    public final ExhibitRoomListTreeCellRendererProxy sourceListCellRenderer =
-            new ExhibitRoomListTreeCellRendererProxy();
+    public final FolderTreeCellRenderer sourceListCellRenderer = new FolderTreeCellRenderer();
     public final SourceListCellEditor sourceListCellEditor = new SourceListCellEditor();
     public final JTree sourceList = createSourceList(sourceListCellRenderer, sourceListCellEditor);
 
@@ -303,14 +302,13 @@ public class MainView implements GenomeMuseumView {
         return table;
     }
 
-    private static JTree createSourceList(
-            ExhibitRoomListTreeCellRendererProxy sourceListCellRenderer,
-            SourceListCellEditor cellEditor) {
+    private static JTree createSourceList(FolderTreeCellRenderer cellRenderer, SourceListCellEditor cellEditor) {
         JTree tree = new JTree();
+        
         tree.setUI(new SourceListTreeUI());
         tree.setCellEditor(new DefaultTreeCellEditor(tree, null, cellEditor));
-        sourceListCellRenderer.setRenderer(tree.getCellRenderer());
-        tree.setCellRenderer(sourceListCellRenderer);
+        
+        tree.setCellRenderer(cellRenderer);
         
         tree.setRootVisible(false);
         tree.setInvokesStopCellEditing(true);
