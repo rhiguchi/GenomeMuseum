@@ -110,9 +110,20 @@ public class NodeListTreeModel implements TreeModel {
     }
 
     public TreePath getPathOfIndex(int[] indices) {
-        TreePath path = new TreePath(getRoot());
+        Object root = getRoot();
+        if (root == null) {
+            throw new IllegalStateException("root must not be null");
+        }
+        
+        TreePath path = new TreePath(root);
         for (int index: indices) {
-            Object child = getChild(path.getLastPathComponent(), index);
+            Object object = path.getLastPathComponent();
+            int childCount = getChildCount(object);
+            if (childCount <= index) {
+                break;
+            }
+            
+            Object child = getChild(object, index);
             path = path.pathByAddingChild(child);
         }
         return path;
