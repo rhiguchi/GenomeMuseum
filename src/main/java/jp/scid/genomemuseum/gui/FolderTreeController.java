@@ -23,10 +23,11 @@ import jp.scid.gui.control.BooleanModelBindings;
 import jp.scid.gui.model.ValueModel;
 import jp.scid.gui.model.ValueModels;
 
+import org.jdesktop.application.AbstractBean;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class FolderTreeController implements TreeSelectionListener {
+public class FolderTreeController extends AbstractBean implements TreeSelectionListener {
     private final static Logger logger = LoggerFactory.getLogger(FolderTreeController.class);
     
     private final NodeListTreeModel treeModel;
@@ -39,6 +40,8 @@ public class FolderTreeController implements TreeSelectionListener {
     private final Action folderRemoveAction;
     
     private ValueModel<Boolean> hasSelection;
+    
+    private Object selectedNodeObject;
     
     private MuseumTreeSource treeSource;
     
@@ -61,6 +64,8 @@ public class FolderTreeController implements TreeSelectionListener {
     public void setModel(MuseumTreeSource treeSource) {
         treeModel.setTreeSource(treeSource);
         this.treeSource = treeSource;
+        
+        selectAnyNode();
     }
     
     public TreeModel getTreeModel() {
@@ -122,25 +127,21 @@ public class FolderTreeController implements TreeSelectionListener {
         return path;
     }
 
-    private Object getSelectedNodeObject() {
-        TreePath selectionPath = getSelectionPath();
-        if (selectionPath == null) {
-            return null;
-        }
-        
-        Object selectedNodeObject;
-        if (selectionPath.getLastPathComponent() instanceof DefaultMutableTreeNode) {
-            selectedNodeObject = ((DefaultMutableTreeNode) selectionPath.getLastPathComponent()).getUserObject();
-        }
-        else {
-            selectedNodeObject = null;
-        }
+    public Object getSelectedNodeObject() {
         return selectedNodeObject;
     }
     
-    
-    public boolean canRemove() {
-        return getSelectedNodeObject() instanceof Folder;
+    private void setSelectedTreePath(TreePath path) {
+        Object nodeObject;
+        if (path.getLastPathComponent() instanceof DefaultMutableTreeNode) {
+            nodeObject = ((DefaultMutableTreeNode) path.getLastPathComponent()).getUserObject();
+        }
+        else {
+            nodeObject = null;
+        }
+        
+        firePropertyChange("selectedNodeObject", this.selectedNodeObject, this.selectedNodeObject = nodeObject);
+        hasSelection.setValue(selectedNodeObject instanceof Folder);
     }
     
     public void remove() {
@@ -154,9 +155,23 @@ public class FolderTreeController implements TreeSelectionListener {
     // Selection
     @Override
     public void valueChanged(TreeSelectionEvent e) {
-        hasSelection.setValue(canRemove());
+        if (e.getNewLeadSelectionPath() == null) {
+            selectAnyNode();
+        }
+        else {
+            setSelectedTreePath(e.getNewLeadSelectionPath());
+        }
     }
     
+    private void selectAnyNode() {
+        if (treeModel.getRoot() == null) {
+            return;
+        }
+        
+        TreePath path = treeModel.getPathOfIndex(new int[]{0, 0});
+        selectionModel.setSelectionPath(path);
+    }
+
     // Bindings
     public void bindTree(JTree tree) {
         tree.setRootVisible(false);

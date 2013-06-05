@@ -1,5 +1,7 @@
 package jp.scid.genomemuseum.gui;
 
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
 import java.io.File;
 import java.io.IOException;
 import java.text.ParseException;
@@ -9,8 +11,10 @@ import javax.swing.JTable;
 import javax.swing.ListModel;
 import javax.swing.SwingWorker;
 
+import jp.scid.bio.store.SequenceLibrary;
 import jp.scid.bio.store.sequence.GeneticSequence;
 import jp.scid.genomemuseum.model.GeneticSequenceCollection;
+import jp.scid.genomemuseum.model.GeneticSequenceCollections;
 import jp.scid.genomemuseum.model.GeneticSequenceTableFormat;
 import jp.scid.genomemuseum.model.MutableGeneticSequenceCollection;
 import jp.scid.genomemuseum.model.SequenceImportable;
@@ -128,8 +132,30 @@ public class GeneticSequenceListController extends ListController<GeneticSequenc
             bindTableTransferHandler(table);
             bindSortableTableHeader(table.getTableHeader(), tableFormat);
         }
+        
+        public void bindTreeSelectionChange(FolderTreeController controller) {
+            trySetModel(controller.getSelectedNodeObject());
+            controller.addPropertyChangeListener("selectedNodeObject", new PropertyChangeListener() {
+                public void propertyChange(PropertyChangeEvent e) {
+                    Object object = e.getNewValue();
+                    
+                    trySetModel(object);
+                }
+            });
+        }
+        
+        private void trySetModel(Object object) {
+            final GeneticSequenceCollection newModel;
+            if (object instanceof SequenceLibrary) {
+                newModel = GeneticSequenceCollections.fromSequenceLibrary((SequenceLibrary) object);
+            }
+            else {
+                newModel = null;
+            }
+            setModel(newModel);
+        }
     }
-
+    
     private static class ExhibitTextFilterator implements TextFilterator<GeneticSequence> {
         @Override
         public void getFilterStrings(List<String> baseList, GeneticSequence element) {

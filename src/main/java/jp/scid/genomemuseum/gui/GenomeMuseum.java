@@ -94,6 +94,7 @@ public class GenomeMuseum extends Application {
                 geneticSequenceListController.new Binding();
         listBinding.bindTable(mainView.exhibitListView.dataTable);
         listBinding.bindSearchEngineTextField(mainView.quickSearchField, false);
+        listBinding.bindTreeSelectionChange(folderDirectoryTreeController);
         
         folderDirectoryTreeController.bindTree(mainView.sourceList);
         folderDirectoryTreeController.bindBasicFolderAddButton(mainView.addBoxFolder);
@@ -111,9 +112,6 @@ public class GenomeMuseum extends Application {
         File filesDir = getFilesStoreDirectory();
         sequenceLibrary.setFilesStoreRoot(filesDir);
         logger.info("sequence files store at {}", filesDir);
-        
-        GeneticSequenceCollection collection = GeneticSequenceCollections.fromSequenceLibrary(sequenceLibrary);
-        geneticSequenceListController.setModel(collection);
         
         // tree model
         MuseumTreeSource treeSource = new MuseumTreeSource();
