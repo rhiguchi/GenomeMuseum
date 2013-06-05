@@ -9,6 +9,9 @@ import javax.swing.ImageIcon;
 
 public class NodeIcons {
     private final static NodeIcons SINGLETON = new NodeIcons();
+    private Icon bookIcon;
+    private Icon computerIcon;
+    private Icon folderIcon;
     
     private NodeIcons() {
     }
@@ -18,15 +21,24 @@ public class NodeIcons {
     }
     
     public Icon book() {
-        return getResourceIcon("book.png");
+        if (bookIcon == null) {
+            bookIcon = getResourceIcon("book.png");
+        }
+        return bookIcon;
     }
     
     public Icon computer() {
-        return getResourceIcon("computer.png");
+        if (computerIcon == null) {
+            computerIcon = getResourceIcon("computer.png");
+        }
+        return computerIcon;
     }
     
     public Icon folder() {
-        return getResourceIcon("folder.png");
+        if (folderIcon == null) {
+            folderIcon = getResourceIcon("folder.png");
+        }
+        return folderIcon;
     }
 
     private static Icon getResourceIcon(String name) {
