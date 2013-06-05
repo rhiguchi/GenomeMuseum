@@ -39,7 +39,7 @@ public class ListModelEventListAdapter<E> {
         this.source = source;
         
         List<E> elements = Collections.emptyList();
-        if (target != null) {
+        if (source != null) {
             elements = getElements(source, 0, source.getSize());
         }
         
