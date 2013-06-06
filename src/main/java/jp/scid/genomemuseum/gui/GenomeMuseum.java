@@ -5,8 +5,6 @@ import java.io.File;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.Arrays;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 import javax.swing.AbstractButton;
 import javax.swing.Action;
@@ -16,8 +14,6 @@ import javax.swing.JMenuBar;
 
 import jp.scid.bio.store.ConnectionBuilder;
 import jp.scid.bio.store.SequenceLibrary;
-import jp.scid.genomemuseum.model.GeneticSequenceCollection;
-import jp.scid.genomemuseum.model.GeneticSequenceCollections;
 import jp.scid.genomemuseum.model.MuseumTreeSource;
 import jp.scid.genomemuseum.view.MainMenuBar;
 import jp.scid.genomemuseum.view.MainView;
@@ -40,8 +36,7 @@ public class GenomeMuseum extends Application {
     private GeneticSequenceListController geneticSequenceListController;
     private FolderTreeController folderDirectoryTreeController;
     private FileOpenHandler fileOpenHandler;
-    
-    private ExecutorService taskExecutor;
+    private final FileLoadingTaskController fileLoadingTaskController;
     
     // actions
     public GenomeMuseum() {
@@ -51,6 +46,7 @@ public class GenomeMuseum extends Application {
         geneticSequenceListController = new GeneticSequenceListController();
         folderDirectoryTreeController = new FolderTreeController();
         fileOpenHandler = new FileOpenHandler(geneticSequenceListController);
+        fileLoadingTaskController = new FileLoadingTaskController();
     }
 
     private void openConnectionPool() {
@@ -77,8 +73,6 @@ public class GenomeMuseum extends Application {
     protected void initialize(String[] args) {
         logger.debug("initialize with args: {}", Arrays.asList(args));
         
-        taskExecutor = Executors.newSingleThreadExecutor();
-        
         MainView mainView = new MainView();
         MainMenuBar mainMenuBar = createMainMenuBar();
         
@@ -89,6 +83,8 @@ public class GenomeMuseum extends Application {
         FileDialog openFileDialog = createOpenFileDialog(mainFrame);
         fileOpenHandler.setFileDialog(openFileDialog);
         fileOpenHandler.bindOpenMenu(mainMenuBar.open);
+        
+        geneticSequenceListController.setFileLoadingTaskController(fileLoadingTaskController);
         
         GeneticSequenceListController.Binding listBinding =
                 geneticSequenceListController.new Binding();
@@ -101,6 +97,11 @@ public class GenomeMuseum extends Application {
         folderDirectoryTreeController.bindGroupFolderAddButton(mainView.addListBox);
         folderDirectoryTreeController.bindFilterFolderAddButton(mainView.addSmartBox);
         folderDirectoryTreeController.bindFolderRemoveButton(mainView.removeBoxButton);
+        
+        FileLoadingTaskController.Bindings taskBindings = fileLoadingTaskController.new Bindings();
+        taskBindings.bindContentPane(mainView.activityPane);
+        taskBindings.bindProgressBar(mainView.fileLoadingProgress);
+        taskBindings.bindStatusLabel(mainView.fileLoadingStatus);
     }
 
     @Override
@@ -149,9 +150,7 @@ public class GenomeMuseum extends Application {
             connectionPool.dispose();
         }
         
-        if (taskExecutor != null) {
-            taskExecutor.shutdownNow();
-        }
+        fileLoadingTaskController.shutdownNow();
     }
     
     JFrame createMainFrame(JComponent contentPane, JMenuBar menuBar) {

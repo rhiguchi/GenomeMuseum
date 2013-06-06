@@ -43,7 +43,7 @@ public class GeneticSequenceListController extends ListController<GeneticSequenc
     
     private GeneticSequenceCollection model;
     
-    private GeneticSequenceFileLoadingManager loadingManager;
+    private FileLoadingTaskController taskController;
     
     public GeneticSequenceListController(EventList<GeneticSequence> source) {
         super(source);
@@ -54,9 +54,6 @@ public class GeneticSequenceListController extends ListController<GeneticSequenc
         ListModel selection = new DefaultEventListModel<GeneticSequence>(selectionModel.getSelected());
         ValueModel<Boolean> isNonEmpty = ValueModels.newListElementsExistenceModel(selection);
         new BooleanModelBindings(isNonEmpty).bindToActionEnabled(removeAction);
-        
-        ExecutorService executorService = Executors.newFixedThreadPool(1);
-        loadingManager = new GeneticSequenceFileLoadingManager(executorService);
     }
     
     public GeneticSequenceListController() {
@@ -83,16 +80,22 @@ public class GeneticSequenceListController extends ListController<GeneticSequenc
             return false;
         }
         
-        
-//        FileImportTask task = new FileImportTask(model, source);
-//        task.execute();
-        
         return true;
     }
     
     public void importFiles(Collection<File> files) {
-        SequenceImportable model = (SequenceImportable) this.model;
-        loadingManager.executeLoading(files, model);
+        if (taskController != null) {
+            SequenceImportable dest = (SequenceImportable) this.model;
+            taskController.executeLoading(files, dest);
+        }
+        else try {
+            for (File file: files) {
+                importFile(file);
+            }
+        }
+        catch (IOException e) {
+            logger.error("fail to import sequence file", e);
+        }
     }
     
     @Override
@@ -106,6 +109,10 @@ public class GeneticSequenceListController extends ListController<GeneticSequenc
             sequence.delete();
         }
         model.fetchSequences();
+    }
+    
+    public void setFileLoadingTaskController(FileLoadingTaskController taskController) {
+        this.taskController = taskController;
     }
     
     // model

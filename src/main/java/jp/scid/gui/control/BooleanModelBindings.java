@@ -1,28 +1,35 @@
 package jp.scid.gui.control;
 
+import java.awt.Component;
+
 import javax.swing.Action;
+import javax.swing.JProgressBar;
 
 import jp.scid.gui.model.ValueModel;
 
-public class BooleanModelBindings {
-    private final ValueModel<Boolean> model;
+public class BooleanModelBindings extends AbstractValueModelBindigs<Boolean> {
 
     public BooleanModelBindings(ValueModel<Boolean> model) {
-        if (model == null) throw new IllegalArgumentException("model must not be null");
-        this.model = model;
+        super(model);
+    }
+
+    public ModelConnector bindToActionEnabled(Action action) {
+        return installModel(new ActionEnableConnector(action));
     }
     
-    public ModelConnector bindToActionEnabled(Action action) {
-        ActionEnableConnector connector = new ActionEnableConnector(action);
-        connector.setModel(model);
-        return connector;
+    public ModelConnector bindToComponentVisibled(Component component) {
+        return installModel(new ComponentVisibleConnector(component));
+    }
+    
+    public ModelConnector bindToProgressBarIndeterminate(JProgressBar component) {
+        return installModel(new ProgressBarIndeterminateConnector(component));
     }
     
     public static interface ModelConnector {
         void dispose();
     }
     
-    private class ActionEnableConnector extends ValueChangeHandler<Boolean> implements ModelConnector {
+    private static class ActionEnableConnector extends AbstractPropertyConnector<Boolean> {
         private final Action action;
         
         public ActionEnableConnector(Action action) {
@@ -34,9 +41,31 @@ public class BooleanModelBindings {
         protected void valueChanged(Boolean newValue) {
             action.setEnabled(newValue);
         }
+    }
+    
+    private static class ComponentVisibleConnector extends AbstractPropertyConnector<Boolean> {
+        private final Component component;
         
-        public void dispose() {
-            setModel(null);
+        public ComponentVisibleConnector(Component component) {
+            this.component = component;
+        }
+
+        @Override
+        protected void valueChanged(Boolean newValue) {
+            component.setVisible(newValue);
+        }
+    }
+    
+    private static class ProgressBarIndeterminateConnector extends AbstractPropertyConnector<Boolean> {
+        private final JProgressBar progressBar;
+        
+        public ProgressBarIndeterminateConnector(JProgressBar progressBar) {
+            this.progressBar = progressBar;
+        }
+        
+        @Override
+        protected void valueChanged(Boolean newValue) {
+            progressBar.setIndeterminate(newValue);
         }
     }
 }
