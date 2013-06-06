@@ -7,11 +7,13 @@ import javax.swing.ListModel;
 import javax.swing.event.ListDataEvent;
 import javax.swing.event.ListDataListener;
 
+import jp.scid.bio.store.sequence.GeneticSequence;
+
 public interface GeneticSequenceCollection {
     
     ListModel getCollection();
 
-    void fetchSequences();
+    List<GeneticSequence> fetchSequences();
 }
 
 abstract class AbstractGeneticSequenceCollection implements GeneticSequenceCollection {

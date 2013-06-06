@@ -3,6 +3,7 @@ package jp.scid.genomemuseum.model;
 import java.io.File;
 import java.io.IOException;
 import java.text.ParseException;
+import java.util.List;
 import java.util.concurrent.Callable;
 
 import javax.swing.ListModel;
@@ -46,8 +47,9 @@ class SequenceLibraryGeneticSequenceCollection implements GeneticSequenceCollect
     }
     
     @Override
-    public void fetchSequences() {
+    public List<GeneticSequence> fetchSequences() {
         library.fetchSequences();
+        return library.fetch();
     }
 }
 
