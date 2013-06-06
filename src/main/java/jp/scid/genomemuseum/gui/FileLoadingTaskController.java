@@ -14,6 +14,7 @@ import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JProgressBar;
 
+import jp.scid.genomemuseum.gui.GeneticSequenceListController.ImportSuccessHandler;
 import jp.scid.genomemuseum.model.GeneticSequenceFileLoadingManager;
 import jp.scid.genomemuseum.model.SequenceImportable;
 import jp.scid.gui.control.BooleanModelBindings;
@@ -42,8 +43,8 @@ public class FileLoadingTaskController implements PropertyChangeListener {
         taskExecutor.shutdownNow();
     }
     
-    public void executeLoading(Collection<File> files, SequenceImportable dest) {
-        loadingManager.executeLoading(files, dest);
+    public void executeLoading(Collection<File> files, SequenceImportable dest, ImportSuccessHandler handler) {
+        loadingManager.executeLoading(files, dest, handler);
     }
     
     public void setLoadingManager(GeneticSequenceFileLoadingManager loadingManager) {

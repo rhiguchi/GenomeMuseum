@@ -6,6 +6,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Future;
 
@@ -28,15 +29,18 @@ public class GeneticSequenceFileLoadingManager extends AbstractBean {
         this.executor = executor;
     }
     
-    public void executeLoading(Collection<File> files, SequenceImportable dest) {
+    public void executeLoading(Collection<File> files, SequenceImportable dest, LoadingSuccessHandler handler) {
         if (!isRunnning()) {
             resetCount();
         }
         
         for (File file: files) {
-            LoadingTask task = new LoadingTask(file, dest);
+            LoadingTask task = new LoadingTask(file, dest, handler);
             execute(task);
         }
+    }
+    public void executeLoading(Collection<File> files, SequenceImportable dest) {
+        executeLoading(files, dest, null);
     }
     
     public boolean isInProgress() {
@@ -91,10 +95,12 @@ public class GeneticSequenceFileLoadingManager extends AbstractBean {
     class LoadingTask extends SwingWorker<GeneticSequence, Void> {
         private final File file;
         private final SequenceImportable dest;
+        private final LoadingSuccessHandler successHandler;
         
-        public LoadingTask(File file, SequenceImportable dest) {
+        public LoadingTask(File file, SequenceImportable dest, LoadingSuccessHandler successHandler) {
             this.file = file;
             this.dest = dest;
+            this.successHandler = successHandler;
         }
 
         @Override
@@ -106,6 +112,23 @@ public class GeneticSequenceFileLoadingManager extends AbstractBean {
         @Override
         protected void done() {
             finished(this);
+            if (!isCancelled() && successHandler != null) {
+                GeneticSequence sequence;
+                try {
+                    sequence = get();
+                    successHandler.handle(sequence);
+                }
+                catch (InterruptedException ignore) {
+                    // ignore
+                }
+                catch (ExecutionException ignore) {
+                    // ignore
+                }
+            }
         }
+    }
+    
+    public static interface LoadingSuccessHandler {
+        void handle(GeneticSequence newElement);
     }
 }

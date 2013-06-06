@@ -19,6 +19,7 @@ import jp.scid.bio.store.sequence.GeneticSequence;
 import jp.scid.genomemuseum.model.GeneticSequenceCollection;
 import jp.scid.genomemuseum.model.GeneticSequenceCollections;
 import jp.scid.genomemuseum.model.GeneticSequenceFileLoadingManager;
+import jp.scid.genomemuseum.model.GeneticSequenceFileLoadingManager.LoadingSuccessHandler;
 import jp.scid.genomemuseum.model.GeneticSequenceTableFormat;
 import jp.scid.genomemuseum.model.MutableGeneticSequenceCollection;
 import jp.scid.genomemuseum.model.SequenceImportable;
@@ -60,6 +61,14 @@ public class GeneticSequenceListController extends ListController<GeneticSequenc
         this(new BasicEventList<GeneticSequence>());
     }
     
+    @Override
+    protected List<GeneticSequence> retrieve() {
+        if (model == null) {
+            return super.retrieve();
+        }
+        return model.fetchSequences();
+    }
+    
     // addFile
     public boolean canImportFile() {
         return model instanceof SequenceImportable;
@@ -86,7 +95,9 @@ public class GeneticSequenceListController extends ListController<GeneticSequenc
     public void importFiles(Collection<File> files) {
         if (taskController != null) {
             SequenceImportable dest = (SequenceImportable) this.model;
-            taskController.executeLoading(files, dest);
+            ImportSuccessHandler handler = new ImportSuccessHandler(dest);
+            
+            taskController.executeLoading(files, dest, handler);
         }
         else try {
             for (File file: files) {
@@ -95,6 +106,21 @@ public class GeneticSequenceListController extends ListController<GeneticSequenc
         }
         catch (IOException e) {
             logger.error("fail to import sequence file", e);
+        }
+    }
+    
+    class ImportSuccessHandler implements LoadingSuccessHandler {
+        private final SequenceImportable model;
+        
+        public ImportSuccessHandler(SequenceImportable model) {
+            this.model = model;
+        }
+
+        @Override
+        public void handle(GeneticSequence newElement) {
+            if (model.equals(getModel())) {
+                add(newElement);
+            }
         }
     }
     
@@ -108,7 +134,7 @@ public class GeneticSequenceListController extends ListController<GeneticSequenc
         for (GeneticSequence sequence: selectionModel.getSelected()) {
             sequence.delete();
         }
-        model.fetchSequences();
+        fetch();
     }
     
     public void setFileLoadingTaskController(FileLoadingTaskController taskController) {
@@ -127,8 +153,10 @@ public class GeneticSequenceListController extends ListController<GeneticSequenc
     public void setModel(GeneticSequenceCollection newModel) {
         this.model = newModel;
         
-        ListModel collection = newModel == null ? null : newModel.getCollection();
-        listSource.setSource(collection);
+        fetch();
+        
+//        ListModel collection = newModel == null ? null : newModel.getCollection();
+//        listSource.setSource(collection);
     }
     
     @Override
