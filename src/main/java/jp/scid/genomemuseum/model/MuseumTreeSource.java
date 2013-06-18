@@ -121,6 +121,10 @@ public class MuseumTreeSource implements NodeListTreeModel.TreeSource {
         rootItemList.setLocalFilesSource(sequenceLibrary);
         rootItemList.setUserCollectionsRoot(sequenceLibrary.getUsersFolderRoot());
     }
+    
+    public void setNcbiSource(Object source) {
+        rootItemList.setNcbiSource(source);
+    }
 
     private static class RootItemList extends AbstractListModel {
         private static final String DEFAULT_LIBRARIES_NAME = "Libraries";
@@ -132,6 +136,8 @@ public class MuseumTreeSource implements NodeListTreeModel.TreeSource {
         private FoldersContainer userCollectionsRoot;
         
         private SequenceLibrary localFilesSourceNode;
+        
+        private Object ncbiSource;
         
         private List<Object> items = new ArrayList<Object>();
         
@@ -148,6 +154,17 @@ public class MuseumTreeSource implements NodeListTreeModel.TreeSource {
             localFilesSourceNode = source;
             if (source != null) {
                 librariesNode.addChild(localFilesSourceNode);
+            }
+        }
+        
+        public void setNcbiSource(Object newNcbiSource) {
+            if (ncbiSource != null) {
+                librariesNode.removeChild(ncbiSource);
+            }
+            
+            ncbiSource = newNcbiSource;
+            if (newNcbiSource != null) {
+                librariesNode.addChild(newNcbiSource);
             }
         }
         
