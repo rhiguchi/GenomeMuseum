@@ -32,6 +32,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import ca.odell.glazedlists.EventList;
+import ca.odell.glazedlists.BasicEventList;
 import ca.odell.glazedlists.FilterList;
 import ca.odell.glazedlists.GlazedLists;
 import ca.odell.glazedlists.ObservableElementList;
@@ -83,6 +84,10 @@ public abstract class ListController<E> {
         updateCanRemoveBySelection();
     }
     
+    protected ListController() {
+        this(new BasicEventList<E>());
+    }
+    
     public void fetch() {
         List<E> source = retrieve();
         base.getReadWriteLock().writeLock().lock();
@@ -103,6 +108,10 @@ public abstract class ListController<E> {
         return new EmptyConnector<E>();
     }
 
+    public int sourceCount() {
+        return base.size();
+    }
+    
     public EventList<E> getViewList() {
         return filterList;
     }
