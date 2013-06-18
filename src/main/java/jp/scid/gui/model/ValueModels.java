@@ -8,6 +8,11 @@ import java.util.List;
 import javax.swing.ListModel;
 import javax.swing.event.ListDataEvent;
 import javax.swing.event.ListDataListener;
+import javax.swing.event.TreeSelectionEvent;
+import javax.swing.event.TreeSelectionListener;
+import javax.swing.tree.DefaultMutableTreeNode;
+import javax.swing.tree.TreePath;
+import javax.swing.tree.TreeSelectionModel;
 
 import jp.scid.gui.model.Transformers.BooleanElementValue;
 import jp.scid.gui.model.Transformers.CollectionSelector;
@@ -37,6 +42,18 @@ public class ValueModels {
     
     public static NonNullValueModel<Integer> newIntegerModel(int initialValue) {
         return new NonNullValueModel<Integer>(initialValue);
+    }
+    
+    public static ValueModel<Object> newTreeSelectedNodeObject(TreeSelectionModel model) {
+        TreeSelectedNodeConnector connector = new TreeSelectedNodeConnector();
+        connector.setSource(model);
+        return connector.getValueModel();
+    }
+
+    public static ValueModel<Boolean> newInstanceCheckModel(ValueModel<? extends Object> base, Class<?> testClass) {
+        InstanceMatchConnector conn = new InstanceMatchConnector(testClass);
+        conn.setSource(base);
+        return conn.getValueModel();
     }
     
     public static <T> ValueModel<Boolean> newSelectionBooleanModel(ValueModel<T> adaptee, T selectionValue) {
@@ -108,7 +125,7 @@ public class ValueModels {
     }
 }
 
-class NumberThresholdModel<T extends Number & Comparable<T>> extends ValueModelConnector<Boolean, ValueModel<T>> implements PropertyChangeListener {
+class NumberThresholdModel<T extends Number & Comparable<T>> extends ValueModelValueConnector<Boolean, T> {
     private final T thresholdValue;
     
     public NumberThresholdModel(T thresholdValue) {
@@ -117,28 +134,88 @@ class NumberThresholdModel<T extends Number & Comparable<T>> extends ValueModelC
         if (thresholdValue == null) throw new IllegalArgumentException("thresholdValue must not be null");
         this.thresholdValue = thresholdValue;
     }
+    
+    @Override
+    protected Boolean convertModelValue(T sourceValue) {
+        return thresholdValue.compareTo(sourceValue) < 0;
+    }
+}
+
+class InstanceMatchConnector extends ValueModelValueConnector<Boolean, Object> {
+    private Class<?> testClass;
+    
+    public InstanceMatchConnector(Class<?> testClass) {
+        super(ValueModels.newBooleanModel(false));
+        
+        if (testClass == null) throw new IllegalArgumentException("testClass must not be null");
+        this.testClass = testClass;
+    }
+    
+    @Override
+    protected Boolean convertModelValue(Object sourceValue) {
+        return testClass.isInstance(sourceValue);
+    }
+}
+
+class TreeSelectedNodeConnector extends ValueModelConnector<Object, TreeSelectionModel> implements TreeSelectionListener {
+    public TreeSelectedNodeConnector() {
+        super(ValueModels.newNullableValueModel());
+    }
+
+    @Override
+    public void valueChanged(TreeSelectionEvent e) {
+        updateModelValue();
+    }
+
+    @Override
+    protected Object getModelValue(TreeSelectionModel source) {
+        TreePath path = source.getLeadSelectionPath();
+        if (path == null) {
+            return null;
+        }
+        if (path.getLastPathComponent() instanceof DefaultMutableTreeNode) {
+            return ((DefaultMutableTreeNode) path.getLastPathComponent()).getUserObject();
+        }
+        return null;
+    }
+
+    @Override
+    protected void installSourceChangeListener(TreeSelectionModel source) {
+        source.addTreeSelectionListener(this);
+    }
+
+    @Override
+    protected void uninstallSourceChangeListener(TreeSelectionModel source) {
+        source.removeTreeSelectionListener(this);
+    }
+}
 
 
+abstract class ValueModelValueConnector<T, S> extends ValueModelConnector<T, ValueModel<? extends S>> implements PropertyChangeListener {
+
+    protected ValueModelValueConnector(ValueModel<T> target) {
+        super(target);
+    }
+
+    abstract protected T convertModelValue(S sourceValue);
+    
+    @Override
+    final protected T getModelValue(ValueModel<? extends S> source) {
+        return convertModelValue(source.getValue());
+    }
+    
     @Override
     public void propertyChange(PropertyChangeEvent evt) {
         updateModelValue();
     }
-
-
+    
     @Override
-    protected Boolean getModelValue(ValueModel<T> source) {
-        T value = source.getValue();
-        
-        return thresholdValue.compareTo(value) < 0;
-    }
-
-    @Override
-    protected void installSourceChangeListener(ValueModel<T> source) {
+    protected void installSourceChangeListener(ValueModel<? extends S> source) {
         source.addPropertyChangeListener(this);
     }
 
     @Override
-    protected void uninstallSourceChangeListener(ValueModel<T> source) {
+    protected void uninstallSourceChangeListener(ValueModel<? extends S> source) {
         source.removePropertyChangeListener(this);
     }
 }
