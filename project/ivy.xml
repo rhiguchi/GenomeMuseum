@@ -41,9 +41,9 @@
 	    <dependency org="com.explodingpixels" name="mac_widgets" rev="0.9.6-SNAPSHOT"/>
 	    <dependency org="commons-io" name="commons-io" rev="2.3"/>
 	    
-	    <dependency org="jp.scid" name="scid-bio-store" rev="0.3.1" conf="default"/>
+	    <dependency org="jp.scid" name="scid-bio-store" rev="0.3.1"/>
+        <dependency org="org.apache.httpcomponents" name="httpclient" rev="4.2.5"/>
 	    
-	    <dependency org="javax.persistence" name="persistence-api" rev="1.0.2" conf="default"/>
 		<dependency org="junit" name="junit" rev="4.10" conf="test->default"/>
 		<dependency org="org.mockito" name="mockito-all" rev="1.8.4"  conf="test->default"/>
 	</dependencies>
