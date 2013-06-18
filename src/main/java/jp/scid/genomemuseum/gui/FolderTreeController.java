@@ -8,7 +8,6 @@ import javax.swing.Action;
 import javax.swing.JTree;
 import javax.swing.event.TreeSelectionEvent;
 import javax.swing.event.TreeSelectionListener;
-import javax.swing.tree.DefaultMutableTreeNode;
 import javax.swing.tree.DefaultTreeSelectionModel;
 import javax.swing.tree.TreeModel;
 import javax.swing.tree.TreePath;
@@ -23,11 +22,10 @@ import jp.scid.gui.control.BooleanModelBindings;
 import jp.scid.gui.model.ValueModel;
 import jp.scid.gui.model.ValueModels;
 
-import org.jdesktop.application.AbstractBean;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class FolderTreeController extends AbstractBean implements TreeSelectionListener {
+public class FolderTreeController implements TreeSelectionListener {
     private final static Logger logger = LoggerFactory.getLogger(FolderTreeController.class);
     
     private final NodeListTreeModel treeModel;

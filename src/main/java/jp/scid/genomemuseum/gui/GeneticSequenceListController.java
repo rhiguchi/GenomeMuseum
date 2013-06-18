@@ -7,18 +7,14 @@ import java.io.IOException;
 import java.text.ParseException;
 import java.util.Collection;
 import java.util.List;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 import javax.swing.JTable;
 import javax.swing.ListModel;
-import javax.swing.SwingWorker;
 
 import jp.scid.bio.store.SequenceLibrary;
 import jp.scid.bio.store.sequence.GeneticSequence;
 import jp.scid.genomemuseum.model.GeneticSequenceCollection;
 import jp.scid.genomemuseum.model.GeneticSequenceCollections;
-import jp.scid.genomemuseum.model.GeneticSequenceFileLoadingManager;
 import jp.scid.genomemuseum.model.GeneticSequenceFileLoadingManager.LoadingSuccessHandler;
 import jp.scid.genomemuseum.model.GeneticSequenceTableFormat;
 import jp.scid.genomemuseum.model.MutableGeneticSequenceCollection;
@@ -40,16 +36,21 @@ public class GeneticSequenceListController extends ListController<GeneticSequenc
     
     private final GeneticSequenceListTransferHandler transferHandler;
     
-    private final ListModelEventListAdapter<GeneticSequence> listSource;
-    
     private GeneticSequenceCollection model;
     
     private FileLoadingTaskController taskController;
+
+    private ValueModel<?> selectedSource;
+    
+    private final PropertyChangeListener selectedSourceModelHandler = new PropertyChangeListener() {
+        @Override
+        public void propertyChange(PropertyChangeEvent e) {
+            trySetModel(e.getNewValue());
+        }
+    };
     
     public GeneticSequenceListController(EventList<GeneticSequence> source) {
         super(source);
-        listSource = ListModelEventListAdapter.newInstanceOf(GeneticSequence.class, source);
-        
         transferHandler = new GeneticSequenceListTransferHandler(this);
         
         ListModel selection = new DefaultEventListModel<GeneticSequence>(selectionModel.getSelected());
@@ -151,12 +152,21 @@ public class GeneticSequenceListController extends ListController<GeneticSequenc
     }
     
     public void setModel(GeneticSequenceCollection newModel) {
+        logger.debug("set list model: {}", newModel);
         this.model = newModel;
         
         fetch();
-        
-//        ListModel collection = newModel == null ? null : newModel.getCollection();
-//        listSource.setSource(collection);
+    }
+
+    private void trySetModel(Object object) {
+        final GeneticSequenceCollection newModel;
+        if (object instanceof SequenceLibrary) {
+            newModel = GeneticSequenceCollections.fromSequenceLibrary((SequenceLibrary) object);
+        }
+        else {
+            newModel = null;
+        }
+        setModel(newModel);
     }
     
     @Override
@@ -169,6 +179,18 @@ public class GeneticSequenceListController extends ListController<GeneticSequenc
         return transferHandler;
     }
     
+    public void setModelHolder(ValueModel<?> holder) {
+        if (selectedSource != null) {
+            selectedSource.removePropertyChangeListener(selectedSourceModelHandler);
+        }
+        selectedSource = holder;
+        
+        if (holder != null) {
+            holder.addPropertyChangeListener(selectedSourceModelHandler);
+            trySetModel(holder.getValue());
+        }
+    }
+
     protected class Binding extends ListController<GeneticSequence>.Binding {
         final GeneticSequenceTableFormat tableFormat = new GeneticSequenceTableFormat();
 
@@ -179,28 +201,6 @@ public class GeneticSequenceListController extends ListController<GeneticSequenc
             bindTable(table, tableFormat);
             bindTableTransferHandler(table);
             bindSortableTableHeader(table.getTableHeader(), tableFormat);
-        }
-        
-        public void bindTreeSelectionChange(FolderTreeController controller) {
-            trySetModel(controller.getSelectedNodeObject());
-            controller.addPropertyChangeListener("selectedNodeObject", new PropertyChangeListener() {
-                public void propertyChange(PropertyChangeEvent e) {
-                    Object object = e.getNewValue();
-                    
-                    trySetModel(object);
-                }
-            });
-        }
-        
-        private void trySetModel(Object object) {
-            final GeneticSequenceCollection newModel;
-            if (object instanceof SequenceLibrary) {
-                newModel = GeneticSequenceCollections.fromSequenceLibrary((SequenceLibrary) object);
-            }
-            else {
-                newModel = null;
-            }
-            setModel(newModel);
         }
     }
     

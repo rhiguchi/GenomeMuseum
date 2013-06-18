@@ -85,6 +85,7 @@ public class GenomeMuseum extends Application {
         fileOpenHandler.bindOpenMenu(mainMenuBar.open);
         
         geneticSequenceListController.setFileLoadingTaskController(fileLoadingTaskController);
+        geneticSequenceListController.setModelHolder(folderDirectoryTreeController.selectedNodeObject());
         
         GeneticSequenceListController.Binding listBinding =
                 geneticSequenceListController.new Binding();
