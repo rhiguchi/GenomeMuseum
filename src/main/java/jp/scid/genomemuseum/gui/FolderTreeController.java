@@ -39,9 +39,7 @@ public class FolderTreeController extends AbstractBean implements TreeSelectionL
     private final Action filterFolderAddAction;
     private final Action folderRemoveAction;
     
-    private ValueModel<Boolean> hasSelection;
-    
-    private Object selectedNodeObject;
+    private ValueModel<Object> selectedNodeObject;
     
     private MuseumTreeSource treeSource;
     
@@ -50,7 +48,7 @@ public class FolderTreeController extends AbstractBean implements TreeSelectionL
         selectionModel = new SourceSelectionModel();
         transferHandler = new FolderTreeTransferHandler(this);
         
-        hasSelection = ValueModels.newBooleanModel(!selectionModel.isSelectionEmpty());
+        selectedNodeObject = ValueModels.newTreeSelectedNodeObject(selectionModel);
         
         ActionManager actionManager = new ActionManager(this);
         basicFolderAddAction = actionManager.getAction("addBasicFolder");
@@ -58,6 +56,8 @@ public class FolderTreeController extends AbstractBean implements TreeSelectionL
         filterFolderAddAction = actionManager.getAction("addFilterFolder");
         folderRemoveAction = actionManager.getAction("remove");
         
+        ValueModel<Boolean> hasSelection =
+                ValueModels.newInstanceCheckModel(selectedNodeObject, Folder.class);
         new BooleanModelBindings(hasSelection).bindToActionEnabled(folderRemoveAction);
     }
     
@@ -75,7 +75,10 @@ public class FolderTreeController extends AbstractBean implements TreeSelectionL
     public TreePath getSelectionPath() {
         return selectionModel.getSelectionPath();
     }
-    
+
+    public ValueModel<Object> selectedNodeObject() {
+        return selectedNodeObject;
+    }
     // Transfer
     
     // Actions
@@ -128,20 +131,7 @@ public class FolderTreeController extends AbstractBean implements TreeSelectionL
     }
 
     public Object getSelectedNodeObject() {
-        return selectedNodeObject;
-    }
-    
-    private void setSelectedTreePath(TreePath path) {
-        Object nodeObject;
-        if (path.getLastPathComponent() instanceof DefaultMutableTreeNode) {
-            nodeObject = ((DefaultMutableTreeNode) path.getLastPathComponent()).getUserObject();
-        }
-        else {
-            nodeObject = null;
-        }
-        
-        firePropertyChange("selectedNodeObject", this.selectedNodeObject, this.selectedNodeObject = nodeObject);
-        hasSelection.setValue(selectedNodeObject instanceof Folder);
+        return selectedNodeObject.getValue();
     }
     
     public void remove() {
@@ -157,9 +147,6 @@ public class FolderTreeController extends AbstractBean implements TreeSelectionL
     public void valueChanged(TreeSelectionEvent e) {
         if (e.getNewLeadSelectionPath() == null) {
             selectAnyNode();
-        }
-        else {
-            setSelectedTreePath(e.getNewLeadSelectionPath());
         }
     }
     
