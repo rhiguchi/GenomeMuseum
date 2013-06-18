@@ -1,9 +1,12 @@
 package jp.scid.genomemuseum.view;
 
+import static javax.swing.SpringLayout.*;
+
 import javax.swing.JComponent;
 import javax.swing.JScrollPane;
 import javax.swing.JSplitPane;
 import javax.swing.JTabbedPane;
+import javax.swing.SpringLayout;
 import javax.swing.text.JTextComponent;
 //import jp.scid.motifviewer.gui.MotifViewerView;
 
@@ -25,6 +28,15 @@ public class ExhibitListView extends RecordListView {
     public ExhibitListView() {
         dataListContentSplit =
                 createTableContentSplit(tableContainer, contentsViewTabbedPane);
+        
+        SpringLayout layout = new SpringLayout();
+        toolContainer.setLayout(layout);
+        
+        addToToolContainer(searchField);
+        layout.putConstraint(EAST, searchField, 0, EAST, toolContainer);
+        layout.putConstraint(NORTH, searchField, 0, NORTH, toolContainer);
+        layout.getConstraints(toolContainer).setWidth(layout.getConstraint(WIDTH, searchField));
+        layout.getConstraints(toolContainer).setHeight(layout.getConstraint(HEIGHT, searchField));
     }
     
     /**

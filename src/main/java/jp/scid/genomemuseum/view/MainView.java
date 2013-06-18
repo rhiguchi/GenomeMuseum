@@ -64,31 +64,22 @@ public class MainView implements GenomeMuseumView {
     
     private static final Color COLOR_ACTIVITY_FOREGROUND = new Color(0f, 0f, 0f, 0.8f);
     
-    private final static Icon loadingIcon = new ImageIcon(MainView.class.getResource("loading.gif"));
     
     // Exhibit List Table
-    public final ExhibitListView exhibitListView = new ExhibitListView();
+    private final ExhibitListView exhibitListView = new ExhibitListView();
+    private final WebSearchResultListView webSearchResultListView = new WebSearchResultListView();
+    private final ModeChangePane modeChangePane = new ModeChangePane();
     
     public final TaskProgressTableCell taskProgressCell =
             new TaskProgressTableCell(new SDDefaultTableCellRenderer());
     
-    // Web Search Table
-    private final WebSearchResultListView webSearchResultListView = new WebSearchResultListView();
-    public final JTable websearchTable = webSearchResultListView.getTable();
-    public final JScrollPane websearchTableScroll = webSearchResultListView.getTableContainer();
-    
-    private final CardLayout dataListPaneLayout = new CardLayout();
-    private final JPanel dataListPane = createDataListPane(
-            dataListPaneLayout, exhibitListView.getContainer(), websearchTableScroll);
-
     // Search Status
     public final JLabel statusLabel = new JLabel("status"); {
         statusLabel.setPreferredSize(new Dimension(200, 28));
         statusLabel.setHorizontalAlignment(SwingConstants.RIGHT);
     }
-    // Loading Icon
-    public final JLabel loadingIconLabel = new JLabel(loadingIcon);
 
+    
     // Source List Area
     public final FolderTreeCellRenderer sourceListCellRenderer = new FolderTreeCellRenderer();
     public final SourceListCellEditor sourceListCellEditor = new SourceListCellEditor();
@@ -151,7 +142,6 @@ public class MainView implements GenomeMuseumView {
     
     // Top
     private final UnifiedToolBar toolBarView = new UnifiedToolBar();
-    public final JComponent toolBarPane = toolBarView.getComponent();
     
     // Bottom left
     public final JMenuItem addListBox = new JMenuItem("addBasicRoom");
@@ -181,9 +171,9 @@ public class MainView implements GenomeMuseumView {
     
     public final JSplitPane sourceListDataTableSplit = new JSplitPane(
             JSplitPane.HORIZONTAL_SPLIT, true, sourceListPane,
-            dataListPane);
+            modeChangePane.recordListViewContainer());
 
-    public final JPanel contentPane = createContentPane(toolBarPane, sourceListDataTableSplit);
+    public final JPanel contentPane = createContentPane(toolBarView.getComponent(), sourceListDataTableSplit);
 
     public MainView() {
         PopupToggleHandler addBoxToggleHandler = new PopupToggleHandler(addBoxPopup);
@@ -192,23 +182,28 @@ public class MainView implements GenomeMuseumView {
         PopupToggleHandler functionToggleHandler = new PopupToggleHandler(boxFunctionPopup);
         functionToggleHandler.installTo(boxFunctionsButton);
         
-        toolBarView.addComponentToRight(sequenceSearchField());
+        modeChangePane.addView(ContentsMode.LOCAL,
+                exhibitListView.toolContainer(), exhibitListView.getContainer());
+        modeChangePane.addView(ContentsMode.NCBI,
+                webSearchResultListView.toolContainer(), webSearchResultListView.getTableContainer());
+        
+        toolBarView.addComponentToRight(modeChangePane.toolBarContainer());
     }
     
     public JPanel getContentPane() {
         return contentPane;
     }
     
-    public JTable sequenceTable() {
-        return exhibitListView.getTable();
-    }
-
-    public JTextField sequenceSearchField() {
-        return exhibitListView.getSearchField();
-    }
+    public JTable sequenceTable() { return exhibitListView.getTable(); }
+    public JTextField sequenceSearchField() { return exhibitListView.getSearchField();}
+    
+    public JTable websearchTable() { return webSearchResultListView.getTable(); }
+    public JTextField websearchField() { return webSearchResultListView.getSearchField(); }
+    public JLabel loadingIconLabel() { return webSearchResultListView.loadingIconLabel(); }
+    public JButton websearchCancelButton() { return webSearchResultListView.cancelButton(); }
 
     public void setContentsMode(ContentsMode mode) {
-        dataListPaneLayout.show(dataListPane, mode.name());
+        modeChangePane.setContentsMode(mode);
     }
     
     static class PopupToggleHandler {
@@ -268,15 +263,6 @@ public class MainView implements GenomeMuseumView {
         }
     }
 
-    private static JPanel createDataListPane(CardLayout layout, JComponent exhibitListView, JComponent websearchView) {
-        JPanel pane = new JPanel(layout);
-        pane.add(exhibitListView, ContentsMode.LOCAL.name());
-        pane.add(websearchView, ContentsMode.NCBI.name());
-        layout.show(pane, ContentsMode.LOCAL.name());
-        
-        return pane;
-    }
-    
     private static JTree createSourceList(FolderTreeCellRenderer cellRenderer, SourceListCellEditor cellEditor) {
         JTree tree = new JTree();
         
@@ -490,6 +476,38 @@ public class MainView implements GenomeMuseumView {
         
         public boolean isAvailable() {
             return available;
+        }
+    }
+    
+    static class ModeChangePane {
+        private final CardLayout toolBarContainerLayout;
+        private final JPanel toolBarContainer = new JPanel(toolBarContainerLayout = new CardLayout());
+        
+        private final CardLayout recordListViewContainerLayout;
+        private final JPanel recordListViewContainer = new JPanel(recordListViewContainerLayout = new CardLayout());
+        
+        public ModeChangePane() {
+            toolBarContainer.setOpaque(false);
+            toolBarContainer.setPreferredSize(new Dimension(240, 28));
+        }
+        
+        public void addView(ContentsMode mode, JComponent toolBar, JComponent recordListView) {
+            recordListViewContainer.add(recordListView, mode.name());
+            toolBarContainer.add(toolBar, mode.name());
+        }
+
+        public void setContentsMode(ContentsMode mode) {
+            String modeName = mode.name();
+            toolBarContainerLayout.show(toolBarContainer, modeName);
+            recordListViewContainerLayout.show(recordListViewContainer, modeName);
+        }
+        
+        public JComponent toolBarContainer() {
+            return toolBarContainer;
+        }
+        
+        public JComponent recordListViewContainer() {
+            return recordListViewContainer;
         }
     }
 }

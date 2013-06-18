@@ -107,8 +107,11 @@ public class GenomeMuseum extends Application {
         
         // Remote Source
         NcbiEntryListController.Binding ncbiBindings = ncbiEntryListController.new Binding();
-        ncbiBindings.bindTable(mainView.websearchTable);
-        ncbiBindings.bindProgressMessageLabel(mainView.loadingIconLabel);
+        ncbiBindings.bindTable(mainView.websearchTable());
+        ncbiBindings.bindProgressMessageLabel(mainView.loadingIconLabel());
+        ncbiBindings.bindProgressIcon(mainView.loadingIconLabel());
+        ncbiBindings.bindSearchField(mainView.websearchField());
+        ncbiBindings.bindStopButton(mainView.websearchCancelButton());
         
         // Mode Selector
         RecordListViewSelector selector = new RecordListViewSelector(mainView);

@@ -14,6 +14,7 @@ import javax.swing.tree.DefaultMutableTreeNode;
 import javax.swing.tree.TreePath;
 import javax.swing.tree.TreeSelectionModel;
 
+import jp.scid.genomemuseum.gui.ListController;
 import jp.scid.gui.model.Transformers.BooleanElementValue;
 import jp.scid.gui.model.Transformers.CollectionSelector;
 import jp.scid.gui.model.Transformers.StringFormatter;
@@ -189,7 +190,6 @@ class TreeSelectedNodeConnector extends ValueModelConnector<Object, TreeSelectio
         source.removeTreeSelectionListener(this);
     }
 }
-
 
 abstract class ValueModelValueConnector<T, S> extends ValueModelConnector<T, ValueModel<? extends S>> implements PropertyChangeListener {
 

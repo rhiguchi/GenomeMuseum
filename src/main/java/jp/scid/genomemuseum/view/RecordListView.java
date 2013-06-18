@@ -1,8 +1,11 @@
 package jp.scid.genomemuseum.view;
 
+import java.awt.Component;
 import java.awt.Dimension;
 import java.text.DecimalFormat;
 
+import javax.swing.JComponent;
+import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
 import javax.swing.JTextField;
@@ -18,6 +21,7 @@ public abstract class RecordListView {
     final JTable table;
     final JScrollPane tableContainer;
     final JTextField searchField;
+    final JPanel toolContainer;
     
     public RecordListView() {
         table = createTable();
@@ -28,6 +32,9 @@ public abstract class RecordListView {
         
         searchField = new JTextField();
         searchField.setPreferredSize(new Dimension(200, 28));
+        
+        toolContainer = new JPanel();
+        toolContainer.setOpaque(false);
     }
     
     public JTable getTable() {
@@ -55,5 +62,15 @@ public abstract class RecordListView {
         table.getTableHeader().setReorderingAllowed(true);
         
         return table;
+    }
+    
+    public JComponent toolContainer() {
+        return toolContainer;
+    }
+    
+    protected void addToToolContainer(Component... comps) {
+        for (Component component: comps) {
+            toolContainer.add(component);
+        }
     }
 }

@@ -16,6 +16,7 @@ public class StringModelBindings extends AbstractValueModelBindigs<String> {
     
     public ModelConnector bindToLabelText(final JLabel label) {
         return installModel(new AbstractPropertyConnector<String>() {
+            @Override
             protected void valueChanged(String newValue) {
                 label.setText(newValue);
             }
@@ -24,6 +25,7 @@ public class StringModelBindings extends AbstractValueModelBindigs<String> {
 
     public ModelConnector bindToTextField(final JTextField field) {
         return installModel(new AbstractPropertyConnector<String>() {
+            @Override
             protected void valueChanged(String newValue) {
                 field.setText(newValue);
             }

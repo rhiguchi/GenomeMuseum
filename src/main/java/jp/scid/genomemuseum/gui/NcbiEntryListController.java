@@ -2,8 +2,11 @@ package jp.scid.genomemuseum.gui;
 
 import static java.lang.String.*;
 
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.util.Comparator;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
 import javax.swing.Action;
@@ -14,18 +17,29 @@ import javax.swing.JProgressBar;
 import javax.swing.JTable;
 import javax.swing.JTextField;
 import javax.swing.SwingWorker;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 
 import jp.scid.bio.store.remote.RemoteSource;
 import jp.scid.bio.store.remote.RemoteSource.RemoteEntry;
 import jp.scid.gui.control.ActionManager;
 import jp.scid.gui.control.BooleanModelBindings;
 import jp.scid.gui.control.StringModelBindings;
+import jp.scid.gui.control.TextComponentTextConnector;
+import jp.scid.gui.control.TextController;
+import jp.scid.gui.model.DocumentTextConnector;
 import jp.scid.gui.model.ValueModel;
 import jp.scid.gui.model.ValueModels;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import ca.odell.glazedlists.gui.AdvancedTableFormat;
 import ca.odell.glazedlists.swing.DefaultEventTableModel;
 
 public class NcbiEntryListController extends ListController<NcbiEntry> {
+    private final static Logger logger = LoggerFactory.getLogger(NcbiEntryListController.class);
+    
     private final static String TASK_MESSAGE_TOTAL = "%d Records";
     private final static String TASK_MESSAGE_PROGRESS = "Searching... %d / ";
     
@@ -88,10 +102,14 @@ public class NcbiEntryListController extends ListController<NcbiEntry> {
     void setResultCount(int newValue) {
         progressModel.setMaximum(newValue);
         updateIndeterminate();
+        updateProgressMessage();
     }
     
     public void search() {
-        SearchTask task = new SearchTask(searchQuery());
+        String searchQuery = searchQuery();
+        logger.debug("search from NCBI with {}", searchQuery);
+        
+        SearchTask task = new SearchTask(searchQuery);
         execute(task);
     }
 
@@ -120,6 +138,7 @@ public class NcbiEntryListController extends ListController<NcbiEntry> {
     private void execute(SwingWorker<?, ?> newTask) {
         stop();
         clear();
+        setResultCount(0);
         
         runningTask = newTask;
         isSearching.setValue(true);
@@ -183,7 +202,20 @@ public class NcbiEntryListController extends ListController<NcbiEntry> {
         
         @Override
         protected void done() {
-            searchStopped();
+            try {
+                if (!isCancelled()) {
+                    get();
+                }
+            }
+            catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            catch (ExecutionException e) {
+                e.printStackTrace();
+            }
+            finally {
+                searchStopped();
+            }
         }
     }
     
@@ -225,10 +257,16 @@ public class NcbiEntryListController extends ListController<NcbiEntry> {
         public void bindSearchField(JTextField field) {
             field.setAction(searchAction);
             new StringModelBindings(searchQuery).bindToTextField(field);
+            DocumentTextConnector connector = new DocumentTextConnector(searchQuery);
+            connector.setSource(field.getDocument());
         }
         
         public void bindProgressMessageLabel(JLabel label) {
             new StringModelBindings(taskMessage).bindToLabelText(label);
+        }
+        
+        public void bindProgressIcon(JLabel label) {
+            new BooleanModelBindings(isSearching).bindToComponentVisibled(label);
         }
         
         public void bindStopButton(JButton button) {
