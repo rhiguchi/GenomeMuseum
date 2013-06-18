@@ -109,6 +109,10 @@ public class GenomeMuseum extends Application {
         NcbiEntryListController.Binding ncbiBindings = ncbiEntryListController.new Binding();
         ncbiBindings.bindTable(mainView.websearchTable);
         ncbiBindings.bindProgressMessageLabel(mainView.loadingIconLabel);
+        
+        // Mode Selector
+        RecordListViewSelector selector = new RecordListViewSelector(mainView);
+        selector.setModel(folderDirectoryTreeController.selectedNodeObject());
     }
 
     @Override
