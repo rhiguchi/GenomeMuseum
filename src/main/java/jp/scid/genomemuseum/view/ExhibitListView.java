@@ -1,28 +1,13 @@
 package jp.scid.genomemuseum.view;
 
-import java.text.DecimalFormat;
-
 import javax.swing.JComponent;
 import javax.swing.JScrollPane;
 import javax.swing.JSplitPane;
 import javax.swing.JTabbedPane;
-import javax.swing.JTable;
-import javax.swing.SwingConstants;
-import javax.swing.table.TableCellRenderer;
 import javax.swing.text.JTextComponent;
-
-import jp.scid.gui.MessageFormatTableCell;
 //import jp.scid.motifviewer.gui.MotifViewerView;
 
-import com.explodingpixels.macwidgets.plaf.ITunesTableUI;
-
-public class ExhibitListView {
-    // Data List
-    public final JTable dataTable = createTable();
-    public final JScrollPane dataTableScroll = new JScrollPane(dataTable,
-            JScrollPane.VERTICAL_SCROLLBAR_ALWAYS,
-            JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
-
+public class ExhibitListView extends RecordListView {
     // Content Viewer
     public final FileContentView fileContentView = new FileContentView();
     
@@ -35,8 +20,12 @@ public class ExhibitListView {
 //            createContentsViewTabbedPane(fileContentView, overviewMotifView);
     
     // Data and content area
-    public final JSplitPane dataListContentSplit =
-            createTableContentSplit(dataTableScroll, contentsViewTabbedPane);
+    public final JSplitPane dataListContentSplit;
+    
+    public ExhibitListView() {
+        dataListContentSplit =
+                createTableContentSplit(tableContainer, contentsViewTabbedPane);
+    }
     
     /**
      * @return container
@@ -47,23 +36,6 @@ public class ExhibitListView {
     
     public JTextComponent getContentViewComponent() {
         return fileContentView.textArea;
-    }
-    
-    /**
-     * @return exhibit list table
-     */
-    private static JTable createTable() {
-        JTable table = new JTable();
-        
-        table.setUI(new ITunesTableUI());
-        TableCellRenderer defaultRenderer = table.getDefaultRenderer(Object.class);
-        
-        MessageFormatTableCell intValueCell =
-            new MessageFormatTableCell(new DecimalFormat("#,##0"), defaultRenderer);
-        intValueCell.getRendererView().setHorizontalAlignment(SwingConstants.RIGHT);
-        table.setDefaultRenderer(Integer.class, intValueCell);
-
-        return table;
     }
     
     /**

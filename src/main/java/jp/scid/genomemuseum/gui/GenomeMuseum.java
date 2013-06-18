@@ -34,6 +34,7 @@ public class GenomeMuseum extends Application {
     
     private MainFrameController mainFrameController;
     private GeneticSequenceListController geneticSequenceListController;
+    private final NcbiEntryListController ncbiEntryListController;
     private FolderTreeController folderDirectoryTreeController;
     private FileOpenHandler fileOpenHandler;
     private final FileLoadingTaskController fileLoadingTaskController;
@@ -44,6 +45,7 @@ public class GenomeMuseum extends Application {
         
         mainFrameController = new MainFrameController();
         geneticSequenceListController = new GeneticSequenceListController();
+        ncbiEntryListController = new NcbiEntryListController();
         folderDirectoryTreeController = new FolderTreeController();
         fileOpenHandler = new FileOpenHandler(geneticSequenceListController);
         fileLoadingTaskController = new FileLoadingTaskController();
@@ -89,9 +91,8 @@ public class GenomeMuseum extends Application {
         
         GeneticSequenceListController.Binding listBinding =
                 geneticSequenceListController.new Binding();
-        listBinding.bindTable(mainView.exhibitListView.dataTable);
-        listBinding.bindSearchEngineTextField(mainView.quickSearchField, false);
-        listBinding.bindTreeSelectionChange(folderDirectoryTreeController);
+        listBinding.bindTable(mainView.sequenceTable());
+        listBinding.bindSearchEngineTextField(mainView.sequenceSearchField(), false);
         
         folderDirectoryTreeController.bindTree(mainView.sourceList);
         folderDirectoryTreeController.bindBasicFolderAddButton(mainView.addBoxFolder);
@@ -103,6 +104,11 @@ public class GenomeMuseum extends Application {
         taskBindings.bindContentPane(mainView.activityPane);
         taskBindings.bindProgressBar(mainView.fileLoadingProgress);
         taskBindings.bindStatusLabel(mainView.fileLoadingStatus);
+        
+        // Remote Source
+        NcbiEntryListController.Binding ncbiBindings = ncbiEntryListController.new Binding();
+        ncbiBindings.bindTable(mainView.websearchTable);
+        ncbiBindings.bindProgressMessageLabel(mainView.loadingIconLabel);
     }
 
     @Override
@@ -118,6 +124,7 @@ public class GenomeMuseum extends Application {
         // tree model
         MuseumTreeSource treeSource = new MuseumTreeSource();
         treeSource.setSequenceLibrary(sequenceLibrary);
+        treeSource.setNcbiSource(ncbiEntryListController.getSource());
         folderDirectoryTreeController.setModel(treeSource);
         
         showMainFrame();

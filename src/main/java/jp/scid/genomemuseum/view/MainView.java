@@ -13,7 +13,6 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
-import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -45,12 +44,10 @@ import javax.swing.SwingWorker.StateValue;
 import javax.swing.event.PopupMenuEvent;
 import javax.swing.event.PopupMenuListener;
 import javax.swing.table.AbstractTableModel;
-import javax.swing.table.TableCellRenderer;
 import javax.swing.tree.DefaultTreeCellEditor;
 
 import jp.scid.genomemuseum.model.TaskProgressModel;
 import jp.scid.genomemuseum.view.folder.FolderTreeCellRenderer;
-import jp.scid.gui.MessageFormatTableCell;
 import jp.scid.gui.plaf.SourceListTreeUI;
 import jp.scid.gui.view.SDDefaultTableCellRenderer;
 
@@ -59,7 +56,6 @@ import com.explodingpixels.macwidgets.MacButtonFactory;
 import com.explodingpixels.macwidgets.MacIcons;
 import com.explodingpixels.macwidgets.MacWidgetFactory;
 import com.explodingpixels.macwidgets.UnifiedToolBar;
-import com.explodingpixels.macwidgets.plaf.ITunesTableUI;
 
 public class MainView implements GenomeMuseumView {
     public static enum ContentsMode {
@@ -77,20 +73,14 @@ public class MainView implements GenomeMuseumView {
             new TaskProgressTableCell(new SDDefaultTableCellRenderer());
     
     // Web Search Table
-    public final JTable websearchTable = createTable(taskProgressCell);
-    public final JScrollPane websearchTableScroll = new JScrollPane(websearchTable,
-            JScrollPane.VERTICAL_SCROLLBAR_ALWAYS,
-            JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+    private final WebSearchResultListView webSearchResultListView = new WebSearchResultListView();
+    public final JTable websearchTable = webSearchResultListView.getTable();
+    public final JScrollPane websearchTableScroll = webSearchResultListView.getTableContainer();
     
     private final CardLayout dataListPaneLayout = new CardLayout();
     private final JPanel dataListPane = createDataListPane(
             dataListPaneLayout, exhibitListView.getContainer(), websearchTableScroll);
 
-    // Search Field
-    public final JTextField quickSearchField = new JTextField(); {
-        quickSearchField.setPreferredSize(new Dimension(200, 28));
-    }
-    
     // Search Status
     public final JLabel statusLabel = new JLabel("status"); {
         statusLabel.setPreferredSize(new Dimension(200, 28));
@@ -161,9 +151,7 @@ public class MainView implements GenomeMuseumView {
     
     // Top
     private final UnifiedToolBar toolBarView = new UnifiedToolBar();
-    public final JComponent toolBarPane = toolBarView.getComponent(); {
-        toolBarView.addComponentToRight(quickSearchField);
-    }
+    public final JComponent toolBarPane = toolBarView.getComponent();
     
     // Bottom left
     public final JMenuItem addListBox = new JMenuItem("addBasicRoom");
@@ -203,12 +191,22 @@ public class MainView implements GenomeMuseumView {
         
         PopupToggleHandler functionToggleHandler = new PopupToggleHandler(boxFunctionPopup);
         functionToggleHandler.installTo(boxFunctionsButton);
+        
+        toolBarView.addComponentToRight(sequenceSearchField());
     }
     
     public JPanel getContentPane() {
         return contentPane;
     }
     
+    public JTable sequenceTable() {
+        return exhibitListView.getTable();
+    }
+
+    public JTextField sequenceSearchField() {
+        return exhibitListView.getSearchField();
+    }
+
     public void setContentsMode(ContentsMode mode) {
         dataListPaneLayout.show(dataListPane, mode.name());
     }
@@ -270,20 +268,6 @@ public class MainView implements GenomeMuseumView {
         }
     }
 
-    private static JTable createTable() {
-        JTable table = new JTable();
-        
-        table.setUI(new ITunesTableUI());
-        TableCellRenderer defaultRenderer = table.getDefaultRenderer(Object.class);
-        
-        MessageFormatTableCell intValueCell = new MessageFormatTableCell(new DecimalFormat("#,##0"), defaultRenderer);
-        intValueCell.getRendererView().setHorizontalAlignment(SwingConstants.RIGHT);
-        table.setDefaultRenderer(Integer.class, intValueCell);
-        table.getTableHeader().setReorderingAllowed(true);
-        
-        return table;
-    }
-
     private static JPanel createDataListPane(CardLayout layout, JComponent exhibitListView, JComponent websearchView) {
         JPanel pane = new JPanel(layout);
         pane.add(exhibitListView, ContentsMode.LOCAL.name());
@@ -293,15 +277,6 @@ public class MainView implements GenomeMuseumView {
         return pane;
     }
     
-    private static JTable createTable(TaskProgressTableCell taskProgressCell) {
-        JTable table = createTable();
-        
-        table.setDefaultRenderer(TaskProgressModel.class, taskProgressCell);
-        table.setDefaultEditor(TaskProgressModel.class, taskProgressCell);
-        
-        return table;
-    }
-
     private static JTree createSourceList(FolderTreeCellRenderer cellRenderer, SourceListCellEditor cellEditor) {
         JTree tree = new JTree();
         
