@@ -17,7 +17,6 @@ import jp.scid.bio.store.SequenceLibrary;
 import jp.scid.genomemuseum.model.MuseumTreeSource;
 import jp.scid.genomemuseum.view.MainMenuBar;
 import jp.scid.genomemuseum.view.MainView;
-import jp.scid.motifviewer.gui.MotifViewerController;
 
 import org.h2.jdbcx.JdbcConnectionPool;
 import org.jdesktop.application.Application;
@@ -35,7 +34,7 @@ public class GenomeMuseum extends Application {
     
     private MainFrameController mainFrameController;
     private GeneticSequenceListController geneticSequenceListController;
-    private final MotifViewerController motifViewerController;
+    private final MuseumExhibitContentViewer contentViewerController;
     private final NcbiEntryListController ncbiEntryListController;
     private FolderTreeController folderDirectoryTreeController;
     private FileOpenHandler fileOpenHandler;
@@ -51,7 +50,7 @@ public class GenomeMuseum extends Application {
         folderDirectoryTreeController = new FolderTreeController();
         fileOpenHandler = new FileOpenHandler(geneticSequenceListController);
         fileLoadingTaskController = new FileLoadingTaskController();
-        motifViewerController = new MotifViewerController();
+        contentViewerController = new MuseumExhibitContentViewer();
     }
 
     private void openConnectionPool() {
@@ -121,7 +120,7 @@ public class GenomeMuseum extends Application {
         selector.setModel(folderDirectoryTreeController.selectedNodeObject());
         
         // MotifViewer
-        motifViewerController.bind(mainView.getMotifViewerView());
+        contentViewerController.bindMotifViewerView(mainView.getMotifViewerView());
     }
 
     @Override
@@ -139,6 +138,9 @@ public class GenomeMuseum extends Application {
         treeSource.setSequenceLibrary(sequenceLibrary);
         treeSource.setNcbiSource(ncbiEntryListController.getSource());
         folderDirectoryTreeController.setModel(treeSource);
+        
+        // selection
+        contentViewerController.setModel(geneticSequenceListController.getSelectedGeneticSequence());
         
         showMainFrame();
     }

@@ -9,33 +9,62 @@ import java.util.List;
 
 import javax.swing.JTextArea;
 import javax.swing.SwingWorker;
+import javax.swing.event.ChangeEvent;
+import javax.swing.event.ChangeListener;
 import javax.swing.text.BadLocationException;
 import javax.swing.text.Document;
 import javax.swing.text.PlainDocument;
 
 import jp.scid.bio.store.sequence.GeneticSequence;
 import jp.scid.genomemuseum.view.FileContentView;
+import jp.scid.gui.model.ValueModel;
+import jp.scid.motifviewer.gui.MotifViewerController;
+import jp.scid.motifviewer.gui.MotifViewerView;
 
-import org.jdesktop.application.AbstractBean;
-//import jp.scid.motifviewer.gui.MotifViewerController;
-//import jp.scid.motifviewer.gui.MotifViewerView;
-
-public class MuseumExhibitContentViewer extends AbstractBean {
+public class MuseumExhibitContentViewer {
     private Document document = new PlainDocument();
     
     private GeneticSequence sequence = null;
     
-    // Controller
-//    final MotifViewerController motifViewerController;
+    private ValueModel<GeneticSequence> model;
     
-//    MuseumExhibitLibrary library = null;
+    private final ChangeListener modelListener = new ChangeListener() {
+        @Override
+        public void stateChanged(ChangeEvent e) {
+            modelValueChange(model);
+        }
+    };
+    
+    // Controller
+    private final MotifViewerController motifViewerController;
     
     public MuseumExhibitContentViewer() {
-//        motifViewerController = new MotifViewerController();
+        motifViewerController = new MotifViewerController();
     }
 
-    public void setExhibit(GeneticSequence sequence) {
+    public void setModel(ValueModel<GeneticSequence> newModel) {
+        if (this.model != null) {
+            this.model.removeValueChangeListener(modelListener);
+        }
+        
+        this.model = newModel;
+        
+        if (newModel != null) {
+            newModel.addValueChangeListener(modelListener);
+            modelValueChange(newModel);
+        }
+    }
+    
+    protected void modelValueChange(ValueModel<GeneticSequence> model) {
+        setGeneticSequence(model.get());
+    }
+    
+    public void setGeneticSequence(GeneticSequence sequence) {
         this.sequence = sequence;
+        
+        if (sequence != null) {
+            setSequence(sequence.sequence());
+        }
     }
 
 //    public MuseumExhibitLibrary getLibrary() {
@@ -48,11 +77,11 @@ public class MuseumExhibitContentViewer extends AbstractBean {
     
     // sequence
     public String getSequence() {
-        return ""; //motifViewerController.getSequence();
+        return motifViewerController.getSequence();
     }
     
-    public void setSequence(String sequence) {
-        //motifViewerController.setSequence(sequence);
+    private void setSequence(String sequence) {
+        motifViewerController.setSequence(sequence);
     }
     
     public void clearContent() {
@@ -64,6 +93,8 @@ public class MuseumExhibitContentViewer extends AbstractBean {
             e.printStackTrace();
         }
     }
+    
+    
     
     // contentText
     Reader getContentReader() throws IOException {
@@ -89,9 +120,8 @@ public class MuseumExhibitContentViewer extends AbstractBean {
         bindFileContentTextArea(view.textArea);
     }
 
-//    public void bindOverviewMotifView(MotifViewerView view) {
-    public void bindOverviewMotifView(Object view) {
-//        motifViewerController.bind(view);
+    public void bindMotifViewerView(MotifViewerView view) {
+        motifViewerController.bind(view);
     }
 
     void bindFileContentTextArea(JTextArea textArea) {

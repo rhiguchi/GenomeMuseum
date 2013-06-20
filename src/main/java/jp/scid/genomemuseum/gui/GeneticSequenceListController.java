@@ -22,6 +22,7 @@ import jp.scid.genomemuseum.model.SequenceImportable;
 import jp.scid.gui.control.BooleanModelBindings;
 import jp.scid.gui.model.ValueModel;
 import jp.scid.gui.model.ValueModels;
+import jp.scid.gui.model.connector.ValueConnector;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,6 +30,8 @@ import org.slf4j.LoggerFactory;
 import ca.odell.glazedlists.BasicEventList;
 import ca.odell.glazedlists.EventList;
 import ca.odell.glazedlists.TextFilterator;
+import ca.odell.glazedlists.event.ListEvent;
+import ca.odell.glazedlists.event.ListEventListener;
 import ca.odell.glazedlists.swing.DefaultEventListModel;
 
 public class GeneticSequenceListController extends ListController<GeneticSequence> {
@@ -41,6 +44,8 @@ public class GeneticSequenceListController extends ListController<GeneticSequenc
     private FileLoadingTaskController taskController;
 
     private ValueModel<?> selectedSource;
+    
+    private final ValueModel<GeneticSequence> selectedElement;
     
     private final ChangeListener selectedSourceModelHandler = new ChangeListener() {
         @Override
@@ -56,10 +61,18 @@ public class GeneticSequenceListController extends ListController<GeneticSequenc
         ListModel selection = new DefaultEventListModel<GeneticSequence>(selectionModel.getSelected());
         ValueModel<Boolean> isNonEmpty = ValueModels.newListElementsExistenceModel(selection);
         new BooleanModelBindings(isNonEmpty).bindToActionEnabled(removeAction);
+        
+        EventListSingleSelectAdapter<GeneticSequence> selectAdapter = new EventListSingleSelectAdapter<GeneticSequence>();
+        selectAdapter.setSource(selectionModel.getSelected());
+        selectedElement = selectAdapter.getTargetModel();
     }
     
     public GeneticSequenceListController() {
         this(new BasicEventList<GeneticSequence>());
+    }
+    
+    public ValueModel<GeneticSequence> getSelectedGeneticSequence() {
+        return selectedElement;
     }
     
     @Override
@@ -216,6 +229,31 @@ public class GeneticSequenceListController extends ListController<GeneticSequenc
             baseList.add(element.name());
             baseList.add(element.organism());
             baseList.add(element.source());
+        }
+    }
+    
+    static class EventListSingleSelectAdapter<E> extends ValueConnector<E, EventList<E>> implements ListEventListener<E> {
+        @Override
+        public void listChanged(ListEvent<E> listChanges) {
+            this.sourceChange(listChanges.getSourceList());
+        }
+
+        @Override
+        protected E getModelValue(EventList<E> source) {
+            if (source.size() != 1) {
+                return null;
+            }
+            return source.get(0);
+        }
+
+        @Override
+        protected void installUpdateListener(EventList<E> source) {
+            source.addListEventListener(this);
+        }
+
+        @Override
+        protected void uninstallUpdateListener(EventList<E> source) {
+            source.removeListEventListener(this);
         }
     }
 }
