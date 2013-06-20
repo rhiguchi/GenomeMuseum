@@ -19,10 +19,11 @@ import jp.scid.genomemuseum.model.GeneticSequenceFileLoadingManager;
 import jp.scid.genomemuseum.model.SequenceImportable;
 import jp.scid.gui.control.BooleanModelBindings;
 import jp.scid.gui.control.StringModelBindings;
+import jp.scid.gui.model.BeanPropertyAdapter;
 import jp.scid.gui.model.MutableValueModel;
 import jp.scid.gui.model.ValueModel;
-import jp.scid.gui.model.ValueModelFactory;
 import jp.scid.gui.model.ValueModels;
+import jp.scid.gui.model.connector.BeanPropertyConnector;
 
 public class FileLoadingTaskController implements PropertyChangeListener {
     private GeneticSequenceFileLoadingManager loadingManager;
@@ -87,11 +88,9 @@ public class FileLoadingTaskController implements PropertyChangeListener {
     public class Bindings {
         private final ValueModel<Boolean> conentePaneVisible;
         
+        @SuppressWarnings({ "unchecked", "rawtypes" })
         public Bindings() {
-            ValueModelFactory factory = new ValueModelFactory();
-            loadingManager.addPropertyChangeListener(factory);
-            
-            conentePaneVisible = factory.createBooleanModel("inProgress", loadingManager.isInProgress());
+            conentePaneVisible = (ValueModel) new BeanPropertyAdapter(loadingManager, "inProgress", true, false);
         }
         
         public void bindProgressBar(JProgressBar progressBar) {
