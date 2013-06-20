@@ -50,6 +50,7 @@ import jp.scid.genomemuseum.model.TaskProgressModel;
 import jp.scid.genomemuseum.view.folder.FolderTreeCellRenderer;
 import jp.scid.gui.plaf.SourceListTreeUI;
 import jp.scid.gui.view.SDDefaultTableCellRenderer;
+import jp.scid.motifviewer.gui.MotifViewerView;
 
 import com.explodingpixels.macwidgets.ComponentBottomBar;
 import com.explodingpixels.macwidgets.MacButtonFactory;
@@ -196,6 +197,9 @@ public class MainView implements GenomeMuseumView {
     
     public JTable sequenceTable() { return exhibitListView.getTable(); }
     public JTextField sequenceSearchField() { return exhibitListView.getSearchField();}
+    
+    public FileContentView getFileContentView() { return exhibitListView.getFileContentView(); }
+    public MotifViewerView getMotifViewerView() { return exhibitListView.getMotifViewerView(); }
     
     public JTable websearchTable() { return webSearchResultListView.getTable(); }
     public JTextField websearchField() { return webSearchResultListView.getSearchField(); }

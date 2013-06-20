@@ -8,19 +8,18 @@ import javax.swing.JSplitPane;
 import javax.swing.JTabbedPane;
 import javax.swing.SpringLayout;
 import javax.swing.text.JTextComponent;
-//import jp.scid.motifviewer.gui.MotifViewerView;
+import jp.scid.motifviewer.gui.MotifViewerView;
 
 public class ExhibitListView extends RecordListView {
     // Content Viewer
     public final FileContentView fileContentView = new FileContentView();
     
     // Overview
-//    public final MotifViewerView overviewMotifView = new MotifViewerView();
+    public final MotifViewerView motifViewerView = new MotifViewerView();
     
     // Tab view
     public final JTabbedPane contentsViewTabbedPane =
-            createContentsViewTabbedPane(fileContentView);
-//            createContentsViewTabbedPane(fileContentView, overviewMotifView);
+            createContentsViewTabbedPane(fileContentView, motifViewerView);
     
     // Data and content area
     public final JSplitPane dataListContentSplit;
@@ -50,17 +49,23 @@ public class ExhibitListView extends RecordListView {
         return fileContentView.textArea;
     }
     
+    public FileContentView getFileContentView() {
+        return fileContentView;
+    }
+    
+    public MotifViewerView getMotifViewerView() {
+        return motifViewerView;
+    }
+    
     /**
      * @return tabbed pane
      */
-//    private static JTabbedPane createContentsViewTabbedPane(
-//            FileContentView fileContentView, MotifViewerView overviewMotifView) {
     private static JTabbedPane createContentsViewTabbedPane(
-            FileContentView fileContentView) {
+            FileContentView fileContentView, MotifViewerView overviewMotifView) {
         JTabbedPane contentsViewTabbedPane = new JTabbedPane();
         
         contentsViewTabbedPane.addTab("Content", fileContentView.getContentPane());
-//        contentsViewTabbedPane.addTab("MotifView", overviewMotifView.getContentPane());
+        contentsViewTabbedPane.addTab("MotifView", overviewMotifView.getContentPane());
         
         return contentsViewTabbedPane;
     }

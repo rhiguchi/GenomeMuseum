@@ -17,6 +17,7 @@ import jp.scid.bio.store.SequenceLibrary;
 import jp.scid.genomemuseum.model.MuseumTreeSource;
 import jp.scid.genomemuseum.view.MainMenuBar;
 import jp.scid.genomemuseum.view.MainView;
+import jp.scid.motifviewer.gui.MotifViewerController;
 
 import org.h2.jdbcx.JdbcConnectionPool;
 import org.jdesktop.application.Application;
@@ -34,6 +35,7 @@ public class GenomeMuseum extends Application {
     
     private MainFrameController mainFrameController;
     private GeneticSequenceListController geneticSequenceListController;
+    private final MotifViewerController motifViewerController;
     private final NcbiEntryListController ncbiEntryListController;
     private FolderTreeController folderDirectoryTreeController;
     private FileOpenHandler fileOpenHandler;
@@ -49,6 +51,7 @@ public class GenomeMuseum extends Application {
         folderDirectoryTreeController = new FolderTreeController();
         fileOpenHandler = new FileOpenHandler(geneticSequenceListController);
         fileLoadingTaskController = new FileLoadingTaskController();
+        motifViewerController = new MotifViewerController();
     }
 
     private void openConnectionPool() {
@@ -116,6 +119,9 @@ public class GenomeMuseum extends Application {
         // Mode Selector
         RecordListViewSelector selector = new RecordListViewSelector(mainView);
         selector.setModel(folderDirectoryTreeController.selectedNodeObject());
+        
+        // MotifViewer
+        motifViewerController.bind(mainView.getMotifViewerView());
     }
 
     @Override
