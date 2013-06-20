@@ -129,7 +129,7 @@ public class FolderTreeController implements TreeSelectionListener {
     }
 
     public Object getSelectedNodeObject() {
-        return selectedNodeObject.getValue();
+        return selectedNodeObject.get();
     }
     
     public void remove() {

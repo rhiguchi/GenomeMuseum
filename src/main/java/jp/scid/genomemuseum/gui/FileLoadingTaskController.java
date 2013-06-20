@@ -19,6 +19,7 @@ import jp.scid.genomemuseum.model.GeneticSequenceFileLoadingManager;
 import jp.scid.genomemuseum.model.SequenceImportable;
 import jp.scid.gui.control.BooleanModelBindings;
 import jp.scid.gui.control.StringModelBindings;
+import jp.scid.gui.model.MutableValueModel;
 import jp.scid.gui.model.ValueModel;
 import jp.scid.gui.model.ValueModelFactory;
 import jp.scid.gui.model.ValueModels;
@@ -28,8 +29,8 @@ public class FileLoadingTaskController implements PropertyChangeListener {
     private final ExecutorService taskExecutor;
     private final DefaultBoundedRangeModel progressModel = new DefaultBoundedRangeModel();
     
-    private final ValueModel<Boolean> isIndeterminate;
-    private final ValueModel<String> progressMessage;
+    private final MutableValueModel<Boolean> isIndeterminate;
+    private final MutableValueModel<String> progressMessage;
     
     public FileLoadingTaskController() {
         taskExecutor = Executors.newFixedThreadPool(2);
@@ -75,12 +76,12 @@ public class FileLoadingTaskController implements PropertyChangeListener {
     
     private void updateIndeterminate() {
         boolean newValue = progressModel.getMaximum() <= progressModel.getValue();
-        isIndeterminate.setValue(newValue);
+        isIndeterminate.set(newValue);
     }
     
     private void updateProgressMessage() {
         String message = format("%d / %d...", progressModel.getValue(), progressModel.getMaximum());
-        progressMessage.setValue(message);
+        progressMessage.set(message);
     }
 
     public class Bindings {

@@ -2,8 +2,6 @@ package jp.scid.genomemuseum.gui;
 
 import static java.lang.String.*;
 
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
@@ -17,19 +15,15 @@ import javax.swing.JProgressBar;
 import javax.swing.JTable;
 import javax.swing.JTextField;
 import javax.swing.SwingWorker;
-import javax.swing.event.DocumentEvent;
-import javax.swing.event.DocumentListener;
 
 import jp.scid.bio.store.remote.RemoteSource;
 import jp.scid.bio.store.remote.RemoteSource.RemoteEntry;
 import jp.scid.gui.control.ActionManager;
 import jp.scid.gui.control.BooleanModelBindings;
 import jp.scid.gui.control.StringModelBindings;
-import jp.scid.gui.control.TextComponentTextConnector;
-import jp.scid.gui.control.TextController;
-import jp.scid.gui.model.DocumentTextConnector;
-import jp.scid.gui.model.ValueModel;
+import jp.scid.gui.model.MutableValueModel;
 import jp.scid.gui.model.ValueModels;
+import jp.scid.gui.model.connector.DocumentTextConnector;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,12 +37,12 @@ public class NcbiEntryListController extends ListController<NcbiEntry> {
     private final static String TASK_MESSAGE_TOTAL = "%d Records";
     private final static String TASK_MESSAGE_PROGRESS = "Searching... %d / ";
     
-    private final ValueModel<String> searchQuery;
+    private final MutableValueModel<String> searchQuery;
     
-    private final ValueModel<Boolean> isSearching;
-    private final ValueModel<Boolean> isIndeterminate;
+    private final MutableValueModel<Boolean> isSearching;
+    private final MutableValueModel<Boolean> isIndeterminate;
     
-    private final ValueModel<String> taskMessage;
+    private final MutableValueModel<String> taskMessage;
     
     private final WebServiceResultTableFormat tableFormat;
     private final DefaultEventTableModel<NcbiEntry> tableModel;
@@ -88,11 +82,11 @@ public class NcbiEntryListController extends ListController<NcbiEntry> {
     }
 
     public String searchQuery() {
-        return searchQuery.getValue();
+        return searchQuery.get();
     }
     
     private boolean isSearching() {
-        return isSearching.getValue();
+        return isSearching.get();
     }
     
     int resultCount() {
@@ -127,12 +121,12 @@ public class NcbiEntryListController extends ListController<NcbiEntry> {
         }
         
         message.append(format(TASK_MESSAGE_TOTAL, resultCount()));
-        taskMessage.setValue(message.toString());
+        taskMessage.set(message.toString());
     }
 
     private void updateIndeterminate() {
         boolean newValue = resultCount() == this.sourceCount();
-        isIndeterminate.setValue(newValue);
+        isIndeterminate.set(newValue);
     }
     
     private void execute(SwingWorker<?, ?> newTask) {
@@ -141,7 +135,7 @@ public class NcbiEntryListController extends ListController<NcbiEntry> {
         setResultCount(0);
         
         runningTask = newTask;
-        isSearching.setValue(true);
+        isSearching.set(true);
         updateProgressMessage();
 
         newTask.execute();
@@ -159,7 +153,7 @@ public class NcbiEntryListController extends ListController<NcbiEntry> {
     
     private void searchStopped() {
         runningTask = null;
-        isSearching.setValue(false);
+        isSearching.set(false);
         
         updateProgressMessage();
     }

@@ -1,7 +1,5 @@
 package jp.scid.genomemuseum.gui;
 
-import java.beans.PropertyChangeEvent;
-import java.beans.PropertyChangeListener;
 import java.io.File;
 import java.io.IOException;
 import java.text.ParseException;
@@ -10,6 +8,8 @@ import java.util.List;
 
 import javax.swing.JTable;
 import javax.swing.ListModel;
+import javax.swing.event.ChangeEvent;
+import javax.swing.event.ChangeListener;
 
 import jp.scid.bio.store.SequenceLibrary;
 import jp.scid.bio.store.sequence.GeneticSequence;
@@ -42,10 +42,10 @@ public class GeneticSequenceListController extends ListController<GeneticSequenc
 
     private ValueModel<?> selectedSource;
     
-    private final PropertyChangeListener selectedSourceModelHandler = new PropertyChangeListener() {
+    private final ChangeListener selectedSourceModelHandler = new ChangeListener() {
         @Override
-        public void propertyChange(PropertyChangeEvent e) {
-            trySetModel(e.getNewValue());
+        public void stateChanged(ChangeEvent e) {
+            tryUpdateModel();
         }
     };
     
@@ -158,7 +158,11 @@ public class GeneticSequenceListController extends ListController<GeneticSequenc
         fetch();
     }
 
-    private void trySetModel(Object object) {
+    private void tryUpdateModel() {
+        if (selectedSource == null) {
+            return;
+        }
+        Object object = selectedSource.get(); 
         final GeneticSequenceCollection newModel;
         if (object instanceof SequenceLibrary) {
             newModel = GeneticSequenceCollections.fromSequenceLibrary((SequenceLibrary) object);
@@ -181,14 +185,14 @@ public class GeneticSequenceListController extends ListController<GeneticSequenc
     
     public void setModelHolder(ValueModel<?> holder) {
         if (selectedSource != null) {
-            selectedSource.removePropertyChangeListener(selectedSourceModelHandler);
+            selectedSource.removeValueChangeListener(selectedSourceModelHandler);
         }
         selectedSource = holder;
         
         if (holder != null) {
-            holder.addPropertyChangeListener(selectedSourceModelHandler);
-            trySetModel(holder.getValue());
+            holder.addValueChangeListener(selectedSourceModelHandler);
         }
+        tryUpdateModel();
     }
 
     protected class Binding extends ListController<GeneticSequence>.Binding {
