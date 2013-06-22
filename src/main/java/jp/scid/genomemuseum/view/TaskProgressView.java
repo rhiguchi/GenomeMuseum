@@ -1,5 +1,6 @@
 package jp.scid.genomemuseum.view;
 
+import static javax.swing.Spring.*;
 import static javax.swing.SpringLayout.*;
 
 import java.awt.Color;
@@ -10,26 +11,31 @@ import javax.swing.Action;
 import javax.swing.JButton;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
-import javax.swing.JPanel;
 import javax.swing.JProgressBar;
 import javax.swing.SpringLayout;
+import javax.swing.SwingWorker.StateValue;
+import javax.swing.event.ChangeEvent;
+import javax.swing.event.ChangeListener;
 
-public class TaskProgressView {
+import jp.scid.genomemuseum.model.TaskProgressModel;
+
+public class TaskProgressView extends JComponent implements ChangeListener {
     private final JLabel statusLabel = new JLabel("status");
+    private final JButton executeButton;
+    private final JProgressBar downloadProgress;
     
-    private final JButton executeButton = new JButton("Download"); {
-        executeButton.setMargin(new Insets(0, 0, 0, 0));
-    }
+    private final JComponent component;
     
-    private final JProgressBar downloadProgress = new JProgressBar();  {
-        downloadProgress.setMaximum(10000);
-    }
-    
-    private final JPanel component;
+    private TaskProgressModel model;
     
     public TaskProgressView() {
-        component = new JPanel();
-        component.setOpaque(false);
+        component = this;
+        
+        executeButton = new JButton("Download");
+        executeButton.setMargin(new Insets(0, 0, 0, 0));
+        
+        downloadProgress = new JProgressBar(0, 10000);
+        downloadProgress.setIndeterminate(true);
         
         JComponent parent = component;
         SpringLayout layout = new SpringLayout();
@@ -44,7 +50,9 @@ public class TaskProgressView {
         layout.putConstraint(EAST, downloadProgress, 0, EAST, parent);
         layout.putConstraint(NORTH, downloadProgress, 0, NORTH, parent);
         layout.putConstraint(SOUTH, downloadProgress, 0, SOUTH, parent);
-        layout.putConstraint(WEST, downloadProgress, 4, EAST, statusLabel);
+        layout.getConstraints(downloadProgress).setConstraint(WEST,
+                max(sum(layout.getConstraint(EAST, downloadProgress), constant(-100)),
+                        layout.getConstraint(EAST, statusLabel)));
         
         parent.add(statusLabel);
         layout.putConstraint(WEST, statusLabel, 4, WEST, parent);
@@ -84,16 +92,49 @@ public class TaskProgressView {
                 || downloadProgress.getMaximum() <= progress);
     }
     
+    @Override
     public void setFont(Font font) {
-        component.setFont(font);
+        super.setFont(font);
         
         statusLabel.setFont(font);
         executeButton.setFont(font);
     }
     
+    @Override
     public void setForeground(Color fg) {
-        component.setForeground(fg);
+        super.setForeground(fg);
         
         statusLabel.setForeground(fg);
+    }
+
+    @Override
+    public void stateChanged(ChangeEvent e) {
+        updateComponentValues();
+    }
+    
+    private void updateComponentValues() {
+        setLabelAvailable(model.isAvailable());
+        setDownloadButtonEnabled(model.isAvailable() && model.getState() == StateValue.PENDING);
+        setProgressVisible(model.getState() == StateValue.STARTED);
+        setProgress(model.getProgress());
+        setText(model.getLabel());
+        
+        repaint();
+    }
+    
+    public TaskProgressModel getModel() {
+        return model;
+    }
+
+    public void setModel(TaskProgressModel model) {
+        if (this.model != null) {
+            this.model.removeProgressChangeListener(this);
+        }
+        this.model = model;
+        
+        if (model != null) {
+            model.addProgressChangeListener(this);
+            updateComponentValues();
+        }
     }
 }

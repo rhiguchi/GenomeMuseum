@@ -1,19 +1,25 @@
 package jp.scid.genomemuseum.view;
 
+import java.awt.Component;
 import java.awt.EventQueue;
 import java.awt.event.ActionEvent;
+import java.util.LinkedList;
 import java.util.List;
 
 import javax.swing.AbstractAction;
 import javax.swing.AbstractButton;
 import javax.swing.Action;
+import javax.swing.JComponent;
 import javax.swing.JFrame;
 import javax.swing.JTable;
 import javax.swing.SwingUtilities;
 import javax.swing.SwingWorker;
 import javax.swing.SwingWorker.StateValue;
+import javax.swing.event.ChangeEvent;
+import javax.swing.event.ChangeListener;
 import javax.swing.table.AbstractTableModel;
 import javax.swing.table.DefaultTableModel;
+import javax.swing.table.TableColumn;
 
 import jp.scid.genomemuseum.model.TaskProgressModel;
 
@@ -33,7 +39,7 @@ public class WebSearchResultListViewTest {
         Action action = createSampleDownloadingAction2();
         view.setDownloadButtonAction(action);
         
-        DefaultTableModel model = new DefaultTableModel(10, 4) {
+        DefaultTableModel model = new DefaultTableModel(4, 2) {
             public Class<?> getColumnClass(int columnIndex) {
                 if (columnIndex == 0) {
                     return TaskProgressModel.class;
@@ -42,8 +48,12 @@ public class WebSearchResultListViewTest {
             }
         };
         model.setValueAt(new RemoteSourceImpl(), 0, 0);
+        model.setValueAt(new RemoteSourceImpl(), 1, 0);
+        model.setValueAt(new RemoteSourceImpl(), 2, 0);
+        model.setValueAt(new RemoteSourceImpl(), 3, 0);
         
         view.getTable().setModel(model);
+        view.getTable().getTableHeader().getColumnModel().getColumn(0).setPreferredWidth(200);
         
         
         JFrame frame = new JFrame("test");
@@ -58,13 +68,13 @@ public class WebSearchResultListViewTest {
             @Override
             public void actionPerformed(ActionEvent e) {
                 JTable table = (JTable) SwingUtilities.getAncestorOfClass(JTable.class, (AbstractButton) e.getSource());
-                int editingRow = table.getEditingRow();
+                int row = table.getEditingRow();
+                int column = table.getEditingColumn();
                 
-                System.out.println("row: " + editingRow + " editor: " + e.getSource());
-                RemoteSourceImpl source = new RemoteSourceImpl();
-                table.setValueAt(source, table.getEditingRow(), table.getEditingColumn());
-                
-                new RemoteSourceDownloadTask(source, (AbstractTableModel) table.getModel()).execute();
+                System.out.println("row: " + row + " editor: " + e.getSource());
+                RemoteSourceImpl source = (RemoteSourceImpl) table.getValueAt(row, column);
+//                table.getCellEditor(row, column).stopCellEditing();
+                new RemoteSourceDownloadTask((JComponent)((AbstractButton) e.getSource()).getParent(), source, (AbstractTableModel) table.getModel(), row, column).execute();
             }
         };
     }
@@ -72,10 +82,16 @@ public class WebSearchResultListViewTest {
     class RemoteSourceDownloadTask extends SwingWorker<Void, Void> {
         final RemoteSourceImpl remoteSource;
         final AbstractTableModel model;
-
-        public RemoteSourceDownloadTask(RemoteSourceImpl remoteSource, AbstractTableModel model) {
+        int row;
+        int column;
+        JComponent table;
+        
+        public RemoteSourceDownloadTask(JComponent table, RemoteSourceImpl remoteSource, AbstractTableModel model, int row, int column) {
             this.remoteSource = remoteSource;
             this.model = model;
+            this.row = row;
+            this.column = column;
+            this.table = table; 
         }
 
         @Override
@@ -84,11 +100,10 @@ public class WebSearchResultListViewTest {
 
             int count = 0;
 
-            while (count < 500) {
+            while (count < 300) {
                 Thread.sleep(10);
                 count++;
-                remoteSource.progress = count / 5.0f;
-                System.out.println("progress: " + remoteSource.progress);
+                remoteSource.progress = count / 3f;
                 publish();
             }
             remoteSource.progress = 100;
@@ -101,7 +116,14 @@ public class WebSearchResultListViewTest {
 
         @Override
         protected void process(List<Void> chunks) {
-            model.fireTableDataChanged();
+            System.out.println("progress: " + remoteSource.progress);
+            model.setValueAt(remoteSource, row, column);
+            remoteSource.fireProgressChange();
+        }
+        @Override
+        protected void done() {
+            model.setValueAt(remoteSource, row, column);
+            remoteSource.fireProgressChange();
         }
     };
 
@@ -109,8 +131,10 @@ public class WebSearchResultListViewTest {
 
 
 class RemoteSourceImpl implements TaskProgressModel {
+    private final List<ChangeListener> listeners = new LinkedList<ChangeListener>();
+    
     boolean available = true;
-    float progress = 1;
+    float progress = 0;
     String message = "";
     StateValue state = StateValue.PENDING;
     
@@ -129,5 +153,21 @@ class RemoteSourceImpl implements TaskProgressModel {
     
     public boolean isAvailable() {
         return available;
+    }
+    
+
+    public void addProgressChangeListener(ChangeListener l) {
+        listeners.add(l);
+    }
+    
+    public void removeProgressChangeListener(ChangeListener l) {
+        listeners.remove(l);
+    }
+    
+    protected void fireProgressChange() {
+        ChangeEvent e = new ChangeEvent(this);
+        for (ChangeListener l: listeners) {
+            l.stateChanged(e);
+        }
     }
 }

@@ -1,6 +1,7 @@
 package jp.scid.genomemuseum.view;
 
 import java.awt.Component;
+import java.util.EventObject;
 
 import javax.swing.AbstractCellEditor;
 import javax.swing.Action;
@@ -15,16 +16,17 @@ public class DownloadTaskTableCell extends AbstractCellEditor implements TableCe
     final TaskProgressView rendererView = new TaskProgressView();
     final TaskProgressView editorView = new TaskProgressView();
     
+    
     @Override
     public Object getCellEditorValue() {
-        return null;
+        return editorView.getModel();
     }
-
+    
     @Override
     public Component getTableCellRendererComponent(
             JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
         if ((value instanceof TaskProgressModel)) {
-            renderCell(rendererView, (TaskProgressModel) value);
+            rendererView.setModel((TaskProgressModel) value);
         }
         rendererView.setFont(table.getFont());
         return rendererView.getComponent();
@@ -34,7 +36,7 @@ public class DownloadTaskTableCell extends AbstractCellEditor implements TableCe
     public Component getTableCellEditorComponent(
             JTable table, Object value, boolean isSelected, int row, int column) {
         if ((value instanceof TaskProgressModel)) {
-            renderCell(editorView, (TaskProgressModel) value);
+            editorView.setModel((TaskProgressModel) value);
         }
         editorView.setFont(table.getFont());
         return editorView.getComponent();

@@ -1,6 +1,7 @@
 package jp.scid.genomemuseum.model;
 
 import javax.swing.SwingWorker.StateValue;
+import javax.swing.event.ChangeListener;
 /**
  * タスクの進捗状況を表現するモデル。
  * @author higuchi
@@ -30,4 +31,9 @@ public interface TaskProgressModel {
      * @return 未実行の時は {@code PENDING} 、実行中は {@code STARTED}  、終了済みは {@code DONE} 。
      */
     public StateValue getState();
+    
+    void addProgressChangeListener(ChangeListener l);
+    
+    void removeProgressChangeListener(ChangeListener l);
 }
+
