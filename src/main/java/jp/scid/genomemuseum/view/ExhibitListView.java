@@ -45,6 +45,11 @@ public class ExhibitListView extends RecordListView {
         return dataListContentSplit;
     }
     
+    @Override
+    JComponent getComponent() {
+        return getContainer();
+    }
+    
     public JTextComponent getContentViewComponent() {
         return fileContentView.textArea;
     }

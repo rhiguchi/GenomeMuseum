@@ -18,6 +18,7 @@ import javax.swing.SwingWorker;
 
 import jp.scid.bio.store.remote.RemoteSource;
 import jp.scid.bio.store.remote.RemoteSource.RemoteEntry;
+import jp.scid.genomemuseum.view.WebSearchResultListView;
 import jp.scid.gui.control.ActionManager;
 import jp.scid.gui.control.BooleanModelBindings;
 import jp.scid.gui.control.StringModelBindings;
@@ -29,6 +30,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import ca.odell.glazedlists.gui.AdvancedTableFormat;
+import ca.odell.glazedlists.gui.WritableTableFormat;
 import ca.odell.glazedlists.swing.DefaultEventTableModel;
 
 public class NcbiEntryListController extends ListController<NcbiEntry> {
@@ -248,6 +250,10 @@ public class NcbiEntryListController extends ListController<NcbiEntry> {
             table.setSelectionModel(selectionModel);
         }
         
+        public void bindWebSearchResultListView(WebSearchResultListView view) {
+            // TODO bind action
+        }
+        
         public void bindSearchField(JTextField field) {
             field.setAction(searchAction);
             new StringModelBindings(searchQuery).bindToTextField(field);
@@ -314,8 +320,13 @@ class NcbiEntry {
 }
 
 
-class WebServiceResultTableFormat implements AdvancedTableFormat<NcbiEntry> {
+class WebServiceResultTableFormat implements AdvancedTableFormat<NcbiEntry>, WritableTableFormat<NcbiEntry> {
     enum Column implements Comparator<NcbiEntry> {
+        DOWNLOAD_ACTION(Object.class) {
+            Object getColumnValue(NcbiEntry e) {
+                return e.identifier();
+            }
+        },
         IDENTIFIER(String.class) {
             Object getColumnValue(NcbiEntry e) {
                 return e.identifier();
@@ -386,5 +397,16 @@ class WebServiceResultTableFormat implements AdvancedTableFormat<NcbiEntry> {
     @Override
     public Comparator<NcbiEntry> getColumnComparator(int columnNumber) {
         return Column.values()[columnNumber].comparator();
+    }
+
+    @Override
+    public boolean isEditable(NcbiEntry baseObject, int column) {
+        // TODO Auto-generated method stub
+        return false;
+    }
+
+    @Override
+    public NcbiEntry setColumnValue(NcbiEntry baseObject, Object editedValue, int column) {
+        return baseObject;
     }
 }

@@ -71,16 +71,12 @@ public class MainView implements GenomeMuseumView {
     private final WebSearchResultListView webSearchResultListView = new WebSearchResultListView();
     private final ModeChangePane modeChangePane = new ModeChangePane();
     
-    public final TaskProgressTableCell taskProgressCell =
-            new TaskProgressTableCell(new SDDefaultTableCellRenderer());
-    
     // Search Status
     public final JLabel statusLabel = new JLabel("status"); {
         statusLabel.setPreferredSize(new Dimension(200, 28));
         statusLabel.setHorizontalAlignment(SwingConstants.RIGHT);
     }
 
-    
     // Source List Area
     public final FolderTreeCellRenderer sourceListCellRenderer = new FolderTreeCellRenderer();
     public final SourceListCellEditor sourceListCellEditor = new SourceListCellEditor();
@@ -400,86 +396,6 @@ public class MainView implements GenomeMuseumView {
         @Override
         public boolean isCellEditable(int rowIndex, int columnIndex) {
             return true;
-        }
-    }
-    
-    @SuppressWarnings("unused")
-    private Action createSampleDownloadingAction(final TaskProgressTableCell editor) {
-        return new AbstractAction("Download") {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                RemoteSourceImpl remoteSource = (RemoteSourceImpl) editor.getCellEditorValue();
-                new RemoteSourceDownloadTask(remoteSource).execute();
-            }
-        };
-    }
-    
-    private Action createSampleDownloadingAction2(final JTable table) {
-        return new AbstractAction("Download") {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                int editingRow = table.getEditingRow();
-                Component editor = table.getEditorComponent();
-                System.out.println("row: " + editingRow + " editor: " + editor);
-            }
-        };
-    }
-
-    static class RemoteSourceDownloadTask extends SwingWorker<Void, Void> {
-        final RemoteSourceImpl remoteSource;
-        AbstractTableModel model;
-        
-        public RemoteSourceDownloadTask(RemoteSourceImpl remoteSource) {
-            this.remoteSource = remoteSource;
-        }
-        
-        @Override
-        protected Void doInBackground() throws Exception {
-            remoteSource.state = StateValue.STARTED;
-            
-            int count = 0;
-            
-            while (count < 500) {
-                Thread.sleep(10);
-                count++;
-                remoteSource.progress = count / 5.0f;
-                System.out.println("progress: " + remoteSource.progress);
-                publish();
-            }
-            remoteSource.progress = 100;
-            Thread.sleep(1000);
-            
-            remoteSource.state = StateValue.DONE;
-            
-            return null;
-        }
-        
-        @Override
-        protected void process(List<Void> chunks) {
-        }
-    };
-    
-    static class RemoteSourceImpl implements TaskProgressModel {
-        boolean available = true;
-        float progress = 1;
-        String message = "";
-        StateValue state = StateValue.PENDING;
-        
-        @Override
-        public StateValue getState() {
-            return state;
-        }
-        
-        public float getProgress() {
-            return progress;
-        }
-        
-        public String getLabel() {
-            return message;
-        }
-        
-        public boolean isAvailable() {
-            return available;
         }
     }
     

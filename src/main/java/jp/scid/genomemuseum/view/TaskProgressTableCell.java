@@ -6,6 +6,7 @@ import java.util.EventObject;
 import javax.swing.Action;
 import javax.swing.DefaultCellEditor;
 import javax.swing.JCheckBox;
+import javax.swing.JComponent;
 import javax.swing.JTable;
 import javax.swing.SwingWorker.StateValue;
 import javax.swing.event.CellEditorListener;
@@ -16,6 +17,7 @@ import javax.swing.table.TableCellRenderer;
 import jp.scid.genomemuseum.model.TaskProgressModel;
 import jp.scid.gui.AbstractTableCellComponent;
 
+@Deprecated
 public class TaskProgressTableCell extends AbstractTableCellComponent implements TableCellRenderer, TableCellEditor {
     final TableCellEditor baseEditor;
     
@@ -42,10 +44,10 @@ public class TaskProgressTableCell extends AbstractTableCellComponent implements
             boolean isSelected, int row, int column) {
         Component comp = baseRenderer.getTableCellRendererComponent(table,
                 value, true, false, row, column);
-        makeCell(editorView, comp);
+        makeCell(editorView.getComponent(), comp);
         setValueTo(editorView, (TaskProgressModel) value);
         
-        return editorView;
+        return editorView.getComponent();
     }
     
     public void setExecuteButtonAction(Action action) {
@@ -53,8 +55,8 @@ public class TaskProgressTableCell extends AbstractTableCellComponent implements
     }
     
     @Override
-    public TaskProgressView getRendererView() {
-        return rendererView;
+    public JComponent getRendererView() {
+        return rendererView.getComponent();
     }
     
     @Override

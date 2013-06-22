@@ -37,6 +37,8 @@ public abstract class RecordListView {
         toolContainer.setOpaque(false);
     }
     
+    abstract JComponent getComponent();
+    
     public JTable getTable() {
         return table;
     }

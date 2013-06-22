@@ -1,6 +1,5 @@
 package jp.scid.genomemuseum.view;
 
-import static javax.swing.Spring.*;
 import static javax.swing.SpringLayout.*;
 
 import java.awt.Color;
@@ -13,12 +12,10 @@ import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JProgressBar;
-import javax.swing.Spring;
 import javax.swing.SpringLayout;
 
-class TaskProgressView extends JPanel {
+public class TaskProgressView {
     private final JLabel statusLabel = new JLabel("status");
-    private boolean isInitialized = false;
     
     private final JButton executeButton = new JButton("Download"); {
         executeButton.setMargin(new Insets(0, 0, 0, 0));
@@ -28,34 +25,37 @@ class TaskProgressView extends JPanel {
         downloadProgress.setMaximum(10000);
     }
     
+    private final JPanel component;
+    
     public TaskProgressView() {
-        JComponent parent = this;
+        component = new JPanel();
+        component.setOpaque(false);
+        
+        JComponent parent = component;
         SpringLayout layout = new SpringLayout();
         parent.setLayout(layout);
-        
-        Spring dlWidth = constant(60);
         
         parent.add(executeButton);
         layout.putConstraint(EAST, executeButton, 0, EAST, parent);
         layout.putConstraint(NORTH, executeButton, 0, NORTH, parent);
         layout.putConstraint(SOUTH, executeButton, 0, SOUTH, parent);
-        layout.getConstraints(executeButton).setWidth(dlWidth);
         
         parent.add(downloadProgress);
         layout.putConstraint(EAST, downloadProgress, 0, EAST, parent);
         layout.putConstraint(NORTH, downloadProgress, 0, NORTH, parent);
         layout.putConstraint(SOUTH, downloadProgress, 0, SOUTH, parent);
-        layout.getConstraints(downloadProgress).setWidth(dlWidth);
+        layout.putConstraint(WEST, downloadProgress, 4, EAST, statusLabel);
         
         parent.add(statusLabel);
-        layout.putConstraint(WEST, statusLabel, 0, WEST, parent);
+        layout.putConstraint(WEST, statusLabel, 4, WEST, parent);
         layout.putConstraint(NORTH, statusLabel, 0, NORTH, parent);
         layout.putConstraint(SOUTH, statusLabel, 0, SOUTH, parent);
-        layout.putConstraint(EAST, statusLabel, -4, WEST, executeButton);
-        
-        isInitialized = true;
     }
 
+    public JComponent getComponent() {
+        return component;
+    }
+    
     public void setExecuteButtonAction(Action action) {
         executeButton.setAction(action);
     }
@@ -84,19 +84,15 @@ class TaskProgressView extends JPanel {
                 || downloadProgress.getMaximum() <= progress);
     }
     
-    @Override
     public void setFont(Font font) {
-        super.setFont(font);
-        if (!isInitialized) return;
+        component.setFont(font);
         
         statusLabel.setFont(font);
         executeButton.setFont(font);
     }
     
-    @Override
     public void setForeground(Color fg) {
-        super.setForeground(fg);
-        if (!isInitialized) return;
+        component.setForeground(fg);
         
         statusLabel.setForeground(fg);
     }
