@@ -20,7 +20,6 @@ import javax.swing.TransferHandler;
 import jp.scid.bio.store.sequence.GeneticSequence;
 
 import org.apache.commons.io.FileUtils;
-import org.apache.commons.io.filefilter.HiddenFileFilter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -145,6 +144,22 @@ public class GeneticSequenceListTransferHandler extends TransferHandler {
         return sequence.toString();
     }
     
+    static GeneticSequenceList getTransferGeneticSequenceList(TransferSupport support) {
+        GeneticSequenceList seqList;
+        try {
+            seqList = (GeneticSequenceList) support.getTransferable().getTransferData(GeneticSequenceList.FLAVOR);
+        }
+        catch (UnsupportedFlavorException e) {
+            logger.error("cannot import", e);
+            throw new IllegalStateException(e);
+        }
+        catch (IOException e) {
+            logger.error("cannot import", e);
+            throw new IllegalStateException(e);
+        }
+        return seqList;
+    }
+
     class GeneticSequenceTransferObject implements Transferable {
         private final ProxyGeneticSequenceTransferObject elements;
         private List<DataFlavor> flavors = null;

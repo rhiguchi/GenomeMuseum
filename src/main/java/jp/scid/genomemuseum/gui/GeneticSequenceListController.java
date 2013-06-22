@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import java.text.ParseException;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 
 import javax.swing.JTable;
@@ -13,11 +14,9 @@ import javax.swing.event.ChangeListener;
 
 import jp.scid.bio.store.SequenceLibrary;
 import jp.scid.bio.store.sequence.GeneticSequence;
-import jp.scid.genomemuseum.model.GeneticSequenceCollection;
-import jp.scid.genomemuseum.model.GeneticSequenceCollections;
+import jp.scid.bio.store.sequence.GeneticSequenceSource;
 import jp.scid.genomemuseum.model.GeneticSequenceFileLoadingManager.LoadingSuccessHandler;
 import jp.scid.genomemuseum.model.GeneticSequenceTableFormat;
-import jp.scid.genomemuseum.model.MutableGeneticSequenceCollection;
 import jp.scid.genomemuseum.model.SequenceImportable;
 import jp.scid.gui.control.BooleanModelBindings;
 import jp.scid.gui.model.ValueModel;
@@ -39,7 +38,7 @@ public class GeneticSequenceListController extends ListController<GeneticSequenc
     
     private final GeneticSequenceListTransferHandler transferHandler;
     
-    private GeneticSequenceCollection model;
+    private GeneticSequenceSource model;
     
     private FileLoadingTaskController taskController;
 
@@ -80,7 +79,7 @@ public class GeneticSequenceListController extends ListController<GeneticSequenc
         if (model == null) {
             return super.retrieve();
         }
-        return model.fetchSequences();
+        return Collections.unmodifiableList(model.getGeneticSequences());
     }
     
     // addFile
@@ -145,10 +144,11 @@ public class GeneticSequenceListController extends ListController<GeneticSequenc
 
     @Override
     public void remove() {
-        for (GeneticSequence sequence: selectionModel.getSelected()) {
+        EventList<GeneticSequence> selections = selectionModel.getSelected();
+        for (GeneticSequence sequence: selections) {
             sequence.delete();
         }
-        fetch();
+        selections.clear();
     }
     
     public void setFileLoadingTaskController(FileLoadingTaskController taskController) {
@@ -156,15 +156,11 @@ public class GeneticSequenceListController extends ListController<GeneticSequenc
     }
     
     // model
-    public GeneticSequenceCollection getModel() {
+    public GeneticSequenceSource getModel() {
         return model;
     }
 
-    private MutableGeneticSequenceCollection mutableModel() {
-        return (MutableGeneticSequenceCollection) this.model;
-    }
-    
-    public void setModel(GeneticSequenceCollection newModel) {
+    public void setModel(GeneticSequenceSource newModel) {
         logger.debug("set list model: {}", newModel);
         this.model = newModel;
         
@@ -176,14 +172,10 @@ public class GeneticSequenceListController extends ListController<GeneticSequenc
             return;
         }
         Object object = selectedSource.get(); 
-        final GeneticSequenceCollection newModel;
-        if (object instanceof SequenceLibrary) {
-            newModel = GeneticSequenceCollections.fromSequenceLibrary((SequenceLibrary) object);
+        
+        if (object instanceof GeneticSequenceSource) {
+            setModel((GeneticSequenceSource) object);
         }
-        else {
-            newModel = null;
-        }
-        setModel(newModel);
     }
     
     @Override

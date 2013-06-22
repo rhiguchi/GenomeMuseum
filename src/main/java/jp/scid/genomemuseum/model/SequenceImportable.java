@@ -8,6 +8,7 @@ import java.util.concurrent.Callable;
 
 import jp.scid.bio.store.sequence.GeneticSequence;
 
+@Deprecated
 public interface SequenceImportable {
     GeneticSequence deleteSequence(int index);
     
