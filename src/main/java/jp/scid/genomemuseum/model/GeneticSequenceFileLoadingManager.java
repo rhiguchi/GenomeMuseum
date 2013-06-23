@@ -43,6 +43,41 @@ public class GeneticSequenceFileLoadingManager extends AbstractBean {
         executeLoading(files, dest, null);
     }
     
+    public <V> Future<V> execute(final Callable<V> command) {
+        final FutureTask<V> future = new FutureTask<V>(command) {
+            @Override
+            protected void done() {
+                removeFuture(this);
+            }
+        };
+        
+        addFuture(future);
+        executor.execute(future);
+        return future;
+    }
+
+    private void addFuture(FutureTask<?> future) {
+        runningTasks.add(future);
+        setExecuted(executed + 1);
+        setInProgress(true);
+    }
+
+    private void removeFuture(FutureTask<?> future) {
+        runningTasks.remove(future);
+        setInProgress(!runningTasks.isEmpty());
+        
+        if (!future.isCancelled()) try {
+            future.get();
+            setSuccess(success + 1);
+        }
+        catch (InterruptedException ignore) {
+            // ignore
+        }
+        catch (ExecutionException e) {
+            e.printStackTrace();
+        }
+    }
+    
     public boolean isInProgress() {
         return inProgress;
     }

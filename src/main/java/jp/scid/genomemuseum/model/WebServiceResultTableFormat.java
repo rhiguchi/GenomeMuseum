@@ -7,7 +7,7 @@ import ca.odell.glazedlists.gui.WritableTableFormat;
 
 public class WebServiceResultTableFormat implements AdvancedTableFormat<NcbiEntry>, WritableTableFormat<NcbiEntry> {
     enum Column implements Comparator<NcbiEntry> {
-        DOWNLOAD_ACTION(NcbiEntry.class) {
+        DOWNLOAD_ACTION(TaskProgressModel.class) {
             @Override
             NcbiEntry getColumnValue(NcbiEntry e) {
                 return e;

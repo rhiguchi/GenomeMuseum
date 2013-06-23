@@ -15,6 +15,8 @@ import java.nio.channels.FileChannel;
 import java.nio.channels.ReadableByteChannel;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 import javax.swing.AbstractAction;
@@ -31,6 +33,7 @@ import javax.swing.SwingWorker.StateValue;
 
 import jp.scid.bio.store.remote.RemoteSource;
 import jp.scid.bio.store.remote.RemoteSource.RemoteEntry;
+import jp.scid.bio.store.sequence.GeneticSequence;
 import jp.scid.genomemuseum.model.NcbiEntry;
 import jp.scid.genomemuseum.model.WebServiceResultTableFormat;
 import jp.scid.genomemuseum.view.TaskProgressView;
@@ -71,9 +74,12 @@ public class NcbiEntryListController extends ListController<NcbiEntry> {
     
     private final DefaultBoundedRangeModel progressModel;
     
+    private final ExecutorService taskExecutor;
     private final RemoteSource remoteSource;
     
     private Future<?> runningTask;
+    
+    private SequenceFileImportable fileImporter = null;
     
     // Actions
     private final Action searchAction;
@@ -83,6 +89,7 @@ public class NcbiEntryListController extends ListController<NcbiEntry> {
     
     public NcbiEntryListController() {
         super();
+        taskExecutor = Executors.newFixedThreadPool(10);
         
         remoteSource = new RemoteSource();
         
@@ -138,6 +145,10 @@ public class NcbiEntryListController extends ListController<NcbiEntry> {
         if (runningTask != null) {
             runningTask.cancel(true);
         }
+    }
+    
+    public void setFileImporter(SequenceFileImportable fileImporter) {
+        this.fileImporter = fileImporter;
     }
     
     private void updateProgressMessage() {
@@ -269,7 +280,7 @@ public class NcbiEntryListController extends ListController<NcbiEntry> {
     }
     
     void execute(RemoteSourceDownloadTask task) {
-        task.execute();
+        taskExecutor.execute(task);
     }
     
     // Downloading
@@ -280,7 +291,7 @@ public class NcbiEntryListController extends ListController<NcbiEntry> {
             NcbiEntry source = (NcbiEntry) editor.getModel();
             DownloadTaskConnector connector = new DownloadTaskConnector(source);
             
-            RemoteSourceDownloadTask task = new RemoteSourceDownloadTask(httpClient, source.sourceUri());
+            DonloadFileImportTask task = new DonloadFileImportTask(new DefaultHttpClient(), source.sourceUri(), fileImporter);
             connector.installTo(task);
             
             execute(task);
@@ -303,7 +314,7 @@ public class NcbiEntryListController extends ListController<NcbiEntry> {
             else if ("downloadedLegth".equals(e.getPropertyName())) {
                 source.setTaskProgress((Long) e.getNewValue());
             }
-            else if ("stateValue".equals(e.getPropertyName())) {
+            else if ("state".equals(e.getPropertyName())) {
                 source.setTaskState((StateValue) e.getNewValue()); 
                 
                 if (e.getNewValue() == StateValue.DONE) {
@@ -317,6 +328,42 @@ public class NcbiEntryListController extends ListController<NcbiEntry> {
         }
     }
     
+    static class DonloadFileImportTask extends RemoteSourceDownloadTask {
+        private final SequenceFileImportable fileImporter;
+        
+        public DonloadFileImportTask(HttpClient httpClient, URI sourceUrl, SequenceFileImportable fileImporter) {
+            super(httpClient, sourceUrl);
+            if (fileImporter == null)
+                throw new IllegalArgumentException("fileImporter must not be null");
+            this.fileImporter = fileImporter;
+        }
+
+        @Override
+        protected File doInBackground() throws Exception {
+            File file = super.doInBackground();
+            
+            Future<GeneticSequence> sequenceFuture = fileImporter.executeImportingSequenceFile(file);
+            sequenceFuture.get();
+            
+            return file;
+        }
+        
+        @Override
+        protected void done() {
+            try {
+                get();
+            }
+            catch (InterruptedException ignore) {
+                // ignore
+            }
+            catch (ExecutionException e) {
+                e.printStackTrace();
+            }
+            // TODO Auto-generated method stub
+            super.done();
+        }
+    }
+    
     static class RemoteSourceDownloadTask extends SwingWorker<File, Void> {
         private final HttpClient httpClient;
         private final URI sourceUrl;
@@ -326,7 +373,11 @@ public class NcbiEntryListController extends ListController<NcbiEntry> {
         private long position = 0;
         
         public RemoteSourceDownloadTask(HttpClient httpClient, URI sourceUrl) {
+            if (sourceUrl == null)
+                throw new IllegalArgumentException("sourceUrl must not be null");
             this.httpClient = httpClient;
+            if (httpClient == null)
+                throw new IllegalArgumentException("httpClient must not be null");
             this.sourceUrl = sourceUrl;
         }
 
@@ -336,6 +387,8 @@ public class NcbiEntryListController extends ListController<NcbiEntry> {
             @SuppressWarnings("resource")
             FileChannel dest = new FileOutputStream(destFile).getChannel();
             
+            System.out.println("Download source: " + sourceUrl);
+            System.out.println("Download dest: " + destFile);
             try {
                 download(sourceUrl, dest);
             }
@@ -360,7 +413,7 @@ public class NcbiEntryListController extends ListController<NcbiEntry> {
             ReadableByteChannel source = Channels.newChannel(entity.getContent());
             try {
                 long read;
-                while ((read = dest.transferFrom(source, position, bufferSize)) >= 0) {
+                while ((read = dest.transferFrom(source, position, bufferSize)) > 0) {
                     appendPosition(read);
                 }
                 
@@ -398,7 +451,6 @@ public class NcbiEntryListController extends ListController<NcbiEntry> {
         
         public void bindWebSearchResultListView(WebSearchResultListView view) {
             view.setDownloadButtonAction(new TableCellEditorDownloadAction());
-            // TODO bind action
         }
         
         public void bindSearchField(JTextField field) {
@@ -426,5 +478,9 @@ public class NcbiEntryListController extends ListController<NcbiEntry> {
             new BooleanModelBindings(isSearching).bindToComponentVisibled(progressBar);
             new BooleanModelBindings(isIndeterminate).bindToProgressBarIndeterminate(progressBar);
         }
+    }
+    
+    public static interface SequenceFileImportable {
+        public Future<GeneticSequence> executeImportingSequenceFile(File file);
     }
 }

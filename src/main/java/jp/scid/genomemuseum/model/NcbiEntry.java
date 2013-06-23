@@ -42,15 +42,11 @@ public class NcbiEntry extends AbstractTaskProgressModel implements TaskProgress
     
     @Override
     public String toString() {
-        return identifier();
+        return "NcbiEntry: " + identifier();
     }
     
     public URI sourceUri() {
-        String uriString = entry.sourceUri();
-        if (uriString.isEmpty()) {
-            return null;
-        }
-        return URI.create(uriString);
+        return entry.sourceUri();
     }
     
     public StateValue getTaskState() {

@@ -6,17 +6,25 @@ import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.io.File;
 import java.util.Collection;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 import javax.swing.DefaultBoundedRangeModel;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JProgressBar;
+import javax.swing.SwingWorker;
 
+import jp.scid.bio.store.SequenceLibrary;
+import jp.scid.bio.store.sequence.GeneticSequence;
 import jp.scid.genomemuseum.gui.GeneticSequenceListController.ImportSuccessHandler;
+import jp.scid.genomemuseum.gui.NcbiEntryListController.SequenceFileImportable;
 import jp.scid.genomemuseum.model.GeneticSequenceFileLoadingManager;
 import jp.scid.genomemuseum.model.SequenceImportable;
+import jp.scid.genomemuseum.model.GeneticSequenceFileLoadingManager.LoadingSuccessHandler;
 import jp.scid.gui.control.BooleanModelBindings;
 import jp.scid.gui.control.StringModelBindings;
 import jp.scid.gui.model.BeanPropertyAdapter;
@@ -25,7 +33,7 @@ import jp.scid.gui.model.ValueModel;
 import jp.scid.gui.model.ValueModels;
 import jp.scid.gui.model.connector.BeanPropertyConnector;
 
-public class FileLoadingTaskController implements PropertyChangeListener {
+public class FileLoadingTaskController implements PropertyChangeListener, SequenceFileImportable {
     private GeneticSequenceFileLoadingManager loadingManager;
     private final ExecutorService taskExecutor;
     private final DefaultBoundedRangeModel progressModel = new DefaultBoundedRangeModel();
@@ -33,8 +41,11 @@ public class FileLoadingTaskController implements PropertyChangeListener {
     private final MutableValueModel<Boolean> isIndeterminate;
     private final MutableValueModel<String> progressMessage;
     
+    private SequenceLibrary sequenceLibrary;
+    
     public FileLoadingTaskController() {
-        taskExecutor = Executors.newFixedThreadPool(2);
+        taskExecutor = Executors.newFixedThreadPool(1);
+        
         setLoadingManager(new GeneticSequenceFileLoadingManager(taskExecutor));
         
         isIndeterminate = ValueModels.newBooleanModel(false);
@@ -43,6 +54,16 @@ public class FileLoadingTaskController implements PropertyChangeListener {
 
     public void shutdownNow() {
         taskExecutor.shutdownNow();
+    }
+    
+    @Override
+    public Future<GeneticSequence> executeImportingSequenceFile(File file) {
+        Callable<GeneticSequence> importTask = sequenceLibrary.createSequenceImportTask(file);
+        return loadingManager.execute(importTask);
+    }
+    
+    public void setSequenceLibrary(SequenceLibrary sequenceLibrary) {
+        this.sequenceLibrary = sequenceLibrary;
     }
     
     public void executeLoading(Collection<File> files, SequenceImportable dest, ImportSuccessHandler handler) {
@@ -85,6 +106,40 @@ public class FileLoadingTaskController implements PropertyChangeListener {
         progressMessage.set(message);
     }
 
+    class LoadingTask extends SwingWorker<GeneticSequence, Void> {
+        private final GeneticSequence sequence;
+        private final LoadingSuccessHandler successHandler;
+        
+        public LoadingTask(GeneticSequence sequence, LoadingSuccessHandler successHandler) {
+            this.sequence = sequence;
+            this.successHandler = successHandler;
+        }
+
+        @Override
+        protected GeneticSequence doInBackground() throws Exception {
+            sequence.reload();
+            sequence.saveFileToLibrary();
+            return sequence;
+        }
+        
+        @Override
+        protected void done() {
+            if (!isCancelled() && successHandler != null) {
+                GeneticSequence sequence;
+                try {
+                    sequence = get();
+                    successHandler.handle(sequence);
+                }
+                catch (InterruptedException ignore) {
+                    // ignore
+                }
+                catch (ExecutionException ignore) {
+                    // ignore
+                }
+            }
+        }
+    }
+    
     public class Bindings {
         private final ValueModel<Boolean> conentePaneVisible;
         

@@ -71,7 +71,7 @@ public class TaskProgressView extends JComponent implements ChangeListener {
     }
     
     public void setExecuteButtonAction(Action action) {
-        executeButton.setAction(action);
+        executeButton.addActionListener(action);
     }
     
     void setLabelText(StateValue state, long maxSize, long currentSize) {

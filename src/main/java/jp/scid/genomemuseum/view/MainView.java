@@ -189,7 +189,8 @@ public class MainView implements GenomeMuseumView {
     public JTextField websearchField() { return webSearchResultListView.getSearchField(); }
     public JLabel loadingIconLabel() { return webSearchResultListView.loadingIconLabel(); }
     public JButton websearchCancelButton() { return webSearchResultListView.cancelButton(); }
-
+    public WebSearchResultListView webSearchResultListView() { return webSearchResultListView; }
+    
     public void setContentsMode(ContentsMode mode) {
         modeChangePane.setContentsMode(mode);
     }

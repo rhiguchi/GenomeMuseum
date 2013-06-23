@@ -46,11 +46,13 @@ public class GenomeMuseum extends Application {
         
         mainFrameController = new MainFrameController();
         geneticSequenceListController = new GeneticSequenceListController();
-        ncbiEntryListController = new NcbiEntryListController();
         folderDirectoryTreeController = new FolderTreeController();
         fileOpenHandler = new FileOpenHandler(geneticSequenceListController);
         fileLoadingTaskController = new FileLoadingTaskController();
         contentViewerController = new MuseumExhibitContentViewer();
+        
+        ncbiEntryListController = new NcbiEntryListController();
+        ncbiEntryListController.setFileImporter(fileLoadingTaskController);
     }
 
     private void openConnectionPool() {
@@ -114,6 +116,7 @@ public class GenomeMuseum extends Application {
         ncbiBindings.bindProgressIcon(mainView.loadingIconLabel());
         ncbiBindings.bindSearchField(mainView.websearchField());
         ncbiBindings.bindStopButton(mainView.websearchCancelButton());
+        ncbiBindings.bindWebSearchResultListView(mainView.webSearchResultListView());
         
         // Mode Selector
         RecordListViewSelector selector = new RecordListViewSelector(mainView);
@@ -132,6 +135,8 @@ public class GenomeMuseum extends Application {
         File filesDir = getFilesStoreDirectory();
         sequenceLibrary.setFilesStoreRoot(filesDir);
         logger.info("sequence files store at {}", filesDir);
+        
+        fileLoadingTaskController.setSequenceLibrary(sequenceLibrary);
         
         // tree model
         MuseumTreeSource treeSource = new MuseumTreeSource();
