@@ -6,23 +6,16 @@ import static javax.swing.SpringLayout.*;
 import java.awt.BorderLayout;
 import java.awt.CardLayout;
 import java.awt.Color;
-import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
-import java.util.ArrayList;
-import java.util.List;
 
-import javax.swing.AbstractAction;
 import javax.swing.AbstractButton;
-import javax.swing.Action;
 import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
-import javax.swing.Icon;
-import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JComponent;
@@ -39,17 +32,12 @@ import javax.swing.JToggleButton;
 import javax.swing.JTree;
 import javax.swing.SpringLayout;
 import javax.swing.SwingConstants;
-import javax.swing.SwingWorker;
-import javax.swing.SwingWorker.StateValue;
 import javax.swing.event.PopupMenuEvent;
 import javax.swing.event.PopupMenuListener;
-import javax.swing.table.AbstractTableModel;
 import javax.swing.tree.DefaultTreeCellEditor;
 
-import jp.scid.genomemuseum.model.TaskProgressModel;
 import jp.scid.genomemuseum.view.folder.FolderTreeCellRenderer;
 import jp.scid.gui.plaf.SourceListTreeUI;
-import jp.scid.gui.view.SDDefaultTableCellRenderer;
 import jp.scid.motifviewer.gui.MotifViewerView;
 
 import com.explodingpixels.macwidgets.ComponentBottomBar;
@@ -333,70 +321,6 @@ public class MainView implements GenomeMuseumView {
     private static void makeComponentBottomButton(AbstractButton button) {
         button.setBorder(BorderFactory.createEmptyBorder());
         button.setPreferredSize(new Dimension(32, -1));
-    }
-    
-    private static class SampleTableModel extends AbstractTableModel {
-        private static enum Column {
-            STRING_VALUE(String.class) {
-                @Override Object getValue(int row) {
-                    return "String Value " + row;
-                }
-            },
-            INTEGER_VALUE(Integer.class) {
-                @Override Object getValue(int row) {
-                    return 1000 + row;
-                }
-            },
-            REMOTE_SOURCE(TaskProgressModel.class) {
-                List<RemoteSourceImpl> sources = new ArrayList<RemoteSourceImpl>(); {
-                    for (int i = 0; i < 10; i++) {
-                        RemoteSourceImpl data = new RemoteSourceImpl();
-                        sources.add(data);
-                    }
-                }
-                
-                @Override Object getValue(int row) {
-                    return sources.get(row);
-                }
-            },
-            ;
-            
-            final Class<?> columnClass;
-
-            abstract Object getValue(int row);
-            
-            private Column(Class<?> columnClass) {
-                this.columnClass = columnClass;
-            }
-        }
-        
-        public int getRowCount() {
-            return 10;
-        }
-
-        public int getColumnCount() {
-            return Column.values().length;
-        }
-
-        @Override
-        public Object getValueAt(int row, int column) {
-            return Column.values()[column].getValue(row);
-        }
-        
-        @Override
-        public Class<?> getColumnClass(int column) {
-            return Column.values()[column].columnClass;
-        }
-        
-        @Override
-        public String getColumnName(int column) {
-            return Column.values()[column].name();
-        }
-        
-        @Override
-        public boolean isCellEditable(int rowIndex, int columnIndex) {
-            return true;
-        }
     }
     
     static class ModeChangePane {

@@ -1,12 +1,10 @@
 package jp.scid.genomemuseum.view;
 
 import java.awt.Component;
-import java.util.EventObject;
 
 import javax.swing.AbstractCellEditor;
 import javax.swing.Action;
 import javax.swing.JTable;
-import javax.swing.SwingWorker.StateValue;
 import javax.swing.table.TableCellEditor;
 import javax.swing.table.TableCellRenderer;
 
@@ -16,6 +14,9 @@ public class DownloadTaskTableCell extends AbstractCellEditor implements TableCe
     final TaskProgressView rendererView = new TaskProgressView();
     final TaskProgressView editorView = new TaskProgressView();
     
+    public DownloadTaskTableCell() {
+        super();
+    }
     
     @Override
     public Object getCellEditorValue() {
@@ -42,14 +43,6 @@ public class DownloadTaskTableCell extends AbstractCellEditor implements TableCe
         return editorView.getComponent();
     }
 
-    protected void renderCell(TaskProgressView cell, TaskProgressModel value) {
-        cell.setLabelAvailable(value.isAvailable());
-        cell.setDownloadButtonEnabled(value.isAvailable() && value.getState() == StateValue.PENDING);
-        cell.setProgressVisible(value.getState() == StateValue.STARTED);
-        cell.setProgress(value.getProgress());
-        cell.setText(value.getLabel());
-    }
-    
     public void setDownloadButtonAction(Action action) {
         editorView.setExecuteButtonAction(action);
     }

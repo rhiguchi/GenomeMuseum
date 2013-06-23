@@ -2,11 +2,22 @@ package jp.scid.genomemuseum.gui;
 
 import static java.lang.String.*;
 
-import java.util.Comparator;
+import java.awt.Component;
+import java.awt.event.ActionEvent;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.net.URI;
+import java.nio.channels.Channels;
+import java.nio.channels.FileChannel;
+import java.nio.channels.ReadableByteChannel;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
+import javax.swing.AbstractAction;
 import javax.swing.Action;
 import javax.swing.DefaultBoundedRangeModel;
 import javax.swing.JButton;
@@ -14,10 +25,15 @@ import javax.swing.JLabel;
 import javax.swing.JProgressBar;
 import javax.swing.JTable;
 import javax.swing.JTextField;
+import javax.swing.SwingUtilities;
 import javax.swing.SwingWorker;
+import javax.swing.SwingWorker.StateValue;
 
 import jp.scid.bio.store.remote.RemoteSource;
 import jp.scid.bio.store.remote.RemoteSource.RemoteEntry;
+import jp.scid.genomemuseum.model.NcbiEntry;
+import jp.scid.genomemuseum.model.WebServiceResultTableFormat;
+import jp.scid.genomemuseum.view.TaskProgressView;
 import jp.scid.genomemuseum.view.WebSearchResultListView;
 import jp.scid.gui.control.ActionManager;
 import jp.scid.gui.control.BooleanModelBindings;
@@ -26,11 +42,15 @@ import jp.scid.gui.model.MutableValueModel;
 import jp.scid.gui.model.ValueModels;
 import jp.scid.gui.model.connector.DocumentTextConnector;
 
+import org.apache.http.HttpEntity;
+import org.apache.http.HttpResponse;
+import org.apache.http.client.ClientProtocolException;
+import org.apache.http.client.HttpClient;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.impl.client.DefaultHttpClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import ca.odell.glazedlists.gui.AdvancedTableFormat;
-import ca.odell.glazedlists.gui.WritableTableFormat;
 import ca.odell.glazedlists.swing.DefaultEventTableModel;
 
 public class NcbiEntryListController extends ListController<NcbiEntry> {
@@ -59,6 +79,8 @@ public class NcbiEntryListController extends ListController<NcbiEntry> {
     private final Action searchAction;
     private final Action stopAction;
     
+    private final HttpClient httpClient;
+    
     public NcbiEntryListController() {
         super();
         
@@ -77,6 +99,9 @@ public class NcbiEntryListController extends ListController<NcbiEntry> {
         ActionManager actions = new ActionManager(this);
         searchAction = actions.getAction("search");
         stopAction = actions.getAction("stop");
+        
+        // download client
+        httpClient = new DefaultHttpClient();
     }
     
     public RemoteSource getSource() {
@@ -106,7 +131,7 @@ public class NcbiEntryListController extends ListController<NcbiEntry> {
         logger.debug("search from NCBI with {}", searchQuery);
         
         SearchTask task = new SearchTask(searchQuery);
-        execute(task);
+        executeSearchTask(task);
     }
 
     public void stop() {
@@ -131,7 +156,7 @@ public class NcbiEntryListController extends ListController<NcbiEntry> {
         isIndeterminate.set(newValue);
     }
     
-    private void execute(SwingWorker<?, ?> newTask) {
+    private void executeSearchTask(SwingWorker<?, ?> newTask) {
         stop();
         clear();
         setResultCount(0);
@@ -215,7 +240,7 @@ public class NcbiEntryListController extends ListController<NcbiEntry> {
         }
     }
     
-    private abstract class Command implements Runnable {}
+    private abstract class Command implements Runnable { /* empty */ }
     
     private final class AppendResult extends Command {
         List<RemoteEntry> entries;
@@ -243,6 +268,127 @@ public class NcbiEntryListController extends ListController<NcbiEntry> {
         }
     }
     
+    void execute(RemoteSourceDownloadTask task) {
+        task.execute();
+    }
+    
+    // Downloading
+    class TableCellEditorDownloadAction extends AbstractAction {
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            TaskProgressView editor = (TaskProgressView) SwingUtilities.getAncestorOfClass(TaskProgressView.class, (Component) e.getSource());
+            NcbiEntry source = (NcbiEntry) editor.getModel();
+            DownloadTaskConnector connector = new DownloadTaskConnector(source);
+            
+            RemoteSourceDownloadTask task = new RemoteSourceDownloadTask(httpClient, source.sourceUri());
+            connector.installTo(task);
+            
+            execute(task);
+        }
+    }
+
+    private static class DownloadTaskConnector implements PropertyChangeListener {
+        private final NcbiEntry source;
+        
+        public DownloadTaskConnector(NcbiEntry source) {
+            super();
+            this.source = source;
+        }
+
+        @Override
+        public void propertyChange(PropertyChangeEvent e) {
+            if ("contentLength".equals(e.getPropertyName())) {
+                source.setTaskSize((Long) e.getNewValue());
+            }
+            else if ("downloadedLegth".equals(e.getPropertyName())) {
+                source.setTaskProgress((Long) e.getNewValue());
+            }
+            else if ("stateValue".equals(e.getPropertyName())) {
+                source.setTaskState((StateValue) e.getNewValue()); 
+                
+                if (e.getNewValue() == StateValue.DONE) {
+                    ((SwingWorker<?, ?>) e.getSource()).removePropertyChangeListener(this);
+                }
+            }
+        }
+        
+        public void installTo(RemoteSourceDownloadTask task) {
+            task.addPropertyChangeListener(this);
+        }
+    }
+    
+    static class RemoteSourceDownloadTask extends SwingWorker<File, Void> {
+        private final HttpClient httpClient;
+        private final URI sourceUrl;
+        
+        private final int bufferSize = 8196;
+        private long contentLength = 0;
+        private long position = 0;
+        
+        public RemoteSourceDownloadTask(HttpClient httpClient, URI sourceUrl) {
+            this.httpClient = httpClient;
+            this.sourceUrl = sourceUrl;
+        }
+
+        @Override
+        protected File doInBackground() throws Exception {
+            File destFile = File.createTempFile("GenomeMuseumRemoteDownload", ".txt");
+            @SuppressWarnings("resource")
+            FileChannel dest = new FileOutputStream(destFile).getChannel();
+            
+            try {
+                download(sourceUrl, dest);
+            }
+            finally {
+                dest.close();
+            }
+            
+            return destFile;
+        }
+
+        private void download(URI sourceUrl, FileChannel dest)
+                throws IOException, ClientProtocolException {
+            HttpGet request = new HttpGet(sourceUrl);
+            HttpResponse response = httpClient.execute(request);
+            
+            HttpEntity entity = response.getEntity();
+            if (entity == null) {
+                throw new IOException("cannot find entity");
+            }
+            
+            setContentLength(entity.getContentLength());
+            ReadableByteChannel source = Channels.newChannel(entity.getContent());
+            try {
+                long read;
+                while ((read = dest.transferFrom(source, position, bufferSize)) >= 0) {
+                    appendPosition(read);
+                }
+                
+                source.close();
+            }
+            finally {
+                request.abort();
+            }
+        }
+
+        public long getContentLength() {
+            return contentLength;
+        }
+        
+        private void setContentLength(long contentLength) {
+            firePropertyChange("contentLength", this.contentLength, this.contentLength = contentLength);
+        }
+        
+        public long getDownloadedLegth() {
+            return this.position;
+        }
+        
+        private void appendPosition(long read) {
+            firePropertyChange("downloadedLegth", this.position, this.position += read);
+        }
+    }
+
+    
     // Binding
     public class Binding extends ListController<NcbiEntry>.Binding {
         public void bindTable(JTable table) {
@@ -251,6 +397,7 @@ public class NcbiEntryListController extends ListController<NcbiEntry> {
         }
         
         public void bindWebSearchResultListView(WebSearchResultListView view) {
+            view.setDownloadButtonAction(new TableCellEditorDownloadAction());
             // TODO bind action
         }
         
@@ -279,134 +426,5 @@ public class NcbiEntryListController extends ListController<NcbiEntry> {
             new BooleanModelBindings(isSearching).bindToComponentVisibled(progressBar);
             new BooleanModelBindings(isIndeterminate).bindToProgressBarIndeterminate(progressBar);
         }
-    }
-}
-
-class NcbiEntry {
-    private final RemoteEntry entry;
-    
-    private NcbiEntry(RemoteEntry entry) {
-        this.entry = entry;
-    }
-    
-    public static NcbiEntry fromRemoteSource(RemoteEntry e) {
-        return new NcbiEntry(e);
-    }
-
-    public String identifier() {
-        return entry.identifier();
-    }
-
-    public String accession() {
-        return entry.accession();
-    }
-
-    public int sequenceLength() {
-        return entry.sequenceLength();
-    }
-
-    public String definition() {
-        return entry.definition();
-    }
-
-    public String taxonomy() {
-        return entry.taxonomy();
-    }
-    
-    @Override
-    public String toString() {
-        return identifier();
-    }
-}
-
-
-class WebServiceResultTableFormat implements AdvancedTableFormat<NcbiEntry>, WritableTableFormat<NcbiEntry> {
-    enum Column implements Comparator<NcbiEntry> {
-        DOWNLOAD_ACTION(Object.class) {
-            Object getColumnValue(NcbiEntry e) {
-                return e.identifier();
-            }
-        },
-        IDENTIFIER(String.class) {
-            Object getColumnValue(NcbiEntry e) {
-                return e.identifier();
-            }
-        },
-        ACCESSION(String.class) {
-            Object getColumnValue(NcbiEntry e) {
-                return e.accession();
-            }
-        },
-        SEQUENCE_LENGTH(String.class) {
-            Object getColumnValue(NcbiEntry e) {
-                return e.sequenceLength();
-            }
-        },
-        DEFINITION(String.class) {
-            Object getColumnValue(NcbiEntry e) {
-                return e.definition();
-            }
-        },
-        TAXONOMY(String.class) {
-            Object getColumnValue(NcbiEntry e) {
-                return e.taxonomy();
-            }
-        },
-        ;
-        private final Class<?> dataClass;
-        
-        private Column(Class<?> dataClass) {
-            this.dataClass = dataClass;
-        }
-        
-        public Comparator<NcbiEntry> comparator() {
-            return Comparable.class.isAssignableFrom(dataClass) ? this : null;
-        }
-        
-        abstract Object getColumnValue(NcbiEntry e);
-
-        @SuppressWarnings({ "unchecked", "rawtypes" })
-        @Override
-        public int compare(NcbiEntry o1, NcbiEntry o2) {
-            Comparable val1 = (Comparable<?>) getColumnValue(o1);
-            Comparable val2 = (Comparable<?>) getColumnValue(o2);
-            return val1.compareTo(val2);
-        }
-    }
-    
-    @Override
-    public int getColumnCount() {
-        return Column.values().length;
-    }
-
-    @Override
-    public String getColumnName(int column) {
-        return Column.values()[column].name();
-    }
-
-    @Override
-    public Object getColumnValue(NcbiEntry baseObject, int column) {
-        return Column.values()[column].getColumnValue(baseObject);
-    }
-
-    @Override
-    public Class<?> getColumnClass(int column) {
-        return Column.values()[column].dataClass;
-    }
-
-    @Override
-    public Comparator<NcbiEntry> getColumnComparator(int columnNumber) {
-        return Column.values()[columnNumber].comparator();
-    }
-
-    @Override
-    public boolean isEditable(NcbiEntry baseObject, int column) {
-        // TODO Auto-generated method stub
-        return false;
-    }
-
-    @Override
-    public NcbiEntry setColumnValue(NcbiEntry baseObject, Object editedValue, int column) {
-        return baseObject;
     }
 }

@@ -1,11 +1,13 @@
 package jp.scid.genomemuseum.view;
 
+import static java.lang.String.*;
 import static javax.swing.Spring.*;
 import static javax.swing.SpringLayout.*;
 
 import java.awt.Color;
 import java.awt.Font;
 import java.awt.Insets;
+import java.text.DecimalFormat;
 
 import javax.swing.Action;
 import javax.swing.JButton;
@@ -20,6 +22,10 @@ import javax.swing.event.ChangeListener;
 import jp.scid.genomemuseum.model.TaskProgressModel;
 
 public class TaskProgressView extends JComponent implements ChangeListener {
+    private final static String DEFAULT_PROGRESS_MESSAGE_FORMAT = "%s / %s...";
+    private final static String DEFAULT_SUCCESS_MESSAGE_FORMAT = "%s Done";
+    private final static String DEFAULT_CANCELLED_MESSAGE_FORMAT = "Cancelled";
+    
     private final JLabel statusLabel = new JLabel("status");
     private final JButton executeButton;
     private final JProgressBar downloadProgress;
@@ -68,28 +74,46 @@ public class TaskProgressView extends JComponent implements ChangeListener {
         executeButton.setAction(action);
     }
     
-    public void setDownloadButtonEnabled(boolean isEnabled) {
-        executeButton.setEnabled(isEnabled);
-    }
-    
-    public void setLabelAvailable(boolean isEnabled) {
-        statusLabel.setEnabled(isEnabled);
-    }
-    
-    public void setText(String statusText) {
-        statusLabel.setText(statusText);
+    void setLabelText(StateValue state, long maxSize, long currentSize) {
+        final String message;
+        if (state == StateValue.STARTED) {
+            String max = readableFileSize(maxSize);
+            String current = readableFileSize(currentSize);
+            message = format(DEFAULT_PROGRESS_MESSAGE_FORMAT, current, max);
+            
+        }
+        else if (state == StateValue.DONE) {
+            if (maxSize <= currentSize) {
+                String max = readableFileSize(maxSize);
+                message = format(DEFAULT_SUCCESS_MESSAGE_FORMAT, max);
+            }
+            else {
+                message = format(DEFAULT_CANCELLED_MESSAGE_FORMAT);
+            }
+        }
+        else {
+            message = "";
+        }
+        statusLabel.setText(message);
     }
     
     public void setProgressVisible(boolean b) {
         downloadProgress.setVisible(b);
-        executeButton.setVisible(!b);
     }
 
-    public void setProgress(float value) {
-        final int progress = (int) value * 100;
+    void setExecuteButtonEnabled(boolean isEnabled) {
+        executeButton.setEnabled(isEnabled);
+    }
+    
+    void setExecuteButtonVisible(boolean b) {
+        executeButton.setVisible(b);
+    }
+
+    public void setProgress(long maxSize, long currentSize) {
+        final int progress = (int) (currentSize * 10000.0 / maxSize);
+        
         downloadProgress.setValue(progress);
-        downloadProgress.setIndeterminate(value < 0
-                || downloadProgress.getMaximum() <= progress);
+        downloadProgress.setIndeterminate(currentSize < 0 || maxSize <= currentSize);
     }
     
     @Override
@@ -113,13 +137,14 @@ public class TaskProgressView extends JComponent implements ChangeListener {
     }
     
     private void updateComponentValues() {
-        setLabelAvailable(model.isAvailable());
-        setDownloadButtonEnabled(model.isAvailable() && model.getState() == StateValue.PENDING);
-        setProgressVisible(model.getState() == StateValue.STARTED);
-        setProgress(model.getProgress());
-        setText(model.getLabel());
+        setExecuteButtonEnabled(model.getTaskState() == StateValue.PENDING);
+        setLabelText(model.getTaskState(), model.getTaskSize(), model.getTaskProgress());
         
-        repaint();
+        boolean inProgress = model.getTaskState() == StateValue.STARTED;
+        setProgressVisible(inProgress);
+        setExecuteButtonVisible(!inProgress);
+        
+        setProgress(model.getTaskSize(), model.getTaskProgress());
     }
     
     public TaskProgressModel getModel() {
@@ -128,13 +153,20 @@ public class TaskProgressView extends JComponent implements ChangeListener {
 
     public void setModel(TaskProgressModel model) {
         if (this.model != null) {
-            this.model.removeProgressChangeListener(this);
+            this.model.removeTaskStateChangeListener(this);
         }
         this.model = model;
         
         if (model != null) {
-            model.addProgressChangeListener(this);
+            model.addTaskStateChangeListener(this);
             updateComponentValues();
         }
+    }
+    
+    static String readableFileSize(long size) {
+        if (size <= 0) return "0";
+        final String[] units = new String[] { "B", "KB", "MB", "GB", "TB" };
+        int digitGroups = (int) ( Math.log10(size) / Math.log10(1024));
+        return new DecimalFormat("#,##0.#").format(size / Math.pow(1024, digitGroups)) + " " + units[digitGroups];
     }
 }
