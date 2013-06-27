@@ -6,81 +6,129 @@ import java.awt.datatransfer.UnsupportedFlavorException;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.LinkedList;
 import java.util.List;
 
 import javax.swing.JComponent;
 import javax.swing.JTree;
 import javax.swing.TransferHandler;
 import javax.swing.tree.DefaultMutableTreeNode;
-import javax.swing.tree.MutableTreeNode;
 import javax.swing.tree.TreePath;
 
 import jp.scid.bio.store.folder.Folder;
+import jp.scid.bio.store.folder.FolderRecordBasicFolder;
+import jp.scid.bio.store.folder.FoldersContainer;
 import jp.scid.bio.store.sequence.FolderContentGeneticSequence;
-import jp.scid.bio.store.sequence.SequenceCollection;
-import jp.scid.genomemuseum.model.FolderContainer;
-import jp.scid.genomemuseum.model.FolderTreeNode;
 import jp.scid.genomemuseum.model.SequenceImportable;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class FolderTreeTransferHandler extends TransferHandler {
-    public final static DataFlavor FOLDER_FLAVOR = new DataFlavor(Folder.class, "Folder");
+    private final static DataFlavor FOLDER_FLAVOR = new DataFlavor(Folder.class, "Folder");
     
-    @SuppressWarnings("unused")
-    private final static Logger logger = LoggerFactory.getLogger(FolderTreeTransferHandler.class);
+    final static Logger logger = LoggerFactory.getLogger(FolderTreeTransferHandler.class);
     
-    final FolderTreeController controller;
-
-    public FolderTreeTransferHandler(FolderTreeController controller) {
-        this.controller = controller;
+    private FileLoadingTaskController taskController = null;
+    
+    public FolderTreeTransferHandler() {
     }
 
-    @Override
-    public boolean canImport(TransferSupport support) {
-        boolean canImport;
-        int action = COPY;
+    // Folder transfer
+    int getFolderImportAction(TransferSupport support) {
+        Folder folder = getTransferFolder(support);
+        if (folder == null) {
+            return NONE;
+        }
         
-        if (support.isDataFlavorSupported(FOLDER_FLAVOR)) {
-            Folder folder = getTransferFolder(support);
-            if (folder == null) {
-                return false;
-            }
-            
-            Object targetObject = getTargetNodeObject(support);
-            
-            if (targetObject instanceof FolderContainer) {
-                canImport = false; // TODO ((FolderContainer) targetObject).canMove(sourceNode);
-                if (canImport) {
-                    action = MOVE;
-                }
-            }
-            else {
-                canImport = false;
-            }
+        Object targetObject = getTargetNodeObject(support);
+        if (targetObject instanceof FoldersContainer) {
+            boolean canImport = folder.canMoveTo((FoldersContainer) targetObject);
+            return canImport ? MOVE : NONE;
         }
-        else if (support.isDataFlavorSupported(GeneticSequenceList.FLAVOR)) {
-            MutableTreeNode targetNode = getTargetNode(support);
-            
-            canImport = targetNode instanceof SequenceImportable && targetNode instanceof FolderTreeNode;
+        else if (targetObject instanceof FolderRecordBasicFolder) {
+            return COPY;
         }
-        else if (support.isDataFlavorSupported(DataFlavor.javaFileListFlavor)) {
-            MutableTreeNode targetNode = getTargetNode(support);
-            
-            canImport = targetNode instanceof SequenceImportable;
+        
+        return NONE;
+    }
+    
+    boolean importFolder(TransferSupport support) {
+        Folder folder = getTransferFolder(support);
+        Object targetObject = getTargetNodeObject(support);
+        
+        if (targetObject instanceof FoldersContainer) {
+            return folder.moveTo((FoldersContainer) targetObject);
+        }
+        else if (targetObject instanceof FolderRecordBasicFolder) {
+            FolderRecordBasicFolder dest = ((FolderRecordBasicFolder) targetObject);
+            dest.addAllSequences(folder.getGeneticSequences());
         }
         else {
-            canImport = false;
+            return folder.moveToRoot();
+        }
+        
+        return true;
+    }
+    
+    // Sequences transfer
+    int getSequenceListImportAction(TransferSupport support) {
+        Object targetObject = getTargetNodeObject(support);
+        return targetObject instanceof FolderRecordBasicFolder ? COPY : NONE;
+    }
+    
+    boolean importSequenceList(TransferSupport support) {
+        FolderRecordBasicFolder dest = ((FolderRecordBasicFolder) getTargetNodeObject(support));
+        
+        GeneticSequenceList seqList = GeneticSequenceListTransferHandler.getTransferGeneticSequenceList(support);
+        return !dest.addAllSequences(seqList).isEmpty();
+    }
+    
+    // Files transfer
+    public int getFileImportAction(TransferSupport support) {
+        Object targetObject = getTargetNodeObject(support);
+        return targetObject instanceof SequenceImportable ? COPY : NONE;
+    }
+    
+    public boolean importFile(TransferSupport support) {
+        List<File> fileList = GeneticSequenceListTransferHandler.getTransferFile(support);
+        SequenceImportable target = (SequenceImportable) getTargetNodeObject(support);
+        taskController.executeLoading(fileList, target);
+        
+        return true;
+    }
+    
+    @Override
+    public boolean canImport(TransferSupport support) {
+        Object targetObject = getTargetNodeObject(support);
+        logger.debug("ask canImport for target {}", targetObject);
+        
+        final int action;
+        
+        // Folder moving
+        if (support.isDataFlavorSupported(FOLDER_FLAVOR)) {
+            action = getFolderImportAction(support);
+        }
+        // Sequences
+        else if (support.isDataFlavorSupported(GeneticSequenceList.FLAVOR)) {
+            action = getSequenceListImportAction(support);
+        }
+        // Files
+        else if (support.isDataFlavorSupported(DataFlavor.javaFileListFlavor)) {
+            action = getFileImportAction(support);
+        }
+        else {
+            return false;
+        }
+        
+        if (action == NONE) {
+            return false;
         }
         
         if (support.isDrop()) {
             support.setDropAction(action);
-            support.setShowDropLocation(canImport);
+            support.setShowDropLocation(true);
         }
-        
-        return canImport;
+        return true;
     }
 
     static Folder getTransferFolder(TransferSupport support) {
@@ -99,49 +147,46 @@ public class FolderTreeTransferHandler extends TransferHandler {
 
     @Override
     public boolean importData(TransferSupport support) {
+        Object targetObject = getTargetNodeObject(support);
+        logger.debug("importData to target {}", targetObject);
+        
         final boolean result;
         
+        // folder move
         if (support.isDataFlavorSupported(FOLDER_FLAVOR)) {
-            Folder folder = getTransferFolder(support);
-            if (folder == null) {
-                return false;   
-            }
-//            ExhibitCollectionNode sourceNode =
-//                    TransferExhibitCollectionNode.Flavor.getTransferExhibitCollectionNode(support);
-            MutableTreeNode targetNode = getTargetNode(support);
-            
-//            controller.moveNode(sourceNode, (CollectionNode) targetNode);
-            
-            result = true;
+            result = importFolder(support);
         }
+        // Sequence Records
         else if (support.isDataFlavorSupported(GeneticSequenceList.FLAVOR)) {
-//            List<MuseumExhibit> data = GeneticSequenceList.Flavor.getTransferMuseumExhibit(support);
-//            MutableTreeNode targetNode = getTargetNode(support);
-            
-//            controller.importExhibit((CollectionNode) targetNode, data);
-            result = true;
+            result = importSequenceList(support);
         }
+        /// Files
         else if (support.isDataFlavorSupported(DataFlavor.javaFileListFlavor)) {
-            List<File> fileList = GeneticSequenceListTransferHandler.getTransferFile(support);
-            MutableTreeNode targetNode = getTargetNode(support);
-            
-            result = false; //controller.importFile((ExhibitCollectionNode) targetNode, fileList);
+            result = importFile(support);
         }
+        // the others
         else {
-            result = false;
+            return false;
         }
         
         return result;
     }
-    
-    private Object getTargetNodeObject(TransferSupport support) {
-        MutableTreeNode node = getTargetNode(support);
-        if (node instanceof DefaultMutableTreeNode) {
-            return ((DefaultMutableTreeNode) node).getUserObject();
+
+    private static Object getTargetNodeObject(TransferSupport support) {
+        TreePath targetPath = getTargetTreePath(support);
+        
+        return getLastPathObject(targetPath);
+    }
+
+    private static Object getLastPathObject(TreePath targetPath) {
+        Object lastPathObject = targetPath == null ? null : targetPath.getLastPathComponent();
+        if (lastPathObject instanceof DefaultMutableTreeNode) {
+            return ((DefaultMutableTreeNode) lastPathObject).getUserObject();
         }
         return null;
     }
-    private MutableTreeNode getTargetNode(TransferSupport support) {
+    
+    private static TreePath getTargetTreePath(TransferSupport support) {
         TreePath targetPath;
         
         if (support.getComponent() instanceof JTree) {
@@ -155,13 +200,12 @@ public class FolderTreeTransferHandler extends TransferHandler {
         else {
             targetPath = null;
         }
-        
-        return targetPath == null ? null : (MutableTreeNode) targetPath.getLastPathComponent();
+        return targetPath;
     }
     
     @Override
     public int getSourceActions(JComponent c) {
-        if (c instanceof JTree && ((JTree) c).getModel() == controller.getTreeModel()) {
+        if (c instanceof JTree && getLastPathObject(((JTree) c).getSelectionPath()) != null) {
             return COPY_OR_MOVE;
         }
         
@@ -170,36 +214,24 @@ public class FolderTreeTransferHandler extends TransferHandler {
     
     @Override
     protected Transferable createTransferable(JComponent c) {
-        if (c instanceof JTree && ((JTree) c).getModel() == controller.getTreeModel()) {
-            return createTransferData();
-        }
-        
-        return super.createTransferable(c);
-    }
-
-    private Transferable createTransferData() {
-        TreePath path = controller.getSelectionPath();
-        if (path == null) {
-            return null;
-        }
-        
-        if (!(path.getLastPathComponent() instanceof Folder)) {
-            Folder folder = (Folder) path.getLastPathComponent();
-            
-            List<FolderContentGeneticSequence> contentList = new LinkedList<FolderContentGeneticSequence>();
-            SequenceCollection<FolderContentGeneticSequence> contents = folder.getContentSequences();
-            for (int index = 0; index < contents.getSize(); index++) {
-                contentList.add(contents.getElementAt(index));
+        if (c instanceof JTree) {
+            Object lastPathObject = getLastPathObject(((JTree) c).getSelectionPath());
+            if (lastPathObject instanceof Folder) {
+                return createTransferData((Folder) lastPathObject);
             }
-            
-            return new FolderTransferObject(folder, contentList);
         }
         
         return null;
     }
+
+    private Transferable createTransferData(Folder folder) {
+        List<FolderContentGeneticSequence> contentList =
+                new ArrayList<FolderContentGeneticSequence>(folder.getGeneticSequences());
+        return new FolderTransferObject(folder, contentList);
+    }
     
 
-    class FolderTransferObject implements Transferable {
+    static class FolderTransferObject implements Transferable {
         private final Folder element;
         private final ProxyGeneticSequenceTransferObject contents;
         private List<DataFlavor> flavors = null;

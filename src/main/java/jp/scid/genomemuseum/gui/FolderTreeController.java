@@ -44,7 +44,7 @@ public class FolderTreeController implements TreeSelectionListener {
     public FolderTreeController() {
         treeModel = new NodeListTreeModel();
         selectionModel = new SourceSelectionModel();
-        transferHandler = new FolderTreeTransferHandler(this);
+        transferHandler = new FolderTreeTransferHandler();
         
         selectedNodeObject = ValueModels.newTreeSelectedNodeObject(selectionModel);
         

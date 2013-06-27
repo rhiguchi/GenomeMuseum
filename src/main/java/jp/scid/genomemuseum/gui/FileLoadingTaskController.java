@@ -70,6 +70,10 @@ public class FileLoadingTaskController implements PropertyChangeListener, Sequen
         loadingManager.executeLoading(files, dest, handler);
     }
     
+    public void executeLoading(Collection<File> files, SequenceImportable dest) {
+        executeLoading(files, dest, null);
+    }
+    
     public void setLoadingManager(GeneticSequenceFileLoadingManager loadingManager) {
         if (this.loadingManager != null) {
             this.loadingManager.removePropertyChangeListener(this);
