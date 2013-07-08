@@ -6,7 +6,6 @@ import java.awt.event.KeyEvent;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
@@ -21,6 +20,7 @@ import javax.swing.JComponent;
 import javax.swing.JTable;
 import javax.swing.JTextField;
 import javax.swing.KeyStroke;
+import javax.swing.ListSelectionModel;
 import javax.swing.TransferHandler;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
@@ -31,8 +31,8 @@ import javax.swing.table.JTableHeader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import ca.odell.glazedlists.EventList;
 import ca.odell.glazedlists.BasicEventList;
+import ca.odell.glazedlists.EventList;
 import ca.odell.glazedlists.FilterList;
 import ca.odell.glazedlists.GlazedLists;
 import ca.odell.glazedlists.ObservableElementList;
@@ -44,8 +44,8 @@ import ca.odell.glazedlists.gui.AdvancedTableFormat;
 import ca.odell.glazedlists.gui.TableFormat;
 import ca.odell.glazedlists.impl.filter.StringTextFilterator;
 import ca.odell.glazedlists.matchers.SearchEngineTextMatcherEditor;
+import ca.odell.glazedlists.swing.DefaultEventSelectionModel;
 import ca.odell.glazedlists.swing.DefaultEventTableModel;
-import ca.odell.glazedlists.swing.EventSelectionModel;
 
 public abstract class ListController<E> {
     private final static Logger logger = LoggerFactory.getLogger(ListController.class);
@@ -60,14 +60,12 @@ public abstract class ListController<E> {
     private final FilterList<E> filterList;
     
     /** selection model */
-    protected final EventSelectionModel<E> selectionModel;
+    protected final DefaultEventSelectionModel<E> selectionModel;
     
-    // properties
-    private boolean canRemove = false;
     // actions
     /** remove */
     protected final Action addAction;
-    protected final Action removeAction;
+    protected final RemoveAction removeAction;
     
     public ListController(EventList<E> source) {
         this.base = new PluggableList<E>(source);
@@ -76,12 +74,11 @@ public abstract class ListController<E> {
         matcherEditor = createTextMatcherEditor();
         filterList = new FilterList<E>(sortedList, matcherEditor);
         
-        selectionModel = createSelectionModel(getViewList());
+        selectionModel = new DefaultEventSelectionModel<E>(getViewList());
         
         addAction = createAddAction();
-        removeAction = createRemoveAction();
-        
-        updateCanRemoveBySelection();
+        removeAction = new RemoveAction();
+        removeAction.bindSelectionModel(selectionModel);
     }
     
     protected ListController() {
@@ -191,18 +188,6 @@ public abstract class ListController<E> {
         base.clear();
     }
 
-    public boolean canRemove() {
-        return canRemove;
-    }
-    
-    public void setCanRemove(boolean newValue) {
-        canRemove = newValue;
-        removeAction.setEnabled(newValue);
-    }
-    
-    private void updateCanRemoveBySelection() {
-        setCanRemove(!isSelectionEmpty());
-    }
 
     // sorting
     public Comparator<? super E> getComparator() {
@@ -223,31 +208,22 @@ public abstract class ListController<E> {
         return removeAt(index) != null;
     }
     
-    public void remove() {
-        int minSelectionIndex = selectionModel.getMinSelectionIndex();
-        int maxSelectionIndex = selectionModel.getMaxSelectionIndex();
-        
-        if (minSelectionIndex < 0 || maxSelectionIndex < 0) {
-            return;
-        }
-        
-        int[] indices = new int[maxSelectionIndex - minSelectionIndex + 1];
-        int count = 0;
-        for (int index = minSelectionIndex; index <= maxSelectionIndex; index++) {
-            if (selectionModel.isSelectedIndex(index)) {
-                indices[count++] = index;
-            }
-        }
-        int[] selectedIndices = Arrays.copyOf(indices, count);
-        
-        removeAt(selectedIndices);
+    public List<E> remove() {
+        EventList<E> selections = selectionModel.getSelected();
+        List<E> remove = new ArrayList<E>(selections);
+        selections.clear();
+        return remove;
     }
 
-    public void removeAt(int... indices) {
+    public List<E> removeAt(int... indices) {
+        List<E> list = new ArrayList<E>(indices.length);
         for (int i = indices.length - 1; i >= 0; i--) {
             int index = indices[i];
             E removed = removeAt(index);
+            list.add(removed);
         }
+        
+        return list;
     }
     
     // selections
@@ -301,17 +277,6 @@ public abstract class ListController<E> {
     }
     
     // factories
-    protected EventSelectionModel<E> createSelectionModel(EventList<E> viewList) {
-        EventSelectionModel<E> selectionModel = new EventSelectionModel<E>(viewList);
-        selectionModel.addListSelectionListener(new ListSelectionListener() {
-            @Override
-            public void valueChanged(ListSelectionEvent e) {
-                updateCanRemoveBySelection();
-            }
-        });
-        return selectionModel;
-    }
-    
     SearchEngineTextMatcherEditor<E> createTextMatcherEditor() {
         return new SearchEngineTextMatcherEditor<E>(createTextFilterator());
     }
@@ -329,14 +294,29 @@ public abstract class ListController<E> {
             }
         };
     }
-    
-    protected Action createRemoveAction() {
-        return new AbstractAction("Remove") {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                remove();
-            }
-        };
+
+    private class RemoveAction extends AbstractAction implements ListSelectionListener {
+        public RemoveAction() {
+            super("Remove");
+        }
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            remove();
+        }
+        
+        @Override
+        public void valueChanged(ListSelectionEvent e) {
+            updateEnabled();
+        }
+        
+        private void updateEnabled() {
+            setEnabled(!selectionModel.isSelectionEmpty());
+        }
+        
+        public void bindSelectionModel(ListSelectionModel model) {
+            updateEnabled();
+            model.addListSelectionListener(this);
+        }
     }
     
     protected TransferHandler getTransferHandler() {

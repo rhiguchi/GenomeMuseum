@@ -12,7 +12,6 @@ import javax.swing.ListModel;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 
-import jp.scid.bio.store.SequenceLibrary;
 import jp.scid.bio.store.sequence.GeneticSequence;
 import jp.scid.bio.store.sequence.GeneticSequenceSource;
 import jp.scid.genomemuseum.model.GeneticSequenceFileLoadingManager.LoadingSuccessHandler;
@@ -45,6 +44,13 @@ public class GeneticSequenceListController extends ListController<GeneticSequenc
     private ValueModel<?> selectedSource;
     
     private final ValueModel<GeneticSequence> selectedElement;
+
+    private final ChangeListener sequenceSourceChangeListener = new ChangeListener() {
+        @Override
+        public void stateChanged(ChangeEvent e) {
+            fetch();
+        }
+    };
     
     private final ChangeListener selectedSourceModelHandler = new ChangeListener() {
         @Override
@@ -138,17 +144,12 @@ public class GeneticSequenceListController extends ListController<GeneticSequenc
     }
     
     @Override
-    public boolean canRemove() {
-        return model instanceof SequenceImportable;
-    }
-
-    @Override
-    public void remove() {
-        EventList<GeneticSequence> selections = selectionModel.getSelected();
-        for (GeneticSequence sequence: selections) {
+    public List<GeneticSequence> remove() {
+        List<GeneticSequence> remove = super.remove();
+        for (GeneticSequence sequence: remove) {
             sequence.delete();
         }
-        selections.clear();
+        return remove;
     }
     
     public void setFileLoadingTaskController(FileLoadingTaskController taskController) {
@@ -162,7 +163,16 @@ public class GeneticSequenceListController extends ListController<GeneticSequenc
 
     public void setModel(GeneticSequenceSource newModel) {
         logger.debug("set list model: {}", newModel);
+        
+        if (this.model != null) {
+            this.model.removeSequencesChangeListener(sequenceSourceChangeListener);
+        }
+        
         this.model = newModel;
+        
+        if (newModel != null) {
+            newModel.addSequencesChangeListener(sequenceSourceChangeListener);
+        }
         
         fetch();
     }
@@ -188,6 +198,7 @@ public class GeneticSequenceListController extends ListController<GeneticSequenc
         return transferHandler;
     }
     
+    @Deprecated
     public void setModelHolder(ValueModel<?> holder) {
         if (selectedSource != null) {
             selectedSource.removeValueChangeListener(selectedSourceModelHandler);
