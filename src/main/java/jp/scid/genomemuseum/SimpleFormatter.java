@@ -23,7 +23,6 @@ public class SimpleFormatter extends Formatter {
         
         StringBuilder sb = new StringBuilder();
         sb.append(dateTime).append(" ");
-        sb.append(record.getSourceClassName()).append(" ");
         sb.append("[").append(record.getLevel()).append("] ");
         sb.append(msg).append(lineSep);
         
