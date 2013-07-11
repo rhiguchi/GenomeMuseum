@@ -47,7 +47,7 @@ public class NodeListTreeModel implements TreeModel {
     // treeModel
     public Object getRoot() {
         Object root = delegate.getRoot();
-        logger.debug("NodeListTreeModel#getRoot: {}", root);
+        logger.trace("NodeListTreeModel#getRoot: {}", root);
         
         return root;
     }
@@ -56,7 +56,7 @@ public class NodeListTreeModel implements TreeModel {
         ensureChildrenRetrieved(parent);
         
         int index = delegate.getIndexOfChild(parent, child);
-        logger.debug("NodeListTreeModel#getIndexOfChild: [{}, {}] -> {}", parent, child, index);
+        logger.trace("NodeListTreeModel#getIndexOfChild: [{}, {}] -> {}", parent, child, index);
         
         return index;
     }
@@ -65,7 +65,7 @@ public class NodeListTreeModel implements TreeModel {
         ensureChildrenRetrieved(parent);
 
         Object child = delegate.getChild(parent, index);
-        logger.debug("NodeListTreeModel#getChild: [{}, {}] -> {}", parent, index, child);
+        logger.trace("NodeListTreeModel#getChild: [{}, {}] -> {}", parent, index, child);
         
         return child;
     }
@@ -74,14 +74,14 @@ public class NodeListTreeModel implements TreeModel {
         ensureChildrenRetrieved(parent);
         
         int count = delegate.getChildCount(parent);
-        logger.debug("NodeListTreeModel#getChildCount: {} -> {}", parent, count);
+        logger.trace("NodeListTreeModel#getChildCount: {} -> {}", parent, count);
         
         return count;
     }
 
     public boolean isLeaf(Object node) {
         boolean leaf = delegate.isLeaf(node);
-        logger.debug("NodeListTreeModel#isLeaf: {} -> {}", node, leaf);
+        logger.trace("NodeListTreeModel#isLeaf: {} -> {}", node, leaf);
         return leaf;
     }
 
@@ -116,7 +116,7 @@ public class NodeListTreeModel implements TreeModel {
         if (changeHandlers.containsKey(parent)) {
             return;
         }
-        logger.debug("NodeListTreeModel#ensureChildrenRetrieved: {}", parent);
+        logger.trace("NodeListTreeModel#ensureChildrenRetrieved: {}", parent);
         
         DefaultMutableTreeNode node = (DefaultMutableTreeNode) parent;
         ChildrenChangeHandler handler = new ChildrenChangeHandler(node);

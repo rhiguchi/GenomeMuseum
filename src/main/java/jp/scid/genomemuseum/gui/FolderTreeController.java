@@ -5,9 +5,11 @@ import java.util.List;
 
 import javax.swing.AbstractButton;
 import javax.swing.Action;
+import javax.swing.Icon;
 import javax.swing.JTree;
 import javax.swing.event.TreeSelectionEvent;
 import javax.swing.event.TreeSelectionListener;
+import javax.swing.tree.DefaultMutableTreeNode;
 import javax.swing.tree.DefaultTreeSelectionModel;
 import javax.swing.tree.TreeModel;
 import javax.swing.tree.TreePath;
@@ -109,23 +111,24 @@ public class FolderTreeController implements TreeSelectionListener {
     }
 
     TreePath addFolder(CollectionType type) {
-        Object selectedNodeObject = getSelectedNodeObject();
+        FoldersContainer parent = treeSource.getUserCollectionsRoot();
         
-        FoldersContainer parent;
-        if (selectedNodeObject instanceof FoldersContainer) {
-            parent = (FoldersContainer) selectedNodeObject;
-        }
-        else if (selectedNodeObject instanceof Folder) {
-            parent = ((Folder) selectedNodeObject).getParent();
-        }
-        else {
-            parent = treeSource.getUserCollectionsRoot();
+        DefaultMutableTreeNode selectedTreeNode = getSelectedTreeNode();
+        if (selectedTreeNode != null) {
+            Object userObject = selectedTreeNode.getUserObject();
+            
+            if (userObject instanceof FoldersContainer) {
+                parent = (FoldersContainer) userObject;
+            }
+            else if (userObject instanceof Folder) {
+                parent = (FoldersContainer) ((DefaultMutableTreeNode) selectedTreeNode.getParent()).getUserObject();
+            }
         }
         
         Folder child = parent.createChildFolder(type);
-        int[] indexPath = treeSource.getIndexPath(child);
-        TreePath path = treeModel.getPathOfIndex(indexPath);
-        return path;
+//        int[] indexPath = treeSource.getIndexPath(child);
+//        TreePath path = treeModel.getPathOfIndex(indexPath);
+        return null; //path;
     }
 
     public Object getSelectedNodeObject() {
@@ -134,10 +137,20 @@ public class FolderTreeController implements TreeSelectionListener {
     
     public void remove() {
         logger.debug("FolderTreeController#remove");
-        Folder folder = (Folder) getSelectedNodeObject();
-        if (folder != null) {
-            folder.deleteFromParent();
+        Object[] objectPath = getSelectedTreeNode().getUserObjectPath();
+        
+        Folder target = (Folder) objectPath[objectPath.length - 1];
+        FoldersContainer parent = (FoldersContainer) objectPath[objectPath.length - 2];
+        
+        parent.removeChildFolder(target);
+    }
+
+    private DefaultMutableTreeNode getSelectedTreeNode() {
+        TreePath selectionPath = getSelectionPath();
+        if (selectionPath == null) {
+            return null;
         }
+        return (DefaultMutableTreeNode) selectionPath.getLastPathComponent();
     }
     
     // Selection
@@ -164,10 +177,10 @@ public class FolderTreeController implements TreeSelectionListener {
         tree.setSelectionModel(selectionModel);
         tree.addTreeSelectionListener(this);
 
-//        updateExpansion(tree);
-//        tree.addTreeWillExpandListener(this);
+        tree.getActionMap().put("delete", folderRemoveAction);
         
         tree.setTransferHandler(transferHandler);
+        tree.setDragEnabled(true);
     }
     
     public void bindBasicFolderAddButton(AbstractButton button) {
@@ -183,7 +196,10 @@ public class FolderTreeController implements TreeSelectionListener {
     }
     
     public void bindFolderRemoveButton(AbstractButton button) {
+        Icon icon = button.getIcon();
         button.setAction(folderRemoveAction);
+        button.setIcon(icon);
+        button.setText(null);
     }
 
     static class SourceSelectionModel extends DefaultTreeSelectionModel {

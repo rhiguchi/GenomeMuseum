@@ -88,7 +88,7 @@ public class MuseumTreeSource implements NodeListTreeModel.TreeSource {
     
     public Object getParent(Object node) {
         if (node instanceof Folder) {
-            return ((Folder) node).getParent();
+            return null; // TODO ((Folder) node).getParent();
         }
         else if (node instanceof Category) {
             return this;
