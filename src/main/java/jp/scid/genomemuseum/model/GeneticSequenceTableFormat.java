@@ -6,10 +6,8 @@ import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
 
-import jp.scid.bio.store.jooq.Tables;
 import jp.scid.bio.store.sequence.GeneticSequence;
 import jp.scid.bio.store.sequence.SequenceUnit;
-
 import ca.odell.glazedlists.gui.AdvancedTableFormat;
 
 public class GeneticSequenceTableFormat implements AdvancedTableFormat<GeneticSequence>{
@@ -41,7 +39,7 @@ public class GeneticSequenceTableFormat implements AdvancedTableFormat<GeneticSe
         NAMESPACE("namespace") {
             @Override
             public String getValue(GeneticSequence e) {
-                return e.getValue(Tables.GENETIC_SEQUENCE.NAMESPACE);
+                return e.namespace();
             }
         },
         VERSION("version", Integer.class) {

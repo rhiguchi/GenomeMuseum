@@ -80,6 +80,18 @@ public class MuseumTreeSource implements NodeListTreeModel.TreeSource {
         }
     }
     
+    public boolean updateValueForPath(Object[] path, Object value) {
+        if (value instanceof String) {
+            Object node = path[path.length - 1];
+            if (node instanceof Folder) {
+                Folder folder = (Folder) node;
+                folder.setName((String) value);
+                return folder.save();
+            }
+        }
+        
+        return false;
+    }
     
     @Override
     public String toString() {

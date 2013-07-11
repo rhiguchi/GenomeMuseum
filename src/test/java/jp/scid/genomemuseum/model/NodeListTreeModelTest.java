@@ -181,6 +181,10 @@ public class NodeListTreeModelTest {
                 l.stateChanged(e);
             }
         }
+        
+        public boolean updateValueForPath(Object[] path, Object value) {
+            return false;
+        }
 
         public void addChildrenChangeListener(Object parent, ChangeListener l) {
             rootChildrenChangeListeners.add(l);

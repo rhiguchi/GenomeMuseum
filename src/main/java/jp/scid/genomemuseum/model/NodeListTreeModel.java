@@ -86,7 +86,12 @@ public class NodeListTreeModel implements TreeModel {
     }
 
     public void valueForPathChanged(TreePath path, Object newValue) {
-        delegate.valueForPathChanged(path, newValue);
+        Object[] objectPath = ((DefaultMutableTreeNode) path.getLastPathComponent()).getUserObjectPath();
+        boolean result = treeSource.updateValueForPath(objectPath, newValue);
+        
+        if (result) {
+            delegate.valueForPathChanged(path, objectPath[objectPath.length - 1]);
+        }
     }
 
     @Override
@@ -264,6 +269,8 @@ public class NodeListTreeModel implements TreeModel {
         boolean getAllowsChildren(Object nodeObject);
         
         List<?> getChildren(Object parent);
+        
+        boolean updateValueForPath(Object[] path, Object value);
         
         void addChildrenChangeListener(Object parent, ChangeListener l);
         
