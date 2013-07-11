@@ -1,12 +1,14 @@
 package jp.scid.genomemuseum.model;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
-import javax.swing.ListModel;
-import javax.swing.event.ListDataEvent;
-import javax.swing.event.ListDataListener;
+import javax.swing.event.ChangeEvent;
+import javax.swing.event.ChangeListener;
 import javax.swing.event.TreeModelEvent;
 import javax.swing.event.TreeModelListener;
 import javax.swing.tree.DefaultMutableTreeNode;
@@ -16,11 +18,18 @@ import javax.swing.tree.TreeModel;
 import javax.swing.tree.TreeNode;
 import javax.swing.tree.TreePath;
 
-public class NodeListTreeModel implements TreeModel {
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import ca.odell.glazedlists.AbstractEventList;
+import ca.odell.glazedlists.GlazedLists;
+
+public class NodeListTreeModel implements TreeModel {
+    private final static Logger logger = LoggerFactory.getLogger(NodeListTreeModel.class);
+    
     private final DefaultTreeModel delegate;
     
-    private final Map<DefaultMutableTreeNode, ChildrenSync> childrenSyncs;
+    private final Map<DefaultMutableTreeNode, ChildrenChangeHandler> changeHandlers;
     
     protected TreeSource treeSource;
     
@@ -28,7 +37,7 @@ public class NodeListTreeModel implements TreeModel {
         if (delegate == null) throw new IllegalArgumentException("delegate must not be null");
         this.delegate = delegate;
         
-        childrenSyncs = new HashMap<DefaultMutableTreeNode, ChildrenSync>();
+        changeHandlers = new HashMap<DefaultMutableTreeNode, ChildrenChangeHandler>();
     }
 
     public NodeListTreeModel() {
@@ -37,26 +46,43 @@ public class NodeListTreeModel implements TreeModel {
     
     // treeModel
     public Object getRoot() {
-        return delegate.getRoot();
+        Object root = delegate.getRoot();
+        logger.debug("NodeListTreeModel#getRoot: {}", root);
+        
+        return root;
     }
 
     public int getIndexOfChild(Object parent, Object child) {
         ensureChildrenRetrieved(parent);
-        return delegate.getIndexOfChild(parent, child);
+        
+        int index = delegate.getIndexOfChild(parent, child);
+        logger.debug("NodeListTreeModel#getIndexOfChild: [{}, {}] -> {}", parent, child, index);
+        
+        return index;
     }
 
     public Object getChild(Object parent, int index) {
         ensureChildrenRetrieved(parent);
-        return delegate.getChild(parent, index);
+
+        Object child = delegate.getChild(parent, index);
+        logger.debug("NodeListTreeModel#getChild: [{}, {}] -> {}", parent, index, child);
+        
+        return child;
     }
 
     public int getChildCount(Object parent) {
         ensureChildrenRetrieved(parent);
-        return delegate.getChildCount(parent);
+        
+        int count = delegate.getChildCount(parent);
+        logger.debug("NodeListTreeModel#getChildCount: {} -> {}", parent, count);
+        
+        return count;
     }
 
     public boolean isLeaf(Object node) {
-        return delegate.isLeaf(node);
+        boolean leaf = delegate.isLeaf(node);
+        logger.debug("NodeListTreeModel#isLeaf: {} -> {}", node, leaf);
+        return leaf;
     }
 
     public void valueForPathChanged(TreePath path, Object newValue) {
@@ -87,20 +113,82 @@ public class NodeListTreeModel implements TreeModel {
     }
     
     private void ensureChildrenRetrieved(Object parent) {
-        if (childrenSyncs.containsKey(parent)) {
+        if (changeHandlers.containsKey(parent)) {
             return;
         }
+        logger.debug("NodeListTreeModel#ensureChildrenRetrieved: {}", parent);
         
         DefaultMutableTreeNode node = (DefaultMutableTreeNode) parent;
-        ChildrenSync sync = new ChildrenSync(node);
-        ListModel children = getChildren(node.getUserObject());
-        sync.setListModel(children);
+        ChildrenChangeHandler handler = new ChildrenChangeHandler(node);
+        changeHandlers.put(node, handler);
         
-        childrenSyncs.put(node, sync);
+        handler.setTreeSource(treeSource);
     }
 
     protected DefaultMutableTreeNode createTreeNode(Object nodeObject, boolean allowsChildren) {
         return new DefaultMutableTreeNode(nodeObject, allowsChildren);
+    }
+
+    private MutableTreeNode createTreeNode(Object nodeObject) {
+        boolean allowsChildren = getAllowsChildren(nodeObject);
+        MutableTreeNode childNode = createTreeNode(nodeObject, allowsChildren);
+        return childNode;
+    }
+
+    public void reload(DefaultMutableTreeNode node) {
+        List<?> children = treeSource.getChildren(node.getUserObject());
+        List<Object> source = new ArrayList<Object>(children);
+        
+        TreeNodeChildList target = new TreeNodeChildList(node);
+        
+        GlazedLists.replaceAll(target, source, true);
+    }
+    
+    class TreeNodeChildList extends AbstractEventList<Object> {
+        private final DefaultMutableTreeNode parent;
+        public TreeNodeChildList(DefaultMutableTreeNode parent) {
+            this.parent = parent;
+        }
+
+        public void dispose() {
+            // do nothing
+        }
+
+        @Override
+        public int size() {
+            return parent.getChildCount();
+        }
+
+        @Override
+        public Object get(int index) {
+            DefaultMutableTreeNode childNode = (DefaultMutableTreeNode) parent.getChildAt(index);
+            return childNode.getUserObject();
+        }
+        
+        @Override
+        public Object set(int index, Object value) {
+            DefaultMutableTreeNode childNode = (DefaultMutableTreeNode) parent.getChildAt(index);
+            Object oldObject = get(index);
+            childNode.setUserObject(value);
+            delegate.nodeChanged(childNode);
+            return oldObject;
+        }
+        
+        @Override
+        public void add(int index, Object value) {
+            MutableTreeNode node = createTreeNode(value);
+            delegate.insertNodeInto(node, parent, index);
+        }
+        
+        @Override
+        public Object remove(int index) {
+            DefaultMutableTreeNode childNode = (DefaultMutableTreeNode) parent.getChildAt(index);
+            Object oldObject = childNode.getUserObject();
+            
+            removeFromParent(childNode);
+            
+            return oldObject;
+        }
     }
     
     public TreePath getPathForRoot(TreeNode node) {
@@ -136,10 +224,13 @@ public class NodeListTreeModel implements TreeModel {
     
     public void setTreeSource(TreeSource treeSource) {
         this.treeSource = treeSource;
-        for (Entry<?, ChildrenSync> entry: childrenSyncs.entrySet()) {
-            entry.getValue().dispose();
+        
+        // dispose handlers
+        for (Iterator<? extends Entry<?, ChildrenChangeHandler>> it = changeHandlers.entrySet().iterator();
+                it.hasNext();) {
+            it.next().getValue().setTreeSource(null);
+            it.remove();
         }
-        childrenSyncs.clear();
         
         MutableTreeNode root;
         if (treeSource == null) {
@@ -159,101 +250,55 @@ public class NodeListTreeModel implements TreeModel {
         return treeSource.getAllowsChildren(nodeObject);
     }
     
-    private ListModel getChildren(Object parent) {
-        return treeSource.getChildren(parent);
+    private void removeFromParent(DefaultMutableTreeNode childNode) {
+        delegate.removeNodeFromParent(childNode);
+        
+        // dispose handler
+        ChildrenChangeHandler handler = changeHandlers.remove(childNode);
+        if (handler != null) {
+            handler.setTreeSource(null);
+        }
     }
-    
+
     public static interface TreeSource {
         boolean getAllowsChildren(Object nodeObject);
         
-        ListModel getChildren(Object parent);
+        List<?> getChildren(Object parent);
+        
+        void addChildrenChangeListener(Object parent, ChangeListener l);
+        
+        void removeChildrenChangeListener(Object parent, ChangeListener l);
     }
     
-    private class ChildrenSync implements ListDataListener {
+    private class ChildrenChangeHandler implements ChangeListener {
         private final DefaultMutableTreeNode node;
-        private ListModel model;
+        private TreeSource treeSource;
         
-        public ChildrenSync(DefaultMutableTreeNode node) {
+        public ChildrenChangeHandler(DefaultMutableTreeNode node) {
             if (node == null) throw new IllegalArgumentException("node must not be null");
             this.node = node;
         }
-
-        public void dispose() {
-            if (this.model != null) {
-                this.model.removeListDataListener(this);
+        
+        public void setTreeSource(TreeSource treeSource) {
+            if (this.treeSource != null) {
+                this.treeSource.removeChildrenChangeListener(node.getUserObject(), this);
             }
-        }
-
-        public void setListModel(ListModel newModel) {
-            if (this.model != null) {
-                this.model.removeListDataListener(this);
-            }
-            this.model = newModel;
-            reload();
             
-            if (newModel != null) {
-                newModel.addListDataListener(this);
-            }
-        }
-
-        private void reload() {
-            node.removeAllChildren();
+            this.treeSource = treeSource;
             
-            if (model != null) {
-                insertChildren(model, 0, model.getSize());
-            }
-        }
-
-        private void insertChildren(ListModel source, int start, int end) {
-            for (int i = start; i < end; i++) {
-                Object nodeObject = source.getElementAt(i);
-                boolean allowsChildren = getAllowsChildren(nodeObject);
-                MutableTreeNode childNode = createTreeNode(nodeObject, allowsChildren);
+            if (treeSource != null) {
+                treeSource.addChildrenChangeListener(node.getUserObject(), this);
                 
-                node.insert(childNode, i);
+                node.removeAllChildren();
+                for (Object obj: treeSource.getChildren(node.getUserObject())) {
+                    MutableTreeNode treeNode = createTreeNode(obj);
+                    node.add(treeNode);
+                }
             }
         }
         
-        @Override
-        public void intervalAdded(ListDataEvent e) {
-            int start = e.getIndex0();
-            int end = e.getIndex1();
-            
-            insertChildren((ListModel) e.getSource(), start, end + 1);
-            int[] childIndices = range(start, end);
-            delegate.nodesWereInserted(node, childIndices);
-        }
-
-        @Override
-        public void intervalRemoved(ListDataEvent e) {
-            int start = e.getIndex0();
-            int end = e.getIndex1();
-            
-            TreeNode[] removedChildren = new TreeNode[end - start + 1];
-            
-            for (int i = end; i >= start; i--) {
-                removedChildren[i - start]  = node.getChildAt(i);
-                node.remove(i);
-            }
-
-            int[] childIndices = range(start, end);
-            delegate.nodesWereRemoved(node, childIndices, removedChildren);
-        }
-
-        @Override
-        public void contentsChanged(ListDataEvent e) {
-            ListModel source = (ListModel) e.getSource();
-            int start = e.getIndex0();
-            int end = e.getIndex1();
-            
-            for (int i = start; i <= end; i++) {
-                Object newNodeObject = source.getElementAt(i);
-                MutableTreeNode childNode = (MutableTreeNode) node.getChildAt(i);
-                childNode.setUserObject(newNodeObject);
-            }
-            
-            int[] childIndices = range(start, end);
-            delegate.nodesChanged(node, childIndices);
+        public void stateChanged(ChangeEvent e) {
+            reload(node);
         }
     }
 
@@ -289,13 +334,5 @@ public class NodeListTreeModel implements TreeModel {
         public void treeStructureChanged(TreeModelEvent e) {
             original.treeStructureChanged(wrapEvent(e));
         }
-    }
-    
-    private static int[] range(int start, int end) {
-        int[] childIndices = new int[end - start + 1];
-        for (int i = 0; i < childIndices.length; i++) {
-            childIndices[i] = i + start;
-        }
-        return childIndices;
     }
 }

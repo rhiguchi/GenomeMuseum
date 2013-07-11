@@ -18,6 +18,7 @@ import jp.scid.bio.store.folder.Folder;
 import jp.scid.bio.store.folder.FolderRecordBasicFolder;
 import jp.scid.bio.store.folder.FoldersContainer;
 import jp.scid.bio.store.sequence.FolderContentGeneticSequence;
+import jp.scid.bio.store.sequence.ImportableSequenceSource;
 import jp.scid.genomemuseum.model.SequenceImportable;
 
 import org.slf4j.Logger;
@@ -42,7 +43,7 @@ public class FolderTreeTransferHandler extends TransferHandler {
         
         Object targetObject = getTargetNodeObject(support);
         if (targetObject instanceof FoldersContainer) {
-            boolean canImport = folder.canMoveTo((FoldersContainer) targetObject);
+            boolean canImport = ((FoldersContainer) targetObject).canAddChild(folder);
             return canImport ? MOVE : NONE;
         }
         else if (targetObject instanceof FolderRecordBasicFolder) {
@@ -57,14 +58,14 @@ public class FolderTreeTransferHandler extends TransferHandler {
         Object targetObject = getTargetNodeObject(support);
         
         if (targetObject instanceof FoldersContainer) {
-            return folder.moveTo((FoldersContainer) targetObject);
+            return ((FoldersContainer) targetObject).addChildFolder(folder);
         }
         else if (targetObject instanceof FolderRecordBasicFolder) {
             FolderRecordBasicFolder dest = ((FolderRecordBasicFolder) targetObject);
             dest.addAllSequences(folder.getGeneticSequences());
         }
         else {
-            return folder.moveToRoot();
+            return false; // TODO folder.moveToRoot();
         }
         
         return true;
@@ -86,7 +87,7 @@ public class FolderTreeTransferHandler extends TransferHandler {
     // Files transfer
     public int getFileImportAction(TransferSupport support) {
         Object targetObject = getTargetNodeObject(support);
-        return targetObject instanceof SequenceImportable ? COPY : NONE;
+        return targetObject instanceof ImportableSequenceSource ? COPY : NONE;
     }
     
     public boolean importFile(TransferSupport support) {
@@ -225,9 +226,7 @@ public class FolderTreeTransferHandler extends TransferHandler {
     }
 
     private Transferable createTransferData(Folder folder) {
-        List<FolderContentGeneticSequence> contentList =
-                new ArrayList<FolderContentGeneticSequence>(folder.getGeneticSequences());
-        return new FolderTransferObject(folder, contentList);
+        return new FolderTransferObject(folder, folder.getGeneticSequences());
     }
     
 

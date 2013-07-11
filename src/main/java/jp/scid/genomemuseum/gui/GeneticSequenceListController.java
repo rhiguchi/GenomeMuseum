@@ -3,6 +3,7 @@ package jp.scid.genomemuseum.gui;
 import java.io.File;
 import java.io.IOException;
 import java.text.ParseException;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
@@ -14,6 +15,7 @@ import javax.swing.event.ChangeListener;
 
 import jp.scid.bio.store.sequence.GeneticSequence;
 import jp.scid.bio.store.sequence.GeneticSequenceSource;
+import jp.scid.bio.store.sequence.ImportableSequenceSource;
 import jp.scid.genomemuseum.model.GeneticSequenceFileLoadingManager.LoadingSuccessHandler;
 import jp.scid.genomemuseum.model.GeneticSequenceTableFormat;
 import jp.scid.genomemuseum.model.SequenceImportable;
@@ -52,6 +54,7 @@ public class GeneticSequenceListController extends ListController<GeneticSequenc
         }
     };
     
+    @Deprecated
     private final ChangeListener selectedSourceModelHandler = new ChangeListener() {
         @Override
         public void stateChanged(ChangeEvent e) {
@@ -85,19 +88,19 @@ public class GeneticSequenceListController extends ListController<GeneticSequenc
         if (model == null) {
             return super.retrieve();
         }
-        return Collections.unmodifiableList(model.getGeneticSequences());
+        return new ArrayList<GeneticSequence>(model.getGeneticSequences());
     }
     
     // addFile
     public boolean canImportFile() {
-        return model instanceof SequenceImportable;
+        return model instanceof ImportableSequenceSource;
     }
     
     @Override
     public boolean importFile(File source) throws IOException {
         logger.debug("importFile: {}", source);
         
-        SequenceImportable model = (SequenceImportable) this.model;
+        ImportableSequenceSource model = (ImportableSequenceSource) this.model;
         
         // TODO use import asynchronous queue
         try {

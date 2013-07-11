@@ -122,7 +122,7 @@ public class FolderTreeController implements TreeSelectionListener {
             parent = treeSource.getUserCollectionsRoot();
         }
         
-        Folder child = parent.createContentFolder(type);
+        Folder child = parent.createChildFolder(type);
         int[] indexPath = treeSource.getIndexPath(child);
         TreePath path = treeModel.getPathOfIndex(indexPath);
         return path;
