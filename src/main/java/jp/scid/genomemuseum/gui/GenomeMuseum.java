@@ -17,6 +17,7 @@ import jp.scid.bio.store.SequenceLibrary;
 import jp.scid.genomemuseum.model.MuseumTreeSource;
 import jp.scid.genomemuseum.view.MainMenuBar;
 import jp.scid.genomemuseum.view.MainView;
+import jp.scid.gui.BeanPropertyBinding;
 
 import org.h2.jdbcx.JdbcConnectionPool;
 import org.jdesktop.application.Application;
@@ -91,7 +92,8 @@ public class GenomeMuseum extends Application {
         fileOpenHandler.bindOpenMenu(mainMenuBar.open);
         
         geneticSequenceListController.setFileLoadingTaskController(fileLoadingTaskController);
-        geneticSequenceListController.setModelHolder(folderDirectoryTreeController.selectedNodeObject());
+        BeanPropertyBinding.bind(geneticSequenceListController, "model",
+                folderDirectoryTreeController.getSelectedSequenceSource());
         
         GeneticSequenceListController.Binding listBinding =
                 geneticSequenceListController.new Binding();
@@ -119,8 +121,7 @@ public class GenomeMuseum extends Application {
         ncbiBindings.bindWebSearchResultListView(mainView.webSearchResultListView());
         
         // Mode Selector
-        RecordListViewSelector selector = new RecordListViewSelector(mainView);
-        selector.setModel(folderDirectoryTreeController.selectedNodeObject());
+        BeanPropertyBinding.bind(mainView, "contentsMode", folderDirectoryTreeController.getSelectedMode());
         
         // MotifViewer
         contentViewerController.bindMotifViewerView(mainView.getMotifViewerView());

@@ -5,7 +5,6 @@ import java.io.IOException;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
 
 import javax.swing.JTable;
@@ -43,22 +42,12 @@ public class GeneticSequenceListController extends ListController<GeneticSequenc
     
     private FileLoadingTaskController taskController;
 
-    private ValueModel<?> selectedSource;
-    
     private final ValueModel<GeneticSequence> selectedElement;
 
     private final ChangeListener sequenceSourceChangeListener = new ChangeListener() {
         @Override
         public void stateChanged(ChangeEvent e) {
             fetch();
-        }
-    };
-    
-    @Deprecated
-    private final ChangeListener selectedSourceModelHandler = new ChangeListener() {
-        @Override
-        public void stateChanged(ChangeEvent e) {
-            tryUpdateModel();
         }
     };
     
@@ -179,17 +168,6 @@ public class GeneticSequenceListController extends ListController<GeneticSequenc
         
         fetch();
     }
-
-    private void tryUpdateModel() {
-        if (selectedSource == null) {
-            return;
-        }
-        Object object = selectedSource.get(); 
-        
-        if (object instanceof GeneticSequenceSource) {
-            setModel((GeneticSequenceSource) object);
-        }
-    }
     
     @Override
     protected ExhibitTextFilterator createTextFilterator() {
@@ -201,19 +179,6 @@ public class GeneticSequenceListController extends ListController<GeneticSequenc
         return transferHandler;
     }
     
-    @Deprecated
-    public void setModelHolder(ValueModel<?> holder) {
-        if (selectedSource != null) {
-            selectedSource.removeValueChangeListener(selectedSourceModelHandler);
-        }
-        selectedSource = holder;
-        
-        if (holder != null) {
-            holder.addValueChangeListener(selectedSourceModelHandler);
-        }
-        tryUpdateModel();
-    }
-
     protected class Binding extends ListController<GeneticSequence>.Binding {
         final GeneticSequenceTableFormat tableFormat = new GeneticSequenceTableFormat();
 

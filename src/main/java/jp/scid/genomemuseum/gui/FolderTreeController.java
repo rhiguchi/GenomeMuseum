@@ -17,10 +17,15 @@ import javax.swing.tree.TreePath;
 import jp.scid.bio.store.folder.CollectionType;
 import jp.scid.bio.store.folder.Folder;
 import jp.scid.bio.store.folder.FoldersContainer;
+import jp.scid.bio.store.remote.RemoteSource;
+import jp.scid.bio.store.sequence.GeneticSequenceSource;
 import jp.scid.genomemuseum.model.MuseumTreeSource;
 import jp.scid.genomemuseum.model.NodeListTreeModel;
+import jp.scid.genomemuseum.view.MainView.ContentsMode;
 import jp.scid.gui.control.ActionManager;
 import jp.scid.gui.control.BooleanModelBindings;
+import jp.scid.gui.model.NonNullValueModel;
+import jp.scid.gui.model.SimpleValueModel;
 import jp.scid.gui.model.ValueModel;
 import jp.scid.gui.model.ValueModels;
 
@@ -40,6 +45,8 @@ public class FolderTreeController implements TreeSelectionListener {
     private final Action folderRemoveAction;
     
     private ValueModel<Object> selectedNodeObject;
+    private SimpleValueModel<GeneticSequenceSource> selectedSequenceSource;
+    private NonNullValueModel<ContentsMode> selectedMode;
     
     private MuseumTreeSource treeSource;
     
@@ -49,6 +56,8 @@ public class FolderTreeController implements TreeSelectionListener {
         transferHandler = new FolderTreeTransferHandler();
         
         selectedNodeObject = ValueModels.newTreeSelectedNodeObject(selectionModel);
+        selectedSequenceSource = new SimpleValueModel<GeneticSequenceSource>();
+        selectedMode = new NonNullValueModel<ContentsMode>(ContentsMode.LOCAL);
         
         ActionManager actionManager = new ActionManager(this);
         basicFolderAddAction = actionManager.getAction("addBasicFolder");
@@ -156,9 +165,19 @@ public class FolderTreeController implements TreeSelectionListener {
     // Selection
     @Override
     public void valueChanged(TreeSelectionEvent e) {
-        if (e.getNewLeadSelectionPath() == null) {
+        TreePath path = e.getNewLeadSelectionPath();
+        if (path == null) {
             selectAnyNode();
+            return;
         }
+        
+        Object nodeObj = ((DefaultMutableTreeNode) path.getLastPathComponent()).getUserObject();
+        if (nodeObj instanceof GeneticSequenceSource) {
+            selectedSequenceSource.set((GeneticSequenceSource) nodeObj);
+        }
+        
+        ContentsMode newMode = nodeObj instanceof RemoteSource ? ContentsMode.NCBI : ContentsMode.LOCAL;
+        selectedMode.set(newMode);
     }
     
     private void selectAnyNode() {
@@ -168,6 +187,14 @@ public class FolderTreeController implements TreeSelectionListener {
         
         TreePath path = treeModel.getPathOfIndex(new int[]{0, 0});
         selectionModel.setSelectionPath(path);
+    }
+    
+    public ValueModel<GeneticSequenceSource> getSelectedSequenceSource() {
+        return selectedSequenceSource;
+    }
+    
+    public ValueModel<ContentsMode> getSelectedMode() {
+        return selectedMode;
     }
 
     // Bindings
