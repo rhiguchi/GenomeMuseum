@@ -7,12 +7,13 @@ import java.io.IOException;
 import java.io.Reader;
 import java.util.List;
 
+import javax.swing.JOptionPane;
 import javax.swing.JTextArea;
 import javax.swing.SwingWorker;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 import javax.swing.text.BadLocationException;
-import javax.swing.text.Document;
+import javax.swing.text.DefaultCaret;
 import javax.swing.text.PlainDocument;
 
 import jp.scid.bio.store.sequence.GeneticSequence;
@@ -21,8 +22,13 @@ import jp.scid.gui.model.ValueModel;
 import jp.scid.motifviewer.gui.MotifViewerController;
 import jp.scid.motifviewer.gui.MotifViewerView;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class MuseumExhibitContentViewer {
-    private Document document = new PlainDocument();
+    private final static Logger logger = LoggerFactory.getLogger(MuseumExhibitContentViewer.class);
+    
+    private PlainDocument document = new PlainDocument();
     
     private GeneticSequence sequence = null;
     
@@ -65,16 +71,10 @@ public class MuseumExhibitContentViewer {
         if (sequence != null) {
             setSequence(sequence.sequence());
         }
+        
+        reload();
     }
 
-//    public MuseumExhibitLibrary getLibrary() {
-//        return library;
-//    }
-//
-//    public void setLibrary(MuseumExhibitLibrary library) {
-//        this.library = library;
-//    }
-    
     // sequence
     public String getSequence() {
         return motifViewerController.getSequence();
@@ -89,12 +89,9 @@ public class MuseumExhibitContentViewer {
             document.remove(0, document.getLength());
         }
         catch (BadLocationException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
+            throw new IllegalStateException(e);
         }
     }
-    
-    
     
     // contentText
     Reader getContentReader() throws IOException {
@@ -126,31 +123,28 @@ public class MuseumExhibitContentViewer {
 
     void bindFileContentTextArea(JTextArea textArea) {
         textArea.setDocument(document);
+        ((DefaultCaret) textArea.getCaret()).setUpdatePolicy(DefaultCaret.NEVER_UPDATE);
     }
 
     class ContentLoader extends SwingWorker<Void, String> {
         private final int bufferSize = 8196;
-        
+
         @Override
         protected Void doInBackground() throws Exception {
-            StringBuilder content = new StringBuilder();
             // load String
             BufferedReader contentReader = new BufferedReader(getContentReader(), bufferSize);
             try {
                 char[] cbuf = new char[bufferSize];
                 int read;
                 
-                while ((read = contentReader.read(cbuf)) >= 0) {
+                while (!isCancelled() && (read = contentReader.read(cbuf)) >= 0) {
                     String text = new String(cbuf, 0, read);
                     publish(text);
-                    content.append(text);
                 }
             }
             finally {
                 contentReader.close();
             }
-            
-            // get bio data
             
             return null;
         }
@@ -167,8 +161,9 @@ public class MuseumExhibitContentViewer {
                 appendDocumentString(sb.toString());
             }
             catch (BadLocationException e) {
-                // TODO Auto-generated catch block
-                e.printStackTrace();
+                cancel(false);
+                logger.error("Fail to load file", e);
+                JOptionPane.showMessageDialog(null, e.getLocalizedMessage(), null, JOptionPane.ERROR_MESSAGE);
             }
         }
     }

@@ -125,6 +125,7 @@ public class GenomeMuseum extends Application {
         
         // MotifViewer
         contentViewerController.bindMotifViewerView(mainView.getMotifViewerView());
+        contentViewerController.bindFileContentView(mainView.getFileContentView());
     }
 
     @Override
