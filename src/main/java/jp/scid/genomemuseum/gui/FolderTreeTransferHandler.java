@@ -19,7 +19,6 @@ import jp.scid.bio.store.folder.FolderRecordBasicFolder;
 import jp.scid.bio.store.folder.FoldersContainer;
 import jp.scid.bio.store.sequence.FolderContentGeneticSequence;
 import jp.scid.bio.store.sequence.ImportableSequenceSource;
-import jp.scid.genomemuseum.model.SequenceImportable;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -92,7 +91,7 @@ public class FolderTreeTransferHandler extends TransferHandler {
     
     public boolean importFile(TransferSupport support) {
         List<File> fileList = GeneticSequenceListTransferHandler.getTransferFile(support);
-        SequenceImportable target = (SequenceImportable) getTargetNodeObject(support);
+        ImportableSequenceSource target = (ImportableSequenceSource) getTargetNodeObject(support);
         taskController.executeLoading(fileList, target);
         
         return true;

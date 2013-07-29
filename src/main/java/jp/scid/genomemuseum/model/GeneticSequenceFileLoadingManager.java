@@ -1,9 +1,11 @@
 package jp.scid.genomemuseum.model;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
@@ -14,6 +16,7 @@ import java.util.concurrent.FutureTask;
 import javax.swing.SwingWorker;
 
 import jp.scid.bio.store.sequence.GeneticSequence;
+import jp.scid.bio.store.sequence.ImportableSequenceSource;
 
 import org.jdesktop.application.AbstractBean;
 
@@ -30,18 +33,20 @@ public class GeneticSequenceFileLoadingManager extends AbstractBean {
         this.executor = executor;
     }
     
-    public void executeLoading(Collection<File> files, SequenceImportable dest, LoadingSuccessHandler handler) {
+    public List<Future<GeneticSequence>> executeLoading(Collection<File> files, ImportableSequenceSource dest) {
         if (!isRunnning()) {
             resetCount();
         }
         
+        List<Future<GeneticSequence>> futures = new ArrayList<Future<GeneticSequence>>(files.size());
+        
         for (File file: files) {
-            LoadingTask task = new LoadingTask(file, dest, handler);
+            LoadingTask task = new LoadingTask(file, dest);
             execute(task);
+            futures.add(task);
         }
-    }
-    public void executeLoading(Collection<File> files, SequenceImportable dest) {
-        executeLoading(files, dest, null);
+        
+        return futures;
     }
     
     public <V> Future<V> execute(final Callable<V> command) {
@@ -130,41 +135,32 @@ public class GeneticSequenceFileLoadingManager extends AbstractBean {
     
     class LoadingTask extends SwingWorker<GeneticSequence, Void> {
         private final File file;
-        private final SequenceImportable dest;
-        private final LoadingSuccessHandler successHandler;
+        private final ImportableSequenceSource dest;
         
-        public LoadingTask(File file, SequenceImportable dest, LoadingSuccessHandler successHandler) {
+        public LoadingTask(File file, ImportableSequenceSource dest) {
             this.file = file;
             this.dest = dest;
-            this.successHandler = successHandler;
         }
 
         @Override
         protected GeneticSequence doInBackground() throws Exception {
-            Callable<GeneticSequence> task = dest.createSequenceImportTask(file);
-            return task.call();
+            return dest.importSequence(file);
         }
         
         @Override
         protected void done() {
             finished(this);
-            if (!isCancelled() && successHandler != null) {
-                GeneticSequence sequence;
-                try {
-                    sequence = get();
-                    successHandler.handle(sequence);
-                }
-                catch (InterruptedException ignore) {
-                    // ignore
-                }
-                catch (ExecutionException ignore) {
-                    // ignore
-                }
+            try {
+                if (!isCancelled()) get();
+            }
+            catch (InterruptedException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+            catch (ExecutionException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
             }
         }
-    }
-    
-    public static interface LoadingSuccessHandler {
-        void handle(GeneticSequence newElement);
     }
 }

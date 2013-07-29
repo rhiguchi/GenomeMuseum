@@ -5,19 +5,21 @@ import java.io.IOException;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
+import java.util.ResourceBundle;
 
+import javax.swing.JOptionPane;
 import javax.swing.JTable;
 import javax.swing.ListModel;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 
+import jp.scid.bio.store.sequence.FolderContentGeneticSequence;
 import jp.scid.bio.store.sequence.GeneticSequence;
 import jp.scid.bio.store.sequence.GeneticSequenceSource;
 import jp.scid.bio.store.sequence.ImportableSequenceSource;
-import jp.scid.genomemuseum.model.GeneticSequenceFileLoadingManager.LoadingSuccessHandler;
 import jp.scid.genomemuseum.model.GeneticSequenceTableFormat;
-import jp.scid.genomemuseum.model.SequenceImportable;
 import jp.scid.gui.control.BooleanModelBindings;
 import jp.scid.gui.model.ValueModel;
 import jp.scid.gui.model.ValueModels;
@@ -35,6 +37,8 @@ import ca.odell.glazedlists.swing.DefaultEventListModel;
 
 public class GeneticSequenceListController extends ListController<GeneticSequence> {
     private final static Logger logger = LoggerFactory.getLogger(GeneticSequenceListController.class);
+    private final static ResourceBundle resource =
+            ResourceBundle.getBundle(GeneticSequenceListController.class.getName());
     
     private final GeneticSequenceListTransferHandler transferHandler;
     
@@ -104,44 +108,67 @@ public class GeneticSequenceListController extends ListController<GeneticSequenc
     }
     
     public void importFiles(Collection<File> files) {
+        ImportableSequenceSource dest = (ImportableSequenceSource) this.model;
         if (taskController != null) {
-            SequenceImportable dest = (SequenceImportable) this.model;
-            ImportSuccessHandler handler = new ImportSuccessHandler(dest);
-            
-            taskController.executeLoading(files, dest, handler);
+            taskController.executeLoading(files, dest);
         }
         else try {
             for (File file: files) {
-                importFile(file);
+                dest.importSequence(file);
             }
         }
         catch (IOException e) {
             logger.error("fail to import sequence file", e);
         }
-    }
-    
-    class ImportSuccessHandler implements LoadingSuccessHandler {
-        private final SequenceImportable model;
-        
-        public ImportSuccessHandler(SequenceImportable model) {
-            this.model = model;
-        }
-
-        @Override
-        public void handle(GeneticSequence newElement) {
-            if (model.equals(getModel())) {
-                add(newElement);
-            }
+        catch (ParseException e) {
+            logger.warn("fail to import sequence file", e);
         }
     }
     
     @Override
     public List<GeneticSequence> remove() {
-        List<GeneticSequence> remove = super.remove();
-        for (GeneticSequence sequence: remove) {
+        List<GeneticSequence> selections = selectionModel.getSelected();
+        boolean removeLibfile = false;
+        
+        if (containsLibraryFile(selections)) {
+            int result = askLibraryFileRemove();
+            if (result == JOptionPane.CANCEL_OPTION) {
+                return Collections.emptyList();
+            }
+            removeLibfile = result == JOptionPane.OK_OPTION;
+        }
+        
+        for (GeneticSequence sequence: selections) {
+            if (removeLibfile) {
+                sequence.deleteFileFromLibrary();
+            }
             sequence.delete();
         }
-        return remove;
+        selections.clear();
+        return selections;
+    }
+    
+    private static int askLibraryFileRemove() {
+        String message = resource.getString("remove.alert.Message");
+        String[] options = new String[] {
+            resource.getString("remove.alert.OptionOk"),
+            resource.getString("remove.alert.OptionNo"),
+            resource.getString("remove.alert.OptionCancel"),
+        };
+        int result = JOptionPane.showOptionDialog(null, message, null,
+                JOptionPane.YES_NO_CANCEL_OPTION,
+                JOptionPane.QUESTION_MESSAGE, null, options, options[0]);
+        return result;
+    }
+    
+    private static boolean containsLibraryFile(List<GeneticSequence> list) {
+        for (GeneticSequence s: list) {
+            if (s instanceof FolderContentGeneticSequence)
+                return false;
+            if (s.isFileStoredInLibray())
+                return true;
+        }
+        return false;
     }
     
     public void setFileLoadingTaskController(FileLoadingTaskController taskController) {

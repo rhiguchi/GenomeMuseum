@@ -46,6 +46,7 @@ import ca.odell.glazedlists.impl.filter.StringTextFilterator;
 import ca.odell.glazedlists.matchers.SearchEngineTextMatcherEditor;
 import ca.odell.glazedlists.swing.DefaultEventSelectionModel;
 import ca.odell.glazedlists.swing.DefaultEventTableModel;
+import ca.odell.glazedlists.swing.GlazedListsSwing;
 
 public abstract class ListController<E> {
     private final static Logger logger = LoggerFactory.getLogger(ListController.class);
@@ -68,7 +69,8 @@ public abstract class ListController<E> {
     protected final RemoveAction removeAction;
     
     public ListController(EventList<E> source) {
-        this.base = new PluggableList<E>(source);
+        this.base = new PluggableList<E>(GlazedListsSwing.swingThreadProxyList(source));
+        
         this.sortedList = new SortedList<E>(this.base, null);
         
         matcherEditor = createTextMatcherEditor();
