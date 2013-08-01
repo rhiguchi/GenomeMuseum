@@ -2,39 +2,62 @@ package jp.scid.genomemuseum.model;
 
 import static java.lang.String.*;
 
-import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 
-import javax.swing.event.ChangeListener;
+import javax.swing.ListModel;
+import javax.swing.event.ListDataEvent;
+import javax.swing.event.ListDataListener;
 
 import jp.scid.bio.store.SequenceLibrary;
-import jp.scid.bio.store.base.ChangeEventSupport;
+import jp.scid.bio.store.folder.CollectionType;
 import jp.scid.bio.store.folder.Folder;
 import jp.scid.bio.store.folder.FoldersContainer;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import ca.odell.glazedlists.BasicEventList;
+import ca.odell.glazedlists.EventList;
+import ca.odell.glazedlists.GlazedLists;
+import ca.odell.glazedlists.swing.DefaultEventListModel;
+
 import com.explodingpixels.widgets.TextProvider;
 
 public class MuseumTreeSource implements NodeListTreeModel.TreeSource {
     private final static Logger logger = LoggerFactory.getLogger(MuseumTreeSource.class);
-    private final RootItemList rootItemList;
+    private static final String DEFAULT_LIBRARIES_NAME = "Libraries";
+    private static final String DEFAULT_LOCAL_FILES_NAME = "Collections";
+    
+    private final Category rootItemList;
+    private final Category librariesNode;
+    private FoldersRoot foldersRoot = null;
+    
+    private final Map<Long, EventFolderList> folderContainer;
+    
+    private SequenceLibrary localLibrary = null;
+    private Object ncbiSource = null;
     
     public MuseumTreeSource() {
-        rootItemList = new RootItemList();
+        librariesNode = new Category(DEFAULT_LIBRARIES_NAME);
+        
+        rootItemList = new Category("root");
+        rootItemList.add(librariesNode);
+        
+        folderContainer = new HashMap<Long, EventFolderList>();
     }
     
     @Override
     public boolean getAllowsChildren(Object obj) {
         logger.debug("TreeSource#getAllowsChildren: {}", obj);
         
-        if (obj instanceof Category) {
+        if (obj instanceof FoldersContainer) {
             return true;
         }
-        else if (obj instanceof FoldersContainer) {
+        else if (obj instanceof ListModel) {
             return true;
         }
         return false;
@@ -44,42 +67,58 @@ public class MuseumTreeSource implements NodeListTreeModel.TreeSource {
     public List<?> getChildren(Object parent) {
         logger.debug("TreeSource#getChildren: {}", parent);
         
-        if (parent == this) {
-            return rootItemList.getItems();
+        if (parent instanceof Folder) {
+            return getOrCreateChildFolders((Folder) parent);
+        }
+        else if (parent instanceof EventFolderList) {
+            return ((EventFolderList) parent).elements();
         }
         else if (parent instanceof Category) {
-            return ((Category) parent).children();
+            return ((Category) parent).elements();
         }
-        else if (parent instanceof FoldersContainer) {
-            return ((FoldersContainer) parent).getChildFolders();
+        else if (parent == this) {
+            return rootItemList.elements();
         }
-        return null;
-    }
-    
-    public void addChildrenChangeListener(Object parent, ChangeListener l) {
-        if (parent == this) {
-            rootItemList.addChangeListener(l);
-        }
-        else if (parent instanceof FoldersContainer) {
-            ((FoldersContainer) parent).addFoldersChangeListener(l);
-        }
-        else if (parent instanceof Category) {
-            ((Category) parent).addChangeListener(l);
+        else {
+            throw new IllegalArgumentException("unknwon parent: " + parent);
         }
     }
     
-    public void removeChildrenChangeListener(Object parent, ChangeListener l) {
-        if (parent instanceof FoldersContainer) {
-            ((FoldersContainer) parent).removeFoldersChangeListener(l);
+    public void addChildrenChangeListener(Object parent, ListDataListener l) {
+        if (parent instanceof Folder) {
+            long id = ((Folder) parent).id();
+            getFolderEventDelegate(id).addListDataListener(l);
         }
-        else if (parent instanceof RootItemList) {
-            ((RootItemList) parent).removeChangeListener(l);
+        else if (parent instanceof ListModel) {
+            ((ListModel) parent).addListDataListener(l);
         }
-        else if (parent instanceof Category) {
-            ((Category) parent).removeChangeListener(l);
+        else if (parent == this) {
+            rootItemList.addListDataListener(l);
+        }
+        else {
+            throw new IllegalArgumentException("unknwon parent: " + parent);
         }
     }
-    
+
+    public void removeChildrenChangeListener(Object parent, ListDataListener l) {
+        if (parent instanceof Folder) {
+            long id = ((Folder) parent).id();
+            ListModel model = getFolderEventDelegate(id);
+            if (model != null) {
+                model.removeListDataListener(l);
+            }
+        }
+        else if (parent instanceof ListModel) {
+            ((ListModel) parent).removeListDataListener(l);
+        }
+        else if (parent == this) {
+            rootItemList.removeListDataListener(l);
+        }
+        else {
+            throw new IllegalArgumentException("unknwon parent: " + parent);
+        }
+    }
+
     public boolean updateValueForPath(Object[] path, Object value) {
         if (value instanceof String) {
             Object node = path[path.length - 1];
@@ -93,6 +132,56 @@ public class MuseumTreeSource implements NodeListTreeModel.TreeSource {
         return false;
     }
     
+    private List<Folder> getOrCreateChildFolders(Folder folder) {
+        Long id = folder.id();
+        EventFolderList list = folderContainer.get(id);
+        if (list == null) {
+            EventList<Folder> eventList = GlazedLists.eventList(localLibrary.getChildFolders(id));
+            list = new EventListModelAdapter(eventList, folder);
+            folderContainer.put(id, list);
+        }
+        return list.elements();
+    }
+    
+    private EventFolderList getFolderList(Long parentId) {
+        if (parentId == null) {
+            return foldersRoot;
+        }
+        return folderContainer.get(parentId);
+    }
+
+    private List<Folder> getChildList(Long parentId) {
+        return getFolderList(parentId).elements();
+    }
+    
+    private ListModel getFolderEventDelegate(long id) {
+        return folderContainer.get(id);
+    }
+
+    public Folder createFolder(CollectionType type, Long parentId) {
+        Folder folder = localLibrary.createFolder(type, parentId);
+        addFolder(parentId, folder);
+        return folder;
+    }
+
+    private void addFolder(Long parentId, Folder folder) {
+        List<Folder> source = getChildList(parentId);
+        source.add(folder);
+    }
+
+    public void removeFolder(Folder folder) {
+        List<Folder> source = getChildList(folder.parentId());
+        source.remove(folder);
+        folderContainer.remove(folder.id());
+        // TODO recursive
+    }
+
+    public void changeParent(Folder folder, Long parentId) {
+        removeFolder(folder);
+        folder.setParentId(parentId);
+        addFolder(parentId, folder);
+    }
+    
     @Override
     public String toString() {
         return "TreeSource (root)";
@@ -100,16 +189,20 @@ public class MuseumTreeSource implements NodeListTreeModel.TreeSource {
     
     public Object getParent(Object node) {
         if (node instanceof Folder) {
-            return null; // TODO ((Folder) node).getParent();
+            Long parentId = ((Folder) node).parentId();
+            return getFolderList(parentId).owner();
         }
-        else if (node instanceof Category) {
+        // categories
+        else if (node instanceof Category || node instanceof FoldersRoot) {
             return this;
         }
+        // libraries
+        else if (node != null && (node == localLibrary || node == ncbiSource)) {
+            return librariesNode;
+        }
+        // root
         else if (node == this) {
             return null;
-        }
-        else if (node.equals(getUserCollectionsRoot())) {
-            return this;
         }
         
         throw new IllegalArgumentException(format("cannot find the parent of %s", node));
@@ -152,93 +245,54 @@ public class MuseumTreeSource implements NodeListTreeModel.TreeSource {
         }
     }
     
-    public FoldersContainer getUserCollectionsRoot() {
-        return rootItemList.userCollectionsRoot;
-    }
-    
     public void setSequenceLibrary(SequenceLibrary sequenceLibrary) {
-        rootItemList.setLocalFilesSource(sequenceLibrary);
-        rootItemList.setUserCollectionsRoot(sequenceLibrary.getUsersFolderRoot());
-    }
-    
-    public void setNcbiSource(Object source) {
-        rootItemList.setNcbiSource(source);
-    }
-
-    private static class RootItemList {
-        private static final String DEFAULT_LIBRARIES_NAME = "Libraries";
-        
-        @SuppressWarnings("unused")
-        private static final String DEFAULT_LOCAL_FILES_NAME = "Local Files";
-        
-        private final Category librariesNode;
-        private FoldersContainer userCollectionsRoot;
-        
-        private SequenceLibrary localFilesSourceNode;
-        
-        private Object ncbiSource;
-        
-        private final ChangableList delegate;
-        
-        RootItemList() {
-            delegate = new ChangableList(this);
-            librariesNode = new Category(DEFAULT_LIBRARIES_NAME, 0);
-            delegate.add(librariesNode);
+        if (localLibrary != null) {
+            rootItemList.remove(foldersRoot);
+            librariesNode.remove(localLibrary);
         }
         
-        public void setLocalFilesSource(SequenceLibrary source) {
-            if (localFilesSourceNode != null) {
-                librariesNode.removeChild(localFilesSourceNode);
-            }
+        localLibrary = sequenceLibrary;
+        
+        if (sequenceLibrary != null) {
+            librariesNode.add(localLibrary);
             
-            localFilesSourceNode = source;
-            if (source != null) {
-                librariesNode.addChild(localFilesSourceNode);
-            }
-        }
-        
-        public void setNcbiSource(Object newNcbiSource) {
-            if (ncbiSource != null) {
-                librariesNode.removeChild(ncbiSource);
-            }
-            
-            ncbiSource = newNcbiSource;
-            if (newNcbiSource != null) {
-                librariesNode.addChild(newNcbiSource);
-            }
-        }
-        
-        public void setUserCollectionsRoot(FoldersContainer source) {
-            if (this.userCollectionsRoot != null) {
-                delegate.remove(this.userCollectionsRoot);
-            }
-            
-            this.userCollectionsRoot = source;
-            
-            if (source != null) {
-                delegate.add(userCollectionsRoot);
-            }
-        }
-        
-        public List<Object> getItems() {
-            return delegate.getElements();
-        }
-
-        public void addChangeListener(ChangeListener listener) {
-            delegate.addChangeListener(listener);
-        }
-
-        public void removeChangeListener(ChangeListener listener) {
-            delegate.removeChangeListener(listener);
+            EventList<Folder> source = GlazedLists.eventList(sequenceLibrary.getChildFolders(null));
+            foldersRoot = new FoldersRoot(source);
+            rootItemList.add(foldersRoot);
         }
     }
     
-    private static abstract class TreeElement implements TextProvider {
+    public void setNcbiSource(Object newNcbiSource) {
+        if (ncbiSource != null) {
+            librariesNode.remove(ncbiSource);
+        }
+        
+        ncbiSource = newNcbiSource;
+        
+        if (newNcbiSource != null) {
+            librariesNode.add(newNcbiSource);
+        }
+    }
+
+    
+    private static class Category extends DefaultEventListModel<Object> implements TextProvider {
         private final String name;
-        private Object parent;
         
-        public TreeElement(String name) {
+        public Category(String name) {
+            super(new BasicEventList<Object>());
             this.name = name;
+        }
+        
+        public boolean add(Object element) {
+            return source.add(element);
+        }
+
+        public boolean remove(Object element) {
+            return source.remove(element);
+        }
+        
+        public List<?> elements() {
+            return source;
         }
         
         @Override
@@ -250,101 +304,51 @@ public class MuseumTreeSource implements NodeListTreeModel.TreeSource {
         public String toString() {
             return getText();
         }
-
-        public Object getParent() {
-            return parent;
-        }
-
-        public void setParent(Object parent) {
-            this.parent = parent;
-        }
     }
     
-    public static class Category extends TreeElement implements TextProvider, Comparable<Category> {
-        private final ChangableList delegate;
-        private final int order;
+    private static interface EventFolderList extends ListModel {
+        List<Folder> elements();
         
-        Category(String name, int order) {
-            super(name);
-            
-            delegate = new ChangableList(this);
-            this.order = order;
+        Object owner();
+    }
+    
+    private static class FoldersRoot extends EventListModelAdapter {
+        public FoldersRoot(EventList<Folder> source) {
+            super(source, null);
         }
         
         @Override
-        public int compareTo(Category o) {
-            if (this.order < o.order) {
-                return -1;
-            }
-            else if (this.order > o.order) {
-                return 1;
-            }
-            
-            return this.getText().compareTo(o.getText());
+        public String toString() {
+            return DEFAULT_LOCAL_FILES_NAME;
         }
         
-        void addChild(Object object) {
-            delegate.add(object);
-        }
-
-        void removeChild(Object element) {
-            delegate.remove(element);
-        }
-        
-        public List<Object> children() {
-            return delegate.getElements();
-        }
-
-        public void addChangeListener(ChangeListener listener) {
-            delegate.addChangeListener(listener);
-        }
-
-        public void removeChangeListener(ChangeListener listener) {
-            delegate.removeChangeListener(listener);
+        @Override
+        public Object owner() {
+            return this;
         }
     }
     
-    private static class ChangableList {
-        private final ChangeEventSupport ces;
-        private final List<Object> elements;
+    private static class EventListModelAdapter extends DefaultEventListModel<Folder> implements EventFolderList {
+        private final Object owner;
         
-        public ChangableList(Object eventSource) {
-            this.ces = new ChangeEventSupport(eventSource);
-            elements = new ArrayList<Object>();
+        EventListModelAdapter(EventList<Folder> source, Object owner) {
+            super(source);
+            this.owner = owner;
+        }
+
+        public EventList<Folder> elements() {
+            return source;
         }
         
-        public List<Object> getElements() {
-            return elements;
+        public Object owner() {
+            return owner;
         }
-
-        public void addChangeListener(ChangeListener listener) {
-            ces.addChangeListener(listener);
-        }
-
-        public void removeChangeListener(ChangeListener listener) {
-            ces.removeChangeListener(listener);
-        }
-
-        public void fireChildrenChange() {
-            ces.fireStateChange();
-        }
-
-        public boolean add(Object e) {
-            try {
-                return elements.add(e);
-            }
-            finally {
-                fireChildrenChange();
-            }
-        }
-
-        public boolean remove(Object o) {
-            try {
-                return elements.remove(o);
-            }
-            finally {
-                fireChildrenChange();
-            }
+        
+        @Override
+        protected void fireListDataEvent(ListDataEvent original) {
+            ListDataEvent proxy = new ListDataEvent(
+                    owner(), original.getType(), original.getIndex0(), original.getIndex1());
+            super.fireListDataEvent(proxy);
         }
     }
 }

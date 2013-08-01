@@ -1,14 +1,13 @@
 package jp.scid.genomemuseum.model;
 
-import java.util.ArrayList;
+import java.util.Enumeration;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
-import javax.swing.event.ChangeEvent;
-import javax.swing.event.ChangeListener;
+import javax.swing.event.ListDataEvent;
+import javax.swing.event.ListDataListener;
 import javax.swing.event.TreeModelEvent;
 import javax.swing.event.TreeModelListener;
 import javax.swing.tree.DefaultMutableTreeNode;
@@ -20,9 +19,6 @@ import javax.swing.tree.TreePath;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import ca.odell.glazedlists.AbstractEventList;
-import ca.odell.glazedlists.GlazedLists;
 
 public class NodeListTreeModel implements TreeModel {
     private final static Logger logger = LoggerFactory.getLogger(NodeListTreeModel.class);
@@ -124,10 +120,11 @@ public class NodeListTreeModel implements TreeModel {
         logger.trace("NodeListTreeModel#ensureChildrenRetrieved: {}", parent);
         
         DefaultMutableTreeNode node = (DefaultMutableTreeNode) parent;
+        reloadChildren(node);
+        // install a ChildrenChangeHandler
         ChildrenChangeHandler handler = new ChildrenChangeHandler(node);
+        treeSource.addChildrenChangeListener(node.getUserObject(), handler);
         changeHandlers.put(node, handler);
-        
-        handler.setTreeSource(treeSource);
     }
 
     protected DefaultMutableTreeNode createTreeNode(Object nodeObject, boolean allowsChildren) {
@@ -140,62 +137,6 @@ public class NodeListTreeModel implements TreeModel {
         return childNode;
     }
 
-    public void reload(DefaultMutableTreeNode node) {
-        List<?> children = treeSource.getChildren(node.getUserObject());
-        List<Object> source = new ArrayList<Object>(children);
-        
-        TreeNodeChildList target = new TreeNodeChildList(node);
-        
-        GlazedLists.replaceAll(target, source, true);
-    }
-    
-    class TreeNodeChildList extends AbstractEventList<Object> {
-        private final DefaultMutableTreeNode parent;
-        public TreeNodeChildList(DefaultMutableTreeNode parent) {
-            this.parent = parent;
-        }
-
-        public void dispose() {
-            // do nothing
-        }
-
-        @Override
-        public int size() {
-            return parent.getChildCount();
-        }
-
-        @Override
-        public Object get(int index) {
-            DefaultMutableTreeNode childNode = (DefaultMutableTreeNode) parent.getChildAt(index);
-            return childNode.getUserObject();
-        }
-        
-        @Override
-        public Object set(int index, Object value) {
-            DefaultMutableTreeNode childNode = (DefaultMutableTreeNode) parent.getChildAt(index);
-            Object oldObject = get(index);
-            childNode.setUserObject(value);
-            delegate.nodeChanged(childNode);
-            return oldObject;
-        }
-        
-        @Override
-        public void add(int index, Object value) {
-            MutableTreeNode node = createTreeNode(value);
-            delegate.insertNodeInto(node, parent, index);
-        }
-        
-        @Override
-        public Object remove(int index) {
-            DefaultMutableTreeNode childNode = (DefaultMutableTreeNode) parent.getChildAt(index);
-            Object oldObject = childNode.getUserObject();
-            
-            removeFromParent(childNode);
-            
-            return oldObject;
-        }
-    }
-    
     public TreePath getPathForRoot(TreeNode node) {
         TreeNode[] nodes = delegate.getPathToRoot(node);
         TreePath path = new TreePath(nodes);
@@ -231,13 +172,12 @@ public class NodeListTreeModel implements TreeModel {
         this.treeSource = treeSource;
         
         // dispose handlers
-        for (Iterator<? extends Entry<?, ChildrenChangeHandler>> it = changeHandlers.entrySet().iterator();
-                it.hasNext();) {
-            it.next().getValue().setTreeSource(null);
-            it.remove();
+        if (this.treeSource != null) for (Entry<DefaultMutableTreeNode, ChildrenChangeHandler> entry: changeHandlers.entrySet()) {
+            treeSource.removeChildrenChangeListener(entry.getKey().getUserObject(), entry.getValue());
         }
+        changeHandlers.clear();
         
-        MutableTreeNode root;
+        DefaultMutableTreeNode root;
         if (treeSource == null) {
             root = null;
         }
@@ -254,17 +194,43 @@ public class NodeListTreeModel implements TreeModel {
         }
         return treeSource.getAllowsChildren(nodeObject);
     }
-    
-    private void removeFromParent(DefaultMutableTreeNode childNode) {
-        delegate.removeNodeFromParent(childNode);
+
+    private void reloadChildren(DefaultMutableTreeNode node) {
+        node.removeAllChildren();
         
-        // dispose handler
-        ChildrenChangeHandler handler = changeHandlers.remove(childNode);
-        if (handler != null) {
-            handler.setTreeSource(null);
+        for (Object obj: treeSource.getChildren(node.getUserObject())) {
+            node.add(createTreeNode(obj));
         }
     }
-
+    
+    private void removeHandlers(DefaultMutableTreeNode node) {
+        for (Enumeration<?> it = node.children(); it.hasMoreElements(); ) {
+            DefaultMutableTreeNode child = (DefaultMutableTreeNode) it.nextElement();
+            removeHandlers(child);
+        }
+        ChildrenChangeHandler handler = changeHandlers.get(node);
+        if (handler != null) {
+            treeSource.removeChildrenChangeListener(node.getUserObject(), handler);
+        }
+    }
+    
+    private void childInserted(Object element, MutableTreeNode parent, int index) {
+        MutableTreeNode treeNode = createTreeNode(element);
+        delegate.insertNodeInto(treeNode, parent, index);
+    }
+    
+    private void childRemoved(MutableTreeNode parent, int index) {
+        MutableTreeNode child = (MutableTreeNode) parent.getChildAt(index);
+        removeHandlers((DefaultMutableTreeNode) child);
+        delegate.removeNodeFromParent(child);
+    }
+    
+    private void childChange(Object element, MutableTreeNode parent, int index) {
+        MutableTreeNode childNode = (MutableTreeNode) parent.getChildAt(index);
+        childNode.setUserObject(element);
+        delegate.nodeChanged(childNode);
+    }
+    
     public static interface TreeSource {
         boolean getAllowsChildren(Object nodeObject);
         
@@ -272,40 +238,43 @@ public class NodeListTreeModel implements TreeModel {
         
         boolean updateValueForPath(Object[] path, Object value);
         
-        void addChildrenChangeListener(Object parent, ChangeListener l);
+        void addChildrenChangeListener(Object nodeObject, ListDataListener l);
         
-        void removeChildrenChangeListener(Object parent, ChangeListener l);
+        void removeChildrenChangeListener(Object nodeObject, ListDataListener l);
     }
     
-    private class ChildrenChangeHandler implements ChangeListener {
+    private class ChildrenChangeHandler implements ListDataListener {
         private final DefaultMutableTreeNode node;
-        private TreeSource treeSource;
-        
+
         public ChildrenChangeHandler(DefaultMutableTreeNode node) {
-            if (node == null) throw new IllegalArgumentException("node must not be null");
             this.node = node;
         }
         
-        public void setTreeSource(TreeSource treeSource) {
-            if (this.treeSource != null) {
-                this.treeSource.removeChildrenChangeListener(node.getUserObject(), this);
-            }
+        @Override
+        public void intervalAdded(ListDataEvent e) {
+            List<?> children = treeSource.getChildren(e.getSource());
             
-            this.treeSource = treeSource;
-            
-            if (treeSource != null) {
-                treeSource.addChildrenChangeListener(node.getUserObject(), this);
-                
-                node.removeAllChildren();
-                for (Object obj: treeSource.getChildren(node.getUserObject())) {
-                    MutableTreeNode treeNode = createTreeNode(obj);
-                    node.add(treeNode);
-                }
+            for (int index = e.getIndex0(); index <= e.getIndex1(); index++) {
+                Object element = children.get(index);
+                childInserted(element, node, index);
             }
         }
-        
-        public void stateChanged(ChangeEvent e) {
-            reload(node);
+
+        @Override
+        public void intervalRemoved(ListDataEvent e) {
+            for (int index = e.getIndex1(); index >= e.getIndex0(); index--) {
+                childRemoved(node, index);
+            }
+        }
+
+        @Override
+        public void contentsChanged(ListDataEvent e) {
+            List<?> children = treeSource.getChildren(e.getSource());
+
+            for (int index = e.getIndex0(); index <= e.getIndex1(); index++) {
+                Object element = children.get(index);
+                childChange(element, node, index);
+            }
         }
     }
 

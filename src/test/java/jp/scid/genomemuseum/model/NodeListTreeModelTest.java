@@ -11,6 +11,7 @@ import java.util.List;
 
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
+import javax.swing.event.ListDataListener;
 import javax.swing.event.TreeModelEvent;
 import javax.swing.event.TreeModelListener;
 import javax.swing.tree.DefaultMutableTreeNode;
@@ -43,7 +44,7 @@ public class NodeListTreeModelTest {
         model.setTreeSource(new TestTreeSource());
         
         DefaultMutableTreeNode root = (DefaultMutableTreeNode) model.getRoot();
-        model.reload(root);
+//        model.reload(root);
         
         assertEquals(3, root.getChildCount());
         assertEquals("element1", userObjectOf(root.getChildAt(0)));
@@ -186,11 +187,11 @@ public class NodeListTreeModelTest {
             return false;
         }
 
-        public void addChildrenChangeListener(Object parent, ChangeListener l) {
-            rootChildrenChangeListeners.add(l);
+        public void addChildrenChangeListener(Object parent, ListDataListener l) {
+//            rootChildrenChangeListeners.add(l);
         }
 
-        public void removeChildrenChangeListener(Object parent, ChangeListener l) {
+        public void removeChildrenChangeListener(Object parent, ListDataListener l) {
             // do nothing
         }
     }

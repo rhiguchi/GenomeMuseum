@@ -120,24 +120,29 @@ public class FolderTreeController implements TreeSelectionListener {
     }
 
     TreePath addFolder(CollectionType type) {
-        FoldersContainer parent = treeSource.getUserCollectionsRoot();
+        Long parentId = null;
         
         DefaultMutableTreeNode selectedTreeNode = getSelectedTreeNode();
-        if (selectedTreeNode != null) {
-            Object userObject = selectedTreeNode.getUserObject();
-            
-            if (userObject instanceof FoldersContainer) {
-                parent = (FoldersContainer) userObject;
+        if (selectedTreeNode != null && selectedTreeNode.getUserObject() instanceof Folder) {
+            Folder folder = (Folder) selectedTreeNode.getUserObject();
+
+            if (folder instanceof FoldersContainer) {
+                parentId = folder.id();
+                // for children not initialized
+                treeSource.getChildren(folder);
             }
-            else if (userObject instanceof Folder) {
-                parent = (FoldersContainer) ((DefaultMutableTreeNode) selectedTreeNode.getParent()).getUserObject();
+            else {
+                parentId = folder.parentId();
             }
         }
         
-        Folder child = parent.createChildFolder(type);
-//        int[] indexPath = treeSource.getIndexPath(child);
-//        TreePath path = treeModel.getPathOfIndex(indexPath);
-        return null; //path;
+        
+        Folder child = treeSource.createFolder(type, parentId);
+        child.save();
+        
+        int[] indexPath = treeSource.getIndexPath(child);
+        TreePath path = treeModel.getPathOfIndex(indexPath);
+        return path;
     }
 
     public Object getSelectedNodeObject() {
@@ -148,10 +153,16 @@ public class FolderTreeController implements TreeSelectionListener {
         logger.debug("FolderTreeController#remove");
         Object[] objectPath = getSelectedTreeNode().getUserObjectPath();
         
-        Folder target = (Folder) objectPath[objectPath.length - 1];
-        FoldersContainer parent = (FoldersContainer) objectPath[objectPath.length - 2];
+        Folder folder = (Folder) objectPath[objectPath.length - 1];
         
-        parent.removeChildFolder(target);
+        treeSource.removeFolder(folder);
+        folder.delete();
+    }
+    
+    public void moveTo(FoldersContainer newParent) {
+        Folder folder = (Folder) getSelectedTreeNode().getUserObject();
+        Long parentId = newParent instanceof Folder ? ((Folder) newParent).id() : null;
+        treeSource.changeParent(folder, parentId);
     }
 
     private DefaultMutableTreeNode getSelectedTreeNode() {
