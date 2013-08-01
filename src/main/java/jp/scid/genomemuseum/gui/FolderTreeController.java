@@ -53,7 +53,7 @@ public class FolderTreeController implements TreeSelectionListener {
     public FolderTreeController() {
         treeModel = new NodeListTreeModel();
         selectionModel = new SourceSelectionModel();
-        transferHandler = new FolderTreeTransferHandler();
+        transferHandler = new FolderTreeTransferHandler(this);
         
         selectedNodeObject = ValueModels.newTreeSelectedNodeObject(selectionModel);
         selectedSequenceSource = new SimpleValueModel<GeneticSequenceSource>();
@@ -158,11 +158,15 @@ public class FolderTreeController implements TreeSelectionListener {
         treeSource.removeFolder(folder);
         folder.delete();
     }
+
+    boolean moveTo(Folder folder, FoldersContainer destParent) {
+        Long parentId = destParent instanceof Folder ? ((Folder) destParent).id() : null;
+        return treeSource.changeParent(folder, parentId);
+    }
     
-    public void moveTo(FoldersContainer newParent) {
+    boolean moveTo(FoldersContainer destParent) {
         Folder folder = (Folder) getSelectedTreeNode().getUserObject();
-        Long parentId = newParent instanceof Folder ? ((Folder) newParent).id() : null;
-        treeSource.changeParent(folder, parentId);
+        return moveTo(folder, destParent);
     }
 
     private DefaultMutableTreeNode getSelectedTreeNode() {
@@ -242,7 +246,7 @@ public class FolderTreeController implements TreeSelectionListener {
 
     static class SourceSelectionModel extends DefaultTreeSelectionModel {
         public boolean canSelect(TreePath path) {
-            return path.getPathCount() > 2;
+            return path != null && path.getPathCount() > 2;
         }
         
         @Override

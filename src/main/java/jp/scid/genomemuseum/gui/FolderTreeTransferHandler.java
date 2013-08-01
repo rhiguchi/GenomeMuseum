@@ -28,17 +28,15 @@ public class FolderTreeTransferHandler extends TransferHandler {
     
     final static Logger logger = LoggerFactory.getLogger(FolderTreeTransferHandler.class);
     
-    private FileLoadingTaskController taskController = null;
+    final private FolderTreeController treeController;
     
-    public FolderTreeTransferHandler() {
+    public FolderTreeTransferHandler(FolderTreeController treeController) {
+        this.treeController = treeController;
     }
 
     // Folder transfer
     int getFolderImportAction(TransferSupport support) {
         Folder folder = getTransferFolder(support);
-        if (folder == null) {
-            return NONE;
-        }
         
         Object targetObject = getTargetNodeObject(support);
         if (targetObject instanceof FoldersContainer) {
@@ -49,7 +47,7 @@ public class FolderTreeTransferHandler extends TransferHandler {
             return COPY;
         }
         
-        return NONE;
+        return MOVE;
     }
     
     boolean importFolder(TransferSupport support) {
@@ -57,17 +55,15 @@ public class FolderTreeTransferHandler extends TransferHandler {
         Object targetObject = getTargetNodeObject(support);
         
         if (targetObject instanceof FoldersContainer) {
-            return ((FoldersContainer) targetObject).addChildFolder(folder);
+            return treeController.moveTo(folder, (FoldersContainer) targetObject);
         }
         else if (targetObject instanceof FolderRecordBasicFolder) {
             FolderRecordBasicFolder dest = ((FolderRecordBasicFolder) targetObject);
             dest.addAllSequences(folder.getGeneticSequences());
-        }
-        else {
-            return false; // TODO folder.moveToRoot();
+            return true;
         }
         
-        return true;
+        return treeController.moveTo(folder, null);
     }
     
     // Sequences transfer
@@ -92,9 +88,9 @@ public class FolderTreeTransferHandler extends TransferHandler {
     public boolean importFile(TransferSupport support) {
         List<File> fileList = GeneticSequenceListTransferHandler.getTransferFile(support);
         ImportableSequenceSource target = (ImportableSequenceSource) getTargetNodeObject(support);
-        taskController.executeLoading(fileList, target);
+//        taskController.executeLoading(fileList, target);
         
-        return true;
+        return false;
     }
     
     @Override
@@ -137,11 +133,11 @@ public class FolderTreeTransferHandler extends TransferHandler {
         }
         catch (UnsupportedFlavorException e) {
             logger.error("cannot get transfer Folder", e);
-            return null;
+            throw new IllegalStateException(e);
         }
         catch (IOException e) {
             logger.error("cannot get transfer Folder", e);
-            return null;
+            throw new IllegalStateException(e);
         }
     }
 

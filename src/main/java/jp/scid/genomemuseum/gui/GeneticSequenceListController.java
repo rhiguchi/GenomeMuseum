@@ -224,7 +224,9 @@ public class GeneticSequenceListController extends ListController<GeneticSequenc
         public void getFilterStrings(List<String> baseList, GeneticSequence element) {
             baseList.add(element.accession());
             baseList.add(element.definition());
+            baseList.add(element.moleculeType());
             baseList.add(element.name());
+            baseList.add(element.namespace());
             baseList.add(element.organism());
             baseList.add(element.source());
         }

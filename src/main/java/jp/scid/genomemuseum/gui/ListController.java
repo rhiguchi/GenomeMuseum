@@ -379,9 +379,6 @@ public abstract class ListController<E> {
                 JTableHeader header, AdvancedTableFormat<? super E> tableFormat) {
             TableHeaderClickHandler.Binder binder =
                     TableHeaderClickHandler.installTo(header, sortedList, tableFormat);
-            
-
-//            orderStatementHandler = new ColumnOrderStatementHandler<MuseumExhibit>(comparator, tableFormat);
             return binder;
         }
         

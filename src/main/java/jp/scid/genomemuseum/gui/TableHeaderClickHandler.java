@@ -296,8 +296,9 @@ public class TableHeaderClickHandler<E> {
                 TableColumnModel columnModel = header.getColumnModel();
                 int index = columnModel.getColumnIndexAtX(e.getX());
                 
-                if (0 <= index && index < columnModel.getColumnCount());
-                return index;
+                if (0 <= index && index < columnModel.getColumnCount()) {
+                    return index;
+                }
             }
             
             return -1;

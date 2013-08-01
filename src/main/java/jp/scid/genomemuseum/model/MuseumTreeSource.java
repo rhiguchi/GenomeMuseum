@@ -176,10 +176,19 @@ public class MuseumTreeSource implements NodeListTreeModel.TreeSource {
         // TODO recursive
     }
 
-    public void changeParent(Folder folder, Long parentId) {
-        removeFolder(folder);
-        folder.setParentId(parentId);
-        addFolder(parentId, folder);
+    public boolean changeParent(Folder folder, Long newParentId) {
+        if (folder.parentId() == null && newParentId == null
+                || folder.parentId().equals(newParentId)) {
+            return false;
+        }
+        List<Folder> source = getChildList(folder.parentId());
+        source.remove(folder);
+        
+        folder.setParentId(newParentId);
+        List<Folder> parentChildren = getChildList(newParentId);
+        parentChildren.add(folder);
+        
+        return true;
     }
     
     @Override
