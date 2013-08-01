@@ -7,7 +7,7 @@
                    
      higuchi                                                                
      ====================================================================== -->
-<project name="GenomeMuseum" default="run-jar" xmlns:ivy="antlib:org.apache.ivy.ant">
+<project name="GenomeMuseum" default="compile" xmlns:ivy="antlib:org.apache.ivy.ant">
     <description>
             GenomeMuseum 0.9
     </description>
@@ -15,7 +15,6 @@
         value="${basedir}/target/scala-2.9.1/genomemuseum_2.9.1-0.9a1.min.jar"/>
     
     <property name="build.dest" location="build"/>
-    <property name="build.jar.assembled" location="${build.dest}/genomemuseum.jar"/>
     <property name="build.resources" location="build-resources"/>
 
     <property name="build.mac.app.name" value="GenomeMuseum.app"/>
@@ -23,6 +22,7 @@
     <property name="build.win.exe.name" value="GenomeMuseum.exe"/>
     
     <property file="project/build.properties"/>
+    <property file="project/build.default.properties"/>
     
     <condition property="ivy.home" value="${env.IVY_HOME}">
         <isset property="env.IVY_HOME" />
@@ -44,11 +44,6 @@
                  uri="antlib:org.apache.ivy.ant" classpathref="ivy.install.path"/>
     </target>
 
-    <!-- jar ファイルが存在するかどうか -->
-    <condition property="genomemuseum.assembled.exists">
-        <available file="${genomemuseum.assembled}"></available>
-    </condition>
-    
     <!-- Classpaths -->
     <path id="classpath.main">
         <pathelement location="${classes.main.dir}"/>
@@ -64,15 +59,15 @@
          - - - - - - - - - - - - - - - - - -->
     <target name="init">
     </target>
-    
+
     <!-- ================================= 
           target: clean              
          ================================= -->
-    <target name="clean">
-        <delete dir="${build.dir}"/>
-        <delete dir="${lib.dir}"/>
+    <target name="clean" description="clean the project">
+        <delete includeemptydirs="true" dir="${build.dir}"/>
+        <delete includeemptydirs="true" dir="${dist.dir}"/>
     </target>
-
+    
     <target name="clean-lib" description="clean lib dir">
         <delete dir="${lib.dir}"/>
     </target>
@@ -85,48 +80,74 @@
     </target>
     
     <!-- ================================= 
-          target: Resolve dependency              
-         ================================= -->
-    <target name="resolve" description="Resolve dependency" depends="-taskdef-user-ivy">
-        <property name="ivy.retrieve.pattern" value="${ivy.lib.dir}/[conf]/[artifact]-[revision].[ext]" />
-        
-        <mkdir dir="${ivy.lib.dir}/default"/>
-        <mkdir dir="${ivy.lib.dir}/test"/>
-        <ivy:retrieve symlink="${ivy.retrieve.symlink}" />
-        
-        <!-- Class Paths -->
-        <path id="classpath.lib.default" >
-            <fileset dir="${ivy.lib.dir}/default" includes="*.jar" />
-        </path>
-        <path id="classpath.lib.test" >
-            <fileset dir="${ivy.lib.dir}/test" includes="*.jar" />
-        </path>
-    </target>
-    
-    <!-- ================================= 
           target: Compile              
          ================================= -->
-    <target name="compile" depends="init, resolve" description="Compile main java sources">
+    <target name="compile" depends="init" description="Compile main java sources">
         <mkdir dir="${classes.main.dir}"/>
-        <javac destdir="${classes.main.dir}" source="${javac.source}" target="${javac.target}"
-                encoding="UTF-8" debug="${javac.debug}" debuglevel="source,lines,vars" includeantruntime="false">
+
+        <copy todir="${classes.main.dir}">
+            <fileset dir="${src.main.java.dir}" excludes="**/*.java" />
+            <fileset dir="${src.main.resources.dir}"/>
+        </copy>
+
+        <path id="lib.compile.path">
+            <fileset dir="${lib.compile.dir}" includes="**/*.jar" />
+        </path>
+        
+        <javac destdir="${classes.main.dir}" source="1.6" target="1.6"
+                encoding="UTF-8" debug="true" includeantruntime="false">
+            <compilerarg value="-Xlint:all"/>
             <src path="${src.main.java.dir}" />
-            <classpath refid="classpath.lib.default" />
+            
+            <classpath refid="lib.compile.path" />
         </javac>
     </target>
+
 
     <!-- ================================= 
           target: create jar file              
          ================================= -->
-    <target name="jar" depends="compile" description="Create jar file">
-        <jar destfile="${build.jar.file}">
+    <target name="jar" depends="compile" description="make a jar file for this project">
+        <jar destfile="${package.file}">
             <fileset dir="${classes.main.dir}" />
-            <fileset dir="${src.main.resources.dir}" />
             <manifest>
                 <attribute name="Main-Class" value="${run.main}" />
+                <attribute name="Built-By" value="${user.name}" />
+                <attribute name="Build-Version" value="${version}" />
             </manifest>
         </jar>
     </target>
+
+    
+    <!-- ================================= 
+          target: package-sources
+         ================================= -->
+    <target name="jar-sources" depends="init" description="description">
+        <zip destfile="${source.file}">
+            <fileset dir="${src.main.java.dir}" includes="**/*.java" />
+        </zip>
+    </target>
+    
+    <!-- ================================= 
+          target: create Javadoc              
+         ================================= -->
+    <target name="javadoc" depends="compile" description="Create Javadoc">
+        <javadoc destdir="${javadoc.dir}" encoding="UTF-8" source="1.6" author="true" version="true"
+                access="${javadoc.access}" docencoding="UTF-8" charset="UTF-8" doctitle="${javadoc.title}">
+            <arg value="-J-Dfile.encoding=UTF-8"/>
+            <classpath refid="lib.compile.path" />
+            <sourcepath path="${src.main.java.dir}"/>
+            <link href="${javadoc.api-ref.javase}"/>
+        </javadoc>
+    </target>
+    
+    <!-- ================================= 
+          target: package-javadoc
+         ================================= -->
+    <target name="jar-javadoc" depends="" description="description">
+        <jar basedir="${javadoc.dir}" destfile="${javadoc.file}"/>
+    </target>
+
     
     <!-- ================================= 
           target: Compile for test              
@@ -142,58 +163,66 @@
         </javac>
     </target>
 
-    <!-- ================================= 
-          target: default              
-         ================================= -->
-    <target name="sbt-proguard" depends="depends" description="GenomeMuseum 0.9"
-            unless="genomemuseum.assembled.exists">
-        <exec executable="sbt">
-            <arg line="compile test package proguard"/>
-  	</exec>
+    <target name="build" depends="jar, javadoc, jar-javadoc, jar-sources, proguard, build-mac-app, build-win-exe"
+            description="make a jar file for this project">
     </target>
 
-    <!-- ================================= 
-          target: assemble-jar              
-         ================================= -->
-    <target name="assemble-jar" depends="depends, sbt-proguard" description="description">
-        <delete file="build.jar.assembled" />
-        <copy file="${genomemuseum.assembled}" tofile="${build.jar.assembled}" />
-    </target>
 
     <!-- ================================= 
-          target: run-jar              
+          target: run              
          ================================= -->
-    <target name="run-jar" depends="resolve" description="target ディレクトリの jar を実行する">
-        <pathconvert pathsep=":" dirsep="/" property="jar.runtime.classpath">
-            <path refid="classpath.lib.default" />
-        </pathconvert>
-
-        <echoproperties prefix="jar.runtime.classpath">
-        </echoproperties>
-
-        <exec executable="java">
-            <arg value="-Dfile.encoding=UTF-8"/>
-            <arg value="-Xms128m"/>
-            <arg value="-Xmx1024m"/>
-            <arg value="-classpath"/>
-            <arg value="${jar.runtime.classpath}"/>
-            <arg value="-jar"/>
-            <arg value="${build.jar.file}"/>
-        </exec>
+    <target name="run" depends="compile" description="description">
+        <java classname="${run.main}" failonerror="true" fork="true" classpath="${classes.main.dir}">
+            <jvmarg line="-Dfile.encoding=UTF-8 -Xms128m -Xmx1024m" />
+            <classpath>
+            	<fileset dir="${lib.default.dir}" includes="**/*.jar" />
+            </classpath>
+        </java>
     </target>
-
     
+    <!-- ================================= 
+         target: proguard               
+         ================================= -->
+    <target name="proguard" depends="jar" description="description">
+        <path id="lib.compile.path">
+            <fileset dir="${lib.compile.dir}" includes="**/*.jar" />
+        </path>
+        
+        <taskdef name="proguard" classname="proguard.ant.ProGuardTask" classpath="${proguard.ant.path}"/>
+        <proguard configuration="${project.dir}/proguard.conf" optimize="false" obfuscate="false"
+ 	       printmapping="${build.dir}/proguard-map.txt">
+ 	   <libraryjar path="${proguard.java.home.classes}"/>
+ 	   <injar path="${package.file}"/>
+ 	   <injar refid="lib.compile.path" filter="!META-INF/MANIFEST.MF,!META-INF/LICENSE.txt,!META-INF/NOTICE.txt"/>
+            
+ 	   <outjar path="${package.min.file}" />
+        </proguard>
+    </target>
+
+    <!-- ================================= 
+ 	 target: run with min-jar              
+ 	================================= -->
+    <target name="start" depends="" description="description">
+        <exec executable="java">
+	    <arg value="-Dfile.encoding=UTF-8"/>
+	    <arg value="-Xms128m"/>
+	    <arg value="-Xmx1024m"/>
+	    <arg value="-jar"/>
+	    <arg value="${package.min.file}"/>
+	</exec>
+    </target>
+
     <!-- ================================= 
           target: build-mac-app              
          ================================= -->
-    <target name="build-mac-app" depends="depends, assemble-jar" description="description">
+    <target name="build-mac-app" depends="" description="description">
         <property name="build.dest.mac.app" location="${build.dest}/${build.mac.app.name}"/>
         
         <delete dir="${build.dest.mac.app}" />
         <copy todir="${build.dest.mac.app}">
             <fileset dir="${build.resources.macbundle}"></fileset>
         </copy>
-        <copy file="${build.jar.assembled}"
+        <copy file="${package.min.file}"
             tofile="${build.dest.mac.app}/Contents/Resources/Java/genomemuseum.jar" />
         <tar destfile="${build.dest.mac.app}.tar">
             <tarfileset dir="${build.dest}" includes="${build.mac.app.name}/**" />
@@ -207,84 +236,13 @@
     <!-- ================================= 
           target: build-win-exe              
          ================================= -->
-    <target name="build-win-exe" depends="depends, assemble-jar" description="description">
+    <target name="build-win-exe" depends="" description="description">
         <property name="build.dest.win.exe" location="${build.dest}/${build.win.exe.name}"/>
         <!-- ${launch4j.home} launch4j.jar と lib/xstream.jar があるディレクトリを指定しておく。 -->
         <taskdef name="launch4j" classname="net.sf.launch4j.ant.Launch4jTask"
             classpath="${launch4j.home}/launch4j.jar:${launch4j.home}/xstream.jar" />
         <launch4j configFile="${build.resources}/launch4j.xml"
-            jar="${build.jar.assembled}"
+            jar="${package.min.file}"
             outfile="${build.dest.win.exe}" />
-    </target>
-    
-    <!-- ================================= 
-          target: build-all              
-         ================================= -->
-    <target name="build-all" depends="build-mac-app, build-win-exe"
-    	    description="Mac OS 用 と Windows 用アプリケーションを作成する。">
-    </target>
-    
-    <!-- - - - - - - - - - - - - - - - - - 
-          target: depends                      
-         - - - - - - - - - - - - - - - - - -->
-    <target name="depends">
-        <mkdir dir="${build.dest}"/>
-    </target>
-    
-    <!-- - - - - - - - - - - - - - - - - - 
-          target: jooq-retrieve                      
-         - - - - - - - - - - - - - - - - - -->
-    <target name="jooq-retrieve" description="jOOQ タスク用ライブラリを取得する">
-        <!-- ライブラリ解決 -->
-        <ivy:retrieve file="${ivy.file}" conf="jooq" pattern="${lib.dir}/[conf]/[artifact].[ext]"  />
-    </target>
-
-    
-    <!-- ================================= 
-          target: jooq-codegen              
-         ================================= -->
-    <target name="jooq-codegen" description="jOOQ を利用してエンティティコードを作成する">
-        <!-- ライブラリ解決 -->
-        <ivy:resolve file="${ivy.file}"/>
-        <ivy:cachepath pathid="ivy.jooq.classpath" conf="jooq" />
-
-        <property name="build.dest" location="build"/>
-        
-        <!-- データベースを作業場所に一時構築 -->
-        <delete includeemptydirs="true" dir="${jooq.temp.dir}"/>
-        <mkdir dir="${jooq.temp.dir}"/>
-        
-        <sql userid="genomemuseum" password="" driver="org.h2.Driver" encoding="utf-8"
-                url="jdbc:h2:file:${jooq.temp.dir}/genomemuseum"
-                classpathref="ivy.jooq.classpath">
-            <transaction>create schema V1_0_0;</transaction>
-            <transaction>SET SCHEMA V1_0_0;</transaction>
-            <transaction src="${src.main.resources.dir}/jp/scid/genomemuseum/model/sql/schema.sql" />
-            <transaction src="${src.main.resources.dir}/jp/scid/genomemuseum/model/sql/sequences.sql" />
-        </sql>
-        
-        <!-- Task definition -->
-        <taskdef name="generate-classes" classname="org.jooq.util.GenerationTask" classpathref="ivy.jooq.classpath"/>
-        
-        <java fork="true" classname="org.jooq.util.GenerationTool">
-            <classpath>
-                <path refid="ivy.jooq.classpath"></path>
-                <pathelement path="."/>
-            </classpath>
-            <arg value="/project/jooq-config.xml"/>
-        </java>
-    </target>
-
-    <!-- ================================= 
-          target: h2-start              
-         ================================= -->
-    <target name="h2-server-start" depends="depends" description="description">
-        <!-- ライブラリ解決 -->
-        <ivy:resolve file="${ivy.file}"/>
-        <ivy:cachepath pathid="ivy.jooq.classpath" conf="jooq" />
-        
-        <java fork="true" classname="org.h2.tools.Server" spawn="true">
-            <classpath refid="ivy.jooq.classpath" />
-        </java>
     </target>
 </project>
